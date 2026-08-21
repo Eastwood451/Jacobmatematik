@@ -59,7 +59,13 @@ h1,h2,h3,p { margin-top:0; }
 .question-card { background:var(--paper); border:1px solid var(--line); border-radius:28px; box-shadow:var(--shadow); overflow:hidden; }
 .question-top { padding:clamp(32px,7vw,72px); text-align:center; border-bottom:1px solid var(--line); }
 .question-number { color:var(--muted); font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.1em; }
-.expression { font:700 clamp(48px,10vw,86px)/1.15 Georgia,serif; letter-spacing:-.045em; margin:26px 0 10px; }
+.question-main { margin:26px 0 10px; }
+.question-main.with-history { display:grid; grid-template-columns:42px minmax(0,auto) 42px; align-items:center; justify-content:center; gap:12px; }
+.expression { grid-column:2; font:700 clamp(48px,10vw,86px)/1.15 Georgia,serif; letter-spacing:-.045em; }
+.question-main:not(.with-history) .expression { grid-column:auto; }
+.pair-history { grid-column:3; display:flex; flex-direction:column; align-items:center; justify-content:center; min-width:42px; }
+.history-mark { display:block; height:27px; font:900 34px/.78 system-ui,sans-serif; text-shadow:0 1px 0 rgba(255,255,255,.8); }
+.history-mark.fast { color:#23a96f; }.history-mark.slow { color:#d7a51f; }.history-mark.wrong { color:#e14f48; }
 .hint { color:var(--muted); min-height:24px; }
 .answer-area { padding:clamp(18px,4vw,28px); }
 .answer-input { border-color:var(--line); font-size:28px; font-weight:800; text-align:center; min-height:62px; margin-bottom:16px; caret-color:transparent; }
