@@ -9,7 +9,7 @@ En responsiv matematikapp til elever og lærere, bygget i ren HTML, CSS og JavaS
 - Adaptiv opgavefordeling baseret på rigtighed og svartid
 - Skærmtastatur til iPad og browser
 - Lærerportal med klasser, elevstatistik, grafer og talpar
-- Mestring af et multiplikationspar efter tre korrekte svar i træk på højst tre sekunder
+- Farvekodet historik for hvert ordnet multiplikationspar\n- Mestring af et multiplikationspar efter tre korrekte svar i træk på højst fem sekunder
 - Korrekt svar vises som en trykbar illustration efter et forkert svar
 
 ## Kør lokalt
