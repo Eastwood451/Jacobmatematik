@@ -205,6 +205,16 @@
     const task = state.task;
     const cycleStart = Math.floor((state.questionNumber - 1) / 10) * 10;
     const cycleAnswers = state.sessionAnswers.slice(cycleStart, cycleStart + 10);
+    // Historikken følger det ordnede talpar. 7 × 9 og 9 × 7 har hver sin historik.
+    const pairAttempts = task.topic === "multiplication"
+      ? (state.user.results || []).filter(item => item.topic === "multiplication" && item.problem === task.expression).sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp)).slice(-8)
+      : [];
+    const attemptHistory = pairAttempts.length ? `<aside class="pair-history" aria-label="Historik for ${escapeHtml(task.expression)}">${pairAttempts.map(item => {
+      const fast = item.correct && recordedTime(item) <= 5;
+      const kind = !item.correct ? "wrong" : fast ? "fast" : "slow";
+      const label = !item.correct ? "Forkert besvaret" : fast ? "Korrekt på højst 5 sekunder" : "Korrekt på over 5 sekunder";
+      return `<span class="history-mark ${kind}" role="img" aria-label="${label}" title="${label} · ${recordedTime(item).toFixed(1)} s">${item.correct ? "✓" : "×"}</span>`;
+    }).join("")}</aside>` : "";
     const undefinedKey = task.answerType === "undefined" ? `<button class="key utility impossible" type="button" data-key="undefined">Kan ikke beregnes</button>` : "";
     const answerSection = `<form class="answer-area" id="answer-form">
           <label class="sr-only" for="answer">Dit svar</label>
@@ -228,7 +238,7 @@
     app.innerHTML = `${header()}<div class="page exercise-page">
       <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${TOPICS[task.topic].name}</span></div>
       <section class="question-card">
-        <div class="question-top"><span class="question-number">Opgave ${state.questionNumber}</span><div class="expression">${task.expression}</div><p class="hint">${escapeHtml(task.hint || "Skriv dit svar nedenfor.")}</p></div>
+        <div class="question-top"><span class="question-number">Opgave ${state.questionNumber}</span><div class="question-main ${attemptHistory ? "with-history" : ""}"><div class="expression">${task.expression}</div>${attemptHistory}</div><p class="hint">${escapeHtml(task.hint || "Skriv dit svar nedenfor.")}</p></div>
         ${state.answered ? correctionSection : answerSection}
       </section>
       <div class="progress-row" aria-label="Svar i denne runde">${Array.from({length:10},(_,i)=>`<i class="progress-dot ${cycleAnswers[i] === true ? "correct" : cycleAnswers[i] === false ? "wrong" : ""}"></i>`).join("")}</div>
@@ -353,18 +363,18 @@
   }
 
   // Et ordnet talpar er lært, når eleven på et tidspunkt har haft tre
-  // korrekte besvarelser i træk på højst tre sekunder hver.
+  // korrekte besvarelser i træk på højst fem sekunder hver.
   function multiplicationPairMastery(items) {
     const ordered = [...items].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
     let streak = 0, learned = false;
     ordered.forEach(item => {
-      streak = item.correct && recordedTime(item) <= 3 ? streak + 1 : 0;
+      streak = item.correct && recordedTime(item) <= 5 ? streak + 1 : 0;
       if (streak >= 3) learned = true;
     });
     if (learned) return { learned:true, streak:3 };
     let currentStreak = 0;
     for (let i = ordered.length - 1; i >= 0; i--) {
-      if (ordered[i].correct && recordedTime(ordered[i]) <= 3) currentStreak++;
+      if (ordered[i].correct && recordedTime(ordered[i]) <= 5) currentStreak++;
       else break;
     }
     return { learned:false, streak:Math.min(2,currentStreak) };
@@ -391,7 +401,7 @@
     }).join("");
 
     return `<section class="pair-detail" aria-labelledby="pair-detail-title">
-      <div class="pair-detail-head"><div><span class="eyebrow">Detaljer</span><h3 id="pair-detail-title">Lille tabel – hvert talpar</h3><p>Et talpar er lært efter 3 korrekte svar i træk på højst 3 sekunder. 7 × 9 og 9 × 7 vurderes hver for sig.</p></div><div class="pair-detail-actions"><span class="mastery-summary"><strong>${learnedCount}</strong> af 121 lært</span><button class="btn secondary" data-action="close-topic-detail">Luk</button></div></div>
+      <div class="pair-detail-head"><div><span class="eyebrow">Detaljer</span><h3 id="pair-detail-title">Lille tabel – hvert talpar</h3><p>Et talpar er lært efter 3 grønne flueben i træk: korrekt på højst 5 sekunder. 7 × 9 og 9 × 7 vurderes hver for sig.</p></div><div class="pair-detail-actions"><span class="mastery-summary"><strong>${learnedCount}</strong> af 121 lært</span><button class="btn secondary" data-action="close-topic-detail">Luk</button></div></div>
       <div class="time-scale"><span>0 s</span><i></i><span>10 s</span><small>Grøn = hurtigt, rød = 10 sekunder</small></div>
       <div class="pair-table-scroll" tabindex="0" aria-label="Statistik for gangestykker fra 0 til 10">
         <table class="pair-table"><thead><tr><th scope="col">×</th>${columns.map(b => `<th scope="col">${b}</th>`).join("")}</tr></thead><tbody>
