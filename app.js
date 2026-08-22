@@ -34,9 +34,11 @@
     },
     addition: {
       generate(level, user) {
-        // Første led vælges kun blandt de tal, læreren har markeret.
-        const assigned = (user?.assignedAddends || SINGLE_DIGITS).filter(number => SINGLE_DIGITS.includes(number));
-        const a = pick(assigned.length ? assigned : SINGLE_DIGITS), b = rand(0, 9);
+        // Begge led vælges kun blandt de tal, læreren har markeret.
+        const assignedFirst = (user?.assignedAddends || SINGLE_DIGITS).filter(number => SINGLE_DIGITS.includes(number));
+        const assignedSecond = (user?.assignedAddendSeconds || SINGLE_DIGITS).filter(number => SINGLE_DIGITS.includes(number));
+        const a = pick(assignedFirst.length ? assignedFirst : SINGLE_DIGITS);
+        const b = pick(assignedSecond.length ? assignedSecond : SINGLE_DIGITS);
         return makeTask("addition", `${a} + ${b}`, this.calculate(a, b));
       },
       calculate: (a, b) => a + b,
@@ -187,6 +189,8 @@
       user.assignedTables = [...new Set(user.assignedTables.map(Number).filter(number => SMALL_TABLES.includes(number)))].sort((a,b)=>a-b);
       if (!Array.isArray(user.assignedAddends) || !user.assignedAddends.length) user.assignedAddends = [...SINGLE_DIGITS];
       user.assignedAddends = [...new Set(user.assignedAddends.map(Number).filter(number => SINGLE_DIGITS.includes(number)))].sort((a,b)=>a-b);
+      if (!Array.isArray(user.assignedAddendSeconds) || !user.assignedAddendSeconds.length) user.assignedAddendSeconds = [...SINGLE_DIGITS];
+      user.assignedAddendSeconds = [...new Set(user.assignedAddendSeconds.map(Number).filter(number => SINGLE_DIGITS.includes(number)))].sort((a,b)=>a-b);
     });
     return database;
   }
@@ -280,8 +284,9 @@
         </form>`;
     const shownAnswer = task.answer === "undefined" ? "Kan ikke beregnes" : task.answer;
     const pairParts = task.topic === "multiplication" ? task.expression.split(" × ") : task.topic === "addition" ? task.expression.split(" + ") : [];
+    const correctionOperator = task.topic === "addition" ? `<i class="correction-operator" aria-hidden="true">+</i>` : "";
     const correctionSection = ["multiplication", "addition"].includes(task.topic) && pairParts.length === 2
-      ? `<section class="correction-area" role="alert"><p>Det korrekte svar er</p><button class="correction-wheel" type="button" data-action="continue-after-correction" aria-label="Det korrekte svar er ${escapeHtml(shownAnswer)}. Tryk for næste opgave"><strong>${escapeHtml(shownAnswer)}</strong><span>${escapeHtml(pairParts[0])}</span><span>${escapeHtml(pairParts[1])}</span></button><small>Tryk på svaret for næste opgave</small></section>`
+      ? `<section class="correction-area" role="alert"><p>Det korrekte svar er</p><button class="correction-wheel" type="button" data-action="continue-after-correction" aria-label="Det korrekte svar er ${escapeHtml(shownAnswer)}. Tryk for næste opgave"><strong>${escapeHtml(shownAnswer)}</strong><span>${escapeHtml(pairParts[0])}</span><span>${escapeHtml(pairParts[1])}</span>${correctionOperator}</button><small>Tryk på svaret for næste opgave</small></section>`
       : `<section class="correction-area" role="alert"><p>Det korrekte svar er</p><button class="correction-answer" type="button" data-action="continue-after-correction">${escapeHtml(shownAnswer)}</button><small>Tryk på svaret for næste opgave</small></section>`;
     const taskVisual = task.topic === "numbers"
       ? `<div class="counting-field" role="img" aria-label="${task.count ? Array.from({length:task.count},()=>"figur").join(", ") : "Et tomt felt"}">${task.shapes.map((shape,index) => `<span class="count-shape ${shape} color-${index%4}" aria-hidden="true"></span>`).join("")}</div>`
@@ -606,9 +611,9 @@
         </section>
 
         <section class="table-assignment addition-assignment" aria-labelledby="addition-assignment-title">
-          <div class="table-assignment-head"><div><span class="eyebrow">Opgavestyring</span><h3 id="addition-assignment-title">Plusstykker til ${escapeHtml(selected.name)}</h3><p>Sæt flueben ved de tal, eleven skal øve som første led. Det andet led er altid et tal fra 0 til 9.</p></div><button class="btn secondary compact" type="button" data-addend-all="${selected.id}">Vælg alle</button></div>
-          <div class="table-choices addition-choices">${SINGLE_DIGITS.map(number => `<label class="table-choice"><input type="checkbox" value="${number}" data-addend-student="${selected.id}" ${selected.assignedAddends.includes(number)?"checked":""}><span>${number}</span><small>plus ${number}</small></label>`).join("")}</div>
-          <p class="table-selection-note"><strong class="addition-selection-count">${selected.assignedAddends.length}</strong> af 10 tal valgt. Mindst ét tal skal være markeret.</p>
+          <div class="table-assignment-head"><div><span class="eyebrow">Opgavestyring</span><h3 id="addition-assignment-title">Plusstykker til ${escapeHtml(selected.name)}</h3><p>Vælg hvilke tal eleven skal øve som både første og andet led.</p></div></div>
+          <div class="addition-factor"><div class="addition-factor-head"><strong>Første led</strong><button class="btn secondary compact" type="button" data-addend-all="${selected.id}" data-addend-position="first">Vælg alle</button></div><div class="table-choices addition-choices">${SINGLE_DIGITS.map(number => `<label class="table-choice"><input type="checkbox" value="${number}" data-addend-student="${selected.id}" data-addend-position="first" ${selected.assignedAddends.includes(number)?"checked":""}><span>${number}</span><small>første led</small></label>`).join("")}</div><p class="table-selection-note"><strong class="addition-selection-count" data-addend-position="first">${selected.assignedAddends.length}</strong> af 10 tal valgt. Mindst ét tal skal være markeret.</p></div>
+          <div class="addition-factor"><div class="addition-factor-head"><strong>Andet led</strong><button class="btn secondary compact" type="button" data-addend-all="${selected.id}" data-addend-position="second">Vælg alle</button></div><div class="table-choices addition-choices">${SINGLE_DIGITS.map(number => `<label class="table-choice"><input type="checkbox" value="${number}" data-addend-student="${selected.id}" data-addend-position="second" ${selected.assignedAddendSeconds.includes(number)?"checked":""}><span>${number}</span><small>andet led</small></label>`).join("")}</div><p class="table-selection-note"><strong class="addition-selection-count" data-addend-position="second">${selected.assignedAddendSeconds.length}</strong> af 10 tal valgt. Mindst ét tal skal være markeret.</p></div>
         </section>
 
         <section class="analytics-grid">
@@ -680,7 +685,7 @@
       if (!name || !username || !password) { error.textContent="Udfyld navn, brugernavn og adgangskode."; return; }
       if (!/^[a-z0-9._-]+$/i.test(username)) { error.textContent="Brugernavnet må kun indeholde bogstaver, tal, punktum, bindestreg og understregning."; return; }
       if (db.users.some(user => user.username.toLowerCase() === username)) { error.textContent="Brugernavnet er allerede i brug."; return; }
-      const newStudent = { id:`s-${Date.now().toString(36)}`, classId:state.activeClassId, role:"student", username, password, name, results:[], assignedTables:[...SMALL_TABLES], assignedAddends:[...SINGLE_DIGITS] };
+      const newStudent = { id:`s-${Date.now().toString(36)}`, classId:state.activeClassId, role:"student", username, password, name, results:[], assignedTables:[...SMALL_TABLES], assignedAddends:[...SINGLE_DIGITS], assignedAddendSeconds:[...SINGLE_DIGITS] };
       db.users.push(newStudent); state.expandedStudent=newStudent.id; state.teacherTopicDetail=null; state.studentFormOpen=false; save(); renderTeacher();
     } else if (event.target.id === "answer-form") submitAnswer(event.target);
   });
@@ -691,7 +696,7 @@
     if (studentButton) { state.expandedStudent=studentButton.dataset.student; state.teacherTopicDetail=null; renderTeacher(); }
     if (classButton) { state.activeClassId=classButton.dataset.class; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; renderTeacher(); return; }
     if (tableAllButton) { const student=db.users.find(user=>user.id===tableAllButton.dataset.tableAll); if (student) { student.assignedTables=[...SMALL_TABLES]; save(); renderTeacher(); } return; }
-    if (addendAllButton) { const student=db.users.find(user=>user.id===addendAllButton.dataset.addendAll); if (student) { student.assignedAddends=[...SINGLE_DIGITS]; save(); renderTeacher(); } return; }
+    if (addendAllButton) { const student=db.users.find(user=>user.id===addendAllButton.dataset.addendAll); if (student) { addendAllButton.dataset.addendPosition === "second" ? student.assignedAddendSeconds=[...SINGLE_DIGITS] : student.assignedAddends=[...SINGLE_DIGITS]; save(); renderTeacher(); } return; }
     if (reportTopicButton) { state.teacherTopicDetail=reportTopicButton.dataset.reportTopic; renderTeacher(); return; }
     if (!actionButton) return;
     const action=actionButton.dataset.action;
@@ -713,11 +718,13 @@
     if (addendStudentId) {
       const student = db.users.find(user => user.id === addendStudentId && user.role === "student");
       if (!student) return;
-      const addend = Number(event.target.value), next = new Set(student.assignedAddends);
+      const position = event.target.dataset.addendPosition === "second" ? "second" : "first";
+      const key = position === "second" ? "assignedAddendSeconds" : "assignedAddends";
+      const addend = Number(event.target.value), next = new Set(student[key]);
       event.target.checked ? next.add(addend) : next.delete(addend);
       if (!next.size) { event.target.checked=true; return; }
-      student.assignedAddends=[...next].sort((a,b)=>a-b); save();
-      const count=document.querySelector(".addition-selection-count"); if (count) count.textContent=student.assignedAddends.length;
+      student[key]=[...next].sort((a,b)=>a-b); save();
+      const count=document.querySelector(`.addition-selection-count[data-addend-position="${position}"]`); if (count) count.textContent=student[key].length;
       return;
     }
     const tableStudentId = event.target.dataset?.tableStudent;
