@@ -4,8 +4,10 @@
 
   const STORAGE_KEY = "matbootcamp-db-v1";
   const TOPICS = {
+    numbers: { name: "Tallene", icon: "● ● ●", description: "Tæl figurer fra 0 til 10" },
+    addition: { name: "Plusstykker", icon: "4 + 5", description: "Plus med etcifrede tal" },
     basics: { name: "Basisregler", icon: "0 · 1", description: "Regneregler med 0 og 1" },
-    multiplication: { name: "Gangestykker", icon: "7 × 8", description: "Den lille tabel fra 0×0 til 10×10" },
+    multiplication: { name: "Lille tabel", icon: "7 × 8", description: "Gangestykker fra 0×0 til 10×10" },
     pemdas: { name: "Regnehierarki", icon: "2 + 3 × 4", description: "Gange før plus og minus" },
     negatives: { name: "Negative tal", icon: "−4 + 7", description: "Plus, minus og gange" },
     distributive: { name: "Distributiv lov", icon: "3(4 + 5)", description: "Gang ind i parentesen" },
@@ -14,10 +16,31 @@
   const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
   const pick = (items) => items[rand(0, items.length - 1)];
   const SMALL_TABLES = Array.from({length:11}, (_,index) => index);
+  const SINGLE_DIGITS = Array.from({length:10}, (_,index) => index);
+  const SPEED_DRILLS = new Set(["numbers", "addition", "multiplication"]);
   const makeTask = (topic, expression, answer, hint = "", options = {}) => ({ topic, expression, answer, hint, ...options });
 
   /* Hvert emne er et selvstændigt modul med generate, calculate og evaluate. */
   const MathModules = {
+    numbers: {
+      generate() {
+        const count = rand(0, 10);
+        const shapes = Array.from({length:count}, () => pick(["circle", "square", "triangle", "diamond"]));
+        return makeTask("numbers", `Antal ${count}`, count, "Tæl figurerne i feltet.", { count, shapes });
+      },
+      calculate: count => count,
+      evaluate: (answer, task) => Number(answer) === task.answer,
+    },
+    addition: {
+      generate(level, user) {
+        // Første led vælges kun blandt de tal, læreren har markeret.
+        const assigned = (user?.assignedAddends || SINGLE_DIGITS).filter(number => SINGLE_DIGITS.includes(number));
+        const a = pick(assigned.length ? assigned : SINGLE_DIGITS), b = rand(0, 9);
+        return makeTask("addition", `${a} + ${b}`, this.calculate(a, b));
+      },
+      calculate: (a, b) => a + b,
+      evaluate: (answer, task) => Number(answer) === task.answer,
+    },
     basics: {
       generate(level) {
         const number = rand(2, level === 1 ? 9 : level === 2 ? 20 : 50);
@@ -100,22 +123,30 @@
       new: { accuracy: .65, time: [6.5, 11.2] },
     };
     const results = [];
+    const numberExamples = [3,7,5,9,2,8,4,10,6,1,0];
+    const additionExamples = [[4,5],[5,4],[7,2],[2,7],[6,3],[3,6],[8,1],[1,8],[5,3],[3,5]];
     const multiplicationExamples = [[7,9],[9,7],[6,8],[8,6],[4,7],[7,4],[3,9],[9,3],[5,8],[8,5],[2,6],[6,2]];
     const negativeExamples = [[3,"+",4],[3,"+",-4],[-3,"+",4],[-3,"+",-4],[5,"−",2],[5,"−",-2],[-5,"−",2],[-5,"−",-2],[3,"×",4],[3,"×",-4],[-3,"×",4],[-3,"×",-4]];
     Object.keys(TOPICS).forEach((topic, topicIndex) => {
       const p = patterns[profile[topic] || "steady"];
       const sampleCount = topic === "negatives" ? negativeExamples.length : 8 + topicIndex;
       for (let i = 0; i < sampleCount; i++) {
+        const number = numberExamples[i % numberExamples.length];
+        const addition = additionExamples[i % additionExamples.length];
         const pair = multiplicationExamples[i % multiplicationExamples.length];
         const negative = negativeExamples[i % negativeExamples.length];
-        const task = topic === "multiplication"
+        const task = topic === "numbers"
+          ? makeTask("numbers", `Antal ${number}`, number)
+          : topic === "addition"
+          ? makeTask("addition", `${addition[0]} + ${addition[1]}`, addition[0] + addition[1])
+          : topic === "multiplication"
           ? makeTask("multiplication", `${pair[0]} × ${pair[1]}`, pair[0] * pair[1])
           : topic === "negatives"
           ? makeTask("negatives", `${negative[0]} ${negative[1]} ${negative[2] < 0 ? `(${negative[2]})` : negative[2]}`, MathModules.negatives.calculate(...negative))
           : MathModules[topic].generate(2);
         const correct = ((i * 17 + topicIndex * 7) % 100) / 100 < p.accuracy;
         const sampleTime = +(p.time[0] + ((i * 13) % 10) / 10 * (p.time[1] - p.time[0])).toFixed(1);
-        results.push({ topic, problem: task.expression, correct, answer: correct ? task.answer : task.answer + 2, correctAnswer: task.answer, responseTime:topic === "multiplication" ? Math.min(10, sampleTime) : sampleTime, timestamp: new Date(Date.now() - (results.length + 1) * 36e5 * 9).toISOString() });
+        results.push({ topic, problem: task.expression, correct, answer: correct ? task.answer : task.answer + 2, correctAnswer: task.answer, responseTime:SPEED_DRILLS.has(topic) ? Math.min(10, sampleTime) : sampleTime, timestamp: new Date(Date.now() - (results.length + 1) * 36e5 * 9).toISOString() });
       }
     });
     return results;
@@ -128,10 +159,10 @@
         { id:"c2", name:"8.B" },
       ],
       users: [
-        { id: "s1", classId:"c1", role: "student", username: "alma7", password: "1234", name: "Alma", results: seedResults({ basics:"steady", multiplication:"strong", pemdas:"steady", negatives:"needsWork", distributive:"steady" }) },
-        { id: "s2", classId:"c1", role: "student", username: "noah4", password: "1234", name: "Noah", results: seedResults({ basics:"needsWork", multiplication:"steady", pemdas:"needsWork", negatives:"steady", distributive:"strong" }) },
-        { id: "s3", classId:"c2", role: "student", username: "freja9", password: "1234", name: "Freja", results: seedResults({ basics:"strong", multiplication:"strong", pemdas:"strong", negatives:"steady", distributive:"strong" }) },
-        { id: "s4", classId:"c2", role: "student", username: "malik2", password: "1234", name: "Malik", results: seedResults({ basics:"new", multiplication:"new", pemdas:"needsWork", negatives:"needsWork", distributive:"new" }) },
+        { id: "s1", classId:"c1", role: "student", username: "alma7", password: "1234", name: "Alma", results: seedResults({ numbers:"strong", addition:"steady", basics:"steady", multiplication:"strong", pemdas:"steady", negatives:"needsWork", distributive:"steady" }) },
+        { id: "s2", classId:"c1", role: "student", username: "noah4", password: "1234", name: "Noah", results: seedResults({ numbers:"steady", addition:"needsWork", basics:"needsWork", multiplication:"steady", pemdas:"needsWork", negatives:"steady", distributive:"strong" }) },
+        { id: "s3", classId:"c2", role: "student", username: "freja9", password: "1234", name: "Freja", results: seedResults({ numbers:"strong", addition:"strong", basics:"strong", multiplication:"strong", pemdas:"strong", negatives:"steady", distributive:"strong" }) },
+        { id: "s4", classId:"c2", role: "student", username: "malik2", password: "1234", name: "Malik", results: seedResults({ numbers:"new", addition:"new", basics:"new", multiplication:"new", pemdas:"needsWork", negatives:"needsWork", distributive:"new" }) },
         { id: "t1", role: "teacher", username: "laerer", password: "skole123", name: "Mette" },
       ],
     };
@@ -153,6 +184,8 @@
       if (!validIds.has(user.classId)) user.classId = ["s3","s4"].includes(user.id) && validIds.has("c2") ? "c2" : database.classes[0].id;
       if (!Array.isArray(user.assignedTables) || !user.assignedTables.length) user.assignedTables = [...SMALL_TABLES];
       user.assignedTables = [...new Set(user.assignedTables.map(Number).filter(number => SMALL_TABLES.includes(number)))].sort((a,b)=>a-b);
+      if (!Array.isArray(user.assignedAddends) || !user.assignedAddends.length) user.assignedAddends = [...SINGLE_DIGITS];
+      user.assignedAddends = [...new Set(user.assignedAddends.map(Number).filter(number => SINGLE_DIGITS.includes(number)))].sort((a,b)=>a-b);
     });
     return database;
   }
@@ -161,8 +194,8 @@
   const app = document.getElementById("app");
   const save = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
   const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
-  // Gangestykker registreres højst som 10 sekunder – også når ældre data vises.
-  const recordedTime = (result) => result.topic === "multiplication"
+  // De hurtige grundøvelser registreres højst som 10 sekunder – også når ældre data vises.
+  const recordedTime = (result) => SPEED_DRILLS.has(result.topic)
     ? Math.min(10, Math.max(0, Number(result.responseTime) || 0))
     : Math.max(0, Number(result.responseTime) || 0);
 
@@ -205,16 +238,30 @@
     const task = state.task;
     const cycleStart = Math.floor((state.questionNumber - 1) / 10) * 10;
     const cycleAnswers = state.sessionAnswers.slice(cycleStart, cycleStart + 10);
-    // Historikken følger det ordnede talpar. 7 × 9 og 9 × 7 har hver sin historik.
-    const pairAttempts = task.topic === "multiplication"
-      ? (state.user.results || []).filter(item => item.topic === "multiplication" && item.problem === task.expression).sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp)).slice(-8)
+    // Historikken følger den konkrete opgave. Fx vurderes 7 + 2 og 2 + 7 hver for sig.
+    const drillAttempts = SPEED_DRILLS.has(task.topic)
+      ? (state.user.results || []).filter(item => item.topic === task.topic && item.problem === task.expression).sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp)).slice(-8)
       : [];
-    const attemptHistory = pairAttempts.length ? `<aside class="pair-history" aria-label="Historik for ${escapeHtml(task.expression)}">${pairAttempts.map(item => {
+    const attemptHistory = drillAttempts.length ? `<aside class="pair-history" aria-label="Historik for denne opgave">${drillAttempts.map(item => {
       const fast = item.correct && recordedTime(item) <= 5;
       const kind = !item.correct ? "wrong" : fast ? "fast" : "slow";
       const label = !item.correct ? "Forkert besvaret" : fast ? "Korrekt på højst 5 sekunder" : "Korrekt på over 5 sekunder";
       return `<span class="history-mark ${kind}" role="img" aria-label="${label}" title="${label} · ${recordedTime(item).toFixed(1)} s">${item.correct ? "✓" : "×"}</span>`;
     }).join("")}</aside>` : "";
+    const learnedPairs = ["multiplication", "addition"].includes(task.topic)
+      ? [...(task.topic === "multiplication" ? multiplicationPairStats(state.user) : additionPairStats(state.user)).entries()]
+          .filter(([,items]) => drillMastery(items).learned)
+          .map(([key]) => key.split("-").map(Number))
+          .sort((left,right) => left[0] - right[0] || left[1] - right[1])
+      : [];
+    const learnedNumbers = task.topic === "numbers"
+      ? [...numberValueStats(state.user).entries()].filter(([,items]) => drillMastery(items).learned).map(([key]) => Number(key)).sort((a,b)=>a-b)
+      : [];
+    const operator = task.topic === "addition" ? "+" : "×";
+    const learnedSection = learnedPairs.length || learnedNumbers.length ? `<section class="learned-pairs" aria-label="Lærte opgaver">
+      <h2>Lærte</h2>
+      <div class="learned-pair-list">${learnedPairs.map(([a,b]) => `<div class="learned-pair" role="img" aria-label="${a} ${operator === "+" ? "plus" : "gange"} ${b} er lært" title="${a} ${operator} ${b} er lært"><strong aria-hidden="true">✓</strong><span>${a}</span><span>${b}</span></div>`).join("")}${learnedNumbers.map(number => `<div class="learned-pair learned-number" role="img" aria-label="Tallet ${number} er lært" title="Tallet ${number} er lært"><strong aria-hidden="true">✓</strong><span>${number}</span></div>`).join("")}</div>
+    </section>` : "";
     const undefinedKey = task.answerType === "undefined" ? `<button class="key utility impossible" type="button" data-key="undefined">Kan ikke beregnes</button>` : "";
     const answerSection = `<form class="answer-area" id="answer-form">
           <label class="sr-only" for="answer">Dit svar</label>
@@ -230,18 +277,22 @@
           <p id="answer-error" class="error" role="alert"></p>
         </form>`;
     const shownAnswer = task.answer === "undefined" ? "Kan ikke beregnes" : task.answer;
-    const factors = task.topic === "multiplication" ? task.expression.split(" × ") : [];
-    const correctionSection = task.topic === "multiplication" && factors.length === 2
-      ? `<section class="correction-area" role="alert"><p>Det korrekte svar er</p><button class="correction-wheel" type="button" data-action="continue-after-correction" aria-label="Det korrekte svar er ${escapeHtml(shownAnswer)}. Tryk for næste opgave"><strong>${escapeHtml(shownAnswer)}</strong><span>${escapeHtml(factors[0])}</span><span>${escapeHtml(factors[1])}</span></button><small>Tryk på svaret for næste opgave</small></section>`
+    const pairParts = task.topic === "multiplication" ? task.expression.split(" × ") : task.topic === "addition" ? task.expression.split(" + ") : [];
+    const correctionSection = ["multiplication", "addition"].includes(task.topic) && pairParts.length === 2
+      ? `<section class="correction-area" role="alert"><p>Det korrekte svar er</p><button class="correction-wheel" type="button" data-action="continue-after-correction" aria-label="Det korrekte svar er ${escapeHtml(shownAnswer)}. Tryk for næste opgave"><strong>${escapeHtml(shownAnswer)}</strong><span>${escapeHtml(pairParts[0])}</span><span>${escapeHtml(pairParts[1])}</span></button><small>Tryk på svaret for næste opgave</small></section>`
       : `<section class="correction-area" role="alert"><p>Det korrekte svar er</p><button class="correction-answer" type="button" data-action="continue-after-correction">${escapeHtml(shownAnswer)}</button><small>Tryk på svaret for næste opgave</small></section>`;
+    const taskVisual = task.topic === "numbers"
+      ? `<div class="counting-field" role="img" aria-label="${task.count ? Array.from({length:task.count},()=>"figur").join(", ") : "Et tomt felt"}">${task.shapes.map((shape,index) => `<span class="count-shape ${shape} color-${index%4}" aria-hidden="true"></span>`).join("")}</div>`
+      : `<div class="expression">${task.expression}</div>`;
 
     app.innerHTML = `${header()}<div class="page exercise-page">
       <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${TOPICS[task.topic].name}</span></div>
       <section class="question-card">
-        <div class="question-top"><span class="question-number">Opgave ${state.questionNumber}</span><div class="question-main ${attemptHistory ? "with-history" : ""}"><div class="expression">${task.expression}</div>${attemptHistory}</div><p class="hint">${escapeHtml(task.hint || "Skriv dit svar nedenfor.")}</p></div>
+        <div class="question-top"><span class="question-number">Opgave ${state.questionNumber}</span><div class="question-main ${attemptHistory ? "with-history" : ""}">${taskVisual}${attemptHistory}</div><p class="hint">${escapeHtml(task.hint || "Skriv dit svar nedenfor.")}</p></div>
         ${state.answered ? correctionSection : answerSection}
       </section>
       <div class="progress-row" aria-label="Svar i denne runde">${Array.from({length:10},(_,i)=>`<i class="progress-dot ${cycleAnswers[i] === true ? "correct" : cycleAnswers[i] === false ? "wrong" : ""}"></i>`).join("")}</div>
+      ${learnedSection}
     </div>`;
   }
   function submitAnswer(form) {
@@ -250,7 +301,7 @@
     const isUndefinedAnswer = raw === "Kan ikke beregnes";
     if (raw === "" || (!isUndefinedAnswer && !Number.isFinite(Number(raw)))) { document.getElementById("answer-error").textContent = "Vælg eller skriv et svar først."; return; }
     const measuredTime = Math.max(.1, (Date.now() - state.taskStartedAt) / 1000);
-    const responseTime = state.task.topic === "multiplication" ? Math.min(10, measuredTime) : measuredTime;
+    const responseTime = SPEED_DRILLS.has(state.task.topic) ? Math.min(10, measuredTime) : measuredTime;
     const correct = MathModules[state.task.topic].evaluate(raw, state.task);
     state.answered = true; state.sessionAnswers.push(correct); if (correct) state.sessionCorrect++;
     state.user.results.push({ topic:state.task.topic, problem:state.task.expression, answer:isUndefinedAnswer ? "Kan ikke beregnes" : Number(raw), correctAnswer:state.task.answer === "undefined" ? "Kan ikke beregnes" : state.task.answer, correct, responseTime:+responseTime.toFixed(2), timestamp:new Date().toISOString() });
@@ -339,6 +390,8 @@
   }
   function recommendationFor(topic) {
     return {
+      numbers:"Øv små mængder først. Lad eleven pege på hver figur én gang, mens der tælles højt.",
+      addition:"Træn korte serier med de valgte tal. Brug konkrete materialer, hvis et bestemt pluspar bliver ved med at drille.",
       basics:"Øv reglerne med 0 og 1 i korte serier. Tal især om, hvorfor division med 0 ikke kan beregnes.",
       multiplication:"Træn korte serier i de tabeller, hvor svartiden er højest. Stop, mens sikkerheden stadig er god.",
       pemdas:"Lad eleven markere gange- og divisionsled før udregningen. Brug få led og øg gradvist.",
@@ -362,9 +415,37 @@
     return grouped;
   }
 
+  /* Pluspar bevarer også rækkefølgen: 7+2 og 2+7 vurderes hver for sig. */
+  function additionPairStats(user) {
+    const grouped = new Map();
+    (user.results || []).filter(item => item.topic === "addition").forEach(item => {
+      const match = String(item.problem).match(/^\s*(\d+)\s*\+\s*(\d+)\s*$/);
+      if (!match) return;
+      const a = Number(match[1]), b = Number(match[2]);
+      if (!SINGLE_DIGITS.includes(a) || !SINGLE_DIGITS.includes(b)) return;
+      const key = `${a}-${b}`;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(item);
+    });
+    return grouped;
+  }
+
+  function numberValueStats(user) {
+    const grouped = new Map();
+    (user.results || []).filter(item => item.topic === "numbers").forEach(item => {
+      const match = String(item.problem).match(/^Antal\s+(\d+)$/);
+      if (!match) return;
+      const number = Number(match[1]);
+      if (number < 0 || number > 10) return;
+      if (!grouped.has(String(number))) grouped.set(String(number), []);
+      grouped.get(String(number)).push(item);
+    });
+    return grouped;
+  }
+
   // Et ordnet talpar er lært, når eleven på et tidspunkt har haft tre
   // korrekte besvarelser i træk på højst fem sekunder hver.
-  function multiplicationPairMastery(items) {
+  function drillMastery(items) {
     const ordered = [...items].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
     let streak = 0, learned = false;
     ordered.forEach(item => {
@@ -389,14 +470,14 @@
   function renderMultiplicationDetail(user) {
     const grouped = multiplicationPairStats(user);
     const columns = Array.from({length:11}, (_,i) => i);
-    const learnedCount = [...grouped.values()].filter(items => multiplicationPairMastery(items).learned).length;
+    const learnedCount = [...grouped.values()].filter(items => drillMastery(items).learned).length;
     const cells = (a) => columns.map(b => {
       const items = grouped.get(`${a}-${b}`) || [];
       if (!items.length) return `<td class="pair-cell empty-pair" title="${a} × ${b}: ingen svar"><strong>—</strong><small>0 svar</small></td>`;
       const correctCount = items.filter(item => item.correct).length;
       const accuracy = Math.round(correctCount / items.length * 100);
       const avgTime = items.reduce((sum,item) => sum + recordedTime(item), 0) / items.length;
-      const mastery = multiplicationPairMastery(items);
+      const mastery = drillMastery(items);
       return `<td class="pair-cell ${mastery.learned?"learned-pair":""}" style="background:${responseTimeColor(avgTime)}" title="${a} × ${b}: ${accuracy} % rigtige, ${avgTime.toFixed(1)} sekunder i snit"><div class="pair-cell-main"><span class="pair-pie" style="--correct:${accuracy}%" role="img" aria-label="${accuracy} % korrekte og ${100-accuracy} % forkerte"></span><strong>${accuracy} %</strong></div><small>${items.length} svar · ${avgTime.toFixed(1)} s</small><span class="pair-mastery ${mastery.learned?"learned":""}">${mastery.learned?"✓ Lært":`${mastery.streak}/3 hurtige i træk`}</span></td>`;
     }).join("");
 
@@ -408,6 +489,49 @@
           ${columns.map(a => `<tr><th scope="row">${a}</th>${cells(a)}</tr>`).join("")}
         </tbody></table>
       </div>
+    </section>`;
+  }
+
+  function renderAdditionDetail(user) {
+    const grouped = additionPairStats(user);
+    const columns = [...SINGLE_DIGITS];
+    const learnedCount = [...grouped.values()].filter(items => drillMastery(items).learned).length;
+    const cells = (a) => columns.map(b => {
+      const items = grouped.get(`${a}-${b}`) || [];
+      if (!items.length) return `<td class="pair-cell empty-pair" title="${a} + ${b}: ingen svar"><strong>—</strong><small>0 svar</small></td>`;
+      const accuracy = Math.round(items.filter(item => item.correct).length / items.length * 100);
+      const avgTime = items.reduce((sum,item) => sum + recordedTime(item), 0) / items.length;
+      const mastery = drillMastery(items);
+      return `<td class="pair-cell ${mastery.learned?"learned-pair":""}" style="background:${responseTimeColor(avgTime)}" title="${a} + ${b}: ${accuracy} % rigtige, ${avgTime.toFixed(1)} sekunder i snit"><div class="pair-cell-main"><span class="pair-pie" style="--correct:${accuracy}%" role="img" aria-label="${accuracy} % korrekte og ${100-accuracy} % forkerte"></span><strong>${accuracy} %</strong></div><small>${items.length} svar · ${avgTime.toFixed(1)} s</small><span class="pair-mastery ${mastery.learned?"learned":""}">${mastery.learned?"✓ Lært":`${mastery.streak}/3 hurtige i træk`}</span></td>`;
+    }).join("");
+
+    return `<section class="pair-detail" aria-labelledby="addition-detail-title">
+      <div class="pair-detail-head"><div><span class="eyebrow">Detaljer</span><h3 id="addition-detail-title">Plusstykker – hvert talpar</h3><p>Et pluspar er lært efter 3 grønne flueben i træk: korrekt på højst 5 sekunder. 7 + 2 og 2 + 7 vurderes hver for sig.</p></div><div class="pair-detail-actions"><span class="mastery-summary"><strong>${learnedCount}</strong> af 100 lært</span><button class="btn secondary" data-action="close-topic-detail">Luk</button></div></div>
+      <div class="time-scale"><span>0 s</span><i></i><span>10 s</span><small>Grøn = hurtigt, rød = 10 sekunder</small></div>
+      <div class="pair-table-scroll" tabindex="0" aria-label="Statistik for plusstykker med tal fra 0 til 9">
+        <table class="pair-table addition-table"><thead><tr><th scope="col">+</th>${columns.map(b => `<th scope="col">${b}</th>`).join("")}</tr></thead><tbody>
+          ${columns.map(a => `<tr><th scope="row">${a}</th>${cells(a)}</tr>`).join("")}
+        </tbody></table>
+      </div>
+    </section>`;
+  }
+
+  function renderNumbersDetail(user) {
+    const grouped = numberValueStats(user);
+    const values = Array.from({length:11},(_,index)=>index);
+    const learnedCount = [...grouped.values()].filter(items => drillMastery(items).learned).length;
+    const cards = values.map(number => {
+      const items = grouped.get(String(number)) || [];
+      if (!items.length) return `<article class="number-stat-card empty-pair"><strong>${number}</strong><span>—</span><small>0 svar</small><em>0/3 hurtige i træk</em></article>`;
+      const accuracy = Math.round(items.filter(item => item.correct).length / items.length * 100);
+      const avgTime = items.reduce((sum,item) => sum + recordedTime(item), 0) / items.length;
+      const mastery = drillMastery(items);
+      return `<article class="number-stat-card ${mastery.learned?"learned-pair":""}" style="background:${responseTimeColor(avgTime)}"><strong>${number}</strong><div class="pair-cell-main"><span class="pair-pie" style="--correct:${accuracy}%" role="img" aria-label="${accuracy} % korrekte og ${100-accuracy} % forkerte"></span><span>${accuracy} %</span></div><small>${items.length} svar · ${avgTime.toFixed(1)} s</small><em class="${mastery.learned?"learned":""}">${mastery.learned?"✓ Lært":`${mastery.streak}/3 hurtige i træk`}</em></article>`;
+    }).join("");
+    return `<section class="pair-detail" aria-labelledby="numbers-detail-title">
+      <div class="pair-detail-head"><div><span class="eyebrow">Detaljer</span><h3 id="numbers-detail-title">Tallene – hvert antal</h3><p>Et antal er lært efter 3 grønne flueben i træk: korrekt på højst 5 sekunder.</p></div><div class="pair-detail-actions"><span class="mastery-summary"><strong>${learnedCount}</strong> af 11 lært</span><button class="btn secondary" data-action="close-topic-detail">Luk</button></div></div>
+      <div class="time-scale"><span>0 s</span><i></i><span>10 s</span><small>Grøn = hurtigt, rød = 10 sekunder</small></div>
+      <div class="number-stat-grid">${cards}</div>
     </section>`;
   }
 
@@ -479,6 +603,12 @@
           <p class="table-selection-note"><strong class="table-selection-count">${selected.assignedTables.length}</strong> af 11 tabeller valgt. Mindst én tabel skal være markeret.</p>
         </section>
 
+        <section class="table-assignment addition-assignment" aria-labelledby="addition-assignment-title">
+          <div class="table-assignment-head"><div><span class="eyebrow">Opgavestyring</span><h3 id="addition-assignment-title">Plusstykker til ${escapeHtml(selected.name)}</h3><p>Sæt flueben ved de tal, eleven skal øve som første led. Det andet led er altid et tal fra 0 til 9.</p></div><button class="btn secondary compact" type="button" data-addend-all="${selected.id}">Vælg alle</button></div>
+          <div class="table-choices addition-choices">${SINGLE_DIGITS.map(number => `<label class="table-choice"><input type="checkbox" value="${number}" data-addend-student="${selected.id}" ${selected.assignedAddends.includes(number)?"checked":""}><span>${number}</span><small>plus ${number}</small></label>`).join("")}</div>
+          <p class="table-selection-note"><strong class="addition-selection-count">${selected.assignedAddends.length}</strong> af 10 tal valgt. Mindst ét tal skal være markeret.</p>
+        </section>
+
         <section class="analytics-grid">
           <article class="chart-card"><div class="chart-title"><div><span>Fremskridt</span><h3>Rigtige svar over tid</h3></div><small>6 perioder</small></div>${accuracyChart(trend)}</article>
           <article class="chart-card"><div class="chart-title"><div><span>Tempo</span><h3>Svartid over tid</h3></div><small>Lavere er bedre</small></div>${timeChart(trend)}</article>
@@ -487,9 +617,11 @@
         <section class="insight-grid">
           <article class="focus-card"><span class="focus-icon">!</span><div><span class="eyebrow">Største udfordring</span><h3>${TOPICS[challenge.topic].name}</h3><p>${recommendationFor(challenge.topic)}</p><div class="evidence"><span>${Math.round(challenge.accuracy*100)} % rigtige</span><span>${challenge.avgTime.toFixed(1)} sek.</span></div></div></article>
           <article class="topic-performance"><div class="chart-title"><div><span>Emner</span><h3>Sikkerhed og tempo</h3></div><small>Seneste 20 pr. emne</small></div>
-            ${topicStats.map(stat => { const pct=Math.round(stat.accuracy*100), cls=stat.status==="strong"?"strong":stat.status==="weak"?"weak":"medium"; const detailLabel=stat.topic==="multiplication"?" · Se talpar →":stat.topic==="negatives"?" · Se fortegn →":""; const content=`<div><strong>${TOPICS[stat.topic].name}</strong><small>${stat.count} svar · ${stat.count?stat.avgTime.toFixed(1):"—"} sek.${detailLabel}</small></div><div class="topic-meter"><span><i class="${cls}" style="width:${stat.count?pct:0}%"></i></span><b>${stat.count?pct+" %":"—"}</b></div>`; return ["multiplication","negatives"].includes(stat.topic) ? `<button class="topic-row topic-row-button ${state.teacherTopicDetail===stat.topic?"active":""}" data-report-topic="${stat.topic}" aria-expanded="${state.teacherTopicDetail===stat.topic}">${content}</button>` : `<div class="topic-row">${content}</div>`; }).join("")}
+            ${topicStats.map(stat => { const pct=Math.round(stat.accuracy*100), cls=stat.status==="strong"?"strong":stat.status==="weak"?"weak":"medium"; const detailLabel=stat.topic==="multiplication"||stat.topic==="addition"?" · Se talpar →":stat.topic==="numbers"?" · Se antal →":stat.topic==="negatives"?" · Se fortegn →":""; const content=`<div><strong>${TOPICS[stat.topic].name}</strong><small>${stat.count} svar · ${stat.count?stat.avgTime.toFixed(1):"—"} sek.${detailLabel}</small></div><div class="topic-meter"><span><i class="${cls}" style="width:${stat.count?pct:0}%"></i></span><b>${stat.count?pct+" %":"—"}</b></div>`; return ["numbers","addition","multiplication","negatives"].includes(stat.topic) ? `<button class="topic-row topic-row-button ${state.teacherTopicDetail===stat.topic?"active":""}" data-report-topic="${stat.topic}" aria-expanded="${state.teacherTopicDetail===stat.topic}">${content}</button>` : `<div class="topic-row">${content}</div>`; }).join("")}
           </article>
         </section>
+        ${state.teacherTopicDetail === "numbers" ? renderNumbersDetail(selected) : ""}
+        ${state.teacherTopicDetail === "addition" ? renderAdditionDetail(selected) : ""}
         ${state.teacherTopicDetail === "multiplication" ? renderMultiplicationDetail(selected) : ""}
         ${state.teacherTopicDetail === "negatives" ? renderNegativeDetail(selected) : ""}`;
     }
@@ -535,12 +667,13 @@
     } else if (event.target.id === "answer-form") submitAnswer(event.target);
   });
   document.addEventListener("click", (event) => {
-    const keyButton=event.target.closest("[data-key]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
+    const keyButton=event.target.closest("[data-key]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
     if (keyButton) { handleKeypad(keyButton.dataset.key); return; }
     if (topicButton) { state.selectedTopic=topicButton.dataset.topic; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise"; newTask(); }
     if (studentButton) { state.expandedStudent=studentButton.dataset.student; state.teacherTopicDetail=null; renderTeacher(); }
     if (classButton) { state.activeClassId=classButton.dataset.class; state.expandedStudent=null; state.teacherTopicDetail=null; renderTeacher(); return; }
     if (tableAllButton) { const student=db.users.find(user=>user.id===tableAllButton.dataset.tableAll); if (student) { student.assignedTables=[...SMALL_TABLES]; save(); renderTeacher(); } return; }
+    if (addendAllButton) { const student=db.users.find(user=>user.id===addendAllButton.dataset.addendAll); if (student) { student.assignedAddends=[...SINGLE_DIGITS]; save(); renderTeacher(); } return; }
     if (reportTopicButton) { state.teacherTopicDetail=reportTopicButton.dataset.reportTopic; renderTeacher(); return; }
     if (!actionButton) return;
     const action=actionButton.dataset.action;
@@ -551,6 +684,17 @@
     if (action==="reset-demo") { if (confirm("Vil du nulstille alle demoresultater?")) { db=normalizeDatabase(defaultDatabase()); state.user=db.users.find(u=>u.role==="teacher"); save(); renderTeacher(); } }
   });
   document.addEventListener("change", event => {
+    const addendStudentId = event.target.dataset?.addendStudent;
+    if (addendStudentId) {
+      const student = db.users.find(user => user.id === addendStudentId && user.role === "student");
+      if (!student) return;
+      const addend = Number(event.target.value), next = new Set(student.assignedAddends);
+      event.target.checked ? next.add(addend) : next.delete(addend);
+      if (!next.size) { event.target.checked=true; return; }
+      student.assignedAddends=[...next].sort((a,b)=>a-b); save();
+      const count=document.querySelector(".addition-selection-count"); if (count) count.textContent=student.assignedAddends.length;
+      return;
+    }
     const tableStudentId = event.target.dataset?.tableStudent;
     if (tableStudentId) {
       const student = db.users.find(user => user.id === tableStudentId && user.role === "student");
