@@ -24,8 +24,10 @@
   /* Hvert emne er et selvstændigt modul med generate, calculate og evaluate. */
   const MathModules = {
     numbers: {
-      generate() {
-        const count = rand(0, 10);
+      generate(level, user) {
+        // Antallet vælges kun blandt de tal, læreren har markeret.
+        const assigned = (user?.assignedNumbers || SMALL_TABLES).filter(number => SMALL_TABLES.includes(number));
+        const count = pick(assigned.length ? assigned : SMALL_TABLES);
         const shapes = Array.from({length:count}, () => pick(["circle", "square", "triangle", "diamond"]));
         return makeTask("numbers", `Antal ${count}`, count, "Tæl figurerne i feltet.", { count, shapes });
       },
@@ -187,6 +189,8 @@
       if (!validIds.has(user.classId)) user.classId = ["s3","s4"].includes(user.id) && validIds.has("c2") ? "c2" : database.classes[0].id;
       if (!Array.isArray(user.assignedTables) || !user.assignedTables.length) user.assignedTables = [...SMALL_TABLES];
       user.assignedTables = [...new Set(user.assignedTables.map(Number).filter(number => SMALL_TABLES.includes(number)))].sort((a,b)=>a-b);
+      if (!Array.isArray(user.assignedNumbers) || !user.assignedNumbers.length) user.assignedNumbers = [...SMALL_TABLES];
+      user.assignedNumbers = [...new Set(user.assignedNumbers.map(Number).filter(number => SMALL_TABLES.includes(number)))].sort((a,b)=>a-b);
       if (!Array.isArray(user.assignedAddends) || !user.assignedAddends.length) user.assignedAddends = [...SINGLE_DIGITS];
       user.assignedAddends = [...new Set(user.assignedAddends.map(Number).filter(number => SINGLE_DIGITS.includes(number)))].sort((a,b)=>a-b);
       if (!Array.isArray(user.assignedAddendSeconds) || !user.assignedAddendSeconds.length) user.assignedAddendSeconds = [...SINGLE_DIGITS];
@@ -609,6 +613,12 @@
           <article><span>Stærkest</span><strong>${TOPICS[strength.topic].name}</strong><small>${Math.round(strength.accuracy*100)} % rigtige</small></article>
         </section>
 
+        <section class="table-assignment" aria-labelledby="numbers-assignment-title">
+          <div class="table-assignment-head"><div><span class="eyebrow">Opgavestyring</span><h3 id="numbers-assignment-title">Tallene til ${escapeHtml(selected.name)}</h3><p>Sæt flueben ved de tal fra 0 til 10, eleven skal tælle i øvelsen.</p></div><div class="table-assignment-actions"><button class="btn secondary compact" type="button" data-number-all="${selected.id}">Vælg alle</button><button class="btn danger compact" type="button" data-action="reset-topic-progress" data-reset-topic="numbers" data-reset-student="${selected.id}">Nulstil fremskridt</button></div></div>
+          <div class="table-choices">${SMALL_TABLES.map(number => `<label class="table-choice"><input type="checkbox" value="${number}" data-number-student="${selected.id}" ${selected.assignedNumbers.includes(number)?"checked":""}><span>${number}</span><small>antal ${number}</small></label>`).join("")}</div>
+          <p class="table-selection-note"><strong class="number-selection-count">${selected.assignedNumbers.length}</strong> af 11 tal valgt. Mindst ét tal skal være markeret.</p>
+        </section>
+
         <section class="table-assignment" aria-labelledby="table-assignment-title">
           <div class="table-assignment-head"><div><span class="eyebrow">Opgavestyring</span><h3 id="table-assignment-title">Lille tabel til ${escapeHtml(selected.name)}</h3><p>Sæt flueben ved de tabeller, eleven skal møde. Det valgte tal står som første faktor.</p></div><div class="table-assignment-actions"><button class="btn secondary compact" type="button" data-table-all="${selected.id}">Vælg alle</button><button class="btn danger compact" type="button" data-action="reset-topic-progress" data-reset-topic="multiplication" data-reset-student="${selected.id}">Nulstil fremskridt</button></div></div>
           <div class="table-choices">${SMALL_TABLES.map(number => `<label class="table-choice"><input type="checkbox" value="${number}" data-table-student="${selected.id}" ${selected.assignedTables.includes(number)?"checked":""}><span>${number}</span><small>${number}-tabellen</small></label>`).join("")}</div>
@@ -712,17 +722,18 @@
       if (!name || !username || !password) { error.textContent="Udfyld navn, brugernavn og adgangskode."; return; }
       if (!/^[a-z0-9._-]+$/i.test(username)) { error.textContent="Brugernavnet må kun indeholde bogstaver, tal, punktum, bindestreg og understregning."; return; }
       if (db.users.some(user => user.username.toLowerCase() === username)) { error.textContent="Brugernavnet er allerede i brug."; return; }
-      const newStudent = { id:`s-${Date.now().toString(36)}`, classId:state.activeClassId, role:"student", username, password, name, results:[], assignedTables:[...SMALL_TABLES], assignedAddends:[...SINGLE_DIGITS], assignedAddendSeconds:[...SINGLE_DIGITS] };
+      const newStudent = { id:`s-${Date.now().toString(36)}`, classId:state.activeClassId, role:"student", username, password, name, results:[], assignedNumbers:[...SMALL_TABLES], assignedTables:[...SMALL_TABLES], assignedAddends:[...SINGLE_DIGITS], assignedAddendSeconds:[...SINGLE_DIGITS] };
       db.users.push(newStudent); state.expandedStudent=newStudent.id; state.teacherTopicDetail=null; state.studentFormOpen=false; save(); renderTeacher();
     } else if (event.target.id === "answer-form") submitAnswer(event.target);
   });
   document.addEventListener("click", (event) => {
-    const keyButton=event.target.closest("[data-key]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
+    const keyButton=event.target.closest("[data-key]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
     if (keyButton) { handleKeypad(keyButton.dataset.key); return; }
     if (topicButton) { state.selectedTopic=topicButton.dataset.topic; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise"; newTask(); }
     if (studentButton) { state.expandedStudent=studentButton.dataset.student; state.teacherTopicDetail=null; state.teacherPasswordFormOpen=false; renderTeacher(); }
     if (classButton) { state.activeClassId=classButton.dataset.class; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; renderTeacher(); return; }
     if (tableAllButton) { const student=db.users.find(user=>user.id===tableAllButton.dataset.tableAll); if (student) { student.assignedTables=[...SMALL_TABLES]; save(); renderTeacher(); } return; }
+    if (numberAllButton) { const student=db.users.find(user=>user.id===numberAllButton.dataset.numberAll); if (student) { student.assignedNumbers=[...SMALL_TABLES]; save(); renderTeacher(); } return; }
     if (addendAllButton) { const student=db.users.find(user=>user.id===addendAllButton.dataset.addendAll); if (student) { addendAllButton.dataset.addendPosition === "second" ? student.assignedAddendSeconds=[...SINGLE_DIGITS] : student.assignedAddends=[...SINGLE_DIGITS]; save(); renderTeacher(); } return; }
     if (reportTopicButton) { state.teacherTopicDetail=reportTopicButton.dataset.reportTopic; renderTeacher(); return; }
     if (!actionButton) return;
@@ -751,6 +762,17 @@
     if (action==="reset-demo") { if (confirm("Vil du nulstille alle demoresultater?")) { db=normalizeDatabase(defaultDatabase()); state.user=db.users.find(u=>u.role==="teacher"); state.studentFormOpen=false; save(); renderTeacher(); } }
   });
   document.addEventListener("change", event => {
+    const numberStudentId = event.target.dataset?.numberStudent;
+    if (numberStudentId) {
+      const student = db.users.find(user => user.id === numberStudentId && user.role === "student");
+      if (!student) return;
+      const number = Number(event.target.value), next = new Set(student.assignedNumbers);
+      event.target.checked ? next.add(number) : next.delete(number);
+      if (!next.size) { event.target.checked=true; return; }
+      student.assignedNumbers=[...next].sort((a,b)=>a-b); save();
+      const count=document.querySelector(".number-selection-count"); if (count) count.textContent=student.assignedNumbers.length;
+      return;
+    }
     const addendStudentId = event.target.dataset?.addendStudent;
     if (addendStudentId) {
       const student = db.users.find(user => user.id === addendStudentId && user.role === "student");
