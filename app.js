@@ -16,6 +16,14 @@
 
   const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
   const pick = (items) => items[rand(0, items.length - 1)];
+  const shuffle = (items) => {
+    const shuffled = [...items];
+    for (let index = shuffled.length - 1; index > 0; index--) {
+      const otherIndex = rand(0, index);
+      [shuffled[index], shuffled[otherIndex]] = [shuffled[otherIndex], shuffled[index]];
+    }
+    return shuffled;
+  };
   const SMALL_TABLES = Array.from({length:11}, (_,index) => index);
   const SINGLE_DIGITS = Array.from({length:10}, (_,index) => index);
   const SPEED_DRILLS = new Set(["numbers", "addition", "multiplication"]);
@@ -281,13 +289,14 @@
     const undefinedKey = task.answerType === "undefined"
       ? `<button class="key utility impossible" type="button" data-key="undefined">Kan ikke beregnes</button>`
       : "";
+    // Tallene er fortsat med i øvelsen efter at være lært, men placeres forskelligt hver gang.
+    const keypadNumbers = shuffle(SINGLE_DIGITS);
     const answerSection = `<form class="answer-area" id="answer-form">
           <label class="sr-only" for="answer">Dit svar</label>
           <input class="answer-input" id="answer" name="answer" inputmode="none" autocomplete="off" placeholder="Dit svar" readonly>
           <div class="keypad" aria-label="Taltastatur">
-            ${[1,2,3,4,5,6,7,8,9].map(number => `<button class="key" type="button" data-key="${number}">${number}</button>`).join("")}
+            ${keypadNumbers.map(number => `<button class="key" type="button" data-key="${number}">${number}</button>`).join("")}
             <button class="key utility" type="button" data-key="minus" aria-label="Minustegn">−</button>
-            <button class="key" type="button" data-key="0">0</button>
             <button class="key utility" type="button" data-key="delete">Slet</button>
             ${undefinedKey}
             <button class="key enter" type="button" data-key="enter">Enter</button>
