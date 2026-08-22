@@ -79,7 +79,7 @@ h1,h2,h3,p { margin-top:0; }
 .hand-palm { left:38px; bottom:24px; width:104px; height:91px; border-radius:35px 35px 28px 28px; z-index:2; }
 .hand-wrist { left:67px; bottom:-9px; width:57px; height:48px; border-radius:0 0 18px 18px; z-index:1; }
 .hand-finger { z-index:1; }
-.hand-finger.thumb { left:5px; bottom:69px; width:65px; height:31px; border-radius:18px 8px 8px 18px; transform:rotate(-36deg); transform-origin:right center; z-index:3; }
+.hand-finger.thumb { left:-1px; bottom:64px; width:76px; height:30px; border-radius:18px 8px 8px 18px; transform:rotate(38deg); transform-origin:right center; z-index:3; }
 .hand-finger.index { left:38px; bottom:100px; width:26px; height:79px; border-radius:16px 16px 8px 8px; }
 .hand-finger.middle { left:65px; bottom:105px; width:27px; height:90px; border-radius:16px 16px 8px 8px; }
 .hand-finger.ring { left:93px; bottom:101px; width:26px; height:82px; border-radius:16px 16px 8px 8px; }
