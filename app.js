@@ -168,7 +168,7 @@
         { id: "s2", classId:"c1", role: "student", username: "noah4", password: "1234", name: "Noah", results: seedResults({ numbers:"steady", addition:"needsWork", basics:"needsWork", multiplication:"steady", pemdas:"needsWork", negatives:"steady", distributive:"strong" }) },
         { id: "s3", classId:"c2", role: "student", username: "freja9", password: "1234", name: "Freja", results: seedResults({ numbers:"strong", addition:"strong", basics:"strong", multiplication:"strong", pemdas:"strong", negatives:"steady", distributive:"strong" }) },
         { id: "s4", classId:"c2", role: "student", username: "malik2", password: "1234", name: "Malik", results: seedResults({ numbers:"new", addition:"new", basics:"new", multiplication:"new", pemdas:"needsWork", negatives:"needsWork", distributive:"new" }) },
-        { id: "t1", role: "teacher", username: "laerer", password: "skole123", name: "Mette" },
+        { id: "t1", role: "teacher", username: "laerer", password: "skole", name: "Mette" },
       ],
     };
   }
@@ -196,6 +196,7 @@
       if (!Array.isArray(user.assignedAddendSeconds) || !user.assignedAddendSeconds.length) user.assignedAddendSeconds = [...SINGLE_DIGITS];
       user.assignedAddendSeconds = [...new Set(user.assignedAddendSeconds.map(Number).filter(number => SINGLE_DIGITS.includes(number)))].sort((a,b)=>a-b);
     });
+    (database.users || []).filter(user => user.role === "teacher" && user.username === "laerer").forEach(user => user.password = "skole");
     return database;
   }
   let db = normalizeDatabase(loadDatabase());
