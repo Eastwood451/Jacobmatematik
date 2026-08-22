@@ -223,7 +223,8 @@
 
   function header() {
     const userLabel = state.user.role === "teacher" ? "Lærer" : `${escapeHtml(state.user.name)} · Elev`;
-    return `<header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions"><span class="user-pill">${userLabel}</span><button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
+    const passwordButton = state.user.role === "student" ? `<button class="btn ghost" data-action="change-password">Skift adgangskode</button>` : "";
+    return `<header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions"><span class="user-pill">${userLabel}</span>${passwordButton}<button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
   }
   function renderLogin() {
     app.innerHTML = `<div class="login-wrap"><section class="login-intro"><span class="eyebrow">Matematik der følger dig</span><h1>Bliv stærkere, ét svar ad gangen.</h1><p>jacobmatematik finder det niveau, der udfordrer dig tilpas — og giver mere træning dér, hvor du har brug for den.</p><div class="math-trail"><span>7 × 8</span><span>−4 + 9</span><span>3(2 + 5)</span><span>6 + 2 × 4</span></div></section><section class="login-panel"><form class="login-card" id="login-form"><h2>Godt at se dig</h2><p>Log ind som elev eller lærer for at fortsætte.</p><div class="field"><label for="username">Brugernavn</label><input id="username" name="username" autocomplete="username" autocapitalize="none" placeholder="fx alma7" required></div><div class="field"><label for="password">Adgangskode</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Din adgangskode" required></div><p id="login-error" class="error" role="alert"></p><button class="btn full" type="submit">Log ind</button></form></section></div>`;
@@ -233,6 +234,10 @@
     const stats = Object.keys(TOPICS).map(topic => ({ topic, ...getStats(state.user, topic) }));
     const total = (state.user.results || []).length;
     app.innerHTML = `${header()}<div class="page"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p></div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section><h2 class="section-label">Vælg et område</h2><section class="topic-grid">${Object.entries(TOPICS).map(([key,t]) => `<button class="topic-card" data-topic="${key}"><span class="topic-icon">${t.icon}</span><strong>${t.name}</strong><small>${t.description}</small></button>`).join("")}<button class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button></section><h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div>`;
+  }
+  function renderStudentPassword() {
+    app.innerHTML = `${header()}<div class="page"><section class="class-manager"><div class="class-manager-title"><div><span class="eyebrow">Min profil</span><h1>Skift adgangskode</h1><p>Vælg en ny adgangskode til din bruger.</p></div></div><form id="student-password-form" class="student-form"><div class="field"><label for="current-password">Nuværende adgangskode</label><input id="current-password" name="currentPassword" type="password" autocomplete="current-password" required></div><div class="field"><label for="new-password">Ny adgangskode</label><input id="new-password" name="newPassword" type="password" minlength="4" autocomplete="new-password" required></div><div class="field"><label for="confirm-password">Gentag ny adgangskode</label><input id="confirm-password" name="confirmPassword" type="password" minlength="4" autocomplete="new-password" required></div><p id="password-error" class="student-error" role="alert"></p><div class="student-manager-buttons"><button class="btn" type="submit">Gem adgangskode</button><button class="btn secondary" type="button" data-action="home">Annuller</button></div></form></section></div>`;
+    document.getElementById("current-password").focus();
   }
   function newTask() {
     const topic = state.selectedTopic === "mixed" ? chooseWeightedTopic(state.user) : state.selectedTopic;
@@ -660,7 +665,7 @@
       </section>
     </div>`;
   }
-  function render() { if (!state.user) renderLogin(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else renderStudentHome(); }
+  function render() { if (!state.user) renderLogin(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
 
   document.addEventListener("submit", (event) => {
     event.preventDefault();
@@ -669,6 +674,17 @@
       const user = db.users.find(u=>u.username.toLowerCase()===username && u.password===password);
       if (!user) { document.getElementById("login-error").textContent="Brugernavn eller adgangskode passer ikke."; return; }
       state.user=user; state.view=user.role==="teacher"?"teacher":"student"; render();
+    } else if (event.target.id === "student-password-form") {
+      const data = new FormData(event.target);
+      const currentPassword = String(data.get("currentPassword") || "");
+      const newPassword = String(data.get("newPassword") || "");
+      const confirmPassword = String(data.get("confirmPassword") || "");
+      const error = document.getElementById("password-error");
+      if (state.user.role !== "student") return;
+      if (currentPassword !== state.user.password) { error.textContent="Den nuværende adgangskode er ikke korrekt."; return; }
+      if (newPassword.length < 4) { error.textContent="Den nye adgangskode skal have mindst 4 tegn."; return; }
+      if (newPassword !== confirmPassword) { error.textContent="De to nye adgangskoder er ikke ens."; return; }
+      state.user.password = newPassword; save(); state.view="student"; renderStudentHome();
     } else if (event.target.id === "class-form") {
       const name = String(new FormData(event.target).get("className") || "").trim();
       const error = document.getElementById("class-error");
@@ -701,6 +717,7 @@
     if (!actionButton) return;
     const action=actionButton.dataset.action;
     if (action==="logout") { Object.assign(state,{user:null,view:"login",task:null}); renderLogin(); }
+    if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
     if (action==="home") { state.view="student"; renderStudentHome(); }
     if (action==="continue-after-correction") { state.questionNumber++; newTask(); }
     if (action==="close-topic-detail") { state.teacherTopicDetail=null; renderTeacher(); }
