@@ -172,18 +172,18 @@
   const SCHOOL_2026_STUDENTS = [
     ["s-5-2026-abbygale", "c-5-2026", "abbygale", "Abbygale123", "Abbygale Victoria Pitsch"],
     ["s-5-2026-agnes", "c-5-2026", "agnes", "Agnes123", "Agnes Rauff Studsholt"],
-    ["s-5-2026-anton", "c-5-2026", "anton5", "Anton123", "Anton Riis Jacobsen"],
+    ["s-5-2026-anton", "c-5-2026", "AntonJ", "Anton123", "Anton Riis Jacobsen"],
     ["s-5-2026-jens", "c-5-2026", "jens", "Jens123", "Jens Elias Andersen"],
     ["s-5-2026-jimmie", "c-5-2026", "jimmie", "Jimmie123", "Jimmie Sonko Jensen"],
     ["s-5-2026-magnus", "c-5-2026", "magnus", "Magnus123", "Magnus Pedersen"],
     ["s-5-2026-malis", "c-5-2026", "malis", "Malis123", "Malis Skaun Hoffmann"],
-    ["s-5-2026-malte-skougaard", "c-5-2026", "malte1", "Malte123", "Malte Skougaard Dyhr"],
-    ["s-5-2026-malte-tolstrup", "c-5-2026", "malte2", "Malte123", "Malte Tolstrup Pedersen"],
+    ["s-5-2026-malte-skougaard", "c-5-2026", "MalteD", "Malte123", "Malte Skougaard Dyhr"],
+    ["s-5-2026-malte-tolstrup", "c-5-2026", "MalteP", "Malte123", "Malte Tolstrup Pedersen"],
     ["s-5-2026-mille", "c-5-2026", "mille", "Mille123", "Mille Vorbeck Karlsson"],
     ["s-5-2026-nicki", "c-5-2026", "nicki", "Nicki123", "Nicki Holmberg Nielsen"],
     ["s-5-2026-sofia", "c-5-2026", "sofia", "Sofia123", "Sofia Nicole Vieru"],
     ["s-5-2026-vigga", "c-5-2026", "vigga-mynthe", "Vigga-Mynthe123", "Vigga-Mynthe Hald Sørensen"],
-    ["s-7-2026-anton", "c-7-2026", "anton7", "Anton123", "Anton Marinus Sønder Knudsen"],
+    ["s-7-2026-anton", "c-7-2026", "AntonK", "Anton123", "Anton Marinus Sønder Knudsen"],
     ["s-7-2026-christoffer", "c-7-2026", "christoffer", "Christoffer123", "Christoffer Linnemann Munk"],
     ["s-7-2026-jessica", "c-7-2026", "jessica", "Jessica123", "Jessica Louise Sørensen"],
     ["s-7-2026-johan", "c-7-2026", "johan", "Johan123", "Johan Lyng"],
@@ -193,8 +193,8 @@
     ["s-7-2026-maja", "c-7-2026", "maja", "Maja123", "Maja Connie Honeré Bergen Vilumsen"],
     ["s-7-2026-torben", "c-7-2026", "torben", "Torben123", "Torben Daniel O'Shea"],
     ["s-7-2026-valdemar", "c-7-2026", "valdemar", "Valdemar123", "Valdemar Jakobsen"],
-    ["s-7-2026-william-hesselbaek", "c-7-2026", "william1", "William123", "William Hesselbæk Yejn"],
-    ["s-7-2026-william-kaehlershoej", "c-7-2026", "william2", "William123", "William Kæhlershøj Larsson"],
+    ["s-7-2026-william-hesselbaek", "c-7-2026", "WilliamY", "William123", "William Hesselbæk Yejn"],
+    ["s-7-2026-william-kaehlershoej", "c-7-2026", "WilliamL", "William123", "William Kæhlershøj Larsson"],
   ];
 
   function addSchool2026Data(database) {
@@ -204,7 +204,10 @@
       if (!database.classes.some(item => item.id === schoolClass.id)) database.classes.push({...schoolClass});
     });
     SCHOOL_2026_STUDENTS.forEach(([id, classId, username, password, name]) => {
-      if (!database.users.some(user => user.id === id || user.username?.toLowerCase() === username)) {
+      const existing = database.users.find(user => user.id === id);
+      if (existing) {
+        existing.username = username;
+      } else if (!database.users.some(user => user.username?.toLowerCase() === username.toLowerCase())) {
         database.users.push({ id, classId, role:"student", username, password, name, results:[] });
       }
     });
@@ -809,7 +812,7 @@
     if (action==="home") { state.view="student"; renderStudentHome(); }
     if (action==="continue-after-correction") { state.questionNumber++; newTask(); }
     if (action==="close-topic-detail") { state.teacherTopicDetail=null; renderTeacher(); }
-    if (action==="toggle-class-rename-form") { state.classRenameFormOpen=!state.classRenameFormOpen; renderTeacher(); if (state.classRenameFormOpen) document.getElementById("class-rename")?.focus(); }
+    if (action==="toggle-class-rename-form") { state.classRenameFormOpen=!state.classRenameFormOpen; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; renderTeacher(); if (state.classRenameFormOpen) document.getElementById("class-rename")?.focus(); }
     if (action==="delete-class") {
       const activeClass=db.classes.find(item=>item.id===state.activeClassId);
       if (!activeClass || db.classes.length <= 1) return;
@@ -819,7 +822,7 @@
         state.activeClassId=db.classes[0].id; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; state.classRenameFormOpen=false; save(); renderTeacher();
       }
     }
-    if (action==="toggle-student-password-form") { state.teacherPasswordFormOpen=!state.teacherPasswordFormOpen; renderTeacher(); if (state.teacherPasswordFormOpen) document.getElementById("teacher-new-password")?.focus(); }
+    if (action==="toggle-student-password-form") { state.teacherPasswordFormOpen=!state.teacherPasswordFormOpen; state.studentFormOpen=false; state.classRenameFormOpen=false; renderTeacher(); if (state.teacherPasswordFormOpen) document.getElementById("teacher-new-password")?.focus(); }
     if (action==="reset-topic-progress") {
       const topic=actionButton.dataset.resetTopic, student=db.users.find(user=>user.id===actionButton.dataset.resetStudent && user.role==="student");
       if (!student || !TOPICS[topic]) return;
@@ -828,7 +831,7 @@
         student.results=(student.results || []).filter(item=>item.topic!==topic); state.teacherTopicDetail=null; save(); renderTeacher();
       }
     }
-    if (action==="toggle-student-form") { state.studentFormOpen=!state.studentFormOpen; renderTeacher(); if (state.studentFormOpen) document.getElementById("student-name")?.focus(); }
+    if (action==="toggle-student-form") { state.studentFormOpen=!state.studentFormOpen; state.teacherPasswordFormOpen=false; state.classRenameFormOpen=false; renderTeacher(); if (state.studentFormOpen) document.getElementById("student-name")?.focus(); }
     if (action==="remove-student") {
       const student=db.users.find(user=>user.id===state.expandedStudent && user.role==="student" && user.classId===state.activeClassId);
       if (student && confirm(`Vil du fjerne ${student.name} fra klassen? Elevens resultater bliver også slettet.`)) {
