@@ -284,9 +284,9 @@
         </form>`;
     const shownAnswer = task.answer === "undefined" ? "Kan ikke beregnes" : task.answer;
     const pairParts = task.topic === "multiplication" ? task.expression.split(" × ") : task.topic === "addition" ? task.expression.split(" + ") : [];
-    const correctionOperator = task.topic === "addition" ? `<i class="correction-operator" aria-hidden="true">+</i>` : "";
+    const correctionOperator = task.topic === "addition" ? "+" : "×";
     const correctionSection = ["multiplication", "addition"].includes(task.topic) && pairParts.length === 2
-      ? `<section class="correction-area" role="alert"><p>Det korrekte svar er</p><button class="correction-wheel" type="button" data-action="continue-after-correction" aria-label="Det korrekte svar er ${escapeHtml(shownAnswer)}. Tryk for næste opgave"><strong>${escapeHtml(shownAnswer)}</strong><span>${escapeHtml(pairParts[0])}</span><span>${escapeHtml(pairParts[1])}</span>${correctionOperator}</button><small>Tryk på svaret for næste opgave</small></section>`
+      ? `<section class="correction-area" role="alert"><p>Det korrekte svar er</p><button class="correction-wheel" type="button" data-action="continue-after-correction" aria-label="Det korrekte svar er ${escapeHtml(shownAnswer)}. Tryk for næste opgave"><strong>${escapeHtml(shownAnswer)}</strong><span class="correction-pair"><span>${escapeHtml(pairParts[0])}</span><i class="correction-operator" aria-hidden="true">${correctionOperator}</i><span>${escapeHtml(pairParts[1])}</span></span></button><small>Tryk på svaret for næste opgave</small></section>`
       : `<section class="correction-area" role="alert"><p>Det korrekte svar er</p><button class="correction-answer" type="button" data-action="continue-after-correction">${escapeHtml(shownAnswer)}</button><small>Tryk på svaret for næste opgave</small></section>`;
     const taskVisual = task.topic === "numbers"
       ? `<div class="counting-field" role="img" aria-label="${task.count ? Array.from({length:task.count},()=>"figur").join(", ") : "Et tomt felt"}">${task.shapes.map((shape,index) => `<span class="count-shape ${shape} color-${index%4}" aria-hidden="true"></span>`).join("")}</div>`
