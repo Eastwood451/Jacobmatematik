@@ -165,6 +165,51 @@
     return results;
   }
 
+  const SCHOOL_2026_CLASSES = [
+    { id:"c-5-2026", name:"5. klasse 2026" },
+    { id:"c-7-2026", name:"7. klasse 2026" },
+  ];
+  const SCHOOL_2026_STUDENTS = [
+    ["s-5-2026-abbygale", "c-5-2026", "abbygale", "Abbygale123", "Abbygale Victoria Pitsch"],
+    ["s-5-2026-agnes", "c-5-2026", "agnes", "Agnes123", "Agnes Rauff Studsholt"],
+    ["s-5-2026-anton", "c-5-2026", "anton5", "Anton123", "Anton Riis Jacobsen"],
+    ["s-5-2026-jens", "c-5-2026", "jens", "Jens123", "Jens Elias Andersen"],
+    ["s-5-2026-jimmie", "c-5-2026", "jimmie", "Jimmie123", "Jimmie Sonko Jensen"],
+    ["s-5-2026-magnus", "c-5-2026", "magnus", "Magnus123", "Magnus Pedersen"],
+    ["s-5-2026-malis", "c-5-2026", "malis", "Malis123", "Malis Skaun Hoffmann"],
+    ["s-5-2026-malte-skougaard", "c-5-2026", "malte1", "Malte123", "Malte Skougaard Dyhr"],
+    ["s-5-2026-malte-tolstrup", "c-5-2026", "malte2", "Malte123", "Malte Tolstrup Pedersen"],
+    ["s-5-2026-mille", "c-5-2026", "mille", "Mille123", "Mille Vorbeck Karlsson"],
+    ["s-5-2026-nicki", "c-5-2026", "nicki", "Nicki123", "Nicki Holmberg Nielsen"],
+    ["s-5-2026-sofia", "c-5-2026", "sofia", "Sofia123", "Sofia Nicole Vieru"],
+    ["s-5-2026-vigga", "c-5-2026", "vigga-mynthe", "Vigga-Mynthe123", "Vigga-Mynthe Hald Sørensen"],
+    ["s-7-2026-anton", "c-7-2026", "anton7", "Anton123", "Anton Marinus Sønder Knudsen"],
+    ["s-7-2026-christoffer", "c-7-2026", "christoffer", "Christoffer123", "Christoffer Linnemann Munk"],
+    ["s-7-2026-jessica", "c-7-2026", "jessica", "Jessica123", "Jessica Louise Sørensen"],
+    ["s-7-2026-johan", "c-7-2026", "johan", "Johan123", "Johan Lyng"],
+    ["s-7-2026-johanne", "c-7-2026", "johanne", "Johanne123", "Johanne Rosenkrantz Poulsen"],
+    ["s-7-2026-lauritz", "c-7-2026", "lauritz", "Lauritz123", "Lauritz Rauff Studsholt"],
+    ["s-7-2026-leander", "c-7-2026", "leander", "Leander123", "Leander Skaun Hoffmann"],
+    ["s-7-2026-maja", "c-7-2026", "maja", "Maja123", "Maja Connie Honeré Bergen Vilumsen"],
+    ["s-7-2026-torben", "c-7-2026", "torben", "Torben123", "Torben Daniel O'Shea"],
+    ["s-7-2026-valdemar", "c-7-2026", "valdemar", "Valdemar123", "Valdemar Jakobsen"],
+    ["s-7-2026-william-hesselbaek", "c-7-2026", "william1", "William123", "William Hesselbæk Yejn"],
+    ["s-7-2026-william-kaehlershoej", "c-7-2026", "william2", "William123", "William Kæhlershøj Larsson"],
+  ];
+
+  function addSchool2026Data(database) {
+    database.classes = Array.isArray(database.classes) ? database.classes : [];
+    database.users = Array.isArray(database.users) ? database.users : [];
+    SCHOOL_2026_CLASSES.forEach(schoolClass => {
+      if (!database.classes.some(item => item.id === schoolClass.id)) database.classes.push({...schoolClass});
+    });
+    SCHOOL_2026_STUDENTS.forEach(([id, classId, username, password, name]) => {
+      if (!database.users.some(user => user.id === id || user.username?.toLowerCase() === username)) {
+        database.users.push({ id, classId, role:"student", username, password, name, results:[] });
+      }
+    });
+  }
+
   function defaultDatabase() {
     return {
       classes: [
@@ -191,6 +236,7 @@
     catch { return defaultDatabase(); }
   }
   function normalizeDatabase(database) {
+    addSchool2026Data(database);
     if (!Array.isArray(database.classes) || !database.classes.length) database.classes = [{id:"c1",name:"7.A"},{id:"c2",name:"8.B"}];
     const validIds = new Set(database.classes.map(item => item.id));
     (database.users || []).filter(user => user.role === "student").forEach(user => {
@@ -208,7 +254,7 @@
     return database;
   }
   let db = normalizeDatabase(loadDatabase());
-  const state = { user: null, view: "login", selectedTopic: "mixed", task: null, taskStartedAt: 0, answered: false, questionNumber: 1, sessionCorrect: 0, sessionAnswers: [], expandedStudent: "s1", activeClassId:null, teacherTopicDetail: null, studentFormOpen: false, teacherPasswordFormOpen: false };
+  const state = { user: null, view: "login", selectedTopic: "mixed", task: null, taskStartedAt: 0, answered: false, questionNumber: 1, sessionCorrect: 0, sessionAnswers: [], expandedStudent: "s1", activeClassId:null, teacherTopicDetail: null, studentFormOpen: false, teacherPasswordFormOpen: false, classRenameFormOpen: false };
   const app = document.getElementById("app");
   const save = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
   const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
@@ -668,8 +714,9 @@
         <p id="class-error" class="class-error" role="alert"></p>
         <div class="student-manager-row">
           <div><strong>Elever i ${escapeHtml(activeClass.name)}</strong><small>${selected ? `${escapeHtml(selected.name)} er valgt` : "Ingen elev er valgt"}</small></div>
-          <div class="student-manager-buttons"><button class="btn secondary" type="button" data-action="toggle-student-password-form" aria-expanded="${state.teacherPasswordFormOpen}" ${selected ? "" : "disabled"}>${state.teacherPasswordFormOpen ? "Annuller" : "Skift adgangskode"}</button><button class="btn secondary" type="button" data-action="toggle-student-form" aria-expanded="${state.studentFormOpen}">${state.studentFormOpen ? "Annuller" : "+ Tilføj elev"}</button><button class="btn danger" type="button" data-action="remove-student" ${selected ? "" : "disabled"}>Fjern elev</button></div>
+          <div class="student-manager-buttons"><button class="btn secondary" type="button" data-action="toggle-class-rename-form" aria-expanded="${state.classRenameFormOpen}">${state.classRenameFormOpen ? "Annuller" : "Omdøb klasse"}</button><button class="btn danger" type="button" data-action="delete-class" ${classes.length > 1 ? "" : "disabled"}>Slet klasse</button><button class="btn secondary" type="button" data-action="toggle-student-password-form" aria-expanded="${state.teacherPasswordFormOpen}" ${selected ? "" : "disabled"}>${state.teacherPasswordFormOpen ? "Annuller" : "Skift adgangskode"}</button><button class="btn secondary" type="button" data-action="toggle-student-form" aria-expanded="${state.studentFormOpen}">${state.studentFormOpen ? "Annuller" : "+ Tilføj elev"}</button><button class="btn danger" type="button" data-action="remove-student" ${selected ? "" : "disabled"}>Fjern elev</button></div>
         </div>
+        ${state.classRenameFormOpen ? `<form id="class-rename-form" class="class-rename-form"><label class="sr-only" for="class-rename">Nyt klassenavn</label><input id="class-rename" name="className" maxlength="30" value="${escapeHtml(activeClass.name)}" required><button class="btn" type="submit">Gem navn</button><p id="class-rename-error" class="student-error" role="alert"></p></form>` : ""}
         ${state.studentFormOpen ? `<form id="student-form" class="student-form"><div class="field"><label for="student-name">Elevens navn</label><input id="student-name" name="studentName" maxlength="60" autocomplete="off" placeholder="fx Emma" required></div><div class="field"><label for="student-username">Brugernavn</label><input id="student-username" name="studentUsername" maxlength="40" autocomplete="off" autocapitalize="none" placeholder="fx emma8" required></div><div class="field"><label for="student-password">Adgangskode</label><input id="student-password" name="studentPassword" type="password" maxlength="60" autocomplete="new-password" placeholder="Vælg adgangskode" required></div><button class="btn" type="submit">Opret elev</button><p id="student-error" class="student-error" role="alert"></p></form>` : ""}
         ${state.teacherPasswordFormOpen && selected ? `<form id="teacher-password-form" class="student-form"><input type="hidden" name="studentId" value="${escapeHtml(selected.id)}"><div class="field"><label for="teacher-new-password">Ny adgangskode til ${escapeHtml(selected.name)}</label><input id="teacher-new-password" name="newPassword" type="password" maxlength="60" autocomplete="new-password" required></div><div class="field"><label for="teacher-confirm-password">Gentag ny adgangskode</label><input id="teacher-confirm-password" name="confirmPassword" type="password" maxlength="60" autocomplete="new-password" required></div><button class="btn" type="submit">Gem ny adgangskode</button><p id="teacher-password-error" class="student-error" role="alert"></p></form>` : ""}
       </section>
@@ -724,7 +771,14 @@
       if (!name) { error.textContent="Skriv et navn til klassen."; return; }
       if (db.classes.some(item => item.name.toLowerCase() === name.toLowerCase())) { error.textContent="Der findes allerede en klasse med det navn."; return; }
       const newClass = { id:`c-${Date.now().toString(36)}`, name };
-      db.classes.push(newClass); state.activeClassId=newClass.id; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; save(); renderTeacher();
+      db.classes.push(newClass); state.activeClassId=newClass.id; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; state.classRenameFormOpen=false; save(); renderTeacher();
+    } else if (event.target.id === "class-rename-form") {
+      const name = String(new FormData(event.target).get("className") || "").trim();
+      const error = document.getElementById("class-rename-error");
+      const activeClass = db.classes.find(item => item.id === state.activeClassId);
+      if (!activeClass || !name) { error.textContent="Skriv et navn til klassen."; return; }
+      if (db.classes.some(item => item.id !== activeClass.id && item.name.toLowerCase() === name.toLowerCase())) { error.textContent="Der findes allerede en klasse med det navn."; return; }
+      activeClass.name=name; state.classRenameFormOpen=false; save(); renderTeacher();
     } else if (event.target.id === "student-form") {
       const data = new FormData(event.target);
       const name = String(data.get("studentName") || "").trim();
@@ -743,7 +797,7 @@
     if (keyButton) { handleKeypad(keyButton.dataset.key); return; }
     if (topicButton) { state.selectedTopic=topicButton.dataset.topic; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise"; newTask(); }
     if (studentButton) { state.expandedStudent=studentButton.dataset.student; state.teacherTopicDetail=null; state.teacherPasswordFormOpen=false; renderTeacher(); }
-    if (classButton) { state.activeClassId=classButton.dataset.class; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; renderTeacher(); return; }
+    if (classButton) { state.activeClassId=classButton.dataset.class; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; state.classRenameFormOpen=false; renderTeacher(); return; }
     if (tableAllButton) { const student=db.users.find(user=>user.id===tableAllButton.dataset.tableAll); if (student) { student.assignedTables=[...SMALL_TABLES]; save(); renderTeacher(); } return; }
     if (numberAllButton) { const student=db.users.find(user=>user.id===numberAllButton.dataset.numberAll); if (student) { student.assignedNumbers=[...SMALL_TABLES]; save(); renderTeacher(); } return; }
     if (addendAllButton) { const student=db.users.find(user=>user.id===addendAllButton.dataset.addendAll); if (student) { addendAllButton.dataset.addendPosition === "second" ? student.assignedAddendSeconds=[...SINGLE_DIGITS] : student.assignedAddends=[...SINGLE_DIGITS]; save(); renderTeacher(); } return; }
@@ -755,6 +809,16 @@
     if (action==="home") { state.view="student"; renderStudentHome(); }
     if (action==="continue-after-correction") { state.questionNumber++; newTask(); }
     if (action==="close-topic-detail") { state.teacherTopicDetail=null; renderTeacher(); }
+    if (action==="toggle-class-rename-form") { state.classRenameFormOpen=!state.classRenameFormOpen; renderTeacher(); if (state.classRenameFormOpen) document.getElementById("class-rename")?.focus(); }
+    if (action==="delete-class") {
+      const activeClass=db.classes.find(item=>item.id===state.activeClassId);
+      if (!activeClass || db.classes.length <= 1) return;
+      const studentCount=db.users.filter(user=>user.role==="student" && user.classId===activeClass.id).length;
+      if (confirm(`Vil du slette ${activeClass.name}? ${studentCount} ${studentCount===1?"elev":"elever"} og deres fremskridt slettes permanent.`)) {
+        db.users=db.users.filter(user=>user.role!=="student" || user.classId!==activeClass.id); db.classes=db.classes.filter(item=>item.id!==activeClass.id);
+        state.activeClassId=db.classes[0].id; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; state.classRenameFormOpen=false; save(); renderTeacher();
+      }
+    }
     if (action==="toggle-student-password-form") { state.teacherPasswordFormOpen=!state.teacherPasswordFormOpen; renderTeacher(); if (state.teacherPasswordFormOpen) document.getElementById("teacher-new-password")?.focus(); }
     if (action==="reset-topic-progress") {
       const topic=actionButton.dataset.resetTopic, student=db.users.find(user=>user.id===actionButton.dataset.resetStudent && user.role==="student");
