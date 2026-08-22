@@ -157,6 +157,7 @@ h1,h2,h3,p { margin-top:0; }
 .student-kpis article:nth-child(3) strong { font-size:18px; margin-top:11px; }
 .table-assignment { margin:0 0 14px; padding:18px; border:1px solid var(--line); border-radius:18px; background:white; }
 .table-assignment-head { display:flex; align-items:flex-start; justify-content:space-between; gap:18px; }.table-assignment-head h3 { margin:4px 0 5px; font-size:20px; }.table-assignment-head p { margin:0; color:var(--muted); font-size:13px; }.btn.compact { min-height:38px; padding:7px 12px; white-space:nowrap; }
+.table-assignment-actions { display:flex; flex-wrap:wrap; justify-content:flex-end; gap:8px; }
 .table-choices { display:grid; grid-template-columns:repeat(11,minmax(62px,1fr)); gap:7px; margin-top:15px; }
 .addition-choices { grid-template-columns:repeat(10,minmax(62px,1fr)); }
 .addition-factor { margin-top:18px; padding-top:18px; border-top:1px solid var(--line); }.addition-factor:first-of-type { margin-top:15px; }
@@ -174,6 +175,7 @@ h1,h2,h3,p { margin-top:0; }
 .topic-performance .chart-title { margin-bottom:6px; }.topic-row { display:grid; grid-template-columns:150px 1fr; gap:14px; align-items:center; padding:11px 0; border-top:1px solid #eeeae2; }.topic-row>div:first-child strong,.topic-row>div:first-child small { display:block; }.topic-row>div:first-child small { color:var(--muted); font-size:11px; margin-top:3px; }.topic-meter { display:grid; grid-template-columns:1fr 42px; align-items:center; gap:9px; }.topic-meter>span { height:9px; background:#e5e1d9; border-radius:10px; overflow:hidden; }.topic-meter i { display:block; height:100%; border-radius:inherit; }.topic-meter i.strong { background:var(--mint); }.topic-meter i.medium { background:var(--amber); }.topic-meter i.weak { background:var(--red); }.topic-meter b { font-size:12px; text-align:right; }
 .topic-row-button { width:100%; border:0; border-top:1px solid #eeeae2; background:transparent; color:var(--ink); font:inherit; text-align:left; cursor:pointer; border-radius:10px; }
 .topic-row-button:hover,.topic-row-button.active { background:#f3f1ff; padding-left:9px; padding-right:9px; }
+.topic-row-control { display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:center; gap:8px; }.topic-reset { min-height:34px; font-size:12px; }
 .pair-detail { margin-top:14px; background:white; border:1px solid var(--line); border-radius:18px; padding:18px; }
 .pair-detail-head { display:flex; justify-content:space-between; align-items:flex-start; gap:20px; }
 .pair-detail-head h3 { margin:4px 0 6px; font-size:23px; }.pair-detail-head p { margin:0; color:var(--muted); font-size:14px; }
