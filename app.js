@@ -264,7 +264,7 @@
       <h2>Lærte</h2>
       <div class="learned-pair-list">${learnedPairs.map(([a,b]) => `<div class="learned-pair" role="img" aria-label="${a} ${operator === "+" ? "plus" : "gange"} ${b} er lært" title="${a} ${operator} ${b} er lært"><strong aria-hidden="true">✓</strong><span>${a}</span><span>${b}</span></div>`).join("")}${learnedNumbers.map(number => `<div class="learned-pair learned-number" role="img" aria-label="Tallet ${number} er lært" title="Tallet ${number} er lært"><strong aria-hidden="true">✓</strong><span>${number}</span></div>`).join("")}</div>
     </section>` : "";
-    const undefinedKey = task.answerType === "undefined" ? `<button class="key utility impossible" type="button" data-key="undefined">Kan ikke beregnes</button>` : "";
+    const undefinedKey = `<button class="key utility impossible" type="button" data-key="undefined">Kan ikke beregnes</button>`;
     const answerSection = `<form class="answer-area" id="answer-form">
           <label class="sr-only" for="answer">Dit svar</label>
           <input class="answer-input" id="answer" name="answer" inputmode="none" autocomplete="off" placeholder="Dit svar" readonly>
