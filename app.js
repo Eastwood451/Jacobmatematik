@@ -340,10 +340,14 @@
     const undefinedKey = task.answerType === "undefined"
       ? `<button class="key utility impossible" type="button" data-key="undefined">Kan ikke beregnes</button>`
       : "";
-    // Tallene er fortsat med i øvelsen efter at være lært, men placeres forskelligt hver gang.
-    const keypadNumbers = shuffle(SINGLE_DIGITS);
+    // I Tallene står svarene i talrækkefølge, indtil det aktuelle antal er lært.
+    // Derefter blandes alle svarmuligheder fra 0 til 10 ved hver ny opgave.
+    const learnedNumberTask = task.topic === "numbers" && learnedNumbers.includes(Number(task.answer));
+    const keypadNumbers = task.topic === "numbers"
+      ? (learnedNumberTask ? shuffle(SMALL_TABLES) : SMALL_TABLES)
+      : shuffle(SINGLE_DIGITS);
     const signedKey = task.topic === "numbers"
-      ? `<button class="key" type="button" data-key="10">10</button>`
+      ? ""
       : `<button class="key utility" type="button" data-key="minus" aria-label="Minustegn">−</button>`;
     const answerSection = `<form class="answer-area" id="answer-form">
           <label class="sr-only" for="answer">Dit svar</label>
