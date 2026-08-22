@@ -5,7 +5,7 @@
   const STORAGE_KEY = "jacobmatematik-db-v1";
   const LEGACY_STORAGE_KEYS = ["matbootcamp-db-v1", "talvaerkstedet-db-v1"];
   const TOPICS = {
-    numbers: { name: "Tallene", icon: "● ● ●", description: "Tæl figurer fra 0 til 10" },
+    numbers: { name: "Tallene", icon: "● ● ●", description: "Tæl figurer og fingre fra 0 til 10" },
     addition: { name: "Plusstykker", icon: "4 + 5", description: "Plus med etcifrede tal" },
     basics: { name: "Basisregler", icon: "0 · 1", description: "Regneregler med 0 og 1" },
     multiplication: { name: "Lille tabel", icon: "7 × 8", description: "Gangestykker fra 0×0 til 10×10" },
@@ -37,7 +37,9 @@
         const assigned = (user?.assignedNumbers || SMALL_TABLES).filter(number => SMALL_TABLES.includes(number));
         const count = pick(assigned.length ? assigned : SMALL_TABLES);
         const shapes = Array.from({length:count}, () => pick(["circle", "square", "triangle", "diamond"]));
-        return makeTask("numbers", `Antal ${count}`, count, "Tæl figurerne i feltet.", { count, shapes });
+        const countingMode = Math.random() < .5 ? "shapes" : "hands";
+        const hint = countingMode === "hands" ? "Tæl fingrene på hænderne." : "Tæl figurerne i feltet.";
+        return makeTask("numbers", `Antal ${count}`, count, hint, { count, shapes, countingMode });
       },
       calculate: count => count,
       evaluate: (answer, task) => Number(answer) === task.answer,
@@ -340,12 +342,15 @@
       : "";
     // Tallene er fortsat med i øvelsen efter at være lært, men placeres forskelligt hver gang.
     const keypadNumbers = shuffle(SINGLE_DIGITS);
+    const signedKey = task.topic === "numbers"
+      ? `<button class="key" type="button" data-key="10">10</button>`
+      : `<button class="key utility" type="button" data-key="minus" aria-label="Minustegn">−</button>`;
     const answerSection = `<form class="answer-area" id="answer-form">
           <label class="sr-only" for="answer">Dit svar</label>
           <input class="answer-input" id="answer" name="answer" inputmode="none" autocomplete="off" placeholder="Dit svar" readonly>
           <div class="keypad" aria-label="Taltastatur">
             ${keypadNumbers.map(number => `<button class="key" type="button" data-key="${number}">${number}</button>`).join("")}
-            <button class="key utility" type="button" data-key="minus" aria-label="Minustegn">−</button>
+            ${signedKey}
             <button class="key utility" type="button" data-key="delete">Slet</button>
             ${undefinedKey}
             <button class="key enter" type="button" data-key="enter">Enter</button>
@@ -359,7 +364,9 @@
       ? `<section class="correction-area" role="alert"><p>Det korrekte svar er</p><button class="correction-wheel" type="button" data-action="continue-after-correction" aria-label="Det korrekte svar er ${escapeHtml(shownAnswer)}. Tryk for næste opgave"><strong>${escapeHtml(shownAnswer)}</strong><span class="correction-pair"><span>${escapeHtml(pairParts[0])}</span><i class="correction-operator" aria-hidden="true">${correctionOperator}</i><span>${escapeHtml(pairParts[1])}</span></span></button><small>Tryk på svaret for næste opgave</small></section>`
       : `<section class="correction-area" role="alert"><p>Det korrekte svar er</p><button class="correction-answer" type="button" data-action="continue-after-correction">${escapeHtml(shownAnswer)}</button><small>Tryk på svaret for næste opgave</small></section>`;
     const taskVisual = task.topic === "numbers"
-      ? `<div class="counting-field" role="img" aria-label="${task.count ? Array.from({length:task.count},()=>"figur").join(", ") : "Et tomt felt"}">${task.shapes.map((shape,index) => `<span class="count-shape ${shape} color-${index%4}" aria-hidden="true"></span>`).join("")}</div>`
+      ? task.countingMode === "hands"
+        ? renderCountingHands(task.count)
+        : `<div class="counting-field" role="img" aria-label="${task.count ? Array.from({length:task.count},()=>"figur").join(", ") : "Et tomt felt"}">${task.shapes.map((shape,index) => `<span class="count-shape ${shape} color-${index%4}" aria-hidden="true"></span>`).join("")}</div>`
       : `<div class="expression">${task.expression}</div>`;
 
     app.innerHTML = `${header()}<div class="page exercise-page">
@@ -371,6 +378,23 @@
       <div class="progress-row" aria-label="Svar i denne runde">${Array.from({length:10},(_,i)=>`<i class="progress-dot ${cycleAnswers[i] === true ? "correct" : cycleAnswers[i] === false ? "wrong" : ""}"></i>`).join("")}</div>
       ${learnedSection}
     </div>`;
+  }
+  function renderCountingHand(activeFingers, mirrored = false) {
+    // Fingrene vises i rækkefølgen tommel, pege-, lange-, ring- og lillefinger.
+    const fingers = ["thumb", "index", "middle", "ring", "little"];
+    return `<span class="count-hand ${mirrored ? "mirrored" : ""}" aria-hidden="true">
+      <i class="hand-wrist"></i><i class="hand-palm"></i>
+      ${fingers.slice(0, activeFingers).map(finger => `<i class="hand-finger ${finger}"></i>`).join("")}
+    </span>`;
+  }
+  function renderCountingHands(count) {
+    const firstHand = Math.min(count, 5);
+    const secondHand = Math.max(0, count - 5);
+    const hands = count === 0
+      ? `<span class="count-fist" aria-hidden="true"><i></i></span>`
+      : `${renderCountingHand(firstHand)}${secondHand ? renderCountingHand(secondHand, true) : ""}`;
+    const label = count === 0 ? "En lukket hånd viser nul fingre" : `${count} ${count === 1 ? "finger" : "fingre"}`;
+    return `<div class="hand-counting-field" role="img" aria-label="${label}">${hands}</div>`;
   }
   function submitAnswer(form) {
     if (state.answered) return;
@@ -400,6 +424,7 @@
     if (key === "undefined") input.value = "Kan ikke beregnes";
     else if (key === "delete") input.value = input.value === "Kan ikke beregnes" ? "" : input.value.slice(0, -1);
     else if (key === "minus") input.value = input.value === "Kan ikke beregnes" ? "-" : input.value.startsWith("-") ? input.value.slice(1) : `-${input.value}`;
+    else if (key === "10" && state.task.topic === "numbers") input.value = "10";
     else if (/^\d$/.test(key) && input.value.replace("-", "").length < 8) input.value = input.value === "Kan ikke beregnes" ? key : input.value + key;
 
     document.getElementById("answer-error").textContent = "";
