@@ -195,7 +195,7 @@
     return database;
   }
   let db = normalizeDatabase(loadDatabase());
-  const state = { user: null, view: "login", selectedTopic: "mixed", task: null, taskStartedAt: 0, answered: false, questionNumber: 1, sessionCorrect: 0, sessionAnswers: [], expandedStudent: "s1", activeClassId:null, teacherTopicDetail: null, studentFormOpen: false };
+  const state = { user: null, view: "login", selectedTopic: "mixed", task: null, taskStartedAt: 0, answered: false, questionNumber: 1, sessionCorrect: 0, sessionAnswers: [], expandedStudent: "s1", activeClassId:null, teacherTopicDetail: null, studentFormOpen: false, teacherPasswordFormOpen: false };
   const app = document.getElementById("app");
   const save = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
   const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
@@ -646,9 +646,10 @@
         <p id="class-error" class="class-error" role="alert"></p>
         <div class="student-manager-row">
           <div><strong>Elever i ${escapeHtml(activeClass.name)}</strong><small>${selected ? `${escapeHtml(selected.name)} er valgt` : "Ingen elev er valgt"}</small></div>
-          <div class="student-manager-buttons"><button class="btn secondary" type="button" data-action="toggle-student-form" aria-expanded="${state.studentFormOpen}">${state.studentFormOpen ? "Annuller" : "+ Tilføj elev"}</button><button class="btn danger" type="button" data-action="remove-student" ${selected ? "" : "disabled"}>Fjern elev</button></div>
+          <div class="student-manager-buttons"><button class="btn secondary" type="button" data-action="toggle-student-password-form" aria-expanded="${state.teacherPasswordFormOpen}" ${selected ? "" : "disabled"}>${state.teacherPasswordFormOpen ? "Annuller" : "Skift adgangskode"}</button><button class="btn secondary" type="button" data-action="toggle-student-form" aria-expanded="${state.studentFormOpen}">${state.studentFormOpen ? "Annuller" : "+ Tilføj elev"}</button><button class="btn danger" type="button" data-action="remove-student" ${selected ? "" : "disabled"}>Fjern elev</button></div>
         </div>
         ${state.studentFormOpen ? `<form id="student-form" class="student-form"><div class="field"><label for="student-name">Elevens navn</label><input id="student-name" name="studentName" maxlength="60" autocomplete="off" placeholder="fx Emma" required></div><div class="field"><label for="student-username">Brugernavn</label><input id="student-username" name="studentUsername" maxlength="40" autocomplete="off" autocapitalize="none" placeholder="fx emma8" required></div><div class="field"><label for="student-password">Adgangskode</label><input id="student-password" name="studentPassword" type="password" maxlength="60" autocomplete="new-password" placeholder="Vælg adgangskode" required></div><button class="btn" type="submit">Opret elev</button><p id="student-error" class="student-error" role="alert"></p></form>` : ""}
+        ${state.teacherPasswordFormOpen && selected ? `<form id="teacher-password-form" class="student-form"><input type="hidden" name="studentId" value="${escapeHtml(selected.id)}"><div class="field"><label for="teacher-new-password">Ny adgangskode til ${escapeHtml(selected.name)}</label><input id="teacher-new-password" name="newPassword" type="password" minlength="4" maxlength="60" autocomplete="new-password" required></div><div class="field"><label for="teacher-confirm-password">Gentag ny adgangskode</label><input id="teacher-confirm-password" name="confirmPassword" type="password" minlength="4" maxlength="60" autocomplete="new-password" required></div><button class="btn" type="submit">Gem ny adgangskode</button><p id="teacher-password-error" class="student-error" role="alert"></p></form>` : ""}
       </section>
       <section class="class-kpis">
         <article><span>Elever</span><strong>${students.length}</strong><small>aktive profiler</small></article>
@@ -685,6 +686,16 @@
       if (newPassword.length < 4) { error.textContent="Den nye adgangskode skal have mindst 4 tegn."; return; }
       if (newPassword !== confirmPassword) { error.textContent="De to nye adgangskoder er ikke ens."; return; }
       state.user.password = newPassword; save(); state.view="student"; renderStudentHome();
+    } else if (event.target.id === "teacher-password-form") {
+      const data = new FormData(event.target);
+      const student = db.users.find(user => user.id === String(data.get("studentId") || "") && user.role === "student" && user.classId === state.activeClassId);
+      const newPassword = String(data.get("newPassword") || "");
+      const confirmPassword = String(data.get("confirmPassword") || "");
+      const error = document.getElementById("teacher-password-error");
+      if (state.user.role !== "teacher" || !student) { error.textContent="Eleven blev ikke fundet."; return; }
+      if (newPassword.length < 4) { error.textContent="Adgangskoden skal have mindst 4 tegn."; return; }
+      if (newPassword !== confirmPassword) { error.textContent="De to adgangskoder er ikke ens."; return; }
+      student.password = newPassword; state.teacherPasswordFormOpen=false; save(); renderTeacher();
     } else if (event.target.id === "class-form") {
       const name = String(new FormData(event.target).get("className") || "").trim();
       const error = document.getElementById("class-error");
@@ -709,8 +720,8 @@
     const keyButton=event.target.closest("[data-key]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
     if (keyButton) { handleKeypad(keyButton.dataset.key); return; }
     if (topicButton) { state.selectedTopic=topicButton.dataset.topic; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise"; newTask(); }
-    if (studentButton) { state.expandedStudent=studentButton.dataset.student; state.teacherTopicDetail=null; renderTeacher(); }
-    if (classButton) { state.activeClassId=classButton.dataset.class; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; renderTeacher(); return; }
+    if (studentButton) { state.expandedStudent=studentButton.dataset.student; state.teacherTopicDetail=null; state.teacherPasswordFormOpen=false; renderTeacher(); }
+    if (classButton) { state.activeClassId=classButton.dataset.class; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; renderTeacher(); return; }
     if (tableAllButton) { const student=db.users.find(user=>user.id===tableAllButton.dataset.tableAll); if (student) { student.assignedTables=[...SMALL_TABLES]; save(); renderTeacher(); } return; }
     if (addendAllButton) { const student=db.users.find(user=>user.id===addendAllButton.dataset.addendAll); if (student) { addendAllButton.dataset.addendPosition === "second" ? student.assignedAddendSeconds=[...SINGLE_DIGITS] : student.assignedAddends=[...SINGLE_DIGITS]; save(); renderTeacher(); } return; }
     if (reportTopicButton) { state.teacherTopicDetail=reportTopicButton.dataset.reportTopic; renderTeacher(); return; }
@@ -721,6 +732,7 @@
     if (action==="home") { state.view="student"; renderStudentHome(); }
     if (action==="continue-after-correction") { state.questionNumber++; newTask(); }
     if (action==="close-topic-detail") { state.teacherTopicDetail=null; renderTeacher(); }
+    if (action==="toggle-student-password-form") { state.teacherPasswordFormOpen=!state.teacherPasswordFormOpen; renderTeacher(); if (state.teacherPasswordFormOpen) document.getElementById("teacher-new-password")?.focus(); }
     if (action==="reset-topic-progress") {
       const topic=actionButton.dataset.resetTopic, student=db.users.find(user=>user.id===actionButton.dataset.resetStudent && user.role==="student");
       if (!student || !TOPICS[topic]) return;
