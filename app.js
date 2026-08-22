@@ -191,7 +191,7 @@
     return database;
   }
   let db = normalizeDatabase(loadDatabase());
-  const state = { user: null, view: "login", selectedTopic: "mixed", task: null, taskStartedAt: 0, answered: false, questionNumber: 1, sessionCorrect: 0, sessionAnswers: [], expandedStudent: "s1", activeClassId:null, teacherTopicDetail: null };
+  const state = { user: null, view: "login", selectedTopic: "mixed", task: null, taskStartedAt: 0, answered: false, questionNumber: 1, sessionCorrect: 0, sessionAnswers: [], expandedStudent: "s1", activeClassId:null, teacherTopicDetail: null, studentFormOpen: false };
   const app = document.getElementById("app");
   const save = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
   const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
@@ -218,10 +218,11 @@
   }
 
   function header() {
-    return `<header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions"><span class="user-pill">${escapeHtml(state.user.name)} · ${state.user.role === "teacher" ? "Lærer" : "Elev"}</span><button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
+    const userLabel = state.user.role === "teacher" ? "Lærer" : `${escapeHtml(state.user.name)} · Elev`;
+    return `<header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions"><span class="user-pill">${userLabel}</span><button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
   }
   function renderLogin() {
-    app.innerHTML = `<div class="login-wrap"><section class="login-intro"><span class="eyebrow">Matematik der følger dig</span><h1>Bliv stærkere, ét svar ad gangen.</h1><p>jacobmatematik finder det niveau, der udfordrer dig tilpas — og giver mere træning dér, hvor du har brug for den.</p><div class="math-trail"><span>7 × 8</span><span>−4 + 9</span><span>3(2 + 5)</span><span>6 + 2 × 4</span></div></section><section class="login-panel"><form class="login-card" id="login-form"><h2>Godt at se dig</h2><p>Log ind som elev eller lærer for at fortsætte.</p><div class="field"><label for="username">Brugernavn</label><input id="username" name="username" autocomplete="username" autocapitalize="none" placeholder="fx alma7" required></div><div class="field"><label for="password">Adgangskode</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Din adgangskode" required></div><p id="login-error" class="error" role="alert"></p><button class="btn full" type="submit">Log ind</button><div class="demo-box"><strong>Prøv demoen</strong><br>Elev: alma7 / 1234<br>Lærer: laerer / skole123</div></form></section></div>`;
+    app.innerHTML = `<div class="login-wrap"><section class="login-intro"><span class="eyebrow">Matematik der følger dig</span><h1>Bliv stærkere, ét svar ad gangen.</h1><p>jacobmatematik finder det niveau, der udfordrer dig tilpas — og giver mere træning dér, hvor du har brug for den.</p><div class="math-trail"><span>7 × 8</span><span>−4 + 9</span><span>3(2 + 5)</span><span>6 + 2 × 4</span></div></section><section class="login-panel"><form class="login-card" id="login-form"><h2>Godt at se dig</h2><p>Log ind som elev eller lærer for at fortsætte.</p><div class="field"><label for="username">Brugernavn</label><input id="username" name="username" autocomplete="username" autocapitalize="none" placeholder="fx alma7" required></div><div class="field"><label for="password">Adgangskode</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Din adgangskode" required></div><p id="login-error" class="error" role="alert"></p><button class="btn full" type="submit">Log ind</button></form></section></div>`;
     document.getElementById("username").focus();
   }
   function renderStudentHome() {
@@ -580,7 +581,7 @@
     const allResults = students.flatMap(student => student.results || []), classCorrect = allResults.filter(item => item.correct).length;
     const classAccuracy = allResults.length ? Math.round(classCorrect / allResults.length * 100) : 0;
     const needsAttention = students.filter(student => Object.keys(TOPICS).some(topic => getStats(student,topic).status === "weak")).length;
-    let studentDetail = `<div class="empty-class"><span class="empty-class-icon">＋</span><h2>Klassen har ingen elever endnu</h2><p>Vælg en anden klasse og flyt en elev hertil fra elevens klassevælger.</p></div>`;
+    let studentDetail = `<div class="empty-class"><span class="empty-class-icon">＋</span><h2>Klassen har ingen elever endnu</h2><p>Brug knappen “Tilføj elev” ovenfor for at oprette klassens første elev.</p></div>`;
 
     if (selected) {
       const current = getOverallStats(selected,20), progress = getProgress(selected), trend = getTrend(selected);
@@ -590,7 +591,7 @@
       const strength = ranked[ranked.length-1] || challenge;
       const progressCopy = progress.direction === "up" ? `+${progress.delta} procentpoint` : progress.direction === "down" ? `${progress.delta} procentpoint` : "Stabilt niveau";
       studentDetail = `
-        <section class="student-profile-head"><div class="student-name"><span class="avatar large">${selected.name.slice(0,1)}</span><div><span class="eyebrow">Elevprofil</span><h2>${escapeHtml(selected.name)}</h2><p>${summaryFor(selected)}</p></div></div><div class="student-profile-actions"><span class="progress-badge ${progress.direction}">${progress.direction==="up"?"↗":progress.direction==="down"?"↘":"→"} ${progressCopy}</span><label>Klasse<select data-student-class="${selected.id}">${classes.map(item => `<option value="${item.id}" ${item.id===selected.classId?"selected":""}>${escapeHtml(item.name)}</option>`).join("")}</select></label></div></section>
+        <section class="student-profile-head"><div class="student-name"><span class="avatar large">${escapeHtml(selected.name.slice(0,1))}</span><div><span class="eyebrow">Elevprofil</span><h2>${escapeHtml(selected.name)}</h2><p>${summaryFor(selected)}</p></div></div><div class="student-profile-actions"><span class="progress-badge ${progress.direction}">${progress.direction==="up"?"↗":progress.direction==="down"?"↘":"→"} ${progressCopy}</span><label>Klasse<select data-student-class="${selected.id}">${classes.map(item => `<option value="${item.id}" ${item.id===selected.classId?"selected":""}>${escapeHtml(item.name)}</option>`).join("")}</select></label></div></section>
 
         <section class="student-kpis">
           <article><span>Seneste 20</span><strong>${Math.round(current.accuracy*100)} %</strong><small>korrekte svar</small></article>
@@ -633,6 +634,11 @@
         <div class="class-manager-title"><div><span class="eyebrow">Dine klasser</span><strong>${classes.length} ${classes.length===1?"klasse":"klasser"}</strong></div><form id="class-form" class="class-form"><label class="sr-only" for="class-name">Navn på ny klasse</label><input id="class-name" name="className" maxlength="30" placeholder="fx 9.A" required><button class="btn" type="submit">Opret klasse</button></form></div>
         <div class="class-tabs" role="tablist">${classes.map(item => { const count=db.users.filter(user=>user.role==="student"&&user.classId===item.id).length; return `<button role="tab" aria-selected="${item.id===activeClass.id}" class="class-tab ${item.id===activeClass.id?"active":""}" data-class="${item.id}"><strong>${escapeHtml(item.name)}</strong><small>${count} ${count===1?"elev":"elever"}</small></button>`; }).join("")}</div>
         <p id="class-error" class="class-error" role="alert"></p>
+        <div class="student-manager-row">
+          <div><strong>Elever i ${escapeHtml(activeClass.name)}</strong><small>${selected ? `${escapeHtml(selected.name)} er valgt` : "Ingen elev er valgt"}</small></div>
+          <div class="student-manager-buttons"><button class="btn secondary" type="button" data-action="toggle-student-form" aria-expanded="${state.studentFormOpen}">${state.studentFormOpen ? "Annuller" : "+ Tilføj elev"}</button><button class="btn danger" type="button" data-action="remove-student" ${selected ? "" : "disabled"}>Fjern elev</button></div>
+        </div>
+        ${state.studentFormOpen ? `<form id="student-form" class="student-form"><div class="field"><label for="student-name">Elevens navn</label><input id="student-name" name="studentName" maxlength="60" autocomplete="off" placeholder="fx Emma" required></div><div class="field"><label for="student-username">Brugernavn</label><input id="student-username" name="studentUsername" maxlength="40" autocomplete="off" autocapitalize="none" placeholder="fx emma8" required></div><div class="field"><label for="student-password">Adgangskode</label><input id="student-password" name="studentPassword" type="password" maxlength="60" autocomplete="new-password" placeholder="Vælg adgangskode" required></div><button class="btn" type="submit">Opret elev</button><p id="student-error" class="student-error" role="alert"></p></form>` : ""}
       </section>
       <section class="class-kpis">
         <article><span>Elever</span><strong>${students.length}</strong><small>aktive profiler</small></article>
@@ -643,7 +649,7 @@
 
       <section class="teacher-layout">
         <aside class="roster-panel"><div class="panel-title"><h2>Elever</h2><span>${students.length}</span></div><div class="roster-list">
-          ${students.map(student => { const stats=getOverallStats(student,20), weak=Object.keys(TOPICS).some(topic=>getStats(student,topic).status==="weak"); return `<button class="roster-item ${student.id===selected?.id?"active":""}" data-student="${student.id}"><span class="avatar">${student.name.slice(0,1)}</span><span><strong>${student.name}</strong><small>${Math.round(stats.accuracy*100)} % · ${stats.avgTime.toFixed(1)} sek.</small></span><i class="status-light ${weak?"weak":"good"}" aria-label="${weak?"Har udfordringer":"På rette spor"}"></i></button>`; }).join("")}
+          ${students.map(student => { const stats=getOverallStats(student,20), weak=Object.keys(TOPICS).some(topic=>getStats(student,topic).status==="weak"); return `<button class="roster-item ${student.id===selected?.id?"active":""}" data-student="${student.id}"><span class="avatar">${escapeHtml(student.name.slice(0,1))}</span><span><strong>${escapeHtml(student.name)}</strong><small>${Math.round(stats.accuracy*100)} % · ${stats.avgTime.toFixed(1)} sek.</small></span><i class="status-light ${weak?"weak":"good"}" aria-label="${weak?"Har udfordringer":"På rette spor"}"></i></button>`; }).join("")}
         </div></aside>
         <div class="teacher-detail">${studentDetail}</div>
       </section>
@@ -664,7 +670,18 @@
       if (!name) { error.textContent="Skriv et navn til klassen."; return; }
       if (db.classes.some(item => item.name.toLowerCase() === name.toLowerCase())) { error.textContent="Der findes allerede en klasse med det navn."; return; }
       const newClass = { id:`c-${Date.now().toString(36)}`, name };
-      db.classes.push(newClass); state.activeClassId=newClass.id; state.expandedStudent=null; state.teacherTopicDetail=null; save(); renderTeacher();
+      db.classes.push(newClass); state.activeClassId=newClass.id; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; save(); renderTeacher();
+    } else if (event.target.id === "student-form") {
+      const data = new FormData(event.target);
+      const name = String(data.get("studentName") || "").trim();
+      const username = String(data.get("studentUsername") || "").trim().toLowerCase();
+      const password = String(data.get("studentPassword") || "");
+      const error = document.getElementById("student-error");
+      if (!name || !username || !password) { error.textContent="Udfyld navn, brugernavn og adgangskode."; return; }
+      if (!/^[a-z0-9._-]+$/i.test(username)) { error.textContent="Brugernavnet må kun indeholde bogstaver, tal, punktum, bindestreg og understregning."; return; }
+      if (db.users.some(user => user.username.toLowerCase() === username)) { error.textContent="Brugernavnet er allerede i brug."; return; }
+      const newStudent = { id:`s-${Date.now().toString(36)}`, classId:state.activeClassId, role:"student", username, password, name, results:[], assignedTables:[...SMALL_TABLES], assignedAddends:[...SINGLE_DIGITS] };
+      db.users.push(newStudent); state.expandedStudent=newStudent.id; state.teacherTopicDetail=null; state.studentFormOpen=false; save(); renderTeacher();
     } else if (event.target.id === "answer-form") submitAnswer(event.target);
   });
   document.addEventListener("click", (event) => {
@@ -672,7 +689,7 @@
     if (keyButton) { handleKeypad(keyButton.dataset.key); return; }
     if (topicButton) { state.selectedTopic=topicButton.dataset.topic; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise"; newTask(); }
     if (studentButton) { state.expandedStudent=studentButton.dataset.student; state.teacherTopicDetail=null; renderTeacher(); }
-    if (classButton) { state.activeClassId=classButton.dataset.class; state.expandedStudent=null; state.teacherTopicDetail=null; renderTeacher(); return; }
+    if (classButton) { state.activeClassId=classButton.dataset.class; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; renderTeacher(); return; }
     if (tableAllButton) { const student=db.users.find(user=>user.id===tableAllButton.dataset.tableAll); if (student) { student.assignedTables=[...SMALL_TABLES]; save(); renderTeacher(); } return; }
     if (addendAllButton) { const student=db.users.find(user=>user.id===addendAllButton.dataset.addendAll); if (student) { student.assignedAddends=[...SINGLE_DIGITS]; save(); renderTeacher(); } return; }
     if (reportTopicButton) { state.teacherTopicDetail=reportTopicButton.dataset.reportTopic; renderTeacher(); return; }
@@ -682,7 +699,14 @@
     if (action==="home") { state.view="student"; renderStudentHome(); }
     if (action==="continue-after-correction") { state.questionNumber++; newTask(); }
     if (action==="close-topic-detail") { state.teacherTopicDetail=null; renderTeacher(); }
-    if (action==="reset-demo") { if (confirm("Vil du nulstille alle demoresultater?")) { db=normalizeDatabase(defaultDatabase()); state.user=db.users.find(u=>u.role==="teacher"); save(); renderTeacher(); } }
+    if (action==="toggle-student-form") { state.studentFormOpen=!state.studentFormOpen; renderTeacher(); if (state.studentFormOpen) document.getElementById("student-name")?.focus(); }
+    if (action==="remove-student") {
+      const student=db.users.find(user=>user.id===state.expandedStudent && user.role==="student" && user.classId===state.activeClassId);
+      if (student && confirm(`Vil du fjerne ${student.name} fra klassen? Elevens resultater bliver også slettet.`)) {
+        db.users=db.users.filter(user=>user.id!==student.id); state.expandedStudent=null; state.teacherTopicDetail=null; save(); renderTeacher();
+      }
+    }
+    if (action==="reset-demo") { if (confirm("Vil du nulstille alle demoresultater?")) { db=normalizeDatabase(defaultDatabase()); state.user=db.users.find(u=>u.role==="teacher"); state.studentFormOpen=false; save(); renderTeacher(); } }
   });
   document.addEventListener("change", event => {
     const addendStudentId = event.target.dataset?.addendStudent;
