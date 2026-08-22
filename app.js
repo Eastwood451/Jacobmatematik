@@ -257,7 +257,7 @@
     return database;
   }
   let db = normalizeDatabase(loadDatabase());
-  const state = { user: null, view: "login", selectedTopic: "mixed", task: null, taskStartedAt: 0, answered: false, questionNumber: 1, sessionCorrect: 0, sessionAnswers: [], expandedStudent: "s1", activeClassId:null, teacherTopicDetail: null, studentFormOpen: false, teacherPasswordFormOpen: false, classRenameFormOpen: false };
+  const state = { user: null, view: "login", selectedTopic: "mixed", task: null, taskStartedAt: 0, answered: false, questionNumber: 1, sessionCorrect: 0, sessionAnswers: [], expandedStudent: "s1", activeClassId:null, teacherTopicDetail: null, studentFormOpen: false, teacherPasswordFormOpen: false, teacherUsernameFormOpen: false, classRenameFormOpen: false };
   const app = document.getElementById("app");
   const save = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
   const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
@@ -717,10 +717,11 @@
         <p id="class-error" class="class-error" role="alert"></p>
         <div class="student-manager-row">
           <div><strong>Elever i ${escapeHtml(activeClass.name)}</strong><small>${selected ? `${escapeHtml(selected.name)} er valgt` : "Ingen elev er valgt"}</small></div>
-          <div class="student-manager-buttons"><button class="btn secondary" type="button" data-action="toggle-class-rename-form" aria-expanded="${state.classRenameFormOpen}">${state.classRenameFormOpen ? "Annuller" : "Omdøb klasse"}</button><button class="btn danger" type="button" data-action="delete-class" ${classes.length > 1 ? "" : "disabled"}>Slet klasse</button><button class="btn secondary" type="button" data-action="toggle-student-password-form" aria-expanded="${state.teacherPasswordFormOpen}" ${selected ? "" : "disabled"}>${state.teacherPasswordFormOpen ? "Annuller" : "Skift adgangskode"}</button><button class="btn secondary" type="button" data-action="toggle-student-form" aria-expanded="${state.studentFormOpen}">${state.studentFormOpen ? "Annuller" : "+ Tilføj elev"}</button><button class="btn danger" type="button" data-action="remove-student" ${selected ? "" : "disabled"}>Fjern elev</button></div>
+          <div class="student-manager-buttons"><button class="btn secondary" type="button" data-action="toggle-class-rename-form" aria-expanded="${state.classRenameFormOpen}">${state.classRenameFormOpen ? "Annuller" : "Omdøb klasse"}</button><button class="btn danger" type="button" data-action="delete-class" ${classes.length > 1 ? "" : "disabled"}>Slet klasse</button><button class="btn secondary" type="button" data-action="toggle-student-username-form" aria-expanded="${state.teacherUsernameFormOpen}" ${selected ? "" : "disabled"}>${state.teacherUsernameFormOpen ? "Annuller" : "Skift brugernavn"}</button><button class="btn secondary" type="button" data-action="toggle-student-password-form" aria-expanded="${state.teacherPasswordFormOpen}" ${selected ? "" : "disabled"}>${state.teacherPasswordFormOpen ? "Annuller" : "Skift adgangskode"}</button><button class="btn secondary" type="button" data-action="toggle-student-form" aria-expanded="${state.studentFormOpen}">${state.studentFormOpen ? "Annuller" : "+ Tilføj elev"}</button><button class="btn danger" type="button" data-action="remove-student" ${selected ? "" : "disabled"}>Fjern elev</button></div>
         </div>
         ${state.classRenameFormOpen ? `<form id="class-rename-form" class="class-rename-form"><label class="sr-only" for="class-rename">Nyt klassenavn</label><input id="class-rename" name="className" maxlength="30" value="${escapeHtml(activeClass.name)}" required><button class="btn" type="submit">Gem navn</button><p id="class-rename-error" class="student-error" role="alert"></p></form>` : ""}
         ${state.studentFormOpen ? `<form id="student-form" class="student-form"><div class="field"><label for="student-name">Elevens navn</label><input id="student-name" name="studentName" maxlength="60" autocomplete="off" placeholder="fx Emma" required></div><div class="field"><label for="student-username">Brugernavn</label><input id="student-username" name="studentUsername" maxlength="40" autocomplete="off" autocapitalize="none" placeholder="fx emma8" required></div><div class="field"><label for="student-password">Adgangskode</label><input id="student-password" name="studentPassword" type="password" maxlength="60" autocomplete="new-password" placeholder="Vælg adgangskode" required></div><button class="btn" type="submit">Opret elev</button><p id="student-error" class="student-error" role="alert"></p></form>` : ""}
+        ${state.teacherUsernameFormOpen && selected ? `<form id="teacher-username-form" class="student-form"><input type="hidden" name="studentId" value="${escapeHtml(selected.id)}"><div class="field"><label for="teacher-new-username">Nyt brugernavn til ${escapeHtml(selected.name)}</label><input id="teacher-new-username" name="newUsername" maxlength="40" value="${escapeHtml(selected.username)}" autocomplete="off" autocapitalize="none" required></div><button class="btn" type="submit">Gem brugernavn</button><p id="teacher-username-error" class="student-error" role="alert"></p></form>` : ""}
         ${state.teacherPasswordFormOpen && selected ? `<form id="teacher-password-form" class="student-form"><input type="hidden" name="studentId" value="${escapeHtml(selected.id)}"><div class="field"><label for="teacher-new-password">Ny adgangskode til ${escapeHtml(selected.name)}</label><input id="teacher-new-password" name="newPassword" type="password" maxlength="60" autocomplete="new-password" required></div><div class="field"><label for="teacher-confirm-password">Gentag ny adgangskode</label><input id="teacher-confirm-password" name="confirmPassword" type="password" maxlength="60" autocomplete="new-password" required></div><button class="btn" type="submit">Gem ny adgangskode</button><p id="teacher-password-error" class="student-error" role="alert"></p></form>` : ""}
       </section>
       <section class="class-kpis">
@@ -768,6 +769,16 @@
       if (!newPassword.length) { error.textContent="Skriv en ny adgangskode."; return; }
       if (newPassword !== confirmPassword) { error.textContent="De to adgangskoder er ikke ens."; return; }
       student.password = newPassword; state.teacherPasswordFormOpen=false; save(); renderTeacher();
+    } else if (event.target.id === "teacher-username-form") {
+      const data = new FormData(event.target);
+      const student = db.users.find(user => user.id === String(data.get("studentId") || "") && user.role === "student" && user.classId === state.activeClassId);
+      const username = String(data.get("newUsername") || "").trim().toLowerCase();
+      const error = document.getElementById("teacher-username-error");
+      if (state.user.role !== "teacher" || !student) { error.textContent="Eleven blev ikke fundet."; return; }
+      if (!username) { error.textContent="Skriv et nyt brugernavn."; return; }
+      if (!/^[a-z0-9._-]+$/i.test(username)) { error.textContent="Brugernavnet må kun indeholde bogstaver, tal, punktum, bindestreg og understregning."; return; }
+      if (db.users.some(user => user.id !== student.id && user.username.toLowerCase() === username)) { error.textContent="Brugernavnet er allerede i brug."; return; }
+      student.username=username; state.teacherUsernameFormOpen=false; save(); renderTeacher();
     } else if (event.target.id === "class-form") {
       const name = String(new FormData(event.target).get("className") || "").trim();
       const error = document.getElementById("class-error");
@@ -799,8 +810,8 @@
     const keyButton=event.target.closest("[data-key]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
     if (keyButton) { handleKeypad(keyButton.dataset.key); return; }
     if (topicButton) { state.selectedTopic=topicButton.dataset.topic; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise"; newTask(); }
-    if (studentButton) { state.expandedStudent=studentButton.dataset.student; state.teacherTopicDetail=null; state.teacherPasswordFormOpen=false; renderTeacher(); }
-    if (classButton) { state.activeClassId=classButton.dataset.class; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; state.classRenameFormOpen=false; renderTeacher(); return; }
+    if (studentButton) { state.expandedStudent=studentButton.dataset.student; state.teacherTopicDetail=null; state.teacherPasswordFormOpen=false; state.teacherUsernameFormOpen=false; renderTeacher(); }
+    if (classButton) { state.activeClassId=classButton.dataset.class; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; state.teacherUsernameFormOpen=false; state.classRenameFormOpen=false; renderTeacher(); return; }
     if (tableAllButton) { const student=db.users.find(user=>user.id===tableAllButton.dataset.tableAll); if (student) { student.assignedTables=[...SMALL_TABLES]; save(); renderTeacher(); } return; }
     if (numberAllButton) { const student=db.users.find(user=>user.id===numberAllButton.dataset.numberAll); if (student) { student.assignedNumbers=[...SMALL_TABLES]; save(); renderTeacher(); } return; }
     if (addendAllButton) { const student=db.users.find(user=>user.id===addendAllButton.dataset.addendAll); if (student) { addendAllButton.dataset.addendPosition === "second" ? student.assignedAddendSeconds=[...SINGLE_DIGITS] : student.assignedAddends=[...SINGLE_DIGITS]; save(); renderTeacher(); } return; }
@@ -812,17 +823,18 @@
     if (action==="home") { state.view="student"; renderStudentHome(); }
     if (action==="continue-after-correction") { state.questionNumber++; newTask(); }
     if (action==="close-topic-detail") { state.teacherTopicDetail=null; renderTeacher(); }
-    if (action==="toggle-class-rename-form") { state.classRenameFormOpen=!state.classRenameFormOpen; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; renderTeacher(); if (state.classRenameFormOpen) document.getElementById("class-rename")?.focus(); }
+    if (action==="toggle-class-rename-form") { state.classRenameFormOpen=!state.classRenameFormOpen; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; state.teacherUsernameFormOpen=false; renderTeacher(); if (state.classRenameFormOpen) document.getElementById("class-rename")?.focus(); }
     if (action==="delete-class") {
       const activeClass=db.classes.find(item=>item.id===state.activeClassId);
       if (!activeClass || db.classes.length <= 1) return;
       const studentCount=db.users.filter(user=>user.role==="student" && user.classId===activeClass.id).length;
       if (confirm(`Vil du slette ${activeClass.name}? ${studentCount} ${studentCount===1?"elev":"elever"} og deres fremskridt slettes permanent.`)) {
         db.users=db.users.filter(user=>user.role!=="student" || user.classId!==activeClass.id); db.classes=db.classes.filter(item=>item.id!==activeClass.id);
-        state.activeClassId=db.classes[0].id; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; state.classRenameFormOpen=false; save(); renderTeacher();
+        state.activeClassId=db.classes[0].id; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; state.teacherUsernameFormOpen=false; state.classRenameFormOpen=false; save(); renderTeacher();
       }
     }
-    if (action==="toggle-student-password-form") { state.teacherPasswordFormOpen=!state.teacherPasswordFormOpen; state.studentFormOpen=false; state.classRenameFormOpen=false; renderTeacher(); if (state.teacherPasswordFormOpen) document.getElementById("teacher-new-password")?.focus(); }
+    if (action==="toggle-student-username-form") { state.teacherUsernameFormOpen=!state.teacherUsernameFormOpen; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; state.classRenameFormOpen=false; renderTeacher(); if (state.teacherUsernameFormOpen) document.getElementById("teacher-new-username")?.focus(); }
+    if (action==="toggle-student-password-form") { state.teacherPasswordFormOpen=!state.teacherPasswordFormOpen; state.studentFormOpen=false; state.teacherUsernameFormOpen=false; state.classRenameFormOpen=false; renderTeacher(); if (state.teacherPasswordFormOpen) document.getElementById("teacher-new-password")?.focus(); }
     if (action==="reset-topic-progress") {
       const topic=actionButton.dataset.resetTopic, student=db.users.find(user=>user.id===actionButton.dataset.resetStudent && user.role==="student");
       if (!student || !TOPICS[topic]) return;
@@ -831,7 +843,7 @@
         student.results=(student.results || []).filter(item=>item.topic!==topic); state.teacherTopicDetail=null; save(); renderTeacher();
       }
     }
-    if (action==="toggle-student-form") { state.studentFormOpen=!state.studentFormOpen; state.teacherPasswordFormOpen=false; state.classRenameFormOpen=false; renderTeacher(); if (state.studentFormOpen) document.getElementById("student-name")?.focus(); }
+    if (action==="toggle-student-form") { state.studentFormOpen=!state.studentFormOpen; state.teacherPasswordFormOpen=false; state.teacherUsernameFormOpen=false; state.classRenameFormOpen=false; renderTeacher(); if (state.studentFormOpen) document.getElementById("student-name")?.focus(); }
     if (action==="remove-student") {
       const student=db.users.find(user=>user.id===state.expandedStudent && user.role==="student" && user.classId===state.activeClassId);
       if (student && confirm(`Vil du fjerne ${student.name} fra klassen? Elevens resultater bliver også slettet.`)) {
