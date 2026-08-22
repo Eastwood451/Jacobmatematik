@@ -1,8 +1,9 @@
-/* Matbootcamp — al logik er almindelig JavaScript uden frameworks. */
+/* jacobmatematik — al logik er almindelig JavaScript uden frameworks. */
 (() => {
   "use strict";
 
-  const STORAGE_KEY = "matbootcamp-db-v1";
+  const STORAGE_KEY = "jacobmatematik-db-v1";
+  const LEGACY_STORAGE_KEYS = ["matbootcamp-db-v1", "talvaerkstedet-db-v1"];
   const TOPICS = {
     numbers: { name: "Tallene", icon: "● ● ●", description: "Tæl figurer fra 0 til 10" },
     addition: { name: "Plusstykker", icon: "4 + 5", description: "Plus med etcifrede tal" },
@@ -170,7 +171,7 @@
 
   function loadDatabase() {
     try {
-      const legacyStorageKey = Object.keys(localStorage).find(key => key !== STORAGE_KEY && key.endsWith("-db-v1"));
+      const legacyStorageKey = LEGACY_STORAGE_KEYS.find(key => localStorage.getItem(key));
       const stored = localStorage.getItem(STORAGE_KEY) || (legacyStorageKey ? localStorage.getItem(legacyStorageKey) : null);
       if (stored && !localStorage.getItem(STORAGE_KEY)) localStorage.setItem(STORAGE_KEY, stored);
       return JSON.parse(stored) || defaultDatabase();
@@ -217,10 +218,10 @@
   }
 
   function header() {
-    return `<header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>Matbootcamp</span></div><div class="top-actions"><span class="user-pill">${escapeHtml(state.user.name)} · ${state.user.role === "teacher" ? "Lærer" : "Elev"}</span><button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
+    return `<header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions"><span class="user-pill">${escapeHtml(state.user.name)} · ${state.user.role === "teacher" ? "Lærer" : "Elev"}</span><button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
   }
   function renderLogin() {
-    app.innerHTML = `<div class="login-wrap"><section class="login-intro"><span class="eyebrow">Matematik der følger dig</span><h1>Bliv stærkere, ét svar ad gangen.</h1><p>Matbootcamp finder det niveau, der udfordrer dig tilpas — og giver mere træning dér, hvor du har brug for den.</p><div class="math-trail"><span>7 × 8</span><span>−4 + 9</span><span>3(2 + 5)</span><span>6 + 2 × 4</span></div></section><section class="login-panel"><form class="login-card" id="login-form"><h2>Godt at se dig</h2><p>Log ind som elev eller lærer for at fortsætte.</p><div class="field"><label for="username">Brugernavn</label><input id="username" name="username" autocomplete="username" autocapitalize="none" placeholder="fx alma7" required></div><div class="field"><label for="password">Adgangskode</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Din adgangskode" required></div><p id="login-error" class="error" role="alert"></p><button class="btn full" type="submit">Log ind</button><div class="demo-box"><strong>Prøv demoen</strong><br>Elev: alma7 / 1234<br>Lærer: laerer / skole123</div></form></section></div>`;
+    app.innerHTML = `<div class="login-wrap"><section class="login-intro"><span class="eyebrow">Matematik der følger dig</span><h1>Bliv stærkere, ét svar ad gangen.</h1><p>jacobmatematik finder det niveau, der udfordrer dig tilpas — og giver mere træning dér, hvor du har brug for den.</p><div class="math-trail"><span>7 × 8</span><span>−4 + 9</span><span>3(2 + 5)</span><span>6 + 2 × 4</span></div></section><section class="login-panel"><form class="login-card" id="login-form"><h2>Godt at se dig</h2><p>Log ind som elev eller lærer for at fortsætte.</p><div class="field"><label for="username">Brugernavn</label><input id="username" name="username" autocomplete="username" autocapitalize="none" placeholder="fx alma7" required></div><div class="field"><label for="password">Adgangskode</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Din adgangskode" required></div><p id="login-error" class="error" role="alert"></p><button class="btn full" type="submit">Log ind</button><div class="demo-box"><strong>Prøv demoen</strong><br>Elev: alma7 / 1234<br>Lærer: laerer / skole123</div></form></section></div>`;
     document.getElementById("username").focus();
   }
   function renderStudentHome() {
