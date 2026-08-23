@@ -16,6 +16,17 @@
 
   const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
   const pick = (items) => items[rand(0, items.length - 1)];
+  const weightedPick = (items, weightForItem) => {
+    const weighted = items.map(item => ({ item, weight:Math.max(0, Number(weightForItem(item)) || 0) }));
+    const total = weighted.reduce((sum, entry) => sum + entry.weight, 0);
+    if (!total) return pick(items);
+    let target = Math.random() * total;
+    for (const entry of weighted) {
+      target -= entry.weight;
+      if (target <= 0) return entry.item;
+    }
+    return weighted[weighted.length - 1].item;
+  };
   const shuffle = (items) => {
     const shuffled = [...items];
     for (let index = shuffled.length - 1; index > 0; index--) {
@@ -34,9 +45,12 @@
   const MathModules = {
     numbers: {
       generate(level, user) {
-        // Antallet vælges kun blandt de tal, læreren har markeret.
+        // Antallet vælges blandt lærerens tal. Sølv vises halvt så ofte,
+        // og guld vises en tiendedel så ofte som et endnu ikke lært tal.
         const assigned = (user?.assignedNumbers || SMALL_TABLES).filter(number => SMALL_TABLES.includes(number));
-        const count = pick(assigned.length ? assigned : SMALL_TABLES);
+        const available = assigned.length ? assigned : SMALL_TABLES;
+        const grouped = numberValueStats(user || { results:[] });
+        const count = weightedPick(available, number => numberPracticeWeight(numberMastery(grouped.get(String(number)) || [])));
         const shapes = Array.from({length:count}, () => pick(["circle", "square", "triangle", "diamond"]));
         const countingMode = Math.random() < .5 ? "shapes" : "hands";
         const hint = countingMode === "hands" ? "Tæl fingrene på hænderne." : "Tæl figurerne i feltet.";
@@ -226,10 +240,8 @@
     return remoteSaveQueue;
   };
   const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
-  // De hurtige grundøvelser registreres højst som 10 sekunder – også når ældre data vises.
-  const recordedTime = (result) => SPEED_DRILLS.has(result.topic)
-    ? Math.min(10, Math.max(0, Number(result.responseTime) || 0))
-    : Math.max(0, Number(result.responseTime) || 0);
+  // Den faktiske svartid bruges til læring. Farveskalaer kan stadig afrunde visuelt ved 10 sekunder.
+  const recordedTime = (result) => Math.max(0, Number(result.responseTime) || 0);
 
   /* De seneste 20 svar pr. emne styrer nøjagtighed, tid, niveau og vægt. */
   function getStats(user, topic) {
@@ -293,20 +305,23 @@
           .map(([key]) => key.split("-").map(Number))
           .sort((left,right) => left[0] - right[0] || left[1] - right[1])
       : [];
-    const learnedNumbers = task.topic === "numbers"
-      ? [...numberValueStats(state.user).entries()].filter(([,items]) => drillMastery(items, 10).learned).map(([key]) => Number(key)).sort((a,b)=>a-b)
+    const numberCoins = task.topic === "numbers"
+      ? [...numberValueStats(state.user).entries()]
+          .map(([key,items]) => ({ number:Number(key), ...numberMastery(items) }))
+          .filter(item => item.stage !== "none")
+          .sort((a,b)=>a.number-b.number)
       : [];
     const operator = task.topic === "addition" ? "+" : "×";
-    const learnedSection = learnedPairs.length || learnedNumbers.length ? `<section class="learned-pairs" aria-label="Lærte opgaver">
+    const learnedSection = learnedPairs.length || numberCoins.length ? `<section class="learned-pairs" aria-label="Lærte opgaver">
       <h2>Lærte</h2>
-      <div class="learned-pair-list">${learnedPairs.map(([a,b]) => `<div class="learned-pair" role="img" aria-label="${a} ${operator === "+" ? "plus" : "gange"} ${b} er lært" title="${a} ${operator} ${b} er lært"><strong aria-hidden="true">✓</strong><span>${a}</span><span>${b}</span></div>`).join("")}${learnedNumbers.map(number => `<div class="learned-number-coin" role="img" aria-label="Tallet ${number} er lært" title="Tallet ${number} er lært"><span aria-hidden="true">${number}</span></div>`).join("")}</div>
+      <div class="learned-pair-list">${learnedPairs.map(([a,b]) => `<div class="learned-pair" role="img" aria-label="${a} ${operator === "+" ? "plus" : "gange"} ${b} er lært" title="${a} ${operator} ${b} er lært"><strong aria-hidden="true">✓</strong><span>${a}</span><span>${b}</span></div>`).join("")}${numberCoins.map(({number,stage}) => `<div class="learned-number-coin ${stage}" role="img" aria-label="Tallet ${number} er på en ${stage === "gold" ? "guldmønt" : "sølvmønt"}" title="${stage === "gold" ? "Guld" : "Sølv"}: tallet ${number}"><span aria-hidden="true">${number}</span></div>`).join("")}</div>
     </section>` : "";
     const undefinedKey = task.answerType === "undefined"
       ? `<button class="key utility impossible" type="button" data-key="undefined">Kan ikke beregnes</button>`
       : "";
     // I Tallene står svarene 1–10 med 0 til sidst, indtil det aktuelle antal er lært.
     // Derefter blandes alle svarmuligheder fra 0 til 10 ved hver ny opgave.
-    const learnedNumberTask = task.topic === "numbers" && learnedNumbers.includes(Number(task.answer));
+    const learnedNumberTask = task.topic === "numbers" && numberCoins.some(item => item.number === Number(task.answer));
     const keypadNumbers = task.topic === "numbers"
       ? (learnedNumberTask ? shuffle(SMALL_TABLES) : ORDERED_NUMBER_KEYS)
       : shuffle(SINGLE_DIGITS);
@@ -370,7 +385,7 @@
     const isUndefinedAnswer = raw === "Kan ikke beregnes";
     if (raw === "" || (!isUndefinedAnswer && !Number.isFinite(Number(raw)))) { document.getElementById("answer-error").textContent = "Vælg eller skriv et svar først."; return; }
     const measuredTime = Math.max(.1, (Date.now() - state.taskStartedAt) / 1000);
-    const responseTime = SPEED_DRILLS.has(state.task.topic) ? Math.min(10, measuredTime) : measuredTime;
+    const responseTime = measuredTime;
     const correct = MathModules[state.task.topic].evaluate(raw, state.task);
     state.answered = true; state.sessionAnswers.push(correct); if (correct) state.sessionCorrect++;
     const result = { topic:state.task.topic, problem:state.task.expression, answer:isUndefinedAnswer ? "Kan ikke beregnes" : Number(raw), correctAnswer:state.task.answer === "undefined" ? "Kan ikke beregnes" : state.task.answer, correct, responseTime:+responseTime.toFixed(2), timestamp:new Date().toISOString() };
@@ -540,6 +555,31 @@
     return { learned:false, streak:Math.min(2,currentStreak) };
   }
 
+  // Tallene har to varige trin. Tre hurtige svar i træk giver sølv;
+  // yderligere tre hurtige svar i træk giver guld. En langsom eller forkert
+  // besvarelse nulstiller kun fremdriften mod det næste trin.
+  function numberMastery(items, maxSeconds = 10) {
+    const ordered = [...items].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+    let stage = "none", streak = 0;
+    ordered.forEach(item => {
+      streak = item.correct && recordedTime(item) <= maxSeconds ? streak + 1 : 0;
+      if (stage === "none" && streak >= 3) {
+        stage = "silver";
+        streak = 0;
+      } else if (stage === "silver" && streak >= 3) {
+        stage = "gold";
+        streak = 0;
+      }
+    });
+    return { stage, streak:stage === "gold" ? 3 : Math.min(2, streak) };
+  }
+
+  function numberPracticeWeight(mastery) {
+    if (mastery.stage === "gold") return .1;
+    if (mastery.stage === "silver") return .5;
+    return 1;
+  }
+
   const accuracyColor = (accuracy) => `hsl(${Math.round(accuracy * 1.2)} 72% 86%)`;
   const responseTimeColor = (seconds) => {
     const capped = Math.min(10, Math.max(0, seconds));
@@ -598,17 +638,20 @@
   function renderNumbersDetail(user) {
     const grouped = numberValueStats(user);
     const values = Array.from({length:11},(_,index)=>index);
-    const learnedCount = [...grouped.values()].filter(items => drillMastery(items, 10).learned).length;
+    const stages = [...grouped.values()].map(items => numberMastery(items));
+    const silverCount = stages.filter(item => item.stage === "silver").length;
+    const goldCount = stages.filter(item => item.stage === "gold").length;
     const cards = values.map(number => {
       const items = grouped.get(String(number)) || [];
-      if (!items.length) return `<article class="number-stat-card empty-pair"><strong>${number}</strong><span>—</span><small>0 svar</small><em>0/3 hurtige i træk</em></article>`;
+      if (!items.length) return `<article class="number-stat-card empty-pair"><strong>${number}</strong><span>—</span><small>0 svar</small><em>0/3 mod sølv</em></article>`;
       const accuracy = Math.round(items.filter(item => item.correct).length / items.length * 100);
       const avgTime = items.reduce((sum,item) => sum + recordedTime(item), 0) / items.length;
-      const mastery = drillMastery(items, 10);
-      return `<article class="number-stat-card ${mastery.learned?"learned-pair":""}" style="background:${responseTimeColor(avgTime)}"><strong>${number}</strong><div class="pair-cell-main"><span class="pair-pie" style="--correct:${accuracy}%" role="img" aria-label="${accuracy} % korrekte og ${100-accuracy} % forkerte"></span><span>${accuracy} %</span></div><small>${items.length} svar · ${avgTime.toFixed(1)} s</small><em class="${mastery.learned?"learned":""}">${mastery.learned?"✓ Lært":`${mastery.streak}/3 hurtige i træk`}</em></article>`;
+      const mastery = numberMastery(items);
+      const progress = mastery.stage === "gold" ? "Guld" : mastery.stage === "silver" ? `Sølv · ${mastery.streak}/3 mod guld` : `${mastery.streak}/3 mod sølv`;
+      return `<article class="number-stat-card ${mastery.stage === "gold" ? "learned-pair" : mastery.stage === "silver" ? "silver-number" : ""}" style="background:${responseTimeColor(avgTime)}"><strong>${number}</strong><div class="pair-cell-main"><span class="pair-pie" style="--correct:${accuracy}%" role="img" aria-label="${accuracy} % korrekte og ${100-accuracy} % forkerte"></span><span>${accuracy} %</span></div><small>${items.length} svar · ${avgTime.toFixed(1)} s</small><em class="${mastery.stage !== "none" ? "learned" : ""}">${progress}</em></article>`;
     }).join("");
     return `<section class="pair-detail" aria-labelledby="numbers-detail-title">
-      <div class="pair-detail-head"><div><span class="eyebrow">Detaljer</span><h3 id="numbers-detail-title">Tallene – hvert antal</h3><p>Et antal er lært efter 3 grønne flueben i træk: korrekt på højst 10 sekunder.</p></div><div class="pair-detail-actions"><span class="mastery-summary"><strong>${learnedCount}</strong> af 11 lært</span><button class="btn secondary" data-action="close-topic-detail">Luk</button></div></div>
+      <div class="pair-detail-head"><div><span class="eyebrow">Detaljer</span><h3 id="numbers-detail-title">Tallene – hvert antal</h3><p>3 korrekte i træk på højst 10 sekunder giver sølv. De næste 3 giver guld.</p></div><div class="pair-detail-actions"><span class="mastery-summary"><strong>${silverCount}</strong> sølv · <strong>${goldCount}</strong> guld</span><button class="btn secondary" data-action="close-topic-detail">Luk</button></div></div>
       <div class="time-scale"><span>0 s</span><i></i><span>10 s</span><small>Grøn = hurtigt, rød = 10 sekunder</small></div>
       <div class="number-stat-grid">${cards}</div>
     </section>`;
