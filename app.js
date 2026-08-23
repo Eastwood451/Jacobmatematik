@@ -299,7 +299,7 @@
     const operator = task.topic === "addition" ? "+" : "×";
     const learnedSection = learnedPairs.length || learnedNumbers.length ? `<section class="learned-pairs" aria-label="Lærte opgaver">
       <h2>Lærte</h2>
-      <div class="learned-pair-list">${learnedPairs.map(([a,b]) => `<div class="learned-pair" role="img" aria-label="${a} ${operator === "+" ? "plus" : "gange"} ${b} er lært" title="${a} ${operator} ${b} er lært"><strong aria-hidden="true">✓</strong><span>${a}</span><span>${b}</span></div>`).join("")}${learnedNumbers.map(number => `<div class="learned-pair learned-number" role="img" aria-label="Tallet ${number} er lært" title="Tallet ${number} er lært"><strong aria-hidden="true">✓</strong><span>${number}</span></div>`).join("")}</div>
+      <div class="learned-pair-list">${learnedPairs.map(([a,b]) => `<div class="learned-pair" role="img" aria-label="${a} ${operator === "+" ? "plus" : "gange"} ${b} er lært" title="${a} ${operator} ${b} er lært"><strong aria-hidden="true">✓</strong><span>${a}</span><span>${b}</span></div>`).join("")}${learnedNumbers.map(number => `<div class="learned-number-coin" role="img" aria-label="Tallet ${number} er lært" title="Tallet ${number} er lært"><span aria-hidden="true">${number}</span></div>`).join("")}</div>
     </section>` : "";
     const undefinedKey = task.answerType === "undefined"
       ? `<button class="key utility impossible" type="button" data-key="undefined">Kan ikke beregnes</button>`
