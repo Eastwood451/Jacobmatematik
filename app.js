@@ -318,10 +318,11 @@
     const drillAttempts = SPEED_DRILLS.has(task.topic)
       ? (state.user.results || []).filter(item => item.topic === task.topic && item.problem === task.expression).sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp)).slice(-8)
       : [];
+    const masterySeconds = task.topic === "numbers" ? 10 : 5;
     const attemptHistory = drillAttempts.length ? `<aside class="pair-history" aria-label="Historik for denne opgave">${drillAttempts.map(item => {
-      const fast = item.correct && recordedTime(item) <= 5;
+      const fast = item.correct && recordedTime(item) <= masterySeconds;
       const kind = !item.correct ? "wrong" : fast ? "fast" : "slow";
-      const label = !item.correct ? "Forkert besvaret" : fast ? "Korrekt på højst 5 sekunder" : "Korrekt på over 5 sekunder";
+      const label = !item.correct ? "Forkert besvaret" : fast ? `Korrekt på højst ${masterySeconds} sekunder` : `Korrekt på over ${masterySeconds} sekunder`;
       return `<span class="history-mark ${kind}" role="img" aria-label="${label}" title="${label} · ${recordedTime(item).toFixed(1)} s">${item.correct ? "✓" : "×"}</span>`;
     }).join("")}</aside>` : "";
     const learnedPairs = ["multiplication", "addition"].includes(task.topic)
@@ -331,7 +332,7 @@
           .sort((left,right) => left[0] - right[0] || left[1] - right[1])
       : [];
     const learnedNumbers = task.topic === "numbers"
-      ? [...numberValueStats(state.user).entries()].filter(([,items]) => drillMastery(items).learned).map(([key]) => Number(key)).sort((a,b)=>a-b)
+      ? [...numberValueStats(state.user).entries()].filter(([,items]) => drillMastery(items, 10).learned).map(([key]) => Number(key)).sort((a,b)=>a-b)
       : [];
     const operator = task.topic === "addition" ? "+" : "×";
     const learnedSection = learnedPairs.length || learnedNumbers.length ? `<section class="learned-pairs" aria-label="Lærte opgaver">
@@ -550,19 +551,19 @@
     return grouped;
   }
 
-  // Et ordnet talpar er lært, når eleven på et tidspunkt har haft tre
-  // korrekte besvarelser i træk på højst fem sekunder hver.
-  function drillMastery(items) {
+  // En opgave er lært, når eleven på et tidspunkt har haft tre hurtige,
+  // korrekte besvarelser i træk. Tidsgrænsen gives af det enkelte emne.
+  function drillMastery(items, maxSeconds = 5) {
     const ordered = [...items].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
     let streak = 0, learned = false;
     ordered.forEach(item => {
-      streak = item.correct && recordedTime(item) <= 5 ? streak + 1 : 0;
+      streak = item.correct && recordedTime(item) <= maxSeconds ? streak + 1 : 0;
       if (streak >= 3) learned = true;
     });
     if (learned) return { learned:true, streak:3 };
     let currentStreak = 0;
     for (let i = ordered.length - 1; i >= 0; i--) {
-      if (ordered[i].correct && recordedTime(ordered[i]) <= 5) currentStreak++;
+      if (ordered[i].correct && recordedTime(ordered[i]) <= maxSeconds) currentStreak++;
       else break;
     }
     return { learned:false, streak:Math.min(2,currentStreak) };
@@ -626,17 +627,17 @@
   function renderNumbersDetail(user) {
     const grouped = numberValueStats(user);
     const values = Array.from({length:11},(_,index)=>index);
-    const learnedCount = [...grouped.values()].filter(items => drillMastery(items).learned).length;
+    const learnedCount = [...grouped.values()].filter(items => drillMastery(items, 10).learned).length;
     const cards = values.map(number => {
       const items = grouped.get(String(number)) || [];
       if (!items.length) return `<article class="number-stat-card empty-pair"><strong>${number}</strong><span>—</span><small>0 svar</small><em>0/3 hurtige i træk</em></article>`;
       const accuracy = Math.round(items.filter(item => item.correct).length / items.length * 100);
       const avgTime = items.reduce((sum,item) => sum + recordedTime(item), 0) / items.length;
-      const mastery = drillMastery(items);
+      const mastery = drillMastery(items, 10);
       return `<article class="number-stat-card ${mastery.learned?"learned-pair":""}" style="background:${responseTimeColor(avgTime)}"><strong>${number}</strong><div class="pair-cell-main"><span class="pair-pie" style="--correct:${accuracy}%" role="img" aria-label="${accuracy} % korrekte og ${100-accuracy} % forkerte"></span><span>${accuracy} %</span></div><small>${items.length} svar · ${avgTime.toFixed(1)} s</small><em class="${mastery.learned?"learned":""}">${mastery.learned?"✓ Lært":`${mastery.streak}/3 hurtige i træk`}</em></article>`;
     }).join("");
     return `<section class="pair-detail" aria-labelledby="numbers-detail-title">
-      <div class="pair-detail-head"><div><span class="eyebrow">Detaljer</span><h3 id="numbers-detail-title">Tallene – hvert antal</h3><p>Et antal er lært efter 3 grønne flueben i træk: korrekt på højst 5 sekunder.</p></div><div class="pair-detail-actions"><span class="mastery-summary"><strong>${learnedCount}</strong> af 11 lært</span><button class="btn secondary" data-action="close-topic-detail">Luk</button></div></div>
+      <div class="pair-detail-head"><div><span class="eyebrow">Detaljer</span><h3 id="numbers-detail-title">Tallene – hvert antal</h3><p>Et antal er lært efter 3 grønne flueben i træk: korrekt på højst 10 sekunder.</p></div><div class="pair-detail-actions"><span class="mastery-summary"><strong>${learnedCount}</strong> af 11 lært</span><button class="btn secondary" data-action="close-topic-detail">Luk</button></div></div>
       <div class="time-scale"><span>0 s</span><i></i><span>10 s</span><small>Grøn = hurtigt, rød = 10 sekunder</small></div>
       <div class="number-stat-grid">${cards}</div>
     </section>`;
