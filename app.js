@@ -26,6 +26,7 @@
   };
   const SMALL_TABLES = Array.from({length:11}, (_,index) => index);
   const SINGLE_DIGITS = Array.from({length:10}, (_,index) => index);
+  const ORDERED_NUMBER_KEYS = [...SMALL_TABLES.slice(1), 0];
   const SPEED_DRILLS = new Set(["numbers", "addition", "multiplication"]);
   const makeTask = (topic, expression, answer, hint = "", options = {}) => ({ topic, expression, answer, hint, ...options });
 
@@ -340,11 +341,11 @@
     const undefinedKey = task.answerType === "undefined"
       ? `<button class="key utility impossible" type="button" data-key="undefined">Kan ikke beregnes</button>`
       : "";
-    // I Tallene står svarene i talrækkefølge, indtil det aktuelle antal er lært.
+    // I Tallene står svarene 1–10 med 0 til sidst, indtil det aktuelle antal er lært.
     // Derefter blandes alle svarmuligheder fra 0 til 10 ved hver ny opgave.
     const learnedNumberTask = task.topic === "numbers" && learnedNumbers.includes(Number(task.answer));
     const keypadNumbers = task.topic === "numbers"
-      ? (learnedNumberTask ? shuffle(SMALL_TABLES) : SMALL_TABLES)
+      ? (learnedNumberTask ? shuffle(SMALL_TABLES) : ORDERED_NUMBER_KEYS)
       : shuffle(SINGLE_DIGITS);
     const signedKey = task.topic === "numbers"
       ? ""
