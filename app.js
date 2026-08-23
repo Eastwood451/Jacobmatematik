@@ -168,54 +168,6 @@
     return results;
   }
 
-  const SCHOOL_2026_CLASSES = [
-    { id:"c-5-2026", name:"5. klasse 2026" },
-    { id:"c-7-2026", name:"7. klasse 2026" },
-  ];
-  const SCHOOL_2026_STUDENTS = [
-    ["s-5-2026-abbygale", "c-5-2026", "abbygale", "Abbygale123", "Abbygale Victoria Pitsch"],
-    ["s-5-2026-agnes", "c-5-2026", "agnes", "Agnes123", "Agnes Rauff Studsholt"],
-    ["s-5-2026-anton", "c-5-2026", "AntonJ", "Anton123", "Anton Riis Jacobsen"],
-    ["s-5-2026-jens", "c-5-2026", "jens", "Jens123", "Jens Elias Andersen"],
-    ["s-5-2026-jimmie", "c-5-2026", "jimmie", "Jimmie123", "Jimmie Sonko Jensen"],
-    ["s-5-2026-magnus", "c-5-2026", "magnus", "Magnus123", "Magnus Pedersen"],
-    ["s-5-2026-malis", "c-5-2026", "malis", "Malis123", "Malis Skaun Hoffmann"],
-    ["s-5-2026-malte-skougaard", "c-5-2026", "MalteD", "Malte123", "Malte Skougaard Dyhr"],
-    ["s-5-2026-malte-tolstrup", "c-5-2026", "MalteP", "Malte123", "Malte Tolstrup Pedersen"],
-    ["s-5-2026-mille", "c-5-2026", "mille", "Mille123", "Mille Vorbeck Karlsson"],
-    ["s-5-2026-nicki", "c-5-2026", "nicki", "Nicki123", "Nicki Holmberg Nielsen"],
-    ["s-5-2026-sofia", "c-5-2026", "sofia", "Sofia123", "Sofia Nicole Vieru"],
-    ["s-5-2026-vigga", "c-5-2026", "vigga-mynthe", "Vigga-Mynthe123", "Vigga-Mynthe Hald Sørensen"],
-    ["s-7-2026-anton", "c-7-2026", "AntonK", "Anton123", "Anton Marinus Sønder Knudsen"],
-    ["s-7-2026-christoffer", "c-7-2026", "christoffer", "Christoffer123", "Christoffer Linnemann Munk"],
-    ["s-7-2026-jessica", "c-7-2026", "jessica", "Jessica123", "Jessica Louise Sørensen"],
-    ["s-7-2026-johan", "c-7-2026", "johan", "Johan123", "Johan Lyng"],
-    ["s-7-2026-johanne", "c-7-2026", "johanne", "Johanne123", "Johanne Rosenkrantz Poulsen"],
-    ["s-7-2026-lauritz", "c-7-2026", "lauritz", "Lauritz123", "Lauritz Rauff Studsholt"],
-    ["s-7-2026-leander", "c-7-2026", "leander", "Leander123", "Leander Skaun Hoffmann"],
-    ["s-7-2026-maja", "c-7-2026", "maja", "Maja123", "Maja Connie Honeré Bergen Vilumsen"],
-    ["s-7-2026-torben", "c-7-2026", "torben", "Torben123", "Torben Daniel O'Shea"],
-    ["s-7-2026-valdemar", "c-7-2026", "valdemar", "Valdemar123", "Valdemar Jakobsen"],
-    ["s-7-2026-william-hesselbaek", "c-7-2026", "WilliamY", "William123", "William Hesselbæk Yejn"],
-    ["s-7-2026-william-kaehlershoej", "c-7-2026", "WilliamL", "William123", "William Kæhlershøj Larsson"],
-  ];
-
-  function addSchool2026Data(database) {
-    database.classes = Array.isArray(database.classes) ? database.classes : [];
-    database.users = Array.isArray(database.users) ? database.users : [];
-    SCHOOL_2026_CLASSES.forEach(schoolClass => {
-      if (!database.classes.some(item => item.id === schoolClass.id)) database.classes.push({...schoolClass});
-    });
-    SCHOOL_2026_STUDENTS.forEach(([id, classId, username, password, name]) => {
-      const existing = database.users.find(user => user.id === id);
-      if (existing) {
-        existing.username = username;
-      } else if (!database.users.some(user => user.username?.toLowerCase() === username.toLowerCase())) {
-        database.users.push({ id, classId, role:"student", username, password, name, results:[] });
-      }
-    });
-  }
-
   function defaultDatabase() {
     return {
       classes: [
@@ -227,7 +179,7 @@
         { id: "s2", classId:"c1", role: "student", username: "noah4", password: "1234", name: "Noah", results: seedResults({ numbers:"steady", addition:"needsWork", basics:"needsWork", multiplication:"steady", pemdas:"needsWork", negatives:"steady", distributive:"strong" }) },
         { id: "s3", classId:"c2", role: "student", username: "freja9", password: "1234", name: "Freja", results: seedResults({ numbers:"strong", addition:"strong", basics:"strong", multiplication:"strong", pemdas:"strong", negatives:"steady", distributive:"strong" }) },
         { id: "s4", classId:"c2", role: "student", username: "malik2", password: "1234", name: "Malik", results: seedResults({ numbers:"new", addition:"new", basics:"new", multiplication:"new", pemdas:"needsWork", negatives:"needsWork", distributive:"new" }) },
-        { id: "t1", role: "teacher", username: "Jacob", password: "skole", name: "Mette" },
+        { id: "t1", role: "teacher", username: "demo-teacher", password: "demo", name: "Demolærer" },
       ],
     };
   }
@@ -241,9 +193,10 @@
     }
     catch { return defaultDatabase(); }
   }
-  function normalizeDatabase(database) {
-    addSchool2026Data(database);
-    if (!Array.isArray(database.classes) || !database.classes.length) database.classes = [{id:"c1",name:"7.A"},{id:"c2",name:"8.B"}];
+  function normalizeDatabase(database, includeLocalSchoolData = true) {
+    if (!Array.isArray(database.classes) || !database.classes.length) database.classes = includeLocalSchoolData
+      ? [{id:"c1",name:"7.A"},{id:"c2",name:"8.B"}]
+      : [{id:`c-${Date.now().toString(36)}`,name:"Min klasse"}];
     const validIds = new Set(database.classes.map(item => item.id));
     (database.users || []).filter(user => user.role === "student").forEach(user => {
       if (!validIds.has(user.classId)) user.classId = ["s3","s4"].includes(user.id) && validIds.has("c2") ? "c2" : database.classes[0].id;
@@ -256,13 +209,22 @@
       if (!Array.isArray(user.assignedAddendSeconds) || !user.assignedAddendSeconds.length) user.assignedAddendSeconds = [...SINGLE_DIGITS];
       user.assignedAddendSeconds = [...new Set(user.assignedAddendSeconds.map(Number).filter(number => SINGLE_DIGITS.includes(number)))].sort((a,b)=>a-b);
     });
-    (database.users || []).filter(user => user.role === "teacher" && ["laerer", "jacob"].includes(String(user.username).toLowerCase())).forEach(user => { user.username = "Jacob"; user.password = "skole"; });
     return database;
   }
   let db = normalizeDatabase(loadDatabase());
   const state = { user: null, view: "login", selectedTopic: "mixed", task: null, taskStartedAt: 0, answered: false, questionNumber: 1, sessionCorrect: 0, sessionAnswers: [], expandedStudent: "s1", activeClassId:null, teacherTopicDetail: null, studentFormOpen: false, teacherPasswordFormOpen: false, teacherUsernameFormOpen: false, classRenameFormOpen: false };
   const app = document.getElementById("app");
-  const save = () => localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+  const backend = window.JacobBackend;
+  const usingCentralDatabase = Boolean(backend?.configured);
+  let remoteSaveQueue = Promise.resolve();
+  const save = () => {
+    if (!usingCentralDatabase) { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); return Promise.resolve(); }
+    if (state.user?.role !== "teacher") return Promise.resolve();
+    remoteSaveQueue = remoteSaveQueue
+      .then(() => backend.saveSchoolState(db, state.user.id))
+      .catch(error => { console.error("Synkronisering mislykkedes", error); });
+    return remoteSaveQueue;
+  };
   const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
   // De hurtige grundøvelser registreres højst som 10 sekunder – også når ældre data vises.
   const recordedTime = (result) => SPEED_DRILLS.has(result.topic)
@@ -402,7 +364,7 @@
     const label = count === 0 ? "En lukket hånd viser nul fingre" : `${count} ${count === 1 ? "finger" : "fingre"}`;
     return `<div class="hand-counting-field" role="img" aria-label="${label}">${hands}</div>`;
   }
-  function submitAnswer(form) {
+  async function submitAnswer(form) {
     if (state.answered) return;
     const raw = new FormData(form).get("answer").trim().replace(",", ".");
     const isUndefinedAnswer = raw === "Kan ikke beregnes";
@@ -411,8 +373,17 @@
     const responseTime = SPEED_DRILLS.has(state.task.topic) ? Math.min(10, measuredTime) : measuredTime;
     const correct = MathModules[state.task.topic].evaluate(raw, state.task);
     state.answered = true; state.sessionAnswers.push(correct); if (correct) state.sessionCorrect++;
-    state.user.results.push({ topic:state.task.topic, problem:state.task.expression, answer:isUndefinedAnswer ? "Kan ikke beregnes" : Number(raw), correctAnswer:state.task.answer === "undefined" ? "Kan ikke beregnes" : state.task.answer, correct, responseTime:+responseTime.toFixed(2), timestamp:new Date().toISOString() });
-    save();
+    const result = { topic:state.task.topic, problem:state.task.expression, answer:isUndefinedAnswer ? "Kan ikke beregnes" : Number(raw), correctAnswer:state.task.answer === "undefined" ? "Kan ikke beregnes" : state.task.answer, correct, responseTime:+responseTime.toFixed(2), timestamp:new Date().toISOString() };
+    state.user.results.push(result);
+    try {
+      if (usingCentralDatabase) result.remoteId = await backend.appendResult(state.user.id, result);
+      else await save();
+    } catch (error) {
+      state.user.results.pop(); state.sessionAnswers.pop(); if (correct) state.sessionCorrect--; state.answered=false;
+      document.getElementById("answer-error").textContent="Svaret kunne ikke gemmes. Kontrollér forbindelsen og prøv igen.";
+      console.error(error);
+      return;
+    }
     // Korrekte svar fortsætter straks. Ved fejl skal eleven først trykke på det korrekte svar.
     if (correct) {
       state.questionNumber++;
@@ -741,7 +712,7 @@
     }
 
     app.innerHTML = `${header()}<div class="page teacher-page">
-      <section class="dashboard-head"><div><span class="eyebrow">Lærerportal</span><h1>${escapeHtml(activeClass.name)} lige nu</h1><p>Følg udvikling, opdag udfordringer og vælg næste fokus.</p></div><button class="btn secondary" data-action="reset-demo">Nulstil demodata</button></section>
+      <section class="dashboard-head"><div><span class="eyebrow">Lærerportal</span><h1>${escapeHtml(activeClass.name)} lige nu</h1><p>Følg udvikling, opdag udfordringer og vælg næste fokus.</p></div>${usingCentralDatabase ? "" : `<button class="btn secondary" data-action="reset-demo">Nulstil demodata</button>`}</section>
       <section class="class-manager" aria-label="Klasser">
         <div class="class-manager-title"><div><span class="eyebrow">Dine klasser</span><strong>${classes.length} ${classes.length===1?"klasse":"klasser"}</strong></div><form id="class-form" class="class-form"><label class="sr-only" for="class-name">Navn på ny klasse</label><input id="class-name" name="className" maxlength="30" placeholder="fx 9.A" required><button class="btn" type="submit">Opret klasse</button></form></div>
         <div class="class-tabs" role="tablist">${classes.map(item => { const count=db.users.filter(user=>user.role==="student"&&user.classId===item.id).length; return `<button role="tab" aria-selected="${item.id===activeClass.id}" class="class-tab ${item.id===activeClass.id?"active":""}" data-class="${item.id}"><strong>${escapeHtml(item.name)}</strong><small>${count} ${count===1?"elev":"elever"}</small></button>`; }).join("")}</div>
@@ -772,13 +743,24 @@
   }
   function render() { if (!state.user) renderLogin(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
 
-  document.addEventListener("submit", (event) => {
+  document.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (event.target.id === "login-form") {
       const data = new FormData(event.target), username=String(data.get("username")).trim().toLowerCase(), password=String(data.get("password"));
-      const user = db.users.find(u=>u.username.toLowerCase()===username && u.password===password);
-      if (!user) { document.getElementById("login-error").textContent="Brugernavn eller adgangskode passer ikke."; return; }
-      state.user=user; state.view=user.role==="teacher"?"teacher":"student"; render();
+      const error = document.getElementById("login-error");
+      try {
+        if (usingCentralDatabase) {
+          const loaded = await backend.signIn(username, password);
+          db = normalizeDatabase(loaded.database, false);
+          state.user = db.users.find(user => user.id === loaded.currentUserId);
+        } else state.user = db.users.find(user => user.username.toLowerCase() === username && user.password === password);
+        if (!state.user) throw new Error("Brugeren blev ikke fundet.");
+        if (usingCentralDatabase && state.user.role === "teacher") await save();
+        state.view=state.user.role==="teacher"?"teacher":"student"; render();
+      } catch (loginError) {
+        error.textContent="Brugernavn eller adgangskode passer ikke.";
+        console.error(loginError);
+      }
     } else if (event.target.id === "student-password-form") {
       const data = new FormData(event.target);
       const currentPassword = String(data.get("currentPassword") || "");
@@ -786,10 +768,14 @@
       const confirmPassword = String(data.get("confirmPassword") || "");
       const error = document.getElementById("password-error");
       if (state.user.role !== "student") return;
-      if (currentPassword !== state.user.password) { error.textContent="Den nuværende adgangskode er ikke korrekt."; return; }
+      if (!usingCentralDatabase && currentPassword !== state.user.password) { error.textContent="Den nuværende adgangskode er ikke korrekt."; return; }
       if (!newPassword.length) { error.textContent="Skriv en ny adgangskode."; return; }
       if (newPassword !== confirmPassword) { error.textContent="De to nye adgangskoder er ikke ens."; return; }
-      state.user.password = newPassword; save(); state.view="student"; renderStudentHome();
+      try {
+        if (usingCentralDatabase) await backend.changeOwnPassword(state.user.username, currentPassword, newPassword);
+        else { state.user.password = newPassword; await save(); }
+        state.view="student"; renderStudentHome();
+      } catch (passwordError) { error.textContent="Adgangskoden kunne ikke ændres. Kontrollér den nuværende adgangskode."; console.error(passwordError); }
     } else if (event.target.id === "teacher-password-form") {
       const data = new FormData(event.target);
       const student = db.users.find(user => user.id === String(data.get("studentId") || "") && user.role === "student" && user.classId === state.activeClassId);
@@ -799,7 +785,11 @@
       if (state.user.role !== "teacher" || !student) { error.textContent="Eleven blev ikke fundet."; return; }
       if (!newPassword.length) { error.textContent="Skriv en ny adgangskode."; return; }
       if (newPassword !== confirmPassword) { error.textContent="De to adgangskoder er ikke ens."; return; }
-      student.password = newPassword; state.teacherPasswordFormOpen=false; save(); renderTeacher();
+      try {
+        if (usingCentralDatabase) await backend.manageStudent("password", { studentId:student.id, password:newPassword });
+        else student.password = newPassword;
+        state.teacherPasswordFormOpen=false; await save(); renderTeacher();
+      } catch (passwordError) { error.textContent="Adgangskoden kunne ikke ændres."; console.error(passwordError); }
     } else if (event.target.id === "teacher-username-form") {
       const data = new FormData(event.target);
       const student = db.users.find(user => user.id === String(data.get("studentId") || "") && user.role === "student" && user.classId === state.activeClassId);
@@ -809,21 +799,24 @@
       if (!username) { error.textContent="Skriv et nyt brugernavn."; return; }
       if (!/^[a-z0-9._-]+$/i.test(username)) { error.textContent="Brugernavnet må kun indeholde bogstaver, tal, punktum, bindestreg og understregning."; return; }
       if (db.users.some(user => user.id !== student.id && user.username.toLowerCase() === username)) { error.textContent="Brugernavnet er allerede i brug."; return; }
-      student.username=username; state.teacherUsernameFormOpen=false; save(); renderTeacher();
+      try {
+        if (usingCentralDatabase) await backend.manageStudent("username", { studentId:student.id, username });
+        student.username=username; state.teacherUsernameFormOpen=false; await save(); renderTeacher();
+      } catch (usernameError) { error.textContent="Brugernavnet kunne ikke ændres."; console.error(usernameError); }
     } else if (event.target.id === "class-form") {
       const name = String(new FormData(event.target).get("className") || "").trim();
       const error = document.getElementById("class-error");
       if (!name) { error.textContent="Skriv et navn til klassen."; return; }
       if (db.classes.some(item => item.name.toLowerCase() === name.toLowerCase())) { error.textContent="Der findes allerede en klasse med det navn."; return; }
       const newClass = { id:`c-${Date.now().toString(36)}`, name };
-      db.classes.push(newClass); state.activeClassId=newClass.id; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; state.classRenameFormOpen=false; save(); renderTeacher();
+      db.classes.push(newClass); state.activeClassId=newClass.id; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; state.classRenameFormOpen=false; await save(); renderTeacher();
     } else if (event.target.id === "class-rename-form") {
       const name = String(new FormData(event.target).get("className") || "").trim();
       const error = document.getElementById("class-rename-error");
       const activeClass = db.classes.find(item => item.id === state.activeClassId);
       if (!activeClass || !name) { error.textContent="Skriv et navn til klassen."; return; }
       if (db.classes.some(item => item.id !== activeClass.id && item.name.toLowerCase() === name.toLowerCase())) { error.textContent="Der findes allerede en klasse med det navn."; return; }
-      activeClass.name=name; state.classRenameFormOpen=false; save(); renderTeacher();
+      activeClass.name=name; state.classRenameFormOpen=false; await save(); renderTeacher();
     } else if (event.target.id === "student-form") {
       const data = new FormData(event.target);
       const name = String(data.get("studentName") || "").trim();
@@ -833,11 +826,14 @@
       if (!name || !username || !password) { error.textContent="Udfyld navn, brugernavn og adgangskode."; return; }
       if (!/^[a-z0-9._-]+$/i.test(username)) { error.textContent="Brugernavnet må kun indeholde bogstaver, tal, punktum, bindestreg og understregning."; return; }
       if (db.users.some(user => user.username.toLowerCase() === username)) { error.textContent="Brugernavnet er allerede i brug."; return; }
-      const newStudent = { id:`s-${Date.now().toString(36)}`, classId:state.activeClassId, role:"student", username, password, name, results:[], assignedNumbers:[...SMALL_TABLES], assignedTables:[...SMALL_TABLES], assignedAddends:[...SINGLE_DIGITS], assignedAddendSeconds:[...SINGLE_DIGITS] };
-      db.users.push(newStudent); state.expandedStudent=newStudent.id; state.teacherTopicDetail=null; state.studentFormOpen=false; save(); renderTeacher();
-    } else if (event.target.id === "answer-form") submitAnswer(event.target);
+      try {
+        const remoteStudent = usingCentralDatabase ? await backend.manageStudent("create", { username, password, name }) : null;
+        const newStudent = { id:remoteStudent?.id || `s-${Date.now().toString(36)}`, classId:state.activeClassId, role:"student", username, ...(usingCentralDatabase ? {} : { password }), name, results:[], assignedNumbers:[...SMALL_TABLES], assignedTables:[...SMALL_TABLES], assignedAddends:[...SINGLE_DIGITS], assignedAddendSeconds:[...SINGLE_DIGITS] };
+        db.users.push(newStudent); state.expandedStudent=newStudent.id; state.teacherTopicDetail=null; state.studentFormOpen=false; await save(); renderTeacher();
+      } catch (studentError) { error.textContent="Eleven kunne ikke oprettes. Brugernavnet kan allerede være i brug."; console.error(studentError); }
+    } else if (event.target.id === "answer-form") await submitAnswer(event.target);
   });
-  document.addEventListener("click", (event) => {
+  document.addEventListener("click", async (event) => {
     const keyButton=event.target.closest("[data-key]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
     if (keyButton) { handleKeypad(keyButton.dataset.key); return; }
     if (topicButton) { state.selectedTopic=topicButton.dataset.topic; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise"; newTask(); }
@@ -849,7 +845,7 @@
     if (reportTopicButton) { state.teacherTopicDetail=reportTopicButton.dataset.reportTopic; renderTeacher(); return; }
     if (!actionButton) return;
     const action=actionButton.dataset.action;
-    if (action==="logout") { Object.assign(state,{user:null,view:"login",task:null}); renderLogin(); }
+    if (action==="logout") { if (usingCentralDatabase) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null}); renderLogin(); }
     if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
     if (action==="home") { state.view="student"; renderStudentHome(); }
     if (action==="continue-after-correction") { state.questionNumber++; newTask(); }
@@ -858,10 +854,13 @@
     if (action==="delete-class") {
       const activeClass=db.classes.find(item=>item.id===state.activeClassId);
       if (!activeClass || db.classes.length <= 1) return;
-      const studentCount=db.users.filter(user=>user.role==="student" && user.classId===activeClass.id).length;
+      const classStudents=db.users.filter(user=>user.role==="student" && user.classId===activeClass.id), studentCount=classStudents.length;
       if (confirm(`Vil du slette ${activeClass.name}? ${studentCount} ${studentCount===1?"elev":"elever"} og deres fremskridt slettes permanent.`)) {
-        db.users=db.users.filter(user=>user.role!=="student" || user.classId!==activeClass.id); db.classes=db.classes.filter(item=>item.id!==activeClass.id);
-        state.activeClassId=db.classes[0].id; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; state.teacherUsernameFormOpen=false; state.classRenameFormOpen=false; save(); renderTeacher();
+        try {
+          if (usingCentralDatabase) for (const student of classStudents) await backend.manageStudent("delete", { studentId:student.id });
+          db.users=db.users.filter(user=>user.role!=="student" || user.classId!==activeClass.id); db.classes=db.classes.filter(item=>item.id!==activeClass.id);
+          state.activeClassId=db.classes[0].id; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; state.teacherUsernameFormOpen=false; state.classRenameFormOpen=false; await save(); renderTeacher();
+        } catch (deleteError) { alert("Klassen kunne ikke slettes fra den centrale database."); console.error(deleteError); }
       }
     }
     if (action==="toggle-student-username-form") { state.teacherUsernameFormOpen=!state.teacherUsernameFormOpen; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; state.classRenameFormOpen=false; renderTeacher(); if (state.teacherUsernameFormOpen) document.getElementById("teacher-new-username")?.focus(); }
@@ -871,14 +870,20 @@
       if (!student || !TOPICS[topic]) return;
       const count=(student.results || []).filter(item=>item.topic===topic).length;
       if (confirm(`Vil du nulstille fremskridtet i ${TOPICS[topic].name} for ${student.name}? ${count} besvarelser slettes permanent.`)) {
-        student.results=(student.results || []).filter(item=>item.topic!==topic); state.teacherTopicDetail=null; save(); renderTeacher();
+        try {
+          if (usingCentralDatabase) await backend.deleteResults(student.id, topic);
+          student.results=(student.results || []).filter(item=>item.topic!==topic); state.teacherTopicDetail=null; await save(); renderTeacher();
+        } catch (resetError) { alert("Fremskridtet kunne ikke nulstilles."); console.error(resetError); }
       }
     }
     if (action==="toggle-student-form") { state.studentFormOpen=!state.studentFormOpen; state.teacherPasswordFormOpen=false; state.teacherUsernameFormOpen=false; state.classRenameFormOpen=false; renderTeacher(); if (state.studentFormOpen) document.getElementById("student-name")?.focus(); }
     if (action==="remove-student") {
       const student=db.users.find(user=>user.id===state.expandedStudent && user.role==="student" && user.classId===state.activeClassId);
       if (student && confirm(`Vil du fjerne ${student.name} fra klassen? Elevens resultater bliver også slettet.`)) {
-        db.users=db.users.filter(user=>user.id!==student.id); state.expandedStudent=null; state.teacherTopicDetail=null; save(); renderTeacher();
+        try {
+          if (usingCentralDatabase) await backend.manageStudent("delete", { studentId:student.id });
+          db.users=db.users.filter(user=>user.id!==student.id); state.expandedStudent=null; state.teacherTopicDetail=null; await save(); renderTeacher();
+        } catch (removeError) { alert("Eleven kunne ikke fjernes."); console.error(removeError); }
       }
     }
     if (action==="reset-demo") { if (confirm("Vil du nulstille alle demoresultater?")) { db=normalizeDatabase(defaultDatabase()); state.user=db.users.find(u=>u.role==="teacher"); state.studentFormOpen=false; save(); renderTeacher(); } }
@@ -935,5 +940,19 @@
     if (event.key === "Backspace") handleKeypad("delete");
     if (event.key === "Enter") handleKeypad("enter");
   });
-  render();
+  async function start() {
+    if (!usingCentralDatabase) { render(); return; }
+    try {
+      const loaded = await backend.loadDatabase();
+      db = normalizeDatabase(loaded.database, false);
+      state.user = db.users.find(user => user.id === loaded.currentUserId);
+      if (!state.user) throw new Error("Brugerprofilen mangler.");
+      state.view = state.user.role === "teacher" ? "teacher" : "student";
+      if (state.user.role === "teacher") await save();
+      render();
+    } catch {
+      state.user=null; state.view="login"; renderLogin();
+    }
+  }
+  start();
 })();
