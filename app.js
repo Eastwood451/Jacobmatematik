@@ -9,6 +9,7 @@
     addition: { name: "Plusstykker", icon: "4 + 5", description: "Plus med etcifrede tal" },
     basics: { name: "Basisregler", icon: "0 · 1", description: "Regneregler med 0 og 1" },
     multiplication: { name: "Lille tabel", icon: "7 × 8", description: "Gangestykker fra 0×0 til 10×10" },
+    tableDrill: { name: "Tabel-drill", icon: "3 × 4", description: "Udfyld hele 1–9-tabellen på tid" },
     pemdas: { name: "Regnehierarki", icon: "2 + 3 × 4", description: "Gange før plus og minus" },
     negatives: { name: "Negative tal", icon: "−4 + 7", description: "Plus, minus og gange" },
     distributive: { name: "Distributiv lov", icon: "3(4 + 5)", description: "Gang ind i parentesen" },
@@ -38,7 +39,8 @@
   const SMALL_TABLES = Array.from({length:11}, (_,index) => index);
   const SINGLE_DIGITS = Array.from({length:10}, (_,index) => index);
   const ORDERED_NUMBER_KEYS = [...SMALL_TABLES.slice(1), 0];
-  const SPEED_DRILLS = new Set(["numbers", "addition", "multiplication"]);
+  const TABLE_DRILL_VALUES = Array.from({length:9}, (_,index) => index + 1);
+  const SPEED_DRILLS = new Set(["numbers", "addition", "multiplication", "tableDrill"]);
   const makeTask = (topic, expression, answer, hint = "", options = {}) => ({ topic, expression, answer, hint, ...options });
 
   /* Hvert emne er et selvstændigt modul med generate, calculate og evaluate. */
@@ -96,6 +98,14 @@
         const assigned = (user?.assignedTables || SMALL_TABLES).filter(number => SMALL_TABLES.includes(number));
         const a = pick(assigned.length ? assigned : SMALL_TABLES), b = rand(0, 10);
         return makeTask("multiplication", `${a} × ${b}`, this.calculate(a, b));
+      },
+      calculate: (a, b) => a * b,
+      evaluate: (answer, task) => Number(answer) === task.answer,
+    },
+    tableDrill: {
+      generate() {
+        const row = pick(TABLE_DRILL_VALUES), column = pick(TABLE_DRILL_VALUES);
+        return makeTask("tableDrill", `${row} × ${column}`, row * column, "", { row, column });
       },
       calculate: (a, b) => a * b,
       evaluate: (answer, task) => Number(answer) === task.answer,
@@ -226,11 +236,12 @@
     return database;
   }
   let db = normalizeDatabase(loadDatabase());
-  const state = { user: null, view: "login", selectedTopic: "mixed", task: null, taskStartedAt: 0, answered: false, questionNumber: 1, sessionCorrect: 0, sessionAnswers: [], expandedStudent: "s1", activeClassId:null, teacherTopicDetail: null, studentFormOpen: false, teacherPasswordFormOpen: false, teacherUsernameFormOpen: false, classRenameFormOpen: false };
+  const state = { user: null, view: "login", selectedTopic: "mixed", task: null, taskStartedAt: 0, answered: false, questionNumber: 1, sessionCorrect: 0, sessionAnswers: [], tableDrill:null, expandedStudent: "s1", activeClassId:null, teacherTopicDetail: null, studentFormOpen: false, teacherPasswordFormOpen: false, teacherUsernameFormOpen: false, classRenameFormOpen: false };
   const app = document.getElementById("app");
   const backend = window.JacobBackend;
   const usingCentralDatabase = Boolean(backend?.configured);
   let remoteSaveQueue = Promise.resolve();
+  let tableDrillTimerId = null;
   const save = () => {
     if (!usingCentralDatabase) { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); return Promise.resolve(); }
     if (state.user?.role !== "teacher") return Promise.resolve();
@@ -254,7 +265,7 @@
     return { count:items.length, accuracy, avgTime, level:2, weight:1.1, status:"medium" };
   }
   function chooseWeightedTopic(user) {
-    const pool = Object.keys(TOPICS).map(topic => ({ topic, weight:getStats(user, topic).weight }));
+    const pool = Object.keys(TOPICS).filter(topic => topic !== "tableDrill").map(topic => ({ topic, weight:getStats(user, topic).weight }));
     let pointer = Math.random() * pool.reduce((sum, item) => sum + item.weight, 0);
     for (const item of pool) { pointer -= item.weight; if (pointer <= 0) return item.topic; }
     return pool[0].topic;
@@ -278,14 +289,53 @@
     app.innerHTML = `${header()}<div class="page"><section class="class-manager"><div class="class-manager-title"><div><span class="eyebrow">Min profil</span><h1>Skift adgangskode</h1><p>Vælg en ny adgangskode til din bruger.</p></div></div><form id="student-password-form" class="student-form"><div class="field"><label for="current-password">Nuværende adgangskode</label><input id="current-password" name="currentPassword" type="password" autocomplete="current-password" required></div><div class="field"><label for="new-password">Ny adgangskode</label><input id="new-password" name="newPassword" type="password" autocomplete="new-password" required></div><div class="field"><label for="confirm-password">Gentag ny adgangskode</label><input id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" required></div><p id="password-error" class="student-error" role="alert"></p><div class="student-manager-buttons"><button class="btn" type="submit">Gem adgangskode</button><button class="btn secondary" type="button" data-action="home">Annuller</button></div></form></section></div>`;
     document.getElementById("current-password").focus();
   }
+  function stopTableDrillTimer() {
+    if (tableDrillTimerId) clearInterval(tableDrillTimerId);
+    tableDrillTimerId = null;
+  }
+  function formatTableDrillTime(milliseconds) {
+    const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+    return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
+  }
+  function updateTableDrillTimer() {
+    const timer = document.getElementById("table-drill-time");
+    const drill = state.tableDrill;
+    if (!timer || !drill) return;
+    timer.textContent = formatTableDrillTime((drill.completedAt || Date.now()) - drill.startedAt);
+  }
+  function startTableDrill() {
+    stopTableDrillTimer();
+    state.tableDrill = {
+      pairs:shuffle(TABLE_DRILL_VALUES.flatMap(row => TABLE_DRILL_VALUES.map(column => ({ row, column })))),
+      currentIndex:0,
+      solved:{},
+      errors:0,
+      startedAt:Date.now(),
+      completedAt:null,
+    };
+    state.selectedTopic="tableDrill"; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise";
+    tableDrillTimerId = setInterval(updateTableDrillTimer, 1000);
+    newTask();
+  }
   function newTask() {
     const topic = state.selectedTopic === "mixed" ? chooseWeightedTopic(state.user) : state.selectedTopic;
+    if (topic === "tableDrill") {
+      const drill = state.tableDrill;
+      const pair = drill?.pairs[drill.currentIndex];
+      if (!pair) {
+        if (drill && !drill.completedAt) drill.completedAt=Date.now();
+        stopTableDrillTimer(); state.task=null; state.answered=false; renderTableDrill(); return;
+      }
+      state.task=makeTask("tableDrill", `${pair.row} × ${pair.column}`, pair.row * pair.column, "", pair);
+      state.taskStartedAt=Date.now(); state.answered=false; renderTableDrill(); return;
+    }
     state.task = MathModules[topic].generate(getStats(state.user, topic).level, state.user);
     state.taskStartedAt = Date.now(); state.answered = false;
     renderExercise();
   }
   function renderExercise() {
     const task = state.task;
+    if (task?.topic === "tableDrill") { renderTableDrill(); return; }
     const cycleStart = Math.floor((state.questionNumber - 1) / 10) * 10;
     const cycleAnswers = state.sessionAnswers.slice(cycleStart, cycleStart + 10);
     // Historikken følger den konkrete opgave. Fx vurderes 7 + 2 og 2 + 7 hver for sig.
@@ -362,6 +412,28 @@
       ${learnedSection}
     </div>`;
   }
+  function renderTableDrill() {
+    const drill = state.tableDrill;
+    if (!drill) { startTableDrill(); return; }
+    const task = state.task;
+    const activeRow = task?.row;
+    const activeColumn = task?.column;
+    const elapsed = (drill.completedAt || Date.now()) - drill.startedAt;
+    const solvedCount = Object.keys(drill.solved).length;
+    const grid = `<table class="table-drill-grid" aria-label="Gangetabel fra 1 til 9">
+      <thead><tr><th aria-hidden="true"></th>${TABLE_DRILL_VALUES.map(column => `<th class="${column === activeColumn ? "active-axis" : ""}" scope="col">${column}</th>`).join("")}</tr></thead>
+      <tbody>${TABLE_DRILL_VALUES.map(row => `<tr><th class="${row === activeRow ? "active-axis" : ""}" scope="row">${row}</th>${TABLE_DRILL_VALUES.map(column => {
+        const key=`${row}-${column}`, solved=Object.prototype.hasOwnProperty.call(drill.solved,key), active=row===activeRow && column===activeColumn;
+        const classes=[row===activeRow?"active-row":"",column===activeColumn?"active-column":"",solved?"solved":"",active?"active-cell":""].filter(Boolean).join(" ");
+        const contents=active ? `<span>${row}×${column}</span><strong id="table-drill-cell-answer"></strong>` : solved ? `<strong>${drill.solved[key]}</strong>` : "";
+        return `<td class="${classes}" aria-label="${row} gange ${column}${solved ? ` er ${drill.solved[key]}` : active ? ", aktiv opgave" : ""}">${contents}</td>`;
+      }).join("")}</tr>`).join("")}</tbody>
+    </table>`;
+    const answerPanel = drill.completedAt
+      ? `<section class="table-drill-complete"><span class="complete-mark">✓</span><h2>Hele tabellen er udfyldt!</h2><p>Du løste 81 gangestykker på</p><strong>${formatTableDrillTime(elapsed)}</strong><p>${drill.errors} ${drill.errors === 1 ? "fejl" : "fejl"}</p><button class="btn full" type="button" data-action="restart-table-drill">Prøv igen</button></section>`
+      : `<form class="table-drill-answer" id="answer-form"><label for="answer">Skriv resultatet</label><input class="sr-only" id="answer" name="answer" inputmode="none" autocomplete="off" readonly><div class="table-drill-answer-preview" aria-live="polite"><span>${task.row} × ${task.column} =</span><strong id="table-drill-answer-preview">?</strong></div><div class="keypad table-drill-keypad" aria-label="Taltastatur">${TABLE_DRILL_VALUES.map(number => `<button class="key" type="button" data-key="${number}">${number}</button>`).join("")}<button class="key" type="button" data-key="0">0</button><button class="key utility" type="button" data-key="delete">Slet</button><button class="key enter" type="button" data-key="enter">Enter</button></div><p id="answer-error" class="error" role="alert"></p></form>`;
+    app.innerHTML = `${header()}<div class="page table-drill-page"><div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">Tabel-drill</span></div><section class="table-drill-card"><div class="table-drill-status"><span>Tid: <strong id="table-drill-time">${formatTableDrillTime(elapsed)}</strong></span><span>Fejl: <strong>${drill.errors}</strong></span><span>Udfyldt: <strong>${solvedCount}/81</strong></span></div><div class="table-drill-layout"><div class="table-drill-board">${grid}</div>${answerPanel}</div></section></div>`;
+  }
   function renderCountingHand(activeFingers, mirrored = false) {
     // Fingrene vises i rækkefølgen tommel, pege-, lange-, ring- og lillefinger.
     const fingers = ["thumb", "index", "middle", "ring", "little"];
@@ -399,6 +471,20 @@
       console.error(error);
       return;
     }
+    if (state.task.topic === "tableDrill") {
+      if (correct) {
+        state.tableDrill.solved[`${state.task.row}-${state.task.column}`]=state.task.answer;
+        state.tableDrill.currentIndex++;
+        state.questionNumber++;
+        newTask();
+      } else {
+        state.tableDrill.errors++;
+        state.answered=false;
+        renderTableDrill();
+        document.getElementById("answer-error").textContent="Ikke korrekt – prøv igen.";
+      }
+      return;
+    }
     // Korrekte svar fortsætter straks. Ved fejl skal eleven først trykke på det korrekte svar.
     if (correct) {
       state.questionNumber++;
@@ -420,6 +506,9 @@
     else if (/^\d$/.test(key) && input.value.replace("-", "").length < 8) input.value = input.value === "Kan ikke beregnes" ? key : input.value + key;
 
     document.getElementById("answer-error").textContent = "";
+    const tableCellAnswer=document.getElementById("table-drill-cell-answer"), tablePreview=document.getElementById("table-drill-answer-preview");
+    if (tableCellAnswer) tableCellAnswer.textContent=input.value;
+    if (tablePreview) tablePreview.textContent=input.value || "?";
   }
   function summaryFor(user) {
     const ranked = Object.keys(TOPICS).map(topic => ({ topic, ...getStats(user,topic) })).filter(s=>s.count).sort((a,b)=>(a.accuracy-a.avgTime/100)-(b.accuracy-b.avgTime/100));
@@ -488,6 +577,7 @@
       addition:"Træn korte serier med de valgte tal. Brug konkrete materialer, hvis et bestemt pluspar bliver ved med at drille.",
       basics:"Øv reglerne med 0 og 1 i korte serier. Tal især om, hvorfor division med 0 ikke kan beregnes.",
       multiplication:"Træn korte serier i de tabeller, hvor svartiden er højest. Stop, mens sikkerheden stadig er god.",
+      tableDrill:"Brug drillen til at finde de gangestykker, der tager længst tid. Øv derefter netop disse i korte serier.",
       pemdas:"Lad eleven markere gange- og divisionsled før udregningen. Brug få led og øg gradvist.",
       negatives:"Brug tallinje og lad eleven forklare retningen, før svaret tastes. Start med plus og minus.",
       distributive:"Lad eleven sige de to delprodukter højt, før de lægges sammen. Brug små tal først.",
@@ -879,7 +969,10 @@
   document.addEventListener("click", async (event) => {
     const keyButton=event.target.closest("[data-key]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
     if (keyButton) { handleKeypad(keyButton.dataset.key); return; }
-    if (topicButton) { state.selectedTopic=topicButton.dataset.topic; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise"; newTask(); }
+    if (topicButton) {
+      if (topicButton.dataset.topic === "tableDrill") { startTableDrill(); return; }
+      stopTableDrillTimer(); state.tableDrill=null; state.selectedTopic=topicButton.dataset.topic; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise"; newTask();
+    }
     if (studentButton) { state.expandedStudent=studentButton.dataset.student; state.teacherTopicDetail=null; state.teacherPasswordFormOpen=false; state.teacherUsernameFormOpen=false; renderTeacher(); }
     if (classButton) { state.activeClassId=classButton.dataset.class; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; state.teacherUsernameFormOpen=false; state.classRenameFormOpen=false; renderTeacher(); return; }
     if (tableAllButton) { const student=db.users.find(user=>user.id===tableAllButton.dataset.tableAll); if (student) { student.assignedTables=[...SMALL_TABLES]; save(); renderTeacher(); } return; }
@@ -888,9 +981,10 @@
     if (reportTopicButton) { state.teacherTopicDetail=reportTopicButton.dataset.reportTopic; renderTeacher(); return; }
     if (!actionButton) return;
     const action=actionButton.dataset.action;
-    if (action==="logout") { if (usingCentralDatabase) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null}); renderLogin(); }
+    if (action==="logout") { stopTableDrillTimer(); if (usingCentralDatabase) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,tableDrill:null}); renderLogin(); }
     if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
-    if (action==="home") { state.view="student"; renderStudentHome(); }
+    if (action==="home") { stopTableDrillTimer(); state.tableDrill=null; state.task=null; state.view="student"; renderStudentHome(); }
+    if (action==="restart-table-drill") { startTableDrill(); }
     if (action==="continue-after-correction") { state.questionNumber++; newTask(); }
     if (action==="close-topic-detail") { state.teacherTopicDetail=null; renderTeacher(); }
     if (action==="toggle-class-rename-form") { state.classRenameFormOpen=!state.classRenameFormOpen; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; state.teacherUsernameFormOpen=false; renderTeacher(); if (state.classRenameFormOpen) document.getElementById("class-rename")?.focus(); }
