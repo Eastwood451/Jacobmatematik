@@ -194,17 +194,8 @@
 
   function defaultDatabase() {
     return {
-      classes: [
-        { id:"c1", name:"7.A" },
-        { id:"c2", name:"8.B" },
-      ],
-      users: [
-        { id: "s1", classId:"c1", role: "student", username: "alma7", password: "1234", name: "Alma", results: seedResults({ numbers:"strong", addition:"steady", basics:"steady", multiplication:"strong", pemdas:"steady", negatives:"needsWork", distributive:"steady" }) },
-        { id: "s2", classId:"c1", role: "student", username: "noah4", password: "1234", name: "Noah", results: seedResults({ numbers:"steady", addition:"needsWork", basics:"needsWork", multiplication:"steady", pemdas:"needsWork", negatives:"steady", distributive:"strong" }) },
-        { id: "s3", classId:"c2", role: "student", username: "freja9", password: "1234", name: "Freja", results: seedResults({ numbers:"strong", addition:"strong", basics:"strong", multiplication:"strong", pemdas:"strong", negatives:"steady", distributive:"strong" }) },
-        { id: "s4", classId:"c2", role: "student", username: "malik2", password: "1234", name: "Malik", results: seedResults({ numbers:"new", addition:"new", basics:"new", multiplication:"new", pemdas:"needsWork", negatives:"needsWork", distributive:"new" }) },
-        { id: "t1", role: "teacher", username: "demo-teacher", password: "demo", name: "Demolærer" },
-      ],
+      classes: [{ id:"c1", name:"Demoklasse" }],
+      users: [],
     };
   }
 
@@ -303,15 +294,22 @@
     if (!timer || !drill) return;
     timer.textContent = formatTableDrillTime((drill.completedAt || Date.now()) - drill.startedAt);
   }
-  function startTableDrill() {
+  function startTableDrill(options = {}) {
     stopTableDrillTimer();
+    const allPairs = TABLE_DRILL_VALUES.flatMap(row => TABLE_DRILL_VALUES.map(column => ({ row, column })));
+    const pairs = options.pairs?.length ? options.pairs : allPairs;
+    const cells = { ...(options.cells || {}) };
+    pairs.forEach(({row,column}) => delete cells[`${row}-${column}`]);
     state.tableDrill = {
-      pairs:shuffle(TABLE_DRILL_VALUES.flatMap(row => TABLE_DRILL_VALUES.map(column => ({ row, column })))),
+      pairs:shuffle(pairs),
       currentIndex:0,
-      solved:{},
+      cells,
+      roundResults:{},
       errors:0,
       startedAt:Date.now(),
       completedAt:null,
+      confirmationMode:options.confirmationMode || state.tableDrill?.confirmationMode || "enter",
+      troubleRound:Boolean(options.pairs),
     };
     state.selectedTopic="tableDrill"; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise";
     tableDrillTimerId = setInterval(updateTableDrillTimer, 1000);
@@ -419,20 +417,31 @@
     const activeRow = task?.row;
     const activeColumn = task?.column;
     const elapsed = (drill.completedAt || Date.now()) - drill.startedAt;
-    const solvedCount = Object.keys(drill.solved).length;
+    const completedInRound = Object.keys(drill.roundResults).length;
+    const troublePairs = Object.entries(drill.roundResults)
+      .filter(([,attempt]) => !attempt.correct || attempt.responseTime > 4)
+      .map(([key]) => { const [row,column]=key.split("-").map(Number); return {row,column}; });
+    const cellStyle = attempt => {
+      if (!attempt.correct || attempt.responseTime >= 10) return "--cell-color:hsl(0 72% 78%)";
+      if (attempt.responseTime <= 4) return "--cell-color:hsl(138 55% 72%)";
+      const hue = Math.round(138 * (10 - attempt.responseTime) / 6);
+      return `--cell-color:hsl(${hue} 68% 76%)`;
+    };
     const grid = `<table class="table-drill-grid" aria-label="Gangetabel fra 1 til 9">
       <thead><tr><th aria-hidden="true"></th>${TABLE_DRILL_VALUES.map(column => `<th class="${column === activeColumn ? "active-axis" : ""}" scope="col">${column}</th>`).join("")}</tr></thead>
       <tbody>${TABLE_DRILL_VALUES.map(row => `<tr><th class="${row === activeRow ? "active-axis" : ""}" scope="row">${row}</th>${TABLE_DRILL_VALUES.map(column => {
-        const key=`${row}-${column}`, solved=Object.prototype.hasOwnProperty.call(drill.solved,key), active=row===activeRow && column===activeColumn;
-        const classes=[row===activeRow?"active-row":"",column===activeColumn?"active-column":"",solved?"solved":"",active?"active-cell":""].filter(Boolean).join(" ");
-        const contents=active ? `<span>${row}×${column}</span><strong id="table-drill-cell-answer"></strong>` : solved ? `<strong>${drill.solved[key]}</strong>` : "";
-        return `<td class="${classes}" aria-label="${row} gange ${column}${solved ? ` er ${drill.solved[key]}` : active ? ", aktiv opgave" : ""}">${contents}</td>`;
+        const key=`${row}-${column}`, attempt=drill.cells[key], solved=Boolean(attempt), active=row===activeRow && column===activeColumn;
+        const classes=[row===activeRow?"active-row":"",column===activeColumn?"active-column":"",solved?"solved timed":"",attempt && !attempt.correct?"wrong":"",active?"active-cell":""].filter(Boolean).join(" ");
+        const contents=active ? `<span>${row}×${column}</span><strong id="table-drill-cell-answer"></strong>` : solved ? `<strong>${row*column}</strong>${attempt.correct ? "" : `<i aria-hidden="true">×</i>`}` : "";
+        const timing=solved ? `${attempt.correct ? "korrekt" : "forkert"} på ${attempt.responseTime.toFixed(1)} sekunder` : "";
+        return `<td class="${classes}" ${solved ? `style="${cellStyle(attempt)}"` : ""} aria-label="${row} gange ${column}${solved ? ` er ${row*column}, ${timing}` : active ? ", aktiv opgave" : ""}">${contents}</td>`;
       }).join("")}</tr>`).join("")}</tbody>
     </table>`;
     const answerPanel = drill.completedAt
-      ? `<section class="table-drill-complete"><span class="complete-mark">✓</span><h2>Hele tabellen er udfyldt!</h2><p>Du løste 81 gangestykker på</p><strong>${formatTableDrillTime(elapsed)}</strong><p>${drill.errors} ${drill.errors === 1 ? "fejl" : "fejl"}</p><button class="btn full" type="button" data-action="restart-table-drill">Prøv igen</button></section>`
-      : `<form class="table-drill-answer" id="answer-form"><label for="answer">Skriv resultatet</label><input class="sr-only" id="answer" name="answer" inputmode="none" autocomplete="off" readonly><div class="table-drill-answer-preview" aria-live="polite"><span>${task.row} × ${task.column} =</span><strong id="table-drill-answer-preview">?</strong></div><div class="keypad table-drill-keypad" aria-label="Taltastatur">${TABLE_DRILL_VALUES.map(number => `<button class="key" type="button" data-key="${number}">${number}</button>`).join("")}<button class="key" type="button" data-key="0">0</button><button class="key utility" type="button" data-key="delete">Slet</button><button class="key enter" type="button" data-key="enter">Enter</button></div><p id="answer-error" class="error" role="alert"></p></form>`;
-    app.innerHTML = `${header()}<div class="page table-drill-page"><div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">Tabel-drill</span></div><section class="table-drill-card"><div class="table-drill-status"><span>Tid: <strong id="table-drill-time">${formatTableDrillTime(elapsed)}</strong></span><span>Fejl: <strong>${drill.errors}</strong></span><span>Udfyldt: <strong>${solvedCount}/81</strong></span></div><div class="table-drill-layout"><div class="table-drill-board">${grid}</div>${answerPanel}</div></section></div>`;
+      ? `<section class="table-drill-complete"><span class="complete-mark">${troublePairs.length ? "↻" : "✓"}</span><h2>${troublePairs.length ? `${troublePairs.length} ${troublePairs.length === 1 ? "driller" : "drillere"}` : "Alle sidder hurtigt!"}</h2><p>${troublePairs.length ? "Øv dem, der var forkerte eller tog over 4 sekunder." : "Alle blev besvaret korrekt på højst 4 sekunder."}</p><strong>${formatTableDrillTime(elapsed)}</strong><p>${drill.errors} ${drill.errors === 1 ? "fejl" : "fejl"}</p>${troublePairs.length ? `<button class="btn full" type="button" data-action="practice-table-troubles">Øv drillerne (${troublePairs.length})</button>` : ""}<button class="btn secondary full" type="button" data-action="restart-table-drill">Start hele tabellen igen</button></section>`
+      : `<form class="table-drill-answer" id="answer-form"><fieldset class="table-drill-mode"><legend>Svarmetode</legend><button class="${drill.confirmationMode === "enter" ? "active" : ""}" type="button" data-drill-mode="enter" aria-pressed="${drill.confirmationMode === "enter"}">Bekræft med Enter</button><button class="${drill.confirmationMode === "auto" ? "active" : ""}" type="button" data-drill-mode="auto" aria-pressed="${drill.confirmationMode === "auto"}">Autobekræft</button></fieldset><label for="answer">Skriv resultatet</label><input class="sr-only" id="answer" name="answer" inputmode="none" autocomplete="off" readonly><div class="table-drill-answer-preview" aria-live="polite"><span>${task.row} × ${task.column} =</span><strong id="table-drill-answer-preview">?</strong></div><div class="keypad table-drill-keypad ${drill.confirmationMode === "auto" ? "auto" : ""}" aria-label="Taltastatur">${TABLE_DRILL_VALUES.map(number => `<button class="key" type="button" data-key="${number}">${number}</button>`).join("")}<button class="key" type="button" data-key="0">0</button><button class="key utility" type="button" data-key="delete">Slet</button>${drill.confirmationMode === "enter" ? `<button class="key enter" type="button" data-key="enter">Enter</button>` : ""}</div><p id="answer-error" class="error" role="alert"></p></form>`;
+    const progressLabel=drill.troubleRound ? "Drillere" : "Udfyldt";
+    app.innerHTML = `${header()}<div class="page table-drill-page"><div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${drill.troubleRound ? "Tabel-drill · drillere" : "Tabel-drill"}</span></div><section class="table-drill-card"><div class="table-drill-status"><span>Tid: <strong id="table-drill-time">${formatTableDrillTime(elapsed)}</strong></span><span>Fejl: <strong>${drill.errors}</strong></span><span>${progressLabel}: <strong>${completedInRound}/${drill.pairs.length}</strong></span></div><div class="table-drill-layout"><div class="table-drill-board">${grid}</div>${answerPanel}</div></section></div>`;
   }
   function renderCountingHand(activeFingers, mirrored = false) {
     // Fingrene vises i rækkefølgen tommel, pege-, lange-, ring- og lillefinger.
@@ -472,17 +481,14 @@
       return;
     }
     if (state.task.topic === "tableDrill") {
-      if (correct) {
-        state.tableDrill.solved[`${state.task.row}-${state.task.column}`]=state.task.answer;
-        state.tableDrill.currentIndex++;
-        state.questionNumber++;
-        newTask();
-      } else {
-        state.tableDrill.errors++;
-        state.answered=false;
-        renderTableDrill();
-        document.getElementById("answer-error").textContent="Ikke korrekt – prøv igen.";
-      }
+      const key=`${state.task.row}-${state.task.column}`;
+      const attempt={answer:Number(raw), correct, responseTime:result.responseTime};
+      state.tableDrill.cells[key]=attempt;
+      state.tableDrill.roundResults[key]=attempt;
+      if (!correct) state.tableDrill.errors++;
+      state.tableDrill.currentIndex++;
+      state.questionNumber++;
+      newTask();
       return;
     }
     // Korrekte svar fortsætter straks. Ved fejl skal eleven først trykke på det korrekte svar.
@@ -498,7 +504,10 @@
     const form = document.getElementById("answer-form");
     if (!input || !form || state.answered) return;
 
-    if (key === "enter") return submitAnswer(form);
+    if (key === "enter") {
+      if (state.task.topic === "tableDrill" && state.tableDrill?.confirmationMode === "auto") return;
+      return submitAnswer(form);
+    }
     if (key === "undefined") input.value = "Kan ikke beregnes";
     else if (key === "delete") input.value = input.value === "Kan ikke beregnes" ? "" : input.value.slice(0, -1);
     else if (key === "minus") input.value = input.value === "Kan ikke beregnes" ? "-" : input.value.startsWith("-") ? input.value.slice(1) : `-${input.value}`;
@@ -509,6 +518,10 @@
     const tableCellAnswer=document.getElementById("table-drill-cell-answer"), tablePreview=document.getElementById("table-drill-answer-preview");
     if (tableCellAnswer) tableCellAnswer.textContent=input.value;
     if (tablePreview) tablePreview.textContent=input.value || "?";
+    if (state.task.topic === "tableDrill" && state.tableDrill?.confirmationMode === "auto" && /^\d+$/.test(input.value)) {
+      const expected=String(state.task.answer);
+      if (input.value === expected || !expected.startsWith(input.value)) submitAnswer(form);
+    }
   }
   function summaryFor(user) {
     const ranked = Object.keys(TOPICS).map(topic => ({ topic, ...getStats(user,topic) })).filter(s=>s.count).sort((a,b)=>(a.accuracy-a.avgTime/100)-(b.accuracy-b.avgTime/100));
@@ -967,8 +980,13 @@
     } else if (event.target.id === "answer-form") await submitAnswer(event.target);
   });
   document.addEventListener("click", async (event) => {
-    const keyButton=event.target.closest("[data-key]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
+    const keyButton=event.target.closest("[data-key]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
     if (keyButton) { handleKeypad(keyButton.dataset.key); return; }
+    if (drillModeButton && state.tableDrill && !state.tableDrill.completedAt) {
+      state.tableDrill.confirmationMode=drillModeButton.dataset.drillMode === "auto" ? "auto" : "enter";
+      renderTableDrill();
+      return;
+    }
     if (topicButton) {
       if (topicButton.dataset.topic === "tableDrill") { startTableDrill(); return; }
       stopTableDrillTimer(); state.tableDrill=null; state.selectedTopic=topicButton.dataset.topic; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise"; newTask();
@@ -985,6 +1003,11 @@
     if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
     if (action==="home") { stopTableDrillTimer(); state.tableDrill=null; state.task=null; state.view="student"; renderStudentHome(); }
     if (action==="restart-table-drill") { startTableDrill(); }
+    if (action==="practice-table-troubles" && state.tableDrill) {
+      const drill=state.tableDrill;
+      const pairs=Object.entries(drill.roundResults).filter(([,attempt])=>!attempt.correct || attempt.responseTime>4).map(([key])=>{ const [row,column]=key.split("-").map(Number); return {row,column}; });
+      if (pairs.length) startTableDrill({pairs,cells:drill.cells,confirmationMode:drill.confirmationMode});
+    }
     if (action==="continue-after-correction") { state.questionNumber++; newTask(); }
     if (action==="close-topic-detail") { state.teacherTopicDetail=null; renderTeacher(); }
     if (action==="toggle-class-rename-form") { state.classRenameFormOpen=!state.classRenameFormOpen; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; state.teacherUsernameFormOpen=false; renderTeacher(); if (state.classRenameFormOpen) document.getElementById("class-rename")?.focus(); }
