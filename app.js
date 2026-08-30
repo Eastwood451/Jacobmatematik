@@ -451,7 +451,17 @@
       <div class="progress-row" aria-label="Svar i denne runde">${Array.from({length:10},(_,i)=>`<i class="progress-dot ${cycleAnswers[i] === true ? "correct" : cycleAnswers[i] === false ? "wrong" : ""}"></i>`).join("")}</div>
     </div>`;
   }
-  async function submitLetterAnswer(answer) {
+  function persistLetterResult(result) {
+    if (!usingCentralDatabase) {
+      save().catch(error => console.error("Bogstavsvaret kunne ikke gemmes lokalt", error));
+      return;
+    }
+    // Gem i baggrunden, så en langsom netværksanmodning aldrig låser næste opgave.
+    backend.appendResult(state.user.id, result)
+      .then(remoteId => { result.remoteId=remoteId; })
+      .catch(error => console.error("Bogstavsvaret kunne ikke gemmes", error));
+  }
+  function submitLetterAnswer(answer) {
     if (state.answered || state.task?.topic !== "letters") return;
     state.answered=true;
     const task=state.task;
@@ -461,17 +471,12 @@
     const choice=LETTER_ITEMS.find(item=>item.letter===answer);
     const result={topic:"letters",problem:`${task.expression} som startlyd`,answer:choice?.word || answer,correctAnswer:task.target.word,correct,responseTime:+responseTime.toFixed(2),timestamp:new Date().toISOString()};
     state.user.results.push(result);
-    try {
-      if (usingCentralDatabase) result.remoteId=await backend.appendResult(state.user.id,result);
-      else await save();
-    } catch (error) {
-      state.user.results.pop(); state.sessionAnswers.pop(); if (correct) state.sessionCorrect--; state.answered=false;
-      const message=document.getElementById("letter-error"); if (message) message.textContent="Svaret kunne ikke gemmes. Prøv igen.";
-      console.error(error); return;
-    }
     const pressed=document.querySelector(`[data-letter-choice="${CSS.escape(answer)}"]`);
     if (pressed) pressed.classList.add(correct ? "correct" : "wrong");
+
+    // Start næste opgave uafhængigt af resultatlagringen.
     window.setTimeout(()=>{ state.questionNumber++; newTask(); },correct ? 320 : 650);
+    persistLetterResult(result);
   }
   function renderTableDrill() {
     const drill = state.tableDrill;
