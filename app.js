@@ -5,6 +5,7 @@
   const STORAGE_KEY = "jacobmatematik-db-v1";
   const LEGACY_STORAGE_KEYS = ["matbootcamp-db-v1", "talvaerkstedet-db-v1"];
   const TOPICS = {
+    letters: { name: "Bogstavlæring", icon: "A B C", description: "Find billedet med den rigtige startlyd" },
     numbers: { name: "Tallene", icon: "● ● ●", description: "Tæl figurer og fingre fra 0 til 10" },
     addition: { name: "Plusstykker", icon: "4 + 5", description: "Plus med etcifrede tal" },
     basics: { name: "Basisregler", icon: "0 · 1", description: "Regneregler med 0 og 1" },
@@ -40,11 +41,34 @@
   const SINGLE_DIGITS = Array.from({length:10}, (_,index) => index);
   const ORDERED_NUMBER_KEYS = [...SMALL_TABLES.slice(1), 0];
   const TABLE_DRILL_VALUES = Array.from({length:9}, (_,index) => index + 1);
+  const LETTER_ITEMS = [
+    ["A","abe","a-abe.webp"],["B","bæver","b-baever.webp"],["C","cacao","c-cacao.webp"],
+    ["D","delfin","d-delfin.webp"],["E","egern","e-egern.webp"],["F","fisk","f-fisk.webp"],
+    ["G","gris","g-gris.webp"],["H","hund","h-hund.webp"],["I","isbjørn","i-isbjoern.webp"],
+    ["J","jaguar","j-jaguar.webp"],["K","kat","k-kat.webp"],["L","løve","l-loeve.webp"],
+    ["M","mus","m-mus.webp"],["N","næsehorn","n-naesehorn.webp"],["O","orm","o-orm.webp"],
+    ["P","pingvin","p-pingvin.webp"],["Q","quokka","q-quokka.webp"],["R","ræv","r-raev.webp"],
+    ["S","sæl","s-sael.webp"],["T","tiger","t-tiger.webp"],["U","ugle","u-ugle.webp"],
+    ["V","vaskebjørn","v-vaskebjoern.webp"],["W","wienerhund","w-wienerhund.webp"],["X","x-ray-fisk","x-xray-fisk.webp"],
+    ["Y","yver","y-yver.webp"],["Z","zebra","z-zebra.webp"],["Æ","æsel","ae-aesel.webp"],
+    ["Ø","økse","oe-oekse.webp"],["Å","ål","aa-aal.webp"],
+  ].map(([letter,word,file]) => ({ letter, word, image:`assets/letters/${file}` }));
+  const LETTER_KEYS = LETTER_ITEMS.map(item => item.letter);
   const SPEED_DRILLS = new Set(["numbers", "addition", "multiplication", "tableDrill"]);
   const makeTask = (topic, expression, answer, hint = "", options = {}) => ({ topic, expression, answer, hint, ...options });
 
   /* Hvert emne er et selvstændigt modul med generate, calculate og evaluate. */
   const MathModules = {
+    letters: {
+      generate(level, user) {
+        const assigned = (user?.assignedLetters || LETTER_KEYS).filter(letter => LETTER_KEYS.includes(letter));
+        const target = LETTER_ITEMS.find(item => item.letter === pick(assigned.length ? assigned : LETTER_KEYS));
+        const distractors = shuffle(LETTER_ITEMS.filter(item => item.letter !== target.letter)).slice(0,3);
+        return makeTask("letters", target.letter, target.letter, "Tryk på billedet, der begynder med bogstavets lyd.", { target, choices:shuffle([target,...distractors]) });
+      },
+      calculate: letter => letter,
+      evaluate: (answer, task) => answer === task.answer,
+    },
     numbers: {
       generate(level, user) {
         // Antallet vælges blandt lærerens tal. Sølv vises halvt så ofte,
@@ -223,6 +247,8 @@
       user.assignedAddends = [...new Set(user.assignedAddends.map(Number).filter(number => SINGLE_DIGITS.includes(number)))].sort((a,b)=>a-b);
       if (!Array.isArray(user.assignedAddendSeconds) || !user.assignedAddendSeconds.length) user.assignedAddendSeconds = [...SINGLE_DIGITS];
       user.assignedAddendSeconds = [...new Set(user.assignedAddendSeconds.map(Number).filter(number => SINGLE_DIGITS.includes(number)))].sort((a,b)=>a-b);
+      if (!Array.isArray(user.assignedLetters) || !user.assignedLetters.length) user.assignedLetters = [...LETTER_KEYS];
+      user.assignedLetters = LETTER_KEYS.filter(letter => user.assignedLetters.includes(letter));
     });
     return database;
   }
@@ -334,6 +360,7 @@
   function renderExercise() {
     const task = state.task;
     if (task?.topic === "tableDrill") { renderTableDrill(); return; }
+    if (task?.topic === "letters") { renderLetterExercise(); return; }
     const cycleStart = Math.floor((state.questionNumber - 1) / 10) * 10;
     const cycleAnswers = state.sessionAnswers.slice(cycleStart, cycleStart + 10);
     // Historikken følger den konkrete opgave. Fx vurderes 7 + 2 og 2 + 7 hver for sig.
@@ -409,6 +436,42 @@
       <div class="progress-row" aria-label="Svar i denne runde">${Array.from({length:10},(_,i)=>`<i class="progress-dot ${cycleAnswers[i] === true ? "correct" : cycleAnswers[i] === false ? "wrong" : ""}"></i>`).join("")}</div>
       ${learnedSection}
     </div>`;
+  }
+  function renderLetterExercise() {
+    const task = state.task;
+    const cycleStart = Math.floor((state.questionNumber - 1) / 10) * 10;
+    const cycleAnswers = state.sessionAnswers.slice(cycleStart, cycleStart + 10);
+    app.innerHTML = `${header()}<div class="page exercise-page letter-learning-page">
+      <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">Bogstavlæring</span></div>
+      <section class="letter-learning-card">
+        <div class="letter-prompt"><span class="question-number">Opgave ${state.questionNumber}</span><strong aria-label="Bogstavet ${escapeHtml(task.expression)}">${escapeHtml(task.expression)}</strong><p>${escapeHtml(task.hint)}</p></div>
+        <div class="letter-choice-grid" role="group" aria-label="Vælg billedet med den rigtige startlyd">${task.choices.map(item => `<button class="letter-picture-button" type="button" data-letter-choice="${item.letter}" aria-label="${escapeHtml(item.word)}"><img src="${item.image}" alt="${escapeHtml(item.word)}" draggable="false"></button>`).join("")}</div>
+        <p id="letter-error" class="error letter-error" role="alert"></p>
+      </section>
+      <div class="progress-row" aria-label="Svar i denne runde">${Array.from({length:10},(_,i)=>`<i class="progress-dot ${cycleAnswers[i] === true ? "correct" : cycleAnswers[i] === false ? "wrong" : ""}"></i>`).join("")}</div>
+    </div>`;
+  }
+  async function submitLetterAnswer(answer) {
+    if (state.answered || state.task?.topic !== "letters") return;
+    state.answered=true;
+    const task=state.task;
+    const correct=MathModules.letters.evaluate(answer,task);
+    const responseTime=Math.max(.1,(Date.now()-state.taskStartedAt)/1000);
+    state.sessionAnswers.push(correct); if (correct) state.sessionCorrect++;
+    const choice=LETTER_ITEMS.find(item=>item.letter===answer);
+    const result={topic:"letters",problem:`${task.expression} som startlyd`,answer:choice?.word || answer,correctAnswer:task.target.word,correct,responseTime:+responseTime.toFixed(2),timestamp:new Date().toISOString()};
+    state.user.results.push(result);
+    try {
+      if (usingCentralDatabase) result.remoteId=await backend.appendResult(state.user.id,result);
+      else await save();
+    } catch (error) {
+      state.user.results.pop(); state.sessionAnswers.pop(); if (correct) state.sessionCorrect--; state.answered=false;
+      const message=document.getElementById("letter-error"); if (message) message.textContent="Svaret kunne ikke gemmes. Prøv igen.";
+      console.error(error); return;
+    }
+    const pressed=document.querySelector(`[data-letter-choice="${CSS.escape(answer)}"]`);
+    if (pressed) pressed.classList.add(correct ? "correct" : "wrong");
+    window.setTimeout(()=>{ state.questionNumber++; newTask(); },correct ? 320 : 650);
   }
   function renderTableDrill() {
     const drill = state.tableDrill;
@@ -594,6 +657,7 @@
       pemdas:"Lad eleven markere gange- og divisionsled før udregningen. Brug få led og øg gradvist.",
       negatives:"Brug tallinje og lad eleven forklare retningen, før svaret tastes. Start med plus og minus.",
       distributive:"Lad eleven sige de to delprodukter højt, før de lægges sammen. Brug små tal først.",
+      letters:"Øv få bogstaver ad gangen. Sig bogstavets lyd højt, og lad barnet navngive billedet efter valget.",
     }[topic];
   }
 
@@ -822,6 +886,12 @@
           <article><span>Stærkest</span><strong>${TOPICS[strength.topic].name}</strong><small>${Math.round(strength.accuracy*100)} % rigtige</small></article>
         </section>
 
+        <section class="table-assignment letter-assignment" aria-labelledby="letter-assignment-title">
+          <div class="table-assignment-head"><div><span class="eyebrow">Opgavestyring</span><h3 id="letter-assignment-title">Bogstavlæring til ${escapeHtml(selected.name)}</h3><p>Vælg de bogstaver, barnet må møde i øvelsen.</p></div><div class="table-assignment-actions"><button class="btn secondary compact" type="button" data-letter-all="${selected.id}">Vælg alle</button><button class="btn danger compact" type="button" data-action="reset-topic-progress" data-reset-topic="letters" data-reset-student="${selected.id}">Nulstil fremskridt</button></div></div>
+          <div class="letter-assignment-choices">${LETTER_ITEMS.map(item => `<label class="letter-assignment-choice"><input type="checkbox" value="${item.letter}" data-letter-student="${selected.id}" ${selected.assignedLetters.includes(item.letter)?"checked":""}><span>${item.letter}</span><small>${escapeHtml(item.word)}</small></label>`).join("")}</div>
+          <p class="table-selection-note"><strong class="letter-selection-count">${selected.assignedLetters.length}</strong> af ${LETTER_ITEMS.length} bogstaver valgt. Mindst ét bogstav skal være markeret.</p>
+        </section>
+
         <section class="table-assignment" aria-labelledby="numbers-assignment-title">
           <div class="table-assignment-head"><div><span class="eyebrow">Opgavestyring</span><h3 id="numbers-assignment-title">Tallene til ${escapeHtml(selected.name)}</h3><p>Sæt flueben ved de tal fra 0 til 10, eleven skal tælle i øvelsen.</p></div><div class="table-assignment-actions"><button class="btn secondary compact" type="button" data-number-all="${selected.id}">Vælg alle</button><button class="btn danger compact" type="button" data-action="reset-topic-progress" data-reset-topic="numbers" data-reset-student="${selected.id}">Nulstil fremskridt</button></div></div>
           <div class="table-choices">${SMALL_TABLES.map(number => `<label class="table-choice"><input type="checkbox" value="${number}" data-number-student="${selected.id}" ${selected.assignedNumbers.includes(number)?"checked":""}><span>${number}</span><small>antal ${number}</small></label>`).join("")}</div>
@@ -974,14 +1044,15 @@
       if (db.users.some(user => user.username.toLowerCase() === username)) { error.textContent="Brugernavnet er allerede i brug."; return; }
       try {
         const remoteStudent = usingCentralDatabase ? await backend.manageStudent("create", { username, password, name }) : null;
-        const newStudent = { id:remoteStudent?.id || `s-${Date.now().toString(36)}`, classId:state.activeClassId, role:"student", username, ...(usingCentralDatabase ? {} : { password }), name, results:[], assignedNumbers:[...SMALL_TABLES], assignedTables:[...SMALL_TABLES], assignedAddends:[...SINGLE_DIGITS], assignedAddendSeconds:[...SINGLE_DIGITS] };
+        const newStudent = { id:remoteStudent?.id || `s-${Date.now().toString(36)}`, classId:state.activeClassId, role:"student", username, ...(usingCentralDatabase ? {} : { password }), name, results:[], assignedLetters:[...LETTER_KEYS], assignedNumbers:[...SMALL_TABLES], assignedTables:[...SMALL_TABLES], assignedAddends:[...SINGLE_DIGITS], assignedAddendSeconds:[...SINGLE_DIGITS] };
         db.users.push(newStudent); state.expandedStudent=newStudent.id; state.teacherTopicDetail=null; state.studentFormOpen=false; await save(); renderTeacher();
       } catch (studentError) { error.textContent="Eleven kunne ikke oprettes. Brugernavnet kan allerede være i brug."; console.error(studentError); }
     } else if (event.target.id === "answer-form") await submitAnswer(event.target);
   });
   document.addEventListener("click", async (event) => {
-    const keyButton=event.target.closest("[data-key]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
+    const keyButton=event.target.closest("[data-key]"), letterChoiceButton=event.target.closest("[data-letter-choice]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
     if (keyButton) { handleKeypad(keyButton.dataset.key); return; }
+    if (letterChoiceButton) { await submitLetterAnswer(letterChoiceButton.dataset.letterChoice); return; }
     if (drillModeButton && state.tableDrill && !state.tableDrill.completedAt) {
       state.tableDrill.confirmationMode=drillModeButton.dataset.drillMode === "auto" ? "auto" : "enter";
       renderTableDrill();
@@ -995,6 +1066,7 @@
     if (classButton) { state.activeClassId=classButton.dataset.class; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; state.teacherPasswordFormOpen=false; state.teacherUsernameFormOpen=false; state.classRenameFormOpen=false; renderTeacher(); return; }
     if (tableAllButton) { const student=db.users.find(user=>user.id===tableAllButton.dataset.tableAll); if (student) { student.assignedTables=[...SMALL_TABLES]; save(); renderTeacher(); } return; }
     if (numberAllButton) { const student=db.users.find(user=>user.id===numberAllButton.dataset.numberAll); if (student) { student.assignedNumbers=[...SMALL_TABLES]; save(); renderTeacher(); } return; }
+    if (letterAllButton) { const student=db.users.find(user=>user.id===letterAllButton.dataset.letterAll); if (student) { student.assignedLetters=[...LETTER_KEYS]; save(); renderTeacher(); } return; }
     if (addendAllButton) { const student=db.users.find(user=>user.id===addendAllButton.dataset.addendAll); if (student) { addendAllButton.dataset.addendPosition === "second" ? student.assignedAddendSeconds=[...SINGLE_DIGITS] : student.assignedAddends=[...SINGLE_DIGITS]; save(); renderTeacher(); } return; }
     if (reportTopicButton) { state.teacherTopicDetail=reportTopicButton.dataset.reportTopic; renderTeacher(); return; }
     if (!actionButton) return;
@@ -1049,6 +1121,17 @@
     if (action==="reset-demo") { if (confirm("Vil du nulstille alle demoresultater?")) { db=normalizeDatabase(defaultDatabase()); state.user=db.users.find(u=>u.role==="teacher"); state.studentFormOpen=false; save(); renderTeacher(); } }
   });
   document.addEventListener("change", event => {
+    const letterStudentId = event.target.dataset?.letterStudent;
+    if (letterStudentId) {
+      const student = db.users.find(user => user.id === letterStudentId && user.role === "student");
+      if (!student) return;
+      const letter = event.target.value, next = new Set(student.assignedLetters);
+      event.target.checked ? next.add(letter) : next.delete(letter);
+      if (!next.size) { event.target.checked=true; return; }
+      student.assignedLetters=LETTER_KEYS.filter(item=>next.has(item)); save();
+      const count=document.querySelector(".letter-selection-count"); if (count) count.textContent=student.assignedLetters.length;
+      return;
+    }
     const numberStudentId = event.target.dataset?.numberStudent;
     if (numberStudentId) {
       const student = db.users.find(user => user.id === numberStudentId && user.role === "student");
