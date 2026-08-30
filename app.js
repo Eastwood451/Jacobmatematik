@@ -62,7 +62,8 @@
     letters: {
       generate(level, user) {
         const assigned = (user?.assignedLetters || LETTER_KEYS).filter(letter => LETTER_KEYS.includes(letter));
-        const target = LETTER_ITEMS.find(item => item.letter === pick(assigned.length ? assigned : LETTER_KEYS));
+        const targetLetter = pick(assigned.length ? assigned : LETTER_KEYS);
+        const target = LETTER_ITEMS.find(item => item.letter === targetLetter) || LETTER_ITEMS[0];
         const distractors = shuffle(LETTER_ITEMS.filter(item => item.letter !== target.letter)).slice(0,3);
         return makeTask("letters", target.letter, target.letter, "Tryk på billedet, der begynder med bogstavets lyd.", { target, choices:shuffle([target,...distractors]) });
       },
@@ -474,10 +475,16 @@
     const pressed=document.querySelector(`[data-letter-choice="${CSS.escape(answer)}"]`);
     if (pressed) pressed.classList.add(correct ? "correct" : "wrong");
 
-    // Gå direkte videre, før lagringen overhovedet startes.
-    // Dermed kan hverken en synkron Supabase-fejl eller en langsom anmodning låse øvelsen.
-    state.questionNumber++;
-    newTask();
+    // Vis svaret kort, men lad lagringen køre uafhængigt af næste opgave.
+    window.setTimeout(() => {
+      try { state.questionNumber++; newTask(); }
+      catch (error) {
+        state.answered=false;
+        const message=document.getElementById("letter-error");
+        if (message) message.textContent="Næste opgave kunne ikke indlæses. Prøv igen.";
+        console.error("Næste bogstavopgave kunne ikke genereres", error);
+      }
+    }, correct ? 320 : 650);
     try { persistLetterResult(result); }
     catch (error) { console.error("Bogstavsvaret kunne ikke sættes til lagring", error); }
   }
