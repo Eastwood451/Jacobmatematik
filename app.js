@@ -472,7 +472,9 @@
     const choice=LETTER_ITEMS.find(item=>item.letter===answer);
     const result={topic:"letters",problem:`${task.expression} som startlyd`,answer:choice?.word || answer,correctAnswer:task.target.word,correct,responseTime:+responseTime.toFixed(2),timestamp:new Date().toISOString()};
     state.user.results.push(result);
-    const pressed=document.querySelector(`[data-letter-choice="${CSS.escape(answer)}"]`);
+    const choiceButtons=[...document.querySelectorAll("[data-letter-choice]")];
+    const pressed=choiceButtons.find(button=>button.dataset.letterChoice===answer);
+    choiceButtons.forEach(button=>{ button.disabled=true; });
     if (pressed) pressed.classList.add(correct ? "correct" : "wrong");
 
     // Vis svaret kort, men lad lagringen køre uafhængigt af næste opgave.
