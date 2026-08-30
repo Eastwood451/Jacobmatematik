@@ -474,10 +474,12 @@
     const pressed=document.querySelector(`[data-letter-choice="${CSS.escape(answer)}"]`);
     if (pressed) pressed.classList.add(correct ? "correct" : "wrong");
 
-    // Gå direkte videre. Ingen timer eller netværksanmodning må kunne låse billedknapperne.
-    persistLetterResult(result);
+    // Gå direkte videre, før lagringen overhovedet startes.
+    // Dermed kan hverken en synkron Supabase-fejl eller en langsom anmodning låse øvelsen.
     state.questionNumber++;
     newTask();
+    try { persistLetterResult(result); }
+    catch (error) { console.error("Bogstavsvaret kunne ikke sættes til lagring", error); }
   }
   function renderTableDrill() {
     const drill = state.tableDrill;
