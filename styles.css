@@ -251,7 +251,7 @@ h1,h2,h3,p { margin-top:0; }
 .table-drill-grid td.solved i { position:absolute; top:4px; right:5px; color:#a81827; font:900 13px/1 ui-rounded,system-ui,sans-serif; }
 .table-drill-grid td.active-cell { z-index:1; color:white; background:var(--mint); box-shadow:0 0 0 3px rgba(40,170,120,.28); }
 .table-drill-grid td.active-cell span,.table-drill-grid td.active-cell strong { display:block; }
-.table-drill-grid td.active-cell span { font-size:.72em; opacity:.9; }.table-drill-grid td.active-cell strong { min-height:1em; margin-top:5px; font:900 1.12em/1 ui-rounded,system-ui,sans-serif; }
+.table-drill-grid td.active-cell span { font-size:1.05em; font-weight:850; letter-spacing:-.02em; opacity:1; }.table-drill-grid td.active-cell strong { min-height:1em; margin-top:3px; font:900 1.12em/1 ui-rounded,system-ui,sans-serif; }
 .table-drill-answer { align-self:center; padding:20px; border:1px solid var(--line); border-radius:20px; background:#faf8f3; }
 .table-drill-answer>label { display:block; margin-bottom:9px; color:var(--muted); text-align:center; font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
 .table-drill-mode { margin:0 0 15px; padding:3px; display:grid; grid-template-columns:1fr 1fr; border:1px solid #d8d3c8; border-radius:12px; background:#ebe7de; }
