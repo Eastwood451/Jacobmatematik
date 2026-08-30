@@ -65,7 +65,8 @@
         const targetLetter = pick(assigned.length ? assigned : LETTER_KEYS);
         const target = LETTER_ITEMS.find(item => item.letter === targetLetter) || LETTER_ITEMS[0];
         const distractors = shuffle(LETTER_ITEMS.filter(item => item.letter !== target.letter)).slice(0,3);
-        return makeTask("letters", target.letter, target.letter, "Tryk på billedet, der begynder med bogstavets lyd.", { target, choices:shuffle([target,...distractors]) });
+        const letterDistractors = shuffle(LETTER_ITEMS.filter(item => item.letter !== target.letter)).slice(0,3);
+        return makeTask("letters", target.letter, target.letter, "", { target, phase:"learn", choices:shuffle([target,...distractors]), letterChoices:shuffle([target,...letterDistractors]) });
       },
       calculate: letter => letter,
       evaluate: (answer, task) => answer === task.answer,
@@ -442,11 +443,15 @@
     const task = state.task;
     const cycleStart = Math.floor((state.questionNumber - 1) / 10) * 10;
     const cycleAnswers = state.sessionAnswers.slice(cycleStart, cycleStart + 10);
+    const phase=task.phase || "learn";
+    const learn=`<div class="letter-pair-intro"><strong>${escapeHtml(task.target.letter)}</strong><div><img src="${task.target.image}" alt="${escapeHtml(task.target.word)}"><span>${escapeHtml(task.target.word)}</span></div></div><p class="letter-instruction">${escapeHtml(task.target.letter)} og ${escapeHtml(task.target.word)} hører sammen</p><button class="btn letter-continue" type="button" data-letter-continue>Prøv selv →</button>`;
+    const images=`<div class="letter-prompt"><strong>${escapeHtml(task.target.letter)}</strong><p>Hvilket billede begynder med ${escapeHtml(task.target.letter)}?</p></div><div class="letter-choice-grid" role="group">${task.choices.map(item => `<button class="letter-picture-button" type="button" data-letter-answer="${item.letter}" aria-label="${escapeHtml(item.word)}"><img src="${item.image}" alt="${escapeHtml(item.word)}"></button>`).join("")}</div>`;
+    const letters=`<div class="letter-prompt letter-image-prompt"><div><img src="${task.target.image}" alt="${escapeHtml(task.target.word)}"><span>${escapeHtml(task.target.word)}</span></div><p>Hvilket bogstav begynder ${escapeHtml(task.target.word)} med?</p></div><div class="letter-choice-grid letter-key-grid" role="group">${task.letterChoices.map(item => `<button class="letter-key-button" type="button" data-letter-answer="${item.letter}">${escapeHtml(item.letter)}</button>`).join("")}</div>`;
     app.innerHTML = `${header()}<div class="page exercise-page letter-learning-page">
       <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">Bogstavlæring</span></div>
       <section class="letter-learning-card">
-        <div class="letter-prompt"><span class="question-number">Opgave ${state.questionNumber}</span><strong aria-label="Bogstavet ${escapeHtml(task.expression)}">${escapeHtml(task.expression)}</strong><p>${escapeHtml(task.hint)}</p></div>
-        <div class="letter-choice-grid" role="group" aria-label="Vælg billedet med den rigtige startlyd">${task.choices.map(item => `<button class="letter-picture-button" type="button" data-letter-choice="${item.letter}" aria-label="${escapeHtml(item.word)}"><img src="${item.image}" alt="${escapeHtml(item.word)}" draggable="false"></button>`).join("")}</div>
+        <span class="question-number letter-step">Bogstav ${state.questionNumber} · trin ${phase === "learn" ? 1 : phase === "image-choice" ? 2 : 3} af 3</span>
+        ${phase === "learn" ? learn : phase === "image-choice" ? images : letters}
         <p id="letter-error" class="error letter-error" role="alert"></p>
       </section>
       <div class="progress-row" aria-label="Svar i denne runde">${Array.from({length:10},(_,i)=>`<i class="progress-dot ${cycleAnswers[i] === true ? "correct" : cycleAnswers[i] === false ? "wrong" : ""}"></i>`).join("")}</div>
@@ -463,32 +468,40 @@
       .catch(error => console.error("Bogstavsvaret kunne ikke gemmes", error));
   }
   function submitLetterAnswer(answer) {
-    if (state.answered || state.task?.topic !== "letters") return;
+    if (state.answered || state.task?.topic !== "letters" || state.task.phase === "learn") return;
     state.answered=true;
     const task=state.task;
     const correct=MathModules.letters.evaluate(answer,task);
     const responseTime=Math.max(.1,(Date.now()-state.taskStartedAt)/1000);
     state.sessionAnswers.push(correct); if (correct) state.sessionCorrect++;
     const choice=LETTER_ITEMS.find(item=>item.letter===answer);
-    const result={topic:"letters",problem:`${task.expression} som startlyd`,answer:choice?.word || answer,correctAnswer:task.target.word,correct,responseTime:+responseTime.toFixed(2),timestamp:new Date().toISOString()};
+    const imagePhase=task.phase === "image-choice";
+    const result={topic:"letters",problem:imagePhase ? `${task.expression} som startlyd` : `${task.target.word} begynder med`,answer:imagePhase ? choice?.word || answer : answer,correctAnswer:imagePhase ? task.target.word : task.target.letter,correct,responseTime:+responseTime.toFixed(2),timestamp:new Date().toISOString()};
     state.user.results.push(result);
-    const choiceButtons=[...document.querySelectorAll("[data-letter-choice]")];
-    const pressed=choiceButtons.find(button=>button.dataset.letterChoice===answer);
-    choiceButtons.forEach(button=>{ button.disabled=true; });
+    const choiceButtons=[...document.querySelectorAll("[data-letter-answer]")];
+    const pressed=choiceButtons.find(button=>button.dataset.letterAnswer===answer);
     if (pressed) pressed.classList.add(correct ? "correct" : "wrong");
 
-    // Vis svaret kort, men lad lagringen køre uafhængigt af næste opgave.
+    // Gem i baggrunden; fremdriften må aldrig afhænge af netværket.
+    try { persistLetterResult(result); }
+    catch (error) { console.error("Bogstavsvaret kunne ikke sættes til lagring", error); }
+    if (!correct) {
+      window.setTimeout(()=>{ if (pressed) pressed.classList.remove("wrong"); state.answered=false; },520);
+      return;
+    }
+    choiceButtons.forEach(button=>{ button.disabled=true; });
     window.setTimeout(() => {
-      try { state.questionNumber++; newTask(); }
+      try {
+        if (task.phase === "image-choice") { task.phase="letter-choice"; state.taskStartedAt=Date.now(); state.answered=false; renderLetterExercise(); }
+        else { state.questionNumber++; newTask(); }
+      }
       catch (error) {
         state.answered=false;
         const message=document.getElementById("letter-error");
         if (message) message.textContent="Næste opgave kunne ikke indlæses. Prøv igen.";
         console.error("Næste bogstavopgave kunne ikke genereres", error);
       }
-    }, correct ? 320 : 650);
-    try { persistLetterResult(result); }
-    catch (error) { console.error("Bogstavsvaret kunne ikke sættes til lagring", error); }
+    },320);
   }
   function renderTableDrill() {
     const drill = state.tableDrill;
@@ -1067,9 +1080,10 @@
     } else if (event.target.id === "answer-form") await submitAnswer(event.target);
   });
   document.addEventListener("click", async (event) => {
-    const keyButton=event.target.closest("[data-key]"), letterChoiceButton=event.target.closest("[data-letter-choice]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
+    const keyButton=event.target.closest("[data-key]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
     if (keyButton) { handleKeypad(keyButton.dataset.key); return; }
-    if (letterChoiceButton) { await submitLetterAnswer(letterChoiceButton.dataset.letterChoice); return; }
+    if (letterContinueButton && state.task?.topic === "letters") { state.task.phase="image-choice"; state.taskStartedAt=Date.now(); renderLetterExercise(); return; }
+    if (letterChoiceButton) { submitLetterAnswer(letterChoiceButton.dataset.letterAnswer); return; }
     if (drillModeButton && state.tableDrill && !state.tableDrill.completedAt) {
       state.tableDrill.confirmationMode=drillModeButton.dataset.drillMode === "auto" ? "auto" : "enter";
       renderTableDrill();
