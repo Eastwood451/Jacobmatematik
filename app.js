@@ -474,9 +474,10 @@
     const pressed=document.querySelector(`[data-letter-choice="${CSS.escape(answer)}"]`);
     if (pressed) pressed.classList.add(correct ? "correct" : "wrong");
 
-    // Start næste opgave uafhængigt af resultatlagringen.
-    window.setTimeout(()=>{ state.questionNumber++; newTask(); },correct ? 320 : 650);
+    // Gå direkte videre. Ingen timer eller netværksanmodning må kunne låse billedknapperne.
     persistLetterResult(result);
+    state.questionNumber++;
+    newTask();
   }
   function renderTableDrill() {
     const drill = state.tableDrill;
