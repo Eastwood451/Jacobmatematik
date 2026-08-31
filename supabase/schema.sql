@@ -39,6 +39,11 @@ grant delete on public.results to authenticated;
 create policy "Read own profile" on public.profiles for select to authenticated
 using (id = (select auth.uid()));
 
+-- Teachers must be able to read the profile rows for students assigned to
+-- them. The results policy below uses that relationship to authorize access.
+create policy "Teacher reads own students" on public.profiles for select to authenticated
+using (teacher_id = (select auth.uid()));
+
 create policy "Teacher reads school" on public.school_state for select to authenticated
 using (teacher_id = (select auth.uid()));
 
