@@ -58,6 +58,14 @@
     throwIfError(response);
   }
 
+  async function loadResults(after = null) {
+    let query = client.from("results").select("id,student_id,data,created_at").order("created_at", { ascending:true });
+    if (after) query=query.gte("created_at",after);
+    const response = await query;
+    throwIfError(response);
+    return (response.data || []).map(row => ({ ...row.data, remoteId:row.id, studentId:row.student_id, createdAt:row.created_at }));
+  }
+
   async function appendResult(studentId, result) {
     const { remoteId, ...data } = result;
     const response = await client.from("results").insert({ student_id:studentId, data }).select("id").single();
@@ -91,6 +99,7 @@
     signIn,
     signOut,
     loadDatabase,
+    loadResults,
     saveSchoolState,
     appendResult,
     deleteResults,

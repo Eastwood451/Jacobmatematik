@@ -270,6 +270,10 @@
   });
   let remoteSaveQueue = Promise.resolve();
   let tableDrillTimerId = null;
+  let teacherLiveTimerId = null;
+  let teacherLiveRefreshInFlight = false;
+  let teacherResultsSignature = "";
+  let teacherResultsCursor = null;
   const save = () => {
     if (!usingCentralDatabase) { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); return Promise.resolve(); }
     if (state.user?.role !== "teacher") return Promise.resolve();
@@ -278,6 +282,52 @@
       .catch(error => { console.error("Synkronisering mislykkedes", error); });
     return remoteSaveQueue;
   };
+  const currentResultsSignature = () => db.users
+    .filter(user => user.role === "student")
+    .flatMap(user => (user.results || []).map(result => `${user.id}:${result.remoteId || `${result.timestamp}:${result.problem}`}`))
+    .sort()
+    .join("|");
+  function setTeacherLiveStatus(kind, text) {
+    const indicator=document.getElementById("teacher-live-status");
+    if (!indicator) return;
+    indicator.className=`teacher-live-status ${kind}`;
+    indicator.lastElementChild.textContent=text;
+  }
+  async function refreshTeacherResults() {
+    if (!usingCentralDatabase || state.user?.role !== "teacher" || state.view !== "teacher" || teacherLiveRefreshInFlight || document.hidden) return;
+    teacherLiveRefreshInFlight=true;
+    try {
+      const rows=await backend.loadResults(teacherResultsCursor);
+      if (rows.length) teacherResultsCursor=rows[rows.length-1].createdAt;
+      const existingIds=new Set(db.users.flatMap(user=>(user.results || []).map(result=>result.remoteId)).filter(Boolean));
+      rows.forEach(({studentId,createdAt,...result})=>{
+        if (existingIds.has(result.remoteId)) return;
+        const student=db.users.find(user=>user.id===studentId && user.role==="student");
+        if (student) student.results.push(result);
+      });
+      const nextSignature=currentResultsSignature();
+      if (nextSignature !== teacherResultsSignature) {
+        teacherResultsSignature=nextSignature;
+        const scrollTop=window.scrollY;
+        renderTeacher();
+        requestAnimationFrame(()=>window.scrollTo({top:scrollTop,left:0,behavior:"auto"}));
+      }
+      setTeacherLiveStatus("online","Live · opdateret nu");
+    } catch (error) {
+      setTeacherLiveStatus("offline","Forbindelsen afbrudt · prøver igen");
+      console.error("Live-resultater kunne ikke hentes",error);
+    } finally { teacherLiveRefreshInFlight=false; }
+  }
+  function startTeacherLiveUpdates() {
+    if (!usingCentralDatabase || state.user?.role !== "teacher" || teacherLiveTimerId) return;
+    teacherResultsSignature=currentResultsSignature();
+    teacherLiveTimerId=window.setInterval(refreshTeacherResults,2000);
+    refreshTeacherResults();
+  }
+  function stopTeacherLiveUpdates() {
+    if (teacherLiveTimerId) window.clearInterval(teacherLiveTimerId);
+    teacherLiveTimerId=null; teacherLiveRefreshInFlight=false; teacherResultsSignature=""; teacherResultsCursor=null;
+  }
   const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
   // Den faktiske svartid bruges til læring. Farveskalaer kan stadig afrunde visuelt ved 10 sekunder.
   const recordedTime = (result) => Math.max(0, Number(result.responseTime) || 0);
@@ -969,7 +1019,7 @@
     }
 
     app.innerHTML = `${header()}<div class="page teacher-page">
-      <section class="dashboard-head"><div><span class="eyebrow">Lærerportal</span><h1>${escapeHtml(activeClass.name)} lige nu</h1><p>Følg udvikling, opdag udfordringer og vælg næste fokus.</p></div>${usingCentralDatabase ? "" : `<button class="btn secondary" data-action="reset-demo">Nulstil demodata</button>`}</section>
+      <section class="dashboard-head"><div><span class="eyebrow">Lærerportal</span><h1>${escapeHtml(activeClass.name)} lige nu</h1><p>Følg udvikling, opdag udfordringer og vælg næste fokus.</p></div>${usingCentralDatabase ? `<div id="teacher-live-status" class="teacher-live-status online" role="status"><i aria-hidden="true"></i><span>Live · opdaterer automatisk</span></div>` : `<button class="btn secondary" data-action="reset-demo">Nulstil demodata</button>`}</section>
       <section class="class-manager" aria-label="Klasser">
         <div class="class-manager-title"><div><span class="eyebrow">Dine klasser</span><strong>${classes.length} ${classes.length===1?"klasse":"klasser"}</strong></div><form id="class-form" class="class-form"><label class="sr-only" for="class-name">Navn på ny klasse</label><input id="class-name" name="className" maxlength="30" placeholder="fx 9.A" required><button class="btn" type="submit">Opret klasse</button></form></div>
         <div class="class-tabs" role="tablist">${classes.map(item => { const count=db.users.filter(user=>user.role==="student"&&user.classId===item.id).length; return `<button role="tab" aria-selected="${item.id===activeClass.id}" class="class-tab ${item.id===activeClass.id?"active":""}" data-class="${item.id}"><strong>${escapeHtml(item.name)}</strong><small>${count} ${count===1?"elev":"elever"}</small></button>`; }).join("")}</div>
@@ -997,6 +1047,7 @@
         <div class="teacher-detail">${studentDetail}</div>
       </section>
     </div>`;
+    startTeacherLiveUpdates();
   }
   function render() { if (!state.user) renderLogin(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
 
@@ -1115,7 +1166,7 @@
     if (!actionButton) return;
     const action=actionButton.dataset.action;
     if (action==="guest-login") { stopTableDrillTimer(); Object.assign(state,{user:createGuest(),view:"student",task:null,tableDrill:null,questionNumber:1,sessionCorrect:0,sessionAnswers:[]}); renderStudentHome(); return; }
-    if (action==="logout") { stopTableDrillTimer(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,tableDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
+    if (action==="logout") { stopTableDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,tableDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
     if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
     if (action==="home") { stopTableDrillTimer(); state.tableDrill=null; state.task=null; state.view="student"; renderStudentHome(); }
     if (action==="restart-table-drill") { startTableDrill(); }

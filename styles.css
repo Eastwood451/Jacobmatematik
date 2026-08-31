@@ -169,6 +169,10 @@ h1,h2,h3,p { margin-top:0; }
 .learned-number-coin.silver span { text-shadow:0 1px 0 #fff,0 -1px 0 rgba(45,54,63,.28); }
 .dashboard-head { display:flex; justify-content:space-between; align-items:end; gap:20px; margin-bottom:30px; }
 .dashboard-head h1 { font-size:clamp(36px,5vw,56px); letter-spacing:-.055em; margin:8px 0 6px; } .dashboard-head p { color:var(--muted); margin:0; }
+.teacher-live-status { display:flex; align-items:center; gap:9px; padding:10px 13px; border:1px solid #a9dcc8; border-radius:999px; background:#effbf6; color:#176b4c; font-size:13px; font-weight:800; white-space:nowrap; }
+.teacher-live-status i { width:10px; height:10px; border-radius:50%; background:var(--mint); box-shadow:0 0 0 4px rgba(40,170,120,.14); }
+.teacher-live-status.offline { border-color:#efb6b2; background:#fff5f4; color:#973c38; }
+.teacher-live-status.offline i { background:var(--red); box-shadow:0 0 0 4px rgba(220,92,88,.14); }
 .student-list { display:grid; gap:18px; } .student-card { background:var(--paper); border:1px solid var(--line); border-radius:22px; overflow:hidden; box-shadow:0 8px 22px rgba(29,38,62,.05); }
 .student-summary { padding:20px 22px; display:grid; grid-template-columns:220px 1fr; gap:22px; cursor:pointer; align-items:center; }
 .student-name { display:flex; align-items:center; gap:13px; } .avatar { width:44px; height:44px; border-radius:14px; display:grid; place-items:center; background:#e8e4ff; color:var(--purple-dark); font-weight:900; }
