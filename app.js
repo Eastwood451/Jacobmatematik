@@ -259,6 +259,15 @@
   const app = document.getElementById("app");
   const backend = window.JacobBackend;
   const usingCentralDatabase = Boolean(backend?.configured);
+  const GUEST_TOPICS = new Set(["multiplication", "tableDrill"]);
+  const isGuest = () => state.user?.role === "guest";
+  const createGuest = () => ({
+    id:`guest-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`,
+    role:"guest", username:"guest", name:"Gæst", results:[],
+    assignedNumbers:[...SMALL_TABLES], assignedTables:[...SMALL_TABLES],
+    assignedAddends:[...SINGLE_DIGITS], assignedAddendSeconds:[...SINGLE_DIGITS],
+    assignedLetters:[...LETTER_KEYS],
+  });
   let remoteSaveQueue = Promise.resolve();
   let tableDrillTimerId = null;
   const save = () => {
@@ -291,18 +300,20 @@
   }
 
   function header() {
-    const userLabel = state.user.role === "teacher" ? "Lærer" : `${escapeHtml(state.user.name)} · Elev`;
+    const userLabel = state.user.role === "teacher" ? "Lærer" : isGuest() ? "Gæst" : `${escapeHtml(state.user.name)} · Elev`;
     const passwordButton = state.user.role === "student" ? `<button class="btn ghost" data-action="change-password">Skift adgangskode</button>` : "";
     return `<header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions"><span class="user-pill">${userLabel}</span>${passwordButton}<button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
   }
   function renderLogin() {
-    app.innerHTML = `<div class="login-wrap"><section class="login-intro"><span class="eyebrow">Matematik der følger dig</span><h1>Bliv stærkere, ét svar ad gangen.</h1><p>jacobmatematik finder det niveau, der udfordrer dig tilpas — og giver mere træning dér, hvor du har brug for den.</p><div class="math-trail"><span>7 × 8</span><span>−4 + 9</span><span>3(2 + 5)</span><span>6 + 2 × 4</span></div></section><section class="login-panel"><form class="login-card" id="login-form"><h2>Godt at se dig</h2><p>Log ind som elev eller lærer for at fortsætte.</p><div class="field"><label for="username">Brugernavn</label><input id="username" name="username" autocomplete="username" autocapitalize="none" placeholder="fx alma7" required></div><div class="field"><label for="password">Adgangskode</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Din adgangskode" required></div><p id="login-error" class="error" role="alert"></p><button class="btn full" type="submit">Log ind</button></form></section></div>`;
+    app.innerHTML = `<div class="login-wrap"><section class="login-intro"><span class="eyebrow">Matematik der følger dig</span><h1>Bliv stærkere, ét svar ad gangen.</h1><p>jacobmatematik finder det niveau, der udfordrer dig tilpas — og giver mere træning dér, hvor du har brug for den.</p><div class="math-trail"><span>7 × 8</span><span>−4 + 9</span><span>3(2 + 5)</span><span>6 + 2 × 4</span></div></section><section class="login-panel"><form class="login-card" id="login-form"><h2>Godt at se dig</h2><p>Log ind som elev eller lærer for at fortsætte.</p><div class="field"><label for="username">Brugernavn</label><input id="username" name="username" autocomplete="username" autocapitalize="none" placeholder="fx alma7" required></div><div class="field"><label for="password">Adgangskode</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Din adgangskode" required></div><p id="login-error" class="error" role="alert"></p><button class="btn full" type="submit">Log ind</button><div class="login-divider"><span>eller</span></div><button class="btn secondary full guest-login" type="button" data-action="guest-login">Gæst</button><small class="guest-note">Prøv Tabeltræning og Lille tabel uden bruger. Fremskridt gemmes ikke.</small></form></section></div>`;
     document.getElementById("username").focus();
   }
   function renderStudentHome() {
-    const stats = Object.keys(TOPICS).map(topic => ({ topic, ...getStats(state.user, topic) }));
+    const availableTopics = isGuest() ? Object.keys(TOPICS).filter(topic => GUEST_TOPICS.has(topic)) : Object.keys(TOPICS);
+    const stats = availableTopics.map(topic => ({ topic, ...getStats(state.user, topic) }));
     const total = (state.user.results || []).length;
-    app.innerHTML = `${header()}<div class="page"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p></div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section><h2 class="section-label">Vælg et område</h2><section class="topic-grid">${Object.entries(TOPICS).map(([key,t]) => `<button class="topic-card" data-topic="${key}"><span class="topic-icon">${t.icon}</span><strong>${t.name}</strong><small>${t.description}</small></button>`).join("")}<button class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button></section><h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div>`;
+    const guestCopy = isGuest() ? `<p class="guest-session-note">Din træning er midlertidig og slettes, når du forlader siden.</p>` : "";
+    app.innerHTML = `${header()}<div class="page"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section><h2 class="section-label">Vælg et område</h2><section class="topic-grid">${availableTopics.map(key => { const t=TOPICS[key]; return `<button class="topic-card" data-topic="${key}"><span class="topic-icon">${t.icon}</span><strong>${t.name}</strong><small>${t.description}</small></button>`; }).join("")}${isGuest() ? "" : `<button class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`}</section><h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div>`;
   }
   function renderStudentPassword() {
     app.innerHTML = `${header()}<div class="page"><section class="class-manager"><div class="class-manager-title"><div><span class="eyebrow">Min profil</span><h1>Skift adgangskode</h1><p>Vælg en ny adgangskode til din bruger.</p></div></div><form id="student-password-form" class="student-form"><div class="field"><label for="current-password">Nuværende adgangskode</label><input id="current-password" name="currentPassword" type="password" autocomplete="current-password" required></div><div class="field"><label for="new-password">Ny adgangskode</label><input id="new-password" name="newPassword" type="password" autocomplete="new-password" required></div><div class="field"><label for="confirm-password">Gentag ny adgangskode</label><input id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" required></div><p id="password-error" class="student-error" role="alert"></p><div class="student-manager-buttons"><button class="btn" type="submit">Gem adgangskode</button><button class="btn secondary" type="button" data-action="home">Annuller</button></div></form></section></div>`;
@@ -565,7 +576,7 @@
     const result = { topic:state.task.topic, problem:state.task.expression, answer:isUndefinedAnswer ? "Kan ikke beregnes" : Number(raw), correctAnswer:state.task.answer === "undefined" ? "Kan ikke beregnes" : state.task.answer, correct, responseTime:+responseTime.toFixed(2), timestamp:new Date().toISOString() };
     state.user.results.push(result);
     try {
-      if (usingCentralDatabase) result.remoteId = await backend.appendResult(state.user.id, result);
+      if (usingCentralDatabase && !isGuest()) result.remoteId = await backend.appendResult(state.user.id, result);
       else await save();
     } catch (error) {
       state.user.results.pop(); state.sessionAnswers.pop(); if (correct) state.sessionCorrect--; state.answered=false;
@@ -1090,6 +1101,7 @@
       return;
     }
     if (topicButton) {
+      if (isGuest() && !GUEST_TOPICS.has(topicButton.dataset.topic)) return;
       if (topicButton.dataset.topic === "tableDrill") { startTableDrill(); return; }
       stopTableDrillTimer(); state.tableDrill=null; state.selectedTopic=topicButton.dataset.topic; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise"; newTask();
     }
@@ -1102,7 +1114,8 @@
     if (reportTopicButton) { state.teacherTopicDetail=reportTopicButton.dataset.reportTopic; renderTeacher(); return; }
     if (!actionButton) return;
     const action=actionButton.dataset.action;
-    if (action==="logout") { stopTableDrillTimer(); if (usingCentralDatabase) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,tableDrill:null}); renderLogin(); }
+    if (action==="guest-login") { stopTableDrillTimer(); Object.assign(state,{user:createGuest(),view:"student",task:null,tableDrill:null,questionNumber:1,sessionCorrect:0,sessionAnswers:[]}); renderStudentHome(); return; }
+    if (action==="logout") { stopTableDrillTimer(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,tableDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
     if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
     if (action==="home") { stopTableDrillTimer(); state.tableDrill=null; state.task=null; state.view="student"; renderStudentHome(); }
     if (action==="restart-table-drill") { startTableDrill(); }

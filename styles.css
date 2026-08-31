@@ -30,6 +30,12 @@ h1,h2,h3,p { margin-top:0; }
 .login-panel { background:var(--ink); color:white; padding:clamp(28px,6vw,90px); display:flex; align-items:center; }
 .login-card { width:min(430px,100%); margin:auto; } .login-card h2 { font-size:34px; letter-spacing:-.04em; margin-bottom:8px; }
 .login-card>p { color:#bfc8d8; line-height:1.55; margin-bottom:28px; }
+.login-divider { display:flex; align-items:center; gap:12px; margin:18px 0; color:#98a4b8; font-size:13px; }
+.login-divider::before,.login-divider::after { content:""; height:1px; flex:1; background:#3a4559; }
+.guest-login { border-color:#7f8ca3; color:white; background:transparent; }
+.guest-login:hover { background:#2a3549; }
+.guest-note { display:block; margin-top:11px; color:#aeb8c9; text-align:center; line-height:1.45; }
+.guest-session-note { margin-top:10px !important; color:var(--muted); font-size:14px; }
 .field { display:grid; gap:8px; margin:17px 0; } .field label { font-size:14px; font-weight:700; color:#dfe4ee; }
 .field input,.answer-input { width:100%; border:2px solid transparent; border-radius:14px; padding:15px 16px; background:white; color:var(--ink); outline:none; }
 .field input:focus,.answer-input:focus { border-color:#a9a0ff; box-shadow:0 0 0 4px rgba(169,160,255,.18); }
