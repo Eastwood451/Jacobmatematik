@@ -50,7 +50,7 @@
     ["M","mus","m-mus.webp"],["N","næsehorn","n-naesehorn.webp"],["O","orm","o-orm.webp"],
     ["P","pingvin","p-pingvin.webp"],["Q","quokka","q-quokka.webp"],["R","ræv","r-raev.webp"],
     ["S","sæl","s-sael.webp"],["T","tiger","t-tiger.webp"],["U","ugle","u-ugle.webp"],
-    ["V","vaskebjørn","v-vaskebjoern.webp"],["W","wienerhund","w-wienerhund.webp"],["X","x-ray-fisk","x-xray-fisk.webp"],
+    ["V","vaskebjørn","v-vaskebjoern.webp"],["W","wok","w-wok.webp"],["X","xylofon","x-xylofon.webp"],
     ["Y","yver","y-yver.webp"],["Z","zebra","z-zebra.webp"],["Æ","æsel","ae-aesel.webp"],
     ["Ø","økse","oe-oekse.webp"],["Å","ål","aa-aal.webp"],
   ].map(([letter,word,file]) => ({ letter, word, image:`assets/letters/${file}` }));
