@@ -3,6 +3,7 @@
   "use strict";
 
   const STORAGE_KEY = "jacobmatematik-db-v1";
+  const TIMER_VISIBILITY_KEY = "jacobmatematik-show-exercise-timer";
   const LEGACY_STORAGE_KEYS = ["matbootcamp-db-v1", "talvaerkstedet-db-v1"];
   const TOPICS = {
     letters: { name: "Bogstavlæring", icon: "A B C", description: "Find billedet med den rigtige startlyd" },
@@ -234,6 +235,10 @@
     }
     catch { return defaultDatabase(); }
   }
+  function loadTimerVisibility() {
+    try { return sessionStorage.getItem(TIMER_VISIBILITY_KEY) === "true"; }
+    catch { return false; }
+  }
   function normalizeDatabase(database, includeLocalSchoolData = true) {
     if (!Array.isArray(database.classes) || !database.classes.length) database.classes = includeLocalSchoolData
       ? [{id:"c1",name:"7.A"},{id:"c2",name:"8.B"}]
@@ -255,7 +260,7 @@
     return database;
   }
   let db = normalizeDatabase(loadDatabase());
-  const state = { user: null, view: "login", selectedTopic: "mixed", task: null, taskStartedAt: 0, answered: false, questionNumber: 1, sessionCorrect: 0, sessionAnswers: [], tableDrill:null, expandedStudent: "s1", activeClassId:null, teacherTopicDetail: null, studentFormOpen: false, teacherPasswordFormOpen: false, teacherUsernameFormOpen: false, classRenameFormOpen: false };
+  const state = { user: null, view: "login", selectedTopic: "mixed", task: null, taskStartedAt: 0, answered: false, questionNumber: 1, sessionCorrect: 0, sessionAnswers: [], tableDrill:null, showExerciseTimer:loadTimerVisibility(), expandedStudent: "s1", activeClassId:null, teacherTopicDetail: null, studentFormOpen: false, teacherPasswordFormOpen: false, teacherUsernameFormOpen: false, classRenameFormOpen: false };
   const app = document.getElementById("app");
   const backend = window.JacobBackend;
   const usingCentralDatabase = Boolean(backend?.configured);
@@ -595,7 +600,10 @@
       ? `<section class="table-drill-complete"><span class="complete-mark">${troublePairs.length ? "↻" : "✓"}</span><h2>${troublePairs.length ? `${troublePairs.length} ${troublePairs.length === 1 ? "driller" : "drillere"}` : "Alle sidder hurtigt!"}</h2><p>${troublePairs.length ? "Øv dem, der var forkerte eller tog over 4 sekunder." : "Alle blev besvaret korrekt på højst 4 sekunder."}</p><strong>${formatTableDrillTime(elapsed)}</strong><p>${drill.errors} ${drill.errors === 1 ? "fejl" : "fejl"}</p>${troublePairs.length ? `<button class="btn full" type="button" data-action="practice-table-troubles">Øv drillerne (${troublePairs.length})</button>` : ""}<button class="btn secondary full" type="button" data-action="restart-table-drill">Start hele tabellen igen</button></section>`
       : `<form class="table-drill-answer" id="answer-form"><fieldset class="table-drill-mode"><legend>Svarmetode</legend><button class="${drill.confirmationMode === "enter" ? "active" : ""}" type="button" data-drill-mode="enter" aria-pressed="${drill.confirmationMode === "enter"}">Bekræft med Enter</button><button class="${drill.confirmationMode === "auto" ? "active" : ""}" type="button" data-drill-mode="auto" aria-pressed="${drill.confirmationMode === "auto"}">Autobekræft</button></fieldset><label for="answer">Skriv resultatet</label><input class="sr-only" id="answer" name="answer" inputmode="none" autocomplete="off" readonly><div class="table-drill-answer-preview" aria-live="polite"><span>${task.row} × ${task.column} =</span><strong id="table-drill-answer-preview">?</strong></div><div class="keypad table-drill-keypad ${drill.confirmationMode === "auto" ? "auto" : ""}" aria-label="Taltastatur">${TABLE_DRILL_VALUES.map(number => `<button class="key" type="button" data-key="${number}">${number}</button>`).join("")}<button class="key" type="button" data-key="0">0</button><button class="key utility" type="button" data-key="delete">Slet</button>${drill.confirmationMode === "enter" ? `<button class="key enter" type="button" data-key="enter">Enter</button>` : ""}</div><p id="answer-error" class="error" role="alert"></p></form>`;
     const progressLabel=drill.troubleRound ? "Drillere" : "Udfyldt";
-    app.innerHTML = `${header()}<div class="page table-drill-page"><div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${drill.troubleRound ? "Tabel-drill · drillere" : "Tabel-drill"}</span></div><section class="table-drill-card"><div class="table-drill-status"><span>Tid: <strong id="table-drill-time">${formatTableDrillTime(elapsed)}</strong></span><span>Fejl: <strong>${drill.errors}</strong></span><span>${progressLabel}: <strong>${completedInRound}/${drill.pairs.length}</strong></span></div><div class="table-drill-layout"><div class="table-drill-board">${grid}</div>${answerPanel}</div></section></div>`;
+    const timerStatus = state.showExerciseTimer
+      ? `<span>Tid: <strong id="table-drill-time">${formatTableDrillTime(elapsed)}</strong></span>`
+      : `<span class="table-drill-time-hidden">Tid skjult</span>`;
+    app.innerHTML = `${header()}<div class="page table-drill-page"><div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${drill.troubleRound ? "Tabel-drill · drillere" : "Tabel-drill"}</span></div><section class="table-drill-card"><div class="table-drill-status">${timerStatus}<button class="table-drill-timer-toggle" type="button" data-action="toggle-exercise-timer" aria-pressed="${state.showExerciseTimer}">${state.showExerciseTimer ? "Skjul tid" : "Vis tid"}</button><span>Fejl: <strong>${drill.errors}</strong></span><span>${progressLabel}: <strong>${completedInRound}/${drill.pairs.length}</strong></span></div><div class="table-drill-layout"><div class="table-drill-board">${grid}</div>${answerPanel}</div></section></div>`;
   }
   function renderCountingHand(activeFingers, mirrored = false) {
     // Fingrene vises i rækkefølgen tommel, pege-, lange-, ring- og lillefinger.
@@ -1169,6 +1177,12 @@
     if (action==="logout") { stopTableDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,tableDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
     if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
     if (action==="home") { stopTableDrillTimer(); state.tableDrill=null; state.task=null; state.view="student"; renderStudentHome(); }
+    if (action==="toggle-exercise-timer" && state.tableDrill) {
+      state.showExerciseTimer=!state.showExerciseTimer;
+      try { sessionStorage.setItem(TIMER_VISIBILITY_KEY,String(state.showExerciseTimer)); }
+      catch { /* Indstillingen gælder stadig i den aktuelle sidevisning. */ }
+      renderTableDrill();
+    }
     if (action==="restart-table-drill") { startTableDrill(); }
     if (action==="practice-table-troubles" && state.tableDrill) {
       const drill=state.tableDrill;
