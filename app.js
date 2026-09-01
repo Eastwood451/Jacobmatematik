@@ -53,8 +53,14 @@
     ["V","vaskebjørn","v-vaskebjoern.webp"],["W","wok","w-wok.webp"],["X","xylofon","x-xylofon.webp"],
     ["Y","yver","y-yver.webp"],["Z","zebra","z-zebra.webp"],["Æ","æsel","ae-aesel.webp"],
     ["Ø","økse","oe-oekse.webp"],["Å","ål","aa-aal.webp"],
-  ].map(([letter,word,file]) => ({ letter, word, image:`assets/letters/${file}` }));
+  ].map(([letter,word,file]) => ({
+    letter,
+    word,
+    image:`assets/letters/${file}`,
+    audio:`assets/letters/audio/${file.replace(/\.webp$/, ".mp3")}`,
+  }));
   const LETTER_KEYS = LETTER_ITEMS.map(item => item.letter);
+  let activeLetterAudio = null;
   const SPEED_DRILLS = new Set(["numbers", "addition", "multiplication", "tableDrill"]);
   const makeTask = (topic, expression, answer, hint = "", options = {}) => ({ topic, expression, answer, hint, ...options });
 
@@ -537,7 +543,7 @@
     const cycleStart = Math.floor((state.questionNumber - 1) / 10) * 10;
     const cycleAnswers = state.sessionAnswers.slice(cycleStart, cycleStart + 10);
     const phase=task.phase || "learn";
-    const learn=`<div class="letter-pair-intro"><strong>${escapeHtml(task.target.letter)}</strong><div><img src="${task.target.image}" alt="${escapeHtml(task.target.word)}"><span>${escapeHtml(task.target.word)}</span></div></div><p class="letter-instruction">${escapeHtml(task.target.letter)} og ${escapeHtml(task.target.word)} hører sammen</p><button class="btn letter-continue" type="button" data-letter-continue>Prøv selv →</button>`;
+    const learn=`<div class="letter-pair-intro"><strong>${escapeHtml(task.target.letter)}</strong><div><img src="${task.target.image}" alt="${escapeHtml(task.target.word)}"><span>${escapeHtml(task.target.word)}</span></div></div><p class="letter-instruction">${escapeHtml(task.target.letter)} som i ${escapeHtml(task.target.word)}</p><audio id="letter-learning-audio" src="${task.target.audio}" preload="auto"></audio><div class="letter-learning-actions"><button class="btn secondary letter-audio-replay" type="button" data-letter-audio aria-label="Hør ${escapeHtml(task.target.letter)} som i ${escapeHtml(task.target.word)} igen"><span aria-hidden="true">🔊</span> Hør igen</button><button class="btn letter-continue" type="button" data-letter-continue>Prøv selv →</button></div>`;
     const images=`<div class="letter-prompt"><strong>${escapeHtml(task.target.letter)}</strong><p>Hvilket billede begynder med ${escapeHtml(task.target.letter)}?</p></div><div class="letter-choice-grid" role="group">${task.choices.map(item => `<button class="letter-picture-button" type="button" data-letter-answer="${item.letter}" aria-label="${escapeHtml(item.word)}"><img src="${item.image}" alt="${escapeHtml(item.word)}"></button>`).join("")}</div>`;
     const letters=`<div class="letter-prompt letter-image-prompt"><div><img src="${task.target.image}" alt="Billede til bogstavøvelsen"></div></div><div class="letter-choice-grid letter-key-grid" role="group" aria-label="Vælg det rigtige bogstav">${task.letterChoices.map(item => `<button class="letter-key-button" type="button" data-letter-answer="${item.letter}">${escapeHtml(item.letter)}</button>`).join("")}</div>`;
     app.innerHTML = `${header()}<div class="page exercise-page letter-learning-page">
@@ -549,6 +555,24 @@
       </section>
       <div class="progress-row" aria-label="Svar i denne runde">${Array.from({length:10},(_,i)=>`<i class="progress-dot ${cycleAnswers[i] === true ? "correct" : cycleAnswers[i] === false ? "wrong" : ""}"></i>`).join("")}</div>
     </div>`;
+    if (phase === "learn") requestAnimationFrame(playLetterLearningAudio);
+  }
+  function stopLetterLearningAudio() {
+    if (!activeLetterAudio) return;
+    activeLetterAudio.pause();
+    activeLetterAudio.currentTime=0;
+    activeLetterAudio=null;
+  }
+  function playLetterLearningAudio() {
+    const audio=document.getElementById("letter-learning-audio");
+    if (!audio) return;
+    if (activeLetterAudio && activeLetterAudio !== audio) stopLetterLearningAudio();
+    activeLetterAudio=audio;
+    audio.currentTime=0;
+    audio.play().catch(() => {
+      document.querySelector("[data-letter-audio]")?.classList.add("needs-tap");
+    });
+    audio.addEventListener("ended", () => { if (activeLetterAudio === audio) activeLetterAudio=null; }, {once:true});
   }
   function persistLetterResult(result) {
     if (!usingCentralDatabase) {
@@ -1199,9 +1223,10 @@
     } else if (event.target.id === "answer-form") await submitAnswer(event.target);
   });
   document.addEventListener("click", async (event) => {
-    const keyButton=event.target.closest("[data-key]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
+    const keyButton=event.target.closest("[data-key]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
     if (keyButton) { handleKeypad(keyButton.dataset.key); return; }
-    if (letterContinueButton && state.task?.topic === "letters") { state.task.phase="image-choice"; state.taskStartedAt=Date.now(); renderLetterExercise(); return; }
+    if (letterAudioButton && state.task?.topic === "letters") { letterAudioButton.classList.remove("needs-tap"); playLetterLearningAudio(); return; }
+    if (letterContinueButton && state.task?.topic === "letters") { stopLetterLearningAudio(); state.task.phase="image-choice"; state.taskStartedAt=Date.now(); renderLetterExercise(); return; }
     if (letterChoiceButton) { submitLetterAnswer(letterChoiceButton.dataset.letterAnswer); return; }
     if (drillModeButton && state.tableDrill && !state.tableDrill.completedAt) {
       state.tableDrill.confirmationMode=drillModeButton.dataset.drillMode === "auto" ? "auto" : "enter";
