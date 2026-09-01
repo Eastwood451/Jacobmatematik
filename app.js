@@ -339,10 +339,12 @@
   const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
   // Den faktiske svartid bruges til læring. Farveskalaer kan stadig afrunde visuelt ved 10 sekunder.
   const recordedTime = (result) => Math.max(0, Number(result.responseTime) || 0);
+  const isPracticeResult = result => Boolean(TOPICS[result?.topic]) && result?.recordType !== "tableDrillSession";
+  const practiceResults = user => (user.results || []).filter(isPracticeResult);
 
   /* De seneste 20 svar pr. emne styrer nøjagtighed, tid, niveau og vægt. */
   function getStats(user, topic) {
-    const items = (user.results || []).filter(r => r.topic === topic).slice(-20);
+    const items = practiceResults(user).filter(r => r.topic === topic).slice(-20);
     if (!items.length) return { count:0, accuracy:0, avgTime:0, level:1, weight:1.5, status:"new" };
     const accuracy = items.filter(r => r.correct).length / items.length;
     const avgTime = items.reduce((sum, r) => sum + recordedTime(r), 0) / items.length;
@@ -369,7 +371,7 @@
   function renderStudentHome() {
     const availableTopics = isGuest() ? Object.keys(TOPICS).filter(topic => GUEST_TOPICS.has(topic)) : Object.keys(TOPICS);
     const stats = availableTopics.map(topic => ({ topic, ...getStats(state.user, topic) }));
-    const total = (state.user.results || []).length;
+    const total = practiceResults(state.user).length;
     const guestCopy = isGuest() ? `<p class="guest-session-note">Din træning er midlertidig og slettes, når du forlader siden.</p>` : "";
     app.innerHTML = `${header()}<div class="page"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section><h2 class="section-label">Vælg et område</h2><section class="topic-grid">${availableTopics.map(key => { const t=TOPICS[key]; return `<button class="topic-card" data-topic="${key}"><span class="topic-icon">${t.icon}</span><strong>${t.name}</strong><small>${t.description}</small></button>`; }).join("")}${isGuest() ? "" : `<button class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`}</section><h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div>`;
   }
@@ -385,6 +387,26 @@
     const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
     return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
   }
+  function tableDrillCellStyle(attempt) {
+    if (!attempt?.correct || recordedTime(attempt) >= 10) return "--cell-color:hsl(0 72% 78%)";
+    if (recordedTime(attempt) <= 4) return "--cell-color:hsl(138 55% 72%)";
+    const hue = Math.round(138 * (10 - recordedTime(attempt)) / 6);
+    return `--cell-color:hsl(${hue} 68% 76%)`;
+  }
+  async function finalizeTableDrillSession(status = "abandoned") {
+    const drill=state.tableDrill;
+    if (!drill || drill.finalizedAt || isGuest()) return;
+    const endedAt=Date.now();
+    drill.finalizedAt=endedAt;
+    const marker={topic:"tableDrillSession",recordType:"tableDrillSession",problem:"Tabel-drill session",correct:true,responseTime:0,timestamp:new Date(endedAt).toISOString(),drillSessionId:drill.sessionId,drillStartedAt:new Date(drill.startedAt).toISOString(),drillEndedAt:new Date(endedAt).toISOString(),drillStatus:status,drillExpectedCells:drill.pairs.length,drillTroubleRound:drill.troubleRound};
+    try {
+      if (usingCentralDatabase) marker.remoteId=await backend.appendResult(state.user.id,marker);
+      else { state.user.results.push(marker); await save(); }
+    } catch (error) {
+      drill.finalizedAt=null;
+      console.error("Tabel-drill-sessionen kunne ikke afsluttes",error);
+    }
+  }
   function updateTableDrillTimer() {
     const timer = document.getElementById("table-drill-time");
     const drill = state.tableDrill;
@@ -398,6 +420,7 @@
     const cells = { ...(options.cells || {}) };
     pairs.forEach(({row,column}) => delete cells[`${row}-${column}`]);
     state.tableDrill = {
+      sessionId:`td-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`,
       pairs:shuffle(pairs),
       currentIndex:0,
       cells,
@@ -405,6 +428,7 @@
       errors:0,
       startedAt:Date.now(),
       completedAt:null,
+      finalizedAt:null,
       confirmationMode:options.confirmationMode || state.tableDrill?.confirmationMode || "enter",
       troubleRound:Boolean(options.pairs),
     };
@@ -418,7 +442,7 @@
       const drill = state.tableDrill;
       const pair = drill?.pairs[drill.currentIndex];
       if (!pair) {
-        if (drill && !drill.completedAt) drill.completedAt=Date.now();
+        if (drill && !drill.completedAt) { drill.completedAt=Date.now(); finalizeTableDrillSession("completed"); }
         stopTableDrillTimer(); state.task=null; state.answered=false; renderTableDrill(); return;
       }
       state.task=makeTask("tableDrill", `${pair.row} × ${pair.column}`, pair.row * pair.column, "", pair);
@@ -583,12 +607,6 @@
     const troublePairs = Object.entries(drill.roundResults)
       .filter(([,attempt]) => !attempt.correct || attempt.responseTime > 4)
       .map(([key]) => { const [row,column]=key.split("-").map(Number); return {row,column}; });
-    const cellStyle = attempt => {
-      if (!attempt.correct || attempt.responseTime >= 10) return "--cell-color:hsl(0 72% 78%)";
-      if (attempt.responseTime <= 4) return "--cell-color:hsl(138 55% 72%)";
-      const hue = Math.round(138 * (10 - attempt.responseTime) / 6);
-      return `--cell-color:hsl(${hue} 68% 76%)`;
-    };
     const grid = `<table class="table-drill-grid" aria-label="Gangetabel fra 1 til 9">
       <thead><tr><th aria-hidden="true"></th>${TABLE_DRILL_VALUES.map(column => `<th class="${column === activeColumn ? "active-axis" : ""}" scope="col">${column}</th>`).join("")}</tr></thead>
       <tbody>${TABLE_DRILL_VALUES.map(row => `<tr><th class="${row === activeRow ? "active-axis" : ""}" scope="row">${row}</th>${TABLE_DRILL_VALUES.map(column => {
@@ -596,7 +614,7 @@
         const classes=[row===activeRow?"active-row":"",column===activeColumn?"active-column":"",solved?"solved timed":"",attempt && !attempt.correct?"wrong":"",active?"active-cell":""].filter(Boolean).join(" ");
         const contents=active ? `<span>${row}×${column}</span><strong id="table-drill-cell-answer"></strong>` : solved ? `<strong>${row*column}</strong>${attempt.correct ? "" : `<i aria-hidden="true">×</i>`}` : "";
         const timing=solved ? `${attempt.correct ? "korrekt" : "forkert"} på ${attempt.responseTime.toFixed(1)} sekunder` : "";
-        return `<td class="${classes}" ${solved ? `style="${cellStyle(attempt)}"` : ""} aria-label="${row} gange ${column}${solved ? ` er ${row*column}, ${timing}` : active ? ", aktiv opgave" : ""}">${contents}</td>`;
+        return `<td class="${classes}" ${solved ? `style="${tableDrillCellStyle(attempt)}"` : ""} aria-label="${row} gange ${column}${solved ? ` er ${row*column}, ${timing}` : active ? ", aktiv opgave" : ""}">${contents}</td>`;
       }).join("")}</tr>`).join("")}</tbody>
     </table>`;
     const answerPanel = drill.completedAt
@@ -635,6 +653,7 @@
     const correct = MathModules[state.task.topic].evaluate(raw, state.task);
     state.answered = true; state.sessionAnswers.push(correct); if (correct) state.sessionCorrect++;
     const result = { topic:state.task.topic, problem:state.task.expression, answer:isUndefinedAnswer ? "Kan ikke beregnes" : Number(raw), correctAnswer:state.task.answer === "undefined" ? "Kan ikke beregnes" : state.task.answer, correct, responseTime:+responseTime.toFixed(2), timestamp:new Date().toISOString() };
+    if (state.task.topic === "tableDrill" && state.tableDrill) Object.assign(result,{drillSessionId:state.tableDrill.sessionId,drillStartedAt:new Date(state.tableDrill.startedAt).toISOString(),drillRow:state.task.row,drillColumn:state.task.column,drillExpectedCells:state.tableDrill.pairs.length,drillTroubleRound:state.tableDrill.troubleRound});
     state.user.results.push(result);
     try {
       if (usingCentralDatabase && !isGuest()) result.remoteId = await backend.appendResult(state.user.id, result);
@@ -696,7 +715,7 @@
     return `${user.name} arbejder stabilt. Stærkest i ${TOPICS[strong.topic].name.toLowerCase()} med ${Math.round(strong.accuracy*100)} % rigtige.`;
   }
   function getOverallStats(user, limit = null) {
-    const sorted = [...(user.results || [])].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const sorted = practiceResults(user).sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
     const items = limit ? sorted.slice(-limit) : sorted;
     if (!items.length) return { count:0, accuracy:0, avgTime:0 };
     return {
@@ -706,7 +725,7 @@
     };
   }
   function getTrend(user, groups = 6) {
-    const items = [...(user.results || [])].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
+    const items = practiceResults(user).sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp));
     if (!items.length) return [];
     const size = Math.max(1, Math.ceil(items.length / groups));
     const buckets = [];
@@ -721,7 +740,7 @@
     return buckets.slice(-groups);
   }
   function getProgress(user) {
-    const items = [...(user.results || [])].sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp)).slice(-24);
+    const items = practiceResults(user).sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp)).slice(-24);
     if (items.length < 4) return { delta:0, direction:"neutral" };
     const middle = Math.floor(items.length / 2), first = items.slice(0,middle), last = items.slice(middle);
     const accuracy = list => list.filter(item => item.correct).length / list.length * 100;
@@ -960,6 +979,40 @@
     </section>`;
   }
 
+  function tableDrillSessions(user) {
+    const sessions=new Map();
+    (user.results || []).filter(item => item.drillSessionId && ["tableDrill","tableDrillSession"].includes(item.topic)).forEach(item => {
+      const id=String(item.drillSessionId);
+      if (!sessions.has(id)) sessions.set(id,{id,startedAt:item.drillStartedAt || item.timestamp,lastActivity:item.timestamp,endedAt:null,status:null,expected:Number(item.drillExpectedCells)||81,troubleRound:Boolean(item.drillTroubleRound),attempts:{}});
+      const session=sessions.get(id);
+      if (new Date(item.drillStartedAt || item.timestamp) < new Date(session.startedAt)) session.startedAt=item.drillStartedAt || item.timestamp;
+      if (new Date(item.timestamp) > new Date(session.lastActivity)) session.lastActivity=item.timestamp;
+      session.expected=Math.max(session.expected,Number(item.drillExpectedCells)||0);
+      session.troubleRound=session.troubleRound || Boolean(item.drillTroubleRound);
+      if (item.recordType === "tableDrillSession") { session.endedAt=item.drillEndedAt || item.timestamp; session.status=item.drillStatus || "abandoned"; return; }
+      const match=String(item.problem || "").match(/^(\d+)\s*×\s*(\d+)$/);
+      const row=Number(item.drillRow || match?.[1]), column=Number(item.drillColumn || match?.[2]);
+      if (TABLE_DRILL_VALUES.includes(row) && TABLE_DRILL_VALUES.includes(column)) session.attempts[`${row}-${column}`]=item;
+    });
+    return [...sessions.values()].sort((left,right) => new Date(right.startedAt) - new Date(left.startedAt));
+  }
+
+  function renderTableDrillHistory(user) {
+    const sessions=tableDrillSessions(user).slice(0,8);
+    const dateLabel=value => new Intl.DateTimeFormat("da-DK",{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"}).format(new Date(value));
+    const timeLabel=value => new Intl.DateTimeFormat("da-DK",{hour:"2-digit",minute:"2-digit"}).format(new Date(value));
+    const heatmap=session => `<table class="table-drill-history-grid" aria-label="Heatmap for tabel-drill startet ${dateLabel(session.startedAt)} klokken ${timeLabel(session.startedAt)}"><thead><tr><th aria-hidden="true"></th>${TABLE_DRILL_VALUES.map(column => `<th scope="col">${column}</th>`).join("")}</tr></thead><tbody>${TABLE_DRILL_VALUES.map(row => `<tr><th scope="row">${row}</th>${TABLE_DRILL_VALUES.map(column => { const attempt=session.attempts[`${row}-${column}`]; const label=attempt ? `${row} gange ${column}: ${attempt.correct ? "korrekt" : "forkert"} på ${recordedTime(attempt).toFixed(1)} sekunder` : `${row} gange ${column}: ikke besvaret`; return `<td class="${attempt ? "answered" : ""} ${attempt && !attempt.correct ? "wrong" : ""}" ${attempt ? `style="${tableDrillCellStyle(attempt)}"` : ""} title="${label}" aria-label="${label}">${attempt ? `<strong>${row*column}</strong>${attempt.correct ? "" : "<i>×</i>"}` : ""}</td>`; }).join("")}</tr>`).join("")}</tbody></table>`;
+    const cards=sessions.map(session => {
+      const answered=Object.keys(session.attempts).length;
+      const completed=session.status === "completed" || answered >= session.expected;
+      const active=!completed && !session.endedAt && Date.now()-new Date(session.lastActivity).getTime() < 120000;
+      const status=completed ? "Afsluttet" : active ? "I gang" : "Forladt";
+      const end=session.endedAt || (!active ? session.lastActivity : null);
+      return `<article class="table-drill-history-card"><header><div><span class="eyebrow">${dateLabel(session.startedAt)}</span><h4>${session.troubleRound ? "Drillerunde" : "Tabel-drill"}</h4><p>Start ${timeLabel(session.startedAt)} · ${end ? `slut ${timeLabel(end)}` : `senest aktiv ${timeLabel(session.lastActivity)}`}</p></div><div class="table-drill-history-status ${completed ? "completed" : active ? "active" : "abandoned"}"><strong>${status}</strong><span>${answered}/${session.expected}</span></div></header>${heatmap(session)}</article>`;
+    }).join("");
+    return `<section class="pair-detail table-drill-history" aria-labelledby="table-drill-history-title"><div class="pair-detail-head"><div><span class="eyebrow">Sessionshistorik</span><h3 id="table-drill-history-title">Seneste heatmaps</h3><p>Afsluttede drills og seneste status fra forladte sessioner.</p></div><button class="btn secondary" data-action="close-topic-detail">Luk</button></div>${cards ? `<div class="table-drill-history-list">${cards}</div>` : `<p class="empty">Ingen gemte Tabel-drill-sessioner endnu. Nye drills vises her, så snart eleven har besvaret den første opgave.</p>`}</section>`;
+  }
+
   function renderTeacher() {
     const classes = db.classes || [];
     const activeClass = classes.find(item => item.id === state.activeClassId) || classes[0];
@@ -967,7 +1020,7 @@
     const students = db.users.filter(user => user.role === "student" && user.classId === activeClass.id);
     const selected = students.find(student => student.id === state.expandedStudent) || students[0] || null;
     state.expandedStudent = selected?.id || null;
-    const allResults = students.flatMap(student => student.results || []), classCorrect = allResults.filter(item => item.correct).length;
+    const allResults = students.flatMap(practiceResults), classCorrect = allResults.filter(item => item.correct).length;
     const classAccuracy = allResults.length ? Math.round(classCorrect / allResults.length * 100) : 0;
     const needsAttention = students.filter(student => Object.keys(TOPICS).some(topic => getStats(student,topic).status === "weak")).length;
     let studentDetail = `<div class="empty-class"><span class="empty-class-icon">＋</span><h2>Klassen har ingen elever endnu</h2><p>Brug knappen “Tilføj elev” ovenfor for at oprette klassens første elev.</p></div>`;
@@ -982,13 +1035,14 @@
       const studentInsights = `<section class="insight-grid">
           <article class="focus-card"><span class="focus-icon">!</span><div><span class="eyebrow">Største udfordring</span><h3>${TOPICS[challenge.topic].name}</h3><p>${recommendationFor(challenge.topic)}</p><div class="evidence"><span>${Math.round(challenge.accuracy*100)} % rigtige</span><span>${challenge.avgTime.toFixed(1)} sek.</span></div></div></article>
           <article class="topic-performance"><div class="chart-title"><div><span>Emner</span><h3>Sikkerhed og tempo</h3></div><small>Seneste 20 pr. emne</small></div>
-            ${topicStats.map(stat => { const pct=Math.round(stat.accuracy*100), cls=stat.status==="strong"?"strong":stat.status==="weak"?"weak":"medium"; const detailLabel=stat.topic==="multiplication"||stat.topic==="addition"?" · Se talpar →":stat.topic==="numbers"?" · Se antal →":stat.topic==="negatives"?" · Se fortegn →":""; const content=`<div><strong>${TOPICS[stat.topic].name}</strong><small>${stat.count} svar · ${stat.count?stat.avgTime.toFixed(1):"—"} sek.${detailLabel}</small></div><div class="topic-meter"><span><i class="${cls}" style="width:${stat.count?pct:0}%"></i></span><b>${stat.count?pct+" %":"—"}</b></div>`; const topicRow=["numbers","addition","multiplication","negatives"].includes(stat.topic) ? `<button class="topic-row topic-row-button ${state.teacherTopicDetail===stat.topic?"active":""}" data-report-topic="${stat.topic}" aria-expanded="${state.teacherTopicDetail===stat.topic}">${content}</button>` : `<div class="topic-row">${content}</div>`; return `<div class="topic-row-control">${topicRow}<button class="btn danger compact topic-reset" type="button" data-action="reset-topic-progress" data-reset-topic="${stat.topic}" data-reset-student="${selected.id}">Nulstil fremskridt</button></div>`; }).join("")}
+            ${topicStats.map(stat => { const pct=Math.round(stat.accuracy*100), cls=stat.status==="strong"?"strong":stat.status==="weak"?"weak":"medium"; const detailLabel=stat.topic==="multiplication"||stat.topic==="addition"?" · Se talpar →":stat.topic==="numbers"?" · Se antal →":stat.topic==="negatives"?" · Se fortegn →":stat.topic==="tableDrill"?" · Se heatmaps →":""; const content=`<div><strong>${TOPICS[stat.topic].name}</strong><small>${stat.count} svar · ${stat.count?stat.avgTime.toFixed(1):"—"} sek.${detailLabel}</small></div><div class="topic-meter"><span><i class="${cls}" style="width:${stat.count?pct:0}%"></i></span><b>${stat.count?pct+" %":"—"}</b></div>`; const topicRow=["numbers","addition","multiplication","tableDrill","negatives"].includes(stat.topic) ? `<button class="topic-row topic-row-button ${state.teacherTopicDetail===stat.topic?"active":""}" data-report-topic="${stat.topic}" aria-expanded="${state.teacherTopicDetail===stat.topic}">${content}</button>` : `<div class="topic-row">${content}</div>`; return `<div class="topic-row-control">${topicRow}<button class="btn danger compact topic-reset" type="button" data-action="reset-topic-progress" data-reset-topic="${stat.topic}" data-reset-student="${selected.id}">Nulstil fremskridt</button></div>`; }).join("")}
           </article>
         </section>`;
       studentDetail = `
         <section class="student-profile-head"><div class="student-name"><span class="avatar large">${escapeHtml(selected.name.slice(0,1))}</span><div><span class="eyebrow">Elevprofil</span><h2>${escapeHtml(selected.name)}</h2><p>${summaryFor(selected)}</p></div></div><div class="student-profile-actions"><span class="progress-badge ${progress.direction}">${progress.direction==="up"?"↗":progress.direction==="down"?"↘":"→"} ${progressCopy}</span><label>Klasse<select data-student-class="${selected.id}">${classes.map(item => `<option value="${item.id}" ${item.id===selected.classId?"selected":""}>${escapeHtml(item.name)}</option>`).join("")}</select></label></div><form id="student-profile-form" class="student-profile-editor" data-student-id="${escapeHtml(selected.id)}"><input type="hidden" name="studentId" value="${escapeHtml(selected.id)}"><div class="field"><label for="profile-student-name">Elevens navn</label><input id="profile-student-name" name="studentName" maxlength="60" value="${escapeHtml(selected.name)}" autocomplete="off" required></div><div class="field"><label for="profile-student-username">Brugernavn</label><input id="profile-student-username" name="studentUsername" maxlength="40" value="${escapeHtml(selected.username)}" autocomplete="off" autocapitalize="none" required></div><div class="field"><label for="profile-student-password">Adgangskode</label><input id="profile-student-password" name="studentPassword" type="password" maxlength="60" autocomplete="new-password" placeholder="Lad stå tomt for at beholde den nuværende"></div><button class="btn" type="submit">Gem elev</button><p id="student-profile-message" class="student-profile-message ${state.studentProfileNotice ? "success" : ""}" role="status">${escapeHtml(state.studentProfileNotice)}</p></form></section>
 
         ${studentInsights}
+        ${state.teacherTopicDetail === "tableDrill" ? renderTableDrillHistory(selected) : ""}
 
         <section class="student-kpis">
           <article><span>Seneste 20</span><strong>${Math.round(current.accuracy*100)} %</strong><small>korrekte svar</small></article>
@@ -1156,6 +1210,7 @@
     }
     if (topicButton) {
       if (isGuest() && !GUEST_TOPICS.has(topicButton.dataset.topic)) return;
+      if (state.tableDrill && !state.tableDrill.finalizedAt) await finalizeTableDrillSession("abandoned");
       if (topicButton.dataset.topic === "tableDrill") { startTableDrill(); return; }
       stopTableDrillTimer(); state.tableDrill=null; state.selectedTopic=topicButton.dataset.topic; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise"; newTask();
     }
@@ -1169,16 +1224,16 @@
     if (!actionButton) return;
     const action=actionButton.dataset.action;
     if (action==="guest-login") { stopTableDrillTimer(); Object.assign(state,{user:createGuest(),view:"student",task:null,tableDrill:null,questionNumber:1,sessionCorrect:0,sessionAnswers:[]}); renderStudentHome(); return; }
-    if (action==="logout") { stopTableDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,tableDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
+    if (action==="logout") { if (state.tableDrill && !state.tableDrill.finalizedAt) await finalizeTableDrillSession("abandoned"); stopTableDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,tableDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
     if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
-    if (action==="home") { stopTableDrillTimer(); state.tableDrill=null; state.task=null; state.view="student"; renderStudentHome(); }
+    if (action==="home") { if (state.tableDrill && !state.tableDrill.finalizedAt) await finalizeTableDrillSession("abandoned"); stopTableDrillTimer(); state.tableDrill=null; state.task=null; state.view="student"; renderStudentHome(); }
     if (action==="toggle-exercise-timer" && state.tableDrill) {
       state.showExerciseTimer=!state.showExerciseTimer;
       try { sessionStorage.setItem(TIMER_VISIBILITY_KEY,String(state.showExerciseTimer)); }
       catch { /* Indstillingen gælder stadig i den aktuelle sidevisning. */ }
       renderTableDrill();
     }
-    if (action==="restart-table-drill") { startTableDrill(); }
+    if (action==="restart-table-drill") { if (state.tableDrill && !state.tableDrill.finalizedAt) await finalizeTableDrillSession(state.tableDrill.completedAt ? "completed" : "abandoned"); startTableDrill(); }
     if (action==="practice-table-troubles" && state.tableDrill) {
       const drill=state.tableDrill;
       const pairs=Object.entries(drill.roundResults).filter(([,attempt])=>!attempt.correct || attempt.responseTime>4).map(([key])=>{ const [row,column]=key.split("-").map(Number); return {row,column}; });
@@ -1202,11 +1257,11 @@
     if (action==="reset-topic-progress") {
       const topic=actionButton.dataset.resetTopic, student=db.users.find(user=>user.id===actionButton.dataset.resetStudent && user.role==="student");
       if (!student || !TOPICS[topic]) return;
-      const count=(student.results || []).filter(item=>item.topic===topic).length;
+      const count=(student.results || []).filter(item=>item.topic===topic && isPracticeResult(item)).length;
       if (confirm(`Vil du nulstille fremskridtet i ${TOPICS[topic].name} for ${student.name}? ${count} besvarelser slettes permanent.`)) {
         try {
-          if (usingCentralDatabase) await backend.deleteResults(student.id, topic);
-          student.results=(student.results || []).filter(item=>item.topic!==topic); state.teacherTopicDetail=null; await save(); renderTeacher();
+          if (usingCentralDatabase) { await backend.deleteResults(student.id, topic); if (topic === "tableDrill") await backend.deleteResults(student.id, "tableDrillSession"); }
+          student.results=(student.results || []).filter(item=>item.topic!==topic && !(topic === "tableDrill" && item.topic === "tableDrillSession")); state.teacherTopicDetail=null; await save(); renderTeacher();
         } catch (resetError) { alert("Fremskridtet kunne ikke nulstilles."); console.error(resetError); }
       }
     }
@@ -1284,6 +1339,9 @@
     if (event.key === "-") handleKeypad("minus");
     if (event.key === "Backspace") handleKeypad("delete");
     if (event.key === "Enter") handleKeypad("enter");
+  });
+  window.addEventListener("pagehide", () => {
+    if (state.tableDrill && !state.tableDrill.finalizedAt) finalizeTableDrillSession("abandoned");
   });
   async function start() {
     if (!usingCentralDatabase) { render(); return; }
