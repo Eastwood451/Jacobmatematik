@@ -1305,8 +1305,7 @@
       if (db.users.some(user => user.id !== student.id && user.username.toLowerCase() === username)) { message.textContent="Brugernavnet er allerede i brug."; return; }
       try {
         if (usingCentralDatabase) {
-          if (username !== student.username) await backend.manageStudent("username", { studentId:student.id, username });
-          if (password) await backend.manageStudent("password", { studentId:student.id, password });
+          await backend.manageStudent("profile", { studentId:student.id, username, name, password });
         } else if (password) student.password=password;
         student.name=name; student.username=username; state.studentProfileNotice="Ændringerne er gemt."; await save(); renderTeacher();
       } catch (profileError) { message.textContent="Elevoplysningerne kunne ikke gemmes."; console.error(profileError); }
