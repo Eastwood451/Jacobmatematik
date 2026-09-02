@@ -5,11 +5,12 @@ En responsiv matematikapp til elever og lærere, bygget i ren HTML, CSS og JavaS
 ## Funktioner
 
 - Elev- og lærerlogin
-- Tallene, Plusstykker, Lille tabel, basisregler, regnehierarki, negative tal og distributiv lov
+- Tallene, Plusstykker, Lille tabel, Tabel-drill, Division-drill, basisregler, regnehierarki, negative tal og distributiv lov
 - Adaptiv opgavefordeling baseret på rigtighed og svartid
 - Skærmtastatur til iPad og browser
 - Lærerportal med klasser, elevstatistik, grafer og detaljerede opgaveresultater
 - Farvekodet historik for hvert ordnet plus- og multiplikationspar
+- Sessionsheatmaps for Tabel-drill og Division-drill med samme farvekodning af svartid og fejl
 - Mestring efter tre hurtige korrekte svar i træk; Tallene bruger 10 sekunder, og de øvrige fartøvelser bruger 5 sekunder
 - Korrekt svar vises som en trykbar illustration efter et forkert svar
 - Valgfri central Supabase-database, så lærer og elever deler klasser og resultater på tværs af enheder
