@@ -265,6 +265,7 @@ h1,h2,h3,p { margin-top:0; }
 .table-drill-history-grid td { position:relative; height:38px; border:1px solid #d9dbe2; background:#f1f2f5; text-align:center; color:#1b2638; font:750 14px/1 Georgia,serif; }
 .table-drill-history-grid td.answered { background:var(--cell-color); }.table-drill-history-grid td.wrong { box-shadow:inset 0 0 0 2px #c93c46; }
 .table-drill-history-grid td i { position:absolute; top:3px; right:4px; color:#a81827; font:900 10px/1 ui-rounded,system-ui,sans-serif; }
+.division-drill-history-grid td:not(.answered) { color:#6a7689; background:#f5f6f9; }
 .mastery-summary { padding:9px 12px; border-radius:11px; background:#ddf6eb; color:#166a4c; font-size:12px; white-space:nowrap; }
 .mastery-summary strong { font-size:17px; }
 .accuracy-scale { display:grid; grid-template-columns:auto minmax(130px,280px) auto 1fr; align-items:center; gap:8px; margin:18px 0 12px; color:var(--muted); font-size:12px; }
@@ -317,6 +318,11 @@ h1,h2,h3,p { margin-top:0; }
 .table-drill-grid td.active-cell { z-index:1; color:white; background:var(--mint); box-shadow:0 0 0 3px rgba(40,170,120,.28); }
 .table-drill-grid td.active-cell span,.table-drill-grid td.active-cell strong { display:block; }
 .table-drill-grid td.active-cell span { font-size:1.05em; font-weight:850; letter-spacing:-.02em; opacity:1; }.table-drill-grid td.active-cell strong { min-height:1em; margin-top:3px; font:900 1.12em/1 ui-rounded,system-ui,sans-serif; }
+.division-drill-grid thead th:first-child { color:var(--purple-dark); font-weight:900; }
+.division-drill-grid td strong { display:block; color:#637087; }
+.division-drill-grid td.active-cell strong { margin:0; color:white; font:900 1.16em/1 ui-rounded,system-ui,sans-serif; }
+.division-drill-grid td.solved strong { color:#17243a; }
+.division-axis-question { display:grid; place-items:center; width:clamp(24px,3vw,34px); height:clamp(24px,3vw,34px); margin:auto; border-radius:9px; color:white; background:var(--purple); font:900 clamp(16px,2vw,22px)/1 ui-rounded,system-ui,sans-serif; box-shadow:0 0 0 3px rgba(91,72,218,.18); }
 .table-drill-answer { align-self:center; padding:20px; border:1px solid var(--line); border-radius:20px; background:#faf8f3; }
 .table-drill-answer>label { display:block; margin-bottom:9px; color:var(--muted); text-align:center; font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; }
 .table-drill-mode { margin:0 0 15px; padding:3px; display:grid; grid-template-columns:1fr 1fr; border:1px solid #d8d3c8; border-radius:12px; background:#ebe7de; }

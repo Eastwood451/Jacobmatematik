@@ -12,6 +12,7 @@
     basics: { name: "Basisregler", icon: "0 · 1", description: "Regneregler med 0 og 1" },
     multiplication: { name: "Lille tabel", icon: "7 × 8", description: "Gangestykker fra 0×0 til 10×10" },
     tableDrill: { name: "Tabel-drill", icon: "3 × 4", description: "Udfyld hele 1–9-tabellen på tid" },
+    divisionDrill: { name: "Division-drill", icon: "63 ÷ 7", description: "Find den manglende faktor i hele 1–9-tabellen" },
     pemdas: { name: "Regnehierarki", icon: "2 + 3 × 4", description: "Gange før plus og minus" },
     negatives: { name: "Negative tal", icon: "−4 + 7", description: "Plus, minus og gange" },
     distributive: { name: "Distributiv lov", icon: "3(4 + 5)", description: "Gang ind i parentesen" },
@@ -42,6 +43,8 @@
   const SINGLE_DIGITS = Array.from({length:10}, (_,index) => index);
   const ORDERED_NUMBER_KEYS = [...SMALL_TABLES.slice(1), 0];
   const TABLE_DRILL_VALUES = Array.from({length:9}, (_,index) => index + 1);
+  const MATRIX_DRILL_TOPICS = new Set(["tableDrill", "divisionDrill"]);
+  const DRILL_SESSION_TOPICS = { tableDrill:"tableDrillSession", divisionDrill:"divisionDrillSession" };
   const LETTER_ITEMS = [
     ["A","abe","a-abe.webp"],["B","bæver","b-baever.webp"],["C","cacao","c-cacao.webp"],
     ["D","delfin","d-delfin.webp"],["E","egern","e-egern.webp"],["F","fisk","f-fisk.webp"],
@@ -61,7 +64,7 @@
   }));
   const LETTER_KEYS = LETTER_ITEMS.map(item => item.letter);
   let activeLetterAudio = null;
-  const SPEED_DRILLS = new Set(["numbers", "addition", "multiplication", "tableDrill"]);
+  const SPEED_DRILLS = new Set(["numbers", "addition", "multiplication", "tableDrill", "divisionDrill"]);
   const makeTask = (topic, expression, answer, hint = "", options = {}) => ({ topic, expression, answer, hint, ...options });
 
   /* Hvert emne er et selvstændigt modul med generate, calculate og evaluate. */
@@ -141,6 +144,14 @@
         return makeTask("tableDrill", `${row} × ${column}`, row * column, "", { row, column });
       },
       calculate: (a, b) => a * b,
+      evaluate: (answer, task) => Number(answer) === task.answer,
+    },
+    divisionDrill: {
+      generate() {
+        const knownFactor = pick(TABLE_DRILL_VALUES), quotient = pick(TABLE_DRILL_VALUES);
+        return makeTask("divisionDrill", `${knownFactor * quotient} ÷ ${knownFactor}`, quotient, "", { knownFactor, quotient, dividend:knownFactor * quotient });
+      },
+      calculate: (dividend, divisor) => dividend / divisor,
       evaluate: (answer, task) => Number(answer) === task.answer,
     },
     pemdas: {
@@ -266,11 +277,11 @@
     return database;
   }
   let db = normalizeDatabase(loadDatabase());
-  const state = { user: null, view: "login", selectedTopic: "mixed", task: null, taskStartedAt: 0, answered: false, questionNumber: 1, sessionCorrect: 0, sessionAnswers: [], tableDrill:null, showExerciseTimer:loadTimerVisibility(), expandedStudent: "s1", activeClassId:null, teacherTopicDetail: null, studentFormOpen: false, classRenameFormOpen: false, studentProfileNotice:"" };
+  const state = { user: null, view: "login", selectedTopic: "mixed", task: null, taskStartedAt: 0, answered: false, questionNumber: 1, sessionCorrect: 0, sessionAnswers: [], matrixDrill:null, showExerciseTimer:loadTimerVisibility(), expandedStudent: "s1", activeClassId:null, teacherTopicDetail: null, studentFormOpen: false, classRenameFormOpen: false, studentProfileNotice:"" };
   const app = document.getElementById("app");
   const backend = window.JacobBackend;
   const usingCentralDatabase = Boolean(backend?.configured);
-  const GUEST_TOPICS = new Set(["multiplication", "tableDrill"]);
+  const GUEST_TOPICS = new Set(["multiplication", "tableDrill", "divisionDrill"]);
   const isGuest = () => state.user?.role === "guest";
   const createGuest = () => ({
     id:`guest-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`,
@@ -280,7 +291,7 @@
     assignedLetters:[...LETTER_KEYS],
   });
   let remoteSaveQueue = Promise.resolve();
-  let tableDrillTimerId = null;
+  let matrixDrillTimerId = null;
   let teacherLiveTimerId = null;
   let teacherLiveRefreshInFlight = false;
   let teacherResultsSignature = "";
@@ -345,7 +356,7 @@
   const escapeHtml = (value) => String(value).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
   // Den faktiske svartid bruges til læring. Farveskalaer kan stadig afrunde visuelt ved 10 sekunder.
   const recordedTime = (result) => Math.max(0, Number(result.responseTime) || 0);
-  const isPracticeResult = result => Boolean(TOPICS[result?.topic]) && result?.recordType !== "tableDrillSession";
+  const isPracticeResult = result => Boolean(TOPICS[result?.topic]) && !Object.values(DRILL_SESSION_TOPICS).includes(result?.topic);
   const practiceResults = user => (user.results || []).filter(isPracticeResult);
 
   /* De seneste 20 svar pr. emne styrer nøjagtighed, tid, niveau og vægt. */
@@ -359,7 +370,7 @@
     return { count:items.length, accuracy, avgTime, level:2, weight:1.1, status:"medium" };
   }
   function chooseWeightedTopic(user) {
-    const pool = Object.keys(TOPICS).filter(topic => topic !== "tableDrill").map(topic => ({ topic, weight:getStats(user, topic).weight }));
+    const pool = Object.keys(TOPICS).filter(topic => !MATRIX_DRILL_TOPICS.has(topic)).map(topic => ({ topic, weight:getStats(user, topic).weight }));
     let pointer = Math.random() * pool.reduce((sum, item) => sum + item.weight, 0);
     for (const item of pool) { pointer -= item.weight; if (pointer <= 0) return item.topic; }
     return pool[0].topic;
@@ -371,7 +382,7 @@
     return `<header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions"><span class="user-pill">${userLabel}</span>${passwordButton}<button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
   }
   function renderLogin() {
-    app.innerHTML = `<div class="login-wrap"><section class="login-intro"><span class="eyebrow">Matematik der følger dig</span><h1>Bliv stærkere, ét svar ad gangen.</h1><p>jacobmatematik finder det niveau, der udfordrer dig tilpas — og giver mere træning dér, hvor du har brug for den.</p><div class="math-trail"><span>7 × 8</span><span>−4 + 9</span><span>3(2 + 5)</span><span>6 + 2 × 4</span></div></section><section class="login-panel"><form class="login-card" id="login-form"><h2>Godt at se dig</h2><p>Log ind som elev eller lærer for at fortsætte.</p><div class="field"><label for="username">Brugernavn</label><input id="username" name="username" autocomplete="username" autocapitalize="none" placeholder="fx alma7" required></div><div class="field"><label for="password">Adgangskode</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Din adgangskode" required></div><p id="login-error" class="error" role="alert"></p><button class="btn full" type="submit">Log ind</button><div class="login-divider"><span>eller</span></div><button class="btn secondary full guest-login" type="button" data-action="guest-login">Gæst</button><small class="guest-note">Prøv Tabeltræning og Lille tabel uden bruger. Fremskridt gemmes ikke.</small></form></section></div>`;
+    app.innerHTML = `<div class="login-wrap"><section class="login-intro"><span class="eyebrow">Matematik der følger dig</span><h1>Bliv stærkere, ét svar ad gangen.</h1><p>jacobmatematik finder det niveau, der udfordrer dig tilpas — og giver mere træning dér, hvor du har brug for den.</p><div class="math-trail"><span>7 × 8</span><span>−4 + 9</span><span>3(2 + 5)</span><span>6 + 2 × 4</span></div></section><section class="login-panel"><form class="login-card" id="login-form"><h2>Godt at se dig</h2><p>Log ind som elev eller lærer for at fortsætte.</p><div class="field"><label for="username">Brugernavn</label><input id="username" name="username" autocomplete="username" autocapitalize="none" placeholder="fx alma7" required></div><div class="field"><label for="password">Adgangskode</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Din adgangskode" required></div><p id="login-error" class="error" role="alert"></p><button class="btn full" type="submit">Log ind</button><div class="login-divider"><span>eller</span></div><button class="btn secondary full guest-login" type="button" data-action="guest-login">Gæst</button><small class="guest-note">Prøv Tabel-drill, Division-drill og Lille tabel uden bruger. Fremskridt gemmes ikke.</small></form></section></div>`;
     document.getElementById("username").focus();
   }
   function renderStudentHome() {
@@ -385,48 +396,75 @@
     app.innerHTML = `${header()}<div class="page"><section class="class-manager"><div class="class-manager-title"><div><span class="eyebrow">Min profil</span><h1>Skift adgangskode</h1><p>Vælg en ny adgangskode til din bruger.</p></div></div><form id="student-password-form" class="student-form"><div class="field"><label for="current-password">Nuværende adgangskode</label><input id="current-password" name="currentPassword" type="password" autocomplete="current-password" required></div><div class="field"><label for="new-password">Ny adgangskode</label><input id="new-password" name="newPassword" type="password" autocomplete="new-password" required></div><div class="field"><label for="confirm-password">Gentag ny adgangskode</label><input id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" required></div><p id="password-error" class="student-error" role="alert"></p><div class="student-manager-buttons"><button class="btn" type="submit">Gem adgangskode</button><button class="btn secondary" type="button" data-action="home">Annuller</button></div></form></section></div>`;
     document.getElementById("current-password").focus();
   }
-  function stopTableDrillTimer() {
-    if (tableDrillTimerId) clearInterval(tableDrillTimerId);
-    tableDrillTimerId = null;
+  function stopMatrixDrillTimer() {
+    if (matrixDrillTimerId) clearInterval(matrixDrillTimerId);
+    matrixDrillTimerId = null;
   }
-  function formatTableDrillTime(milliseconds) {
+  function formatMatrixDrillTime(milliseconds) {
     const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
     return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
   }
-  function tableDrillCellStyle(attempt) {
+  function matrixDrillCellStyle(attempt) {
     if (!attempt?.correct || recordedTime(attempt) >= 10) return "--cell-color:hsl(0 72% 78%)";
     if (recordedTime(attempt) <= 4) return "--cell-color:hsl(138 55% 72%)";
     const hue = Math.round(138 * (10 - recordedTime(attempt)) / 6);
     return `--cell-color:hsl(${hue} 68% 76%)`;
   }
-  async function finalizeTableDrillSession(status = "abandoned") {
-    const drill=state.tableDrill;
+  function matrixDrillPairKey(topic, pair) {
+    return topic === "divisionDrill" ? `${pair.knownFactor}-${pair.quotient}` : `${pair.row}-${pair.column}`;
+  }
+  function createDivisionDrillLayout() {
+    const facts = TABLE_DRILL_VALUES.flatMap(knownFactor => TABLE_DRILL_VALUES.map(quotient => ({
+      knownFactor,
+      quotient,
+      dividend:knownFactor * quotient,
+      unknownAxis:Math.random() < .5 ? "row" : "column",
+    })));
+    return shuffle(facts).map((fact,index) => ({ ...fact, gridRow:Math.floor(index / 9) + 1, gridColumn:index % 9 + 1 }));
+  }
+  function divisionDrillLayoutData(layout) {
+    return (layout || []).map(({knownFactor,quotient,unknownAxis}) => [knownFactor,quotient,unknownAxis]);
+  }
+  function matrixDrillPairFromKey(drill, key) {
+    if (drill.topic === "divisionDrill") return drill.layout.find(pair => matrixDrillPairKey(drill.topic,pair) === key);
+    const [row,column]=key.split("-").map(Number);
+    return { row, column };
+  }
+  async function finalizeMatrixDrillSession(status = "abandoned") {
+    const drill=state.matrixDrill;
     if (!drill || drill.finalizedAt || isGuest()) return;
     const endedAt=Date.now();
     drill.finalizedAt=endedAt;
-    const marker={topic:"tableDrillSession",recordType:"tableDrillSession",problem:"Tabel-drill session",correct:true,responseTime:0,timestamp:new Date(endedAt).toISOString(),drillSessionId:drill.sessionId,drillStartedAt:new Date(drill.startedAt).toISOString(),drillEndedAt:new Date(endedAt).toISOString(),drillStatus:status,drillExpectedCells:drill.pairs.length,drillTroubleRound:drill.troubleRound};
+    const sessionTopic=DRILL_SESSION_TOPICS[drill.topic];
+    const marker={topic:sessionTopic,recordType:sessionTopic,problem:`${TOPICS[drill.topic].name} session`,correct:true,responseTime:0,timestamp:new Date(endedAt).toISOString(),drillSessionId:drill.sessionId,drillStartedAt:new Date(drill.startedAt).toISOString(),drillEndedAt:new Date(endedAt).toISOString(),drillStatus:status,drillExpectedCells:drill.pairs.length,drillTroubleRound:drill.troubleRound,drillType:drill.topic};
+    if (drill.topic === "divisionDrill") marker.divisionDrillLayout=divisionDrillLayoutData(drill.layout);
     try {
       if (usingCentralDatabase) marker.remoteId=await backend.appendResult(state.user.id,marker);
       else { state.user.results.push(marker); await save(); }
     } catch (error) {
       drill.finalizedAt=null;
-      console.error("Tabel-drill-sessionen kunne ikke afsluttes",error);
+      console.error(`${TOPICS[drill.topic].name}-sessionen kunne ikke afsluttes`,error);
     }
   }
-  function updateTableDrillTimer() {
-    const timer = document.getElementById("table-drill-time");
-    const drill = state.tableDrill;
+  function updateMatrixDrillTimer() {
+    const timer = document.getElementById("matrix-drill-time");
+    const drill = state.matrixDrill;
     if (!timer || !drill) return;
-    timer.textContent = formatTableDrillTime((drill.completedAt || Date.now()) - drill.startedAt);
+    timer.textContent = formatMatrixDrillTime((drill.completedAt || Date.now()) - drill.startedAt);
   }
-  function startTableDrill(options = {}) {
-    stopTableDrillTimer();
-    const allPairs = TABLE_DRILL_VALUES.flatMap(row => TABLE_DRILL_VALUES.map(column => ({ row, column })));
+  function startMatrixDrill(topic, options = {}) {
+    if (!MATRIX_DRILL_TOPICS.has(topic)) return;
+    const previousMode=state.matrixDrill?.confirmationMode || "enter";
+    stopMatrixDrillTimer();
+    const layout = topic === "divisionDrill" ? (options.layout || createDivisionDrillLayout()) : null;
+    const allPairs = topic === "divisionDrill" ? layout : TABLE_DRILL_VALUES.flatMap(row => TABLE_DRILL_VALUES.map(column => ({ row, column })));
     const pairs = options.pairs?.length ? options.pairs : allPairs;
     const cells = { ...(options.cells || {}) };
-    pairs.forEach(({row,column}) => delete cells[`${row}-${column}`]);
-    state.tableDrill = {
-      sessionId:`td-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`,
+    pairs.forEach(pair => delete cells[matrixDrillPairKey(topic,pair)]);
+    state.matrixDrill = {
+      topic,
+      sessionId:`${topic === "divisionDrill" ? "dd" : "td"}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`,
+      layout,
       pairs:shuffle(pairs),
       currentIndex:0,
       cells,
@@ -435,24 +473,26 @@
       startedAt:Date.now(),
       completedAt:null,
       finalizedAt:null,
-      confirmationMode:options.confirmationMode || state.tableDrill?.confirmationMode || "enter",
+      confirmationMode:options.confirmationMode || previousMode,
       troubleRound:Boolean(options.pairs),
     };
-    state.selectedTopic="tableDrill"; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise";
-    tableDrillTimerId = setInterval(updateTableDrillTimer, 1000);
+    state.selectedTopic=topic; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise";
+    matrixDrillTimerId = setInterval(updateMatrixDrillTimer, 1000);
     newTask();
   }
   function newTask() {
     const topic = state.selectedTopic === "mixed" ? chooseWeightedTopic(state.user) : state.selectedTopic;
-    if (topic === "tableDrill") {
-      const drill = state.tableDrill;
+    if (MATRIX_DRILL_TOPICS.has(topic)) {
+      const drill = state.matrixDrill;
       const pair = drill?.pairs[drill.currentIndex];
       if (!pair) {
-        if (drill && !drill.completedAt) { drill.completedAt=Date.now(); finalizeTableDrillSession("completed"); }
-        stopTableDrillTimer(); state.task=null; state.answered=false; renderTableDrill(); return;
+        if (drill && !drill.completedAt) { drill.completedAt=Date.now(); finalizeMatrixDrillSession("completed"); }
+        stopMatrixDrillTimer(); state.task=null; state.answered=false; renderMatrixDrill(); return;
       }
-      state.task=makeTask("tableDrill", `${pair.row} × ${pair.column}`, pair.row * pair.column, "", pair);
-      state.taskStartedAt=Date.now(); state.answered=false; renderTableDrill(); return;
+      state.task = topic === "divisionDrill"
+        ? makeTask("divisionDrill", `${pair.dividend} ÷ ${pair.knownFactor}`, pair.quotient, "", pair)
+        : makeTask("tableDrill", `${pair.row} × ${pair.column}`, pair.row * pair.column, "", pair);
+      state.taskStartedAt=Date.now(); state.answered=false; renderMatrixDrill(); return;
     }
     state.task = MathModules[topic].generate(getStats(state.user, topic).level, state.user);
     state.taskStartedAt = Date.now(); state.answered = false;
@@ -460,7 +500,7 @@
   }
   function renderExercise() {
     const task = state.task;
-    if (task?.topic === "tableDrill") { renderTableDrill(); return; }
+    if (MATRIX_DRILL_TOPICS.has(task?.topic)) { renderMatrixDrill(); return; }
     if (task?.topic === "letters") { renderLetterExercise(); return; }
     const cycleStart = Math.floor((state.questionNumber - 1) / 10) * 10;
     const cycleAnswers = state.sessionAnswers.slice(cycleStart, cycleStart + 10);
@@ -620,35 +660,55 @@
       }
     },320);
   }
-  function renderTableDrill() {
-    const drill = state.tableDrill;
-    if (!drill) { startTableDrill(); return; }
+  function renderMatrixDrill() {
+    const drill = state.matrixDrill;
+    if (!drill) { startMatrixDrill(MATRIX_DRILL_TOPICS.has(state.selectedTopic) ? state.selectedTopic : "tableDrill"); return; }
+    const isDivision = drill.topic === "divisionDrill";
     const task = state.task;
-    const activeRow = task?.row;
-    const activeColumn = task?.column;
+    const activeRow = isDivision ? task?.gridRow : task?.row;
+    const activeColumn = isDivision ? task?.gridColumn : task?.column;
     const elapsed = (drill.completedAt || Date.now()) - drill.startedAt;
     const completedInRound = Object.keys(drill.roundResults).length;
     const troublePairs = Object.entries(drill.roundResults)
       .filter(([,attempt]) => !attempt.correct || attempt.responseTime > 4)
-      .map(([key]) => { const [row,column]=key.split("-").map(Number); return {row,column}; });
-    const grid = `<table class="table-drill-grid" aria-label="Gangetabel fra 1 til 9">
-      <thead><tr><th aria-hidden="true"></th>${TABLE_DRILL_VALUES.map(column => `<th class="${column === activeColumn ? "active-axis" : ""}" scope="col">${column}</th>`).join("")}</tr></thead>
-      <tbody>${TABLE_DRILL_VALUES.map(row => `<tr><th class="${row === activeRow ? "active-axis" : ""}" scope="row">${row}</th>${TABLE_DRILL_VALUES.map(column => {
-        const key=`${row}-${column}`, attempt=drill.cells[key], solved=Boolean(attempt), active=row===activeRow && column===activeColumn;
+      .map(([key]) => matrixDrillPairFromKey(drill,key))
+      .filter(Boolean);
+    const placementAt = (row,column) => isDivision ? drill.layout.find(pair => pair.gridRow === row && pair.gridColumn === column) : { row, column };
+    const columnHeading = column => {
+      if (!isDivision) return column;
+      if (column !== activeColumn || !task) return "";
+      return task.unknownAxis === "column" ? `<span id="matrix-drill-axis-answer" class="division-axis-question">?</span>` : task.knownFactor;
+    };
+    const rowHeading = row => {
+      if (!isDivision) return row;
+      if (row !== activeRow || !task) return "";
+      return task.unknownAxis === "row" ? `<span id="matrix-drill-axis-answer" class="division-axis-question">?</span>` : task.knownFactor;
+    };
+    const grid = `<table class="table-drill-grid ${isDivision ? "division-drill-grid" : ""}" aria-label="${isDivision ? "Division med produkter fra 1–9-tabellen" : "Gangetabel fra 1 til 9"}">
+      <thead><tr><th aria-hidden="true">${isDivision ? "÷" : ""}</th>${TABLE_DRILL_VALUES.map(column => `<th class="${column === activeColumn ? "active-axis" : ""}" scope="col">${columnHeading(column)}</th>`).join("")}</tr></thead>
+      <tbody>${TABLE_DRILL_VALUES.map(row => `<tr><th class="${row === activeRow ? "active-axis" : ""}" scope="row">${rowHeading(row)}</th>${TABLE_DRILL_VALUES.map(column => {
+        const pair=placementAt(row,column), key=matrixDrillPairKey(drill.topic,pair), attempt=drill.cells[key], solved=Boolean(attempt), active=row===activeRow && column===activeColumn;
         const classes=[row===activeRow?"active-row":"",column===activeColumn?"active-column":"",solved?"solved timed":"",attempt && !attempt.correct?"wrong":"",active?"active-cell":""].filter(Boolean).join(" ");
-        const contents=active ? `<span>${row}×${column}</span><strong id="table-drill-cell-answer"></strong>` : solved ? `<strong>${row*column}</strong>${attempt.correct ? "" : `<i aria-hidden="true">×</i>`}` : "";
+        const shownValue=isDivision ? pair.dividend : row * column;
+        const contents=isDivision
+          ? `<strong>${shownValue}</strong>${attempt && !attempt.correct ? `<i aria-hidden="true">×</i>` : ""}`
+          : active ? `<span>${row}×${column}</span><strong id="matrix-drill-cell-answer"></strong>` : solved ? `<strong>${shownValue}</strong>${attempt.correct ? "" : `<i aria-hidden="true">×</i>`}` : "";
         const timing=solved ? `${attempt.correct ? "korrekt" : "forkert"} på ${attempt.responseTime.toFixed(1)} sekunder` : "";
-        return `<td class="${classes}" ${solved ? `style="${tableDrillCellStyle(attempt)}"` : ""} aria-label="${row} gange ${column}${solved ? ` er ${row*column}, ${timing}` : active ? ", aktiv opgave" : ""}">${contents}</td>`;
+        const taskLabel=isDivision ? `${pair.dividend} divideret med ${pair.knownFactor} er ${pair.quotient}` : `${row} gange ${column} er ${shownValue}`;
+        return `<td class="${classes}" ${solved ? `style="${matrixDrillCellStyle(attempt)}"` : ""} aria-label="${taskLabel}${solved ? `, ${timing}` : active ? ", aktiv opgave" : ""}">${contents}</td>`;
       }).join("")}</tr>`).join("")}</tbody>
     </table>`;
+    const drillName=TOPICS[drill.topic].name;
+    const troubleAction=isDivision ? "practice-division-troubles" : "practice-table-troubles";
+    const restartAction=isDivision ? "restart-division-drill" : "restart-table-drill";
     const answerPanel = drill.completedAt
-      ? `<section class="table-drill-complete"><span class="complete-mark">${troublePairs.length ? "↻" : "✓"}</span><h2>${troublePairs.length ? `${troublePairs.length} ${troublePairs.length === 1 ? "driller" : "drillere"}` : "Alle sidder hurtigt!"}</h2><p>${troublePairs.length ? "Øv dem, der var forkerte eller tog over 4 sekunder." : "Alle blev besvaret korrekt på højst 4 sekunder."}</p><strong>${formatTableDrillTime(elapsed)}</strong><p>${drill.errors} ${drill.errors === 1 ? "fejl" : "fejl"}</p>${troublePairs.length ? `<button class="btn full" type="button" data-action="practice-table-troubles">Øv drillerne (${troublePairs.length})</button>` : ""}<button class="btn secondary full" type="button" data-action="restart-table-drill">Start hele tabellen igen</button></section>`
-      : `<form class="table-drill-answer" id="answer-form"><fieldset class="table-drill-mode"><legend>Svarmetode</legend><button class="${drill.confirmationMode === "enter" ? "active" : ""}" type="button" data-drill-mode="enter" aria-pressed="${drill.confirmationMode === "enter"}">Bekræft med Enter</button><button class="${drill.confirmationMode === "auto" ? "active" : ""}" type="button" data-drill-mode="auto" aria-pressed="${drill.confirmationMode === "auto"}">Autobekræft</button></fieldset><label for="answer">Skriv resultatet</label><input class="sr-only" id="answer" name="answer" inputmode="none" autocomplete="off" readonly><div class="table-drill-answer-preview" aria-live="polite"><span>${task.row} × ${task.column} =</span><strong id="table-drill-answer-preview">?</strong></div><div class="keypad table-drill-keypad ${drill.confirmationMode === "auto" ? "auto" : ""}" aria-label="Taltastatur">${TABLE_DRILL_VALUES.map(number => `<button class="key" type="button" data-key="${number}">${number}</button>`).join("")}<button class="key" type="button" data-key="0">0</button><button class="key utility" type="button" data-key="delete">Slet</button>${drill.confirmationMode === "enter" ? `<button class="key enter" type="button" data-key="enter">Enter</button>` : ""}</div><p id="answer-error" class="error" role="alert"></p></form>`;
+      ? `<section class="table-drill-complete"><span class="complete-mark">${troublePairs.length ? "↻" : "✓"}</span><h2>${troublePairs.length ? `${troublePairs.length} ${troublePairs.length === 1 ? "driller" : "drillere"}` : "Alle sidder hurtigt!"}</h2><p>${troublePairs.length ? "Øv dem, der var forkerte eller tog over 4 sekunder." : "Alle blev besvaret korrekt på højst 4 sekunder."}</p><strong>${formatMatrixDrillTime(elapsed)}</strong><p>${drill.errors} ${drill.errors === 1 ? "fejl" : "fejl"}</p>${troublePairs.length ? `<button class="btn full" type="button" data-action="${troubleAction}">Øv drillerne (${troublePairs.length})</button>` : ""}<button class="btn secondary full" type="button" data-action="${restartAction}">Start hele tabellen igen</button></section>`
+      : `<form class="table-drill-answer" id="answer-form"><fieldset class="table-drill-mode"><legend>Svarmetode</legend><button class="${drill.confirmationMode === "enter" ? "active" : ""}" type="button" data-drill-mode="enter" aria-pressed="${drill.confirmationMode === "enter"}">Bekræft med Enter</button><button class="${drill.confirmationMode === "auto" ? "active" : ""}" type="button" data-drill-mode="auto" aria-pressed="${drill.confirmationMode === "auto"}">Autobekræft</button></fieldset><label for="answer">${isDivision ? "Skriv det manglende tal" : "Skriv resultatet"}</label><input class="sr-only" id="answer" name="answer" inputmode="none" autocomplete="off" readonly><div class="table-drill-answer-preview" aria-live="polite"><span>${isDivision ? `${task.dividend} ÷ ${task.knownFactor}` : `${task.row} × ${task.column}`} =</span><strong id="matrix-drill-answer-preview">?</strong></div><div class="keypad table-drill-keypad ${drill.confirmationMode === "auto" ? "auto" : ""}" aria-label="Taltastatur">${TABLE_DRILL_VALUES.map(number => `<button class="key" type="button" data-key="${number}">${number}</button>`).join("")}<button class="key" type="button" data-key="0">0</button><button class="key utility" type="button" data-key="delete">Slet</button>${drill.confirmationMode === "enter" ? `<button class="key enter" type="button" data-key="enter">Enter</button>` : ""}</div><p id="answer-error" class="error" role="alert"></p></form>`;
     const progressLabel=drill.troubleRound ? "Drillere" : "Udfyldt";
     const timerStatus = state.showExerciseTimer
-      ? `<span>Tid: <strong id="table-drill-time">${formatTableDrillTime(elapsed)}</strong></span>`
+      ? `<span>Tid: <strong id="matrix-drill-time">${formatMatrixDrillTime(elapsed)}</strong></span>`
       : `<span class="table-drill-time-hidden">Tid skjult</span>`;
-    app.innerHTML = `${header()}<div class="page table-drill-page"><div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${drill.troubleRound ? "Tabel-drill · drillere" : "Tabel-drill"}</span></div><section class="table-drill-card"><div class="table-drill-status">${timerStatus}<button class="table-drill-timer-toggle" type="button" data-action="toggle-exercise-timer" aria-pressed="${state.showExerciseTimer}">${state.showExerciseTimer ? "Skjul tid" : "Vis tid"}</button><span>Fejl: <strong>${drill.errors}</strong></span><span>${progressLabel}: <strong>${completedInRound}/${drill.pairs.length}</strong></span></div><div class="table-drill-layout"><div class="table-drill-board">${grid}</div>${answerPanel}</div></section></div>`;
+    app.innerHTML = `${header()}<div class="page table-drill-page"><div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${drill.troubleRound ? `${drillName} · drillere` : drillName}</span></div><section class="table-drill-card"><div class="table-drill-status">${timerStatus}<button class="table-drill-timer-toggle" type="button" data-action="toggle-exercise-timer" aria-pressed="${state.showExerciseTimer}">${state.showExerciseTimer ? "Skjul tid" : "Vis tid"}</button><span>Fejl: <strong>${drill.errors}</strong></span><span>${progressLabel}: <strong>${completedInRound}/${drill.pairs.length}</strong></span></div><div class="table-drill-layout"><div class="table-drill-board">${grid}</div>${answerPanel}</div></section></div>`;
   }
   function renderCountingHand(activeFingers, mirrored = false) {
     // Fingrene vises i rækkefølgen tommel, pege-, lange-, ring- og lillefinger.
@@ -677,7 +737,15 @@
     const correct = MathModules[state.task.topic].evaluate(raw, state.task);
     state.answered = true; state.sessionAnswers.push(correct); if (correct) state.sessionCorrect++;
     const result = { topic:state.task.topic, problem:state.task.expression, answer:isUndefinedAnswer ? "Kan ikke beregnes" : Number(raw), correctAnswer:state.task.answer === "undefined" ? "Kan ikke beregnes" : state.task.answer, correct, responseTime:+responseTime.toFixed(2), timestamp:new Date().toISOString() };
-    if (state.task.topic === "tableDrill" && state.tableDrill) Object.assign(result,{drillSessionId:state.tableDrill.sessionId,drillStartedAt:new Date(state.tableDrill.startedAt).toISOString(),drillRow:state.task.row,drillColumn:state.task.column,drillExpectedCells:state.tableDrill.pairs.length,drillTroubleRound:state.tableDrill.troubleRound});
+    if (MATRIX_DRILL_TOPICS.has(state.task.topic) && state.matrixDrill) {
+      const drill=state.matrixDrill;
+      Object.assign(result,{drillSessionId:drill.sessionId,drillStartedAt:new Date(drill.startedAt).toISOString(),drillExpectedCells:drill.pairs.length,drillTroubleRound:drill.troubleRound,drillType:drill.topic});
+      if (drill.topic === "tableDrill") Object.assign(result,{drillRow:state.task.row,drillColumn:state.task.column});
+      else {
+        Object.assign(result,{drillGridRow:state.task.gridRow,drillGridColumn:state.task.gridColumn,divisionDividend:state.task.dividend,divisionKnownDivisor:state.task.knownFactor,divisionQuotient:state.task.quotient,divisionUnknownAxis:state.task.unknownAxis});
+        if (drill.currentIndex === 0) result.divisionDrillLayout=divisionDrillLayoutData(drill.layout);
+      }
+    }
     state.user.results.push(result);
     try {
       if (usingCentralDatabase && !isGuest()) result.remoteId = await backend.appendResult(state.user.id, result);
@@ -688,13 +756,14 @@
       console.error(error);
       return;
     }
-    if (state.task.topic === "tableDrill") {
-      const key=`${state.task.row}-${state.task.column}`;
+    if (MATRIX_DRILL_TOPICS.has(state.task.topic)) {
+      const drill=state.matrixDrill;
+      const key=matrixDrillPairKey(drill.topic,state.task);
       const attempt={answer:Number(raw), correct, responseTime:result.responseTime};
-      state.tableDrill.cells[key]=attempt;
-      state.tableDrill.roundResults[key]=attempt;
-      if (!correct) state.tableDrill.errors++;
-      state.tableDrill.currentIndex++;
+      drill.cells[key]=attempt;
+      drill.roundResults[key]=attempt;
+      if (!correct) drill.errors++;
+      drill.currentIndex++;
       state.questionNumber++;
       newTask();
       return;
@@ -713,7 +782,7 @@
     if (!input || !form || state.answered) return;
 
     if (key === "enter") {
-      if (state.task.topic === "tableDrill" && state.tableDrill?.confirmationMode === "auto") return;
+      if (MATRIX_DRILL_TOPICS.has(state.task.topic) && state.matrixDrill?.confirmationMode === "auto") return;
       return submitAnswer(form);
     }
     if (key === "undefined") input.value = "Kan ikke beregnes";
@@ -723,10 +792,11 @@
     else if (/^\d$/.test(key) && input.value.replace("-", "").length < 8) input.value = input.value === "Kan ikke beregnes" ? key : input.value + key;
 
     document.getElementById("answer-error").textContent = "";
-    const tableCellAnswer=document.getElementById("table-drill-cell-answer"), tablePreview=document.getElementById("table-drill-answer-preview");
-    if (tableCellAnswer) tableCellAnswer.textContent=input.value;
-    if (tablePreview) tablePreview.textContent=input.value || "?";
-    if (state.task.topic === "tableDrill" && state.tableDrill?.confirmationMode === "auto" && /^\d+$/.test(input.value)) {
+    const cellAnswer=document.getElementById("matrix-drill-cell-answer"), axisAnswer=document.getElementById("matrix-drill-axis-answer"), drillPreview=document.getElementById("matrix-drill-answer-preview");
+    if (cellAnswer) cellAnswer.textContent=input.value;
+    if (axisAnswer) axisAnswer.textContent=input.value || "?";
+    if (drillPreview) drillPreview.textContent=input.value || "?";
+    if (MATRIX_DRILL_TOPICS.has(state.task.topic) && state.matrixDrill?.confirmationMode === "auto" && /^\d+$/.test(input.value)) {
       const expected=String(state.task.answer);
       if (input.value === expected || !expected.startsWith(input.value)) submitAnswer(form);
     }
@@ -799,6 +869,7 @@
       basics:"Øv reglerne med 0 og 1 i korte serier. Tal især om, hvorfor division med 0 ikke kan beregnes.",
       multiplication:"Træn korte serier i de tabeller, hvor svartiden er højest. Stop, mens sikkerheden stadig er god.",
       tableDrill:"Brug drillen til at finde de gangestykker, der tager længst tid. Øv derefter netop disse i korte serier.",
+      divisionDrill:"Brug drillen til at finde de divisionsstykker, der tager længst tid. Knyt hvert stykke tilbage til det tilsvarende gangestykke.",
       pemdas:"Lad eleven markere gange- og divisionsled før udregningen. Brug få led og øg gradvist.",
       negatives:"Brug tallinje og lad eleven forklare retningen, før svaret tastes. Start med plus og minus.",
       distributive:"Lad eleven sige de to delprodukter højt, før de lægges sammen. Brug små tal først.",
@@ -1025,7 +1096,7 @@
     const sessions=tableDrillSessions(user).slice(0,8);
     const dateLabel=value => new Intl.DateTimeFormat("da-DK",{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"}).format(new Date(value));
     const timeLabel=value => new Intl.DateTimeFormat("da-DK",{hour:"2-digit",minute:"2-digit"}).format(new Date(value));
-    const heatmap=session => `<table class="table-drill-history-grid" aria-label="Heatmap for tabel-drill startet ${dateLabel(session.startedAt)} klokken ${timeLabel(session.startedAt)}"><thead><tr><th aria-hidden="true"></th>${TABLE_DRILL_VALUES.map(column => `<th scope="col">${column}</th>`).join("")}</tr></thead><tbody>${TABLE_DRILL_VALUES.map(row => `<tr><th scope="row">${row}</th>${TABLE_DRILL_VALUES.map(column => { const attempt=session.attempts[`${row}-${column}`]; const label=attempt ? `${row} gange ${column}: ${attempt.correct ? "korrekt" : "forkert"} på ${recordedTime(attempt).toFixed(1)} sekunder` : `${row} gange ${column}: ikke besvaret`; return `<td class="${attempt ? "answered" : ""} ${attempt && !attempt.correct ? "wrong" : ""}" ${attempt ? `style="${tableDrillCellStyle(attempt)}"` : ""} title="${label}" aria-label="${label}">${attempt ? `<strong>${row*column}</strong>${attempt.correct ? "" : "<i>×</i>"}` : ""}</td>`; }).join("")}</tr>`).join("")}</tbody></table>`;
+    const heatmap=session => `<table class="table-drill-history-grid" aria-label="Heatmap for tabel-drill startet ${dateLabel(session.startedAt)} klokken ${timeLabel(session.startedAt)}"><thead><tr><th aria-hidden="true"></th>${TABLE_DRILL_VALUES.map(column => `<th scope="col">${column}</th>`).join("")}</tr></thead><tbody>${TABLE_DRILL_VALUES.map(row => `<tr><th scope="row">${row}</th>${TABLE_DRILL_VALUES.map(column => { const attempt=session.attempts[`${row}-${column}`]; const label=attempt ? `${row} gange ${column}: ${attempt.correct ? "korrekt" : "forkert"} på ${recordedTime(attempt).toFixed(1)} sekunder` : `${row} gange ${column}: ikke besvaret`; return `<td class="${attempt ? "answered" : ""} ${attempt && !attempt.correct ? "wrong" : ""}" ${attempt ? `style="${matrixDrillCellStyle(attempt)}"` : ""} title="${label}" aria-label="${label}">${attempt ? `<strong>${row*column}</strong>${attempt.correct ? "" : "<i>×</i>"}` : ""}</td>`; }).join("")}</tr>`).join("")}</tbody></table>`;
     const cards=sessions.map(session => {
       const answered=Object.keys(session.attempts).length;
       const completed=session.status === "completed" || answered >= session.expected;
@@ -1035,6 +1106,52 @@
       return `<article class="table-drill-history-card"><header><div><span class="eyebrow">${dateLabel(session.startedAt)}</span><h4>${session.troubleRound ? "Drillerunde" : "Tabel-drill"}</h4><p>Start ${timeLabel(session.startedAt)} · ${end ? `slut ${timeLabel(end)}` : `senest aktiv ${timeLabel(session.lastActivity)}`}</p></div><div class="table-drill-history-status ${completed ? "completed" : active ? "active" : "abandoned"}"><strong>${status}</strong><span>${answered}/${session.expected}</span></div></header>${heatmap(session)}</article>`;
     }).join("");
     return `<section class="pair-detail table-drill-history" aria-labelledby="table-drill-history-title"><div class="pair-detail-head"><div><span class="eyebrow">Sessionshistorik</span><h3 id="table-drill-history-title">Seneste heatmaps</h3><p>Afsluttede drills og seneste status fra forladte sessioner.</p></div><button class="btn secondary" data-action="close-topic-detail">Luk</button></div>${cards ? `<div class="table-drill-history-list">${cards}</div>` : `<p class="empty">Ingen gemte Tabel-drill-sessioner endnu. Nye drills vises her, så snart eleven har besvaret den første opgave.</p>`}</section>`;
+  }
+
+  function normalizeDivisionDrillLayout(value) {
+    if (!Array.isArray(value)) return [];
+    return value.slice(0,81).map((entry,index) => {
+      const knownFactor=Number(Array.isArray(entry) ? entry[0] : entry?.knownFactor);
+      const quotient=Number(Array.isArray(entry) ? entry[1] : entry?.quotient);
+      const unknownAxis=(Array.isArray(entry) ? entry[2] : entry?.unknownAxis) === "row" ? "row" : "column";
+      if (!TABLE_DRILL_VALUES.includes(knownFactor) || !TABLE_DRILL_VALUES.includes(quotient)) return null;
+      return {knownFactor,quotient,dividend:knownFactor*quotient,unknownAxis,gridRow:Math.floor(index/9)+1,gridColumn:index%9+1};
+    }).filter(Boolean);
+  }
+
+  function divisionDrillSessions(user) {
+    const sessions=new Map();
+    (user.results || []).filter(item => item.drillSessionId && ["divisionDrill","divisionDrillSession"].includes(item.topic)).forEach(item => {
+      const id=String(item.drillSessionId);
+      if (!sessions.has(id)) sessions.set(id,{id,startedAt:item.drillStartedAt || item.timestamp,lastActivity:item.timestamp,endedAt:null,status:null,expected:Number(item.drillExpectedCells)||81,troubleRound:Boolean(item.drillTroubleRound),attempts:{},layout:[]});
+      const session=sessions.get(id);
+      if (new Date(item.drillStartedAt || item.timestamp) < new Date(session.startedAt)) session.startedAt=item.drillStartedAt || item.timestamp;
+      if (new Date(item.timestamp) > new Date(session.lastActivity)) session.lastActivity=item.timestamp;
+      session.expected=Math.max(session.expected,Number(item.drillExpectedCells)||0);
+      session.troubleRound=session.troubleRound || Boolean(item.drillTroubleRound);
+      const layout=normalizeDivisionDrillLayout(item.divisionDrillLayout);
+      if (layout.length === 81) session.layout=layout;
+      if (item.recordType === "divisionDrillSession") { session.endedAt=item.drillEndedAt || item.timestamp; session.status=item.drillStatus || "abandoned"; return; }
+      const gridRow=Number(item.drillGridRow), gridColumn=Number(item.drillGridColumn);
+      if (TABLE_DRILL_VALUES.includes(gridRow) && TABLE_DRILL_VALUES.includes(gridColumn)) session.attempts[`${gridRow}-${gridColumn}`]=item;
+    });
+    return [...sessions.values()].sort((left,right) => new Date(right.startedAt) - new Date(left.startedAt));
+  }
+
+  function renderDivisionDrillHistory(user) {
+    const sessions=divisionDrillSessions(user).slice(0,8);
+    const dateLabel=value => new Intl.DateTimeFormat("da-DK",{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"}).format(new Date(value));
+    const timeLabel=value => new Intl.DateTimeFormat("da-DK",{hour:"2-digit",minute:"2-digit"}).format(new Date(value));
+    const heatmap=session => `<table class="table-drill-history-grid division-drill-history-grid" aria-label="Heatmap for division-drill startet ${dateLabel(session.startedAt)} klokken ${timeLabel(session.startedAt)}"><thead><tr><th aria-hidden="true">÷</th>${TABLE_DRILL_VALUES.map(() => `<th aria-hidden="true"></th>`).join("")}</tr></thead><tbody>${TABLE_DRILL_VALUES.map(row => `<tr><th aria-hidden="true"></th>${TABLE_DRILL_VALUES.map(column => { const pair=session.layout.find(item=>item.gridRow===row&&item.gridColumn===column), attempt=session.attempts[`${row}-${column}`]; const dividend=pair?.dividend ?? Number(attempt?.divisionDividend); const divisor=pair?.knownFactor ?? Number(attempt?.divisionKnownDivisor); const quotient=pair?.quotient ?? Number(attempt?.divisionQuotient); const hasFact=Number.isFinite(dividend)&&Number.isFinite(divisor)&&Number.isFinite(quotient); const label=hasFact ? `${dividend} divideret med ${divisor} er ${quotient}${attempt ? `: ${attempt.correct ? "korrekt" : "forkert"} på ${recordedTime(attempt).toFixed(1)} sekunder` : ": ikke besvaret"}` : "Placering uden registreret opgave"; return `<td class="${attempt ? "answered" : ""} ${attempt && !attempt.correct ? "wrong" : ""}" ${attempt ? `style="${matrixDrillCellStyle(attempt)}"` : ""} title="${label}" aria-label="${label}">${hasFact ? `<strong>${dividend}</strong>${attempt && !attempt.correct ? "<i>×</i>" : ""}` : ""}</td>`; }).join("")}</tr>`).join("")}</tbody></table>`;
+    const cards=sessions.map(session => {
+      const answered=Object.keys(session.attempts).length;
+      const completed=session.status === "completed" || answered >= session.expected;
+      const active=!completed && !session.endedAt && Date.now()-new Date(session.lastActivity).getTime() < 120000;
+      const status=completed ? "Afsluttet" : active ? "I gang" : "Forladt";
+      const end=session.endedAt || (!active ? session.lastActivity : null);
+      return `<article class="table-drill-history-card"><header><div><span class="eyebrow">${dateLabel(session.startedAt)}</span><h4>${session.troubleRound ? "Drillerunde" : "Division-drill"}</h4><p>Start ${timeLabel(session.startedAt)} · ${end ? `slut ${timeLabel(end)}` : `senest aktiv ${timeLabel(session.lastActivity)}`}</p></div><div class="table-drill-history-status ${completed ? "completed" : active ? "active" : "abandoned"}"><strong>${status}</strong><span>${answered}/${session.expected}</span></div></header>${heatmap(session)}</article>`;
+    }).join("");
+    return `<section class="pair-detail table-drill-history" aria-labelledby="division-drill-history-title"><div class="pair-detail-head"><div><span class="eyebrow">Sessionshistorik</span><h3 id="division-drill-history-title">Seneste Division-heatmaps</h3><p>Farverne viser elevens svartid og fejl for hvert divisionsstykke.</p></div><button class="btn secondary" data-action="close-topic-detail">Luk</button></div>${cards ? `<div class="table-drill-history-list">${cards}</div>` : `<p class="empty">Ingen gemte Division-drill-sessioner endnu. Nye drills vises her, så snart eleven har besvaret den første opgave.</p>`}</section>`;
   }
 
   function renderTeacher() {
@@ -1059,7 +1176,7 @@
       const studentInsights = `<section class="insight-grid">
           <article class="focus-card"><span class="focus-icon">!</span><div><span class="eyebrow">Største udfordring</span><h3>${TOPICS[challenge.topic].name}</h3><p>${recommendationFor(challenge.topic)}</p><div class="evidence"><span>${Math.round(challenge.accuracy*100)} % rigtige</span><span>${challenge.avgTime.toFixed(1)} sek.</span></div></div></article>
           <article class="topic-performance"><div class="chart-title"><div><span>Emner</span><h3>Sikkerhed og tempo</h3></div><small>Seneste 20 pr. emne</small></div>
-            ${topicStats.map(stat => { const pct=Math.round(stat.accuracy*100), cls=stat.status==="strong"?"strong":stat.status==="weak"?"weak":"medium"; const detailLabel=stat.topic==="multiplication"||stat.topic==="addition"?" · Se talpar →":stat.topic==="numbers"?" · Se antal →":stat.topic==="negatives"?" · Se fortegn →":stat.topic==="tableDrill"?" · Se heatmaps →":""; const content=`<div><strong>${TOPICS[stat.topic].name}</strong><small>${stat.count} svar · ${stat.count?stat.avgTime.toFixed(1):"—"} sek.${detailLabel}</small></div><div class="topic-meter"><span><i class="${cls}" style="width:${stat.count?pct:0}%"></i></span><b>${stat.count?pct+" %":"—"}</b></div>`; const topicRow=["numbers","addition","multiplication","tableDrill","negatives"].includes(stat.topic) ? `<button class="topic-row topic-row-button ${state.teacherTopicDetail===stat.topic?"active":""}" data-report-topic="${stat.topic}" aria-expanded="${state.teacherTopicDetail===stat.topic}">${content}</button>` : `<div class="topic-row">${content}</div>`; return `<div class="topic-row-control">${topicRow}<button class="btn danger compact topic-reset" type="button" data-action="reset-topic-progress" data-reset-topic="${stat.topic}" data-reset-student="${selected.id}">Nulstil fremskridt</button></div>`; }).join("")}
+            ${topicStats.map(stat => { const pct=Math.round(stat.accuracy*100), cls=stat.status==="strong"?"strong":stat.status==="weak"?"weak":"medium"; const detailLabel=stat.topic==="multiplication"||stat.topic==="addition"?" · Se talpar →":stat.topic==="numbers"?" · Se antal →":stat.topic==="negatives"?" · Se fortegn →":MATRIX_DRILL_TOPICS.has(stat.topic)?" · Se heatmaps →":""; const content=`<div><strong>${TOPICS[stat.topic].name}</strong><small>${stat.count} svar · ${stat.count?stat.avgTime.toFixed(1):"—"} sek.${detailLabel}</small></div><div class="topic-meter"><span><i class="${cls}" style="width:${stat.count?pct:0}%"></i></span><b>${stat.count?pct+" %":"—"}</b></div>`; const topicRow=["numbers","addition","multiplication","tableDrill","divisionDrill","negatives"].includes(stat.topic) ? `<button class="topic-row topic-row-button ${state.teacherTopicDetail===stat.topic?"active":""}" data-report-topic="${stat.topic}" aria-expanded="${state.teacherTopicDetail===stat.topic}">${content}</button>` : `<div class="topic-row">${content}</div>`; return `<div class="topic-row-control">${topicRow}<button class="btn danger compact topic-reset" type="button" data-action="reset-topic-progress" data-reset-topic="${stat.topic}" data-reset-student="${selected.id}">Nulstil fremskridt</button></div>`; }).join("")}
           </article>
         </section>`;
       studentDetail = `
@@ -1067,6 +1184,7 @@
 
         ${studentInsights}
         ${state.teacherTopicDetail === "tableDrill" ? renderTableDrillHistory(selected) : ""}
+        ${state.teacherTopicDetail === "divisionDrill" ? renderDivisionDrillHistory(selected) : ""}
 
         <section class="student-kpis">
           <article><span>Seneste 20</span><strong>${Math.round(current.accuracy*100)} %</strong><small>korrekte svar</small></article>
@@ -1228,16 +1346,16 @@
     if (letterAudioButton && state.task?.topic === "letters") { letterAudioButton.classList.remove("needs-tap"); playLetterLearningAudio(); return; }
     if (letterContinueButton && state.task?.topic === "letters") { stopLetterLearningAudio(); state.task.phase="image-choice"; state.taskStartedAt=Date.now(); renderLetterExercise(); return; }
     if (letterChoiceButton) { submitLetterAnswer(letterChoiceButton.dataset.letterAnswer); return; }
-    if (drillModeButton && state.tableDrill && !state.tableDrill.completedAt) {
-      state.tableDrill.confirmationMode=drillModeButton.dataset.drillMode === "auto" ? "auto" : "enter";
-      renderTableDrill();
+    if (drillModeButton && state.matrixDrill && !state.matrixDrill.completedAt) {
+      state.matrixDrill.confirmationMode=drillModeButton.dataset.drillMode === "auto" ? "auto" : "enter";
+      renderMatrixDrill();
       return;
     }
     if (topicButton) {
       if (isGuest() && !GUEST_TOPICS.has(topicButton.dataset.topic)) return;
-      if (state.tableDrill && !state.tableDrill.finalizedAt) await finalizeTableDrillSession("abandoned");
-      if (topicButton.dataset.topic === "tableDrill") { startTableDrill(); return; }
-      stopTableDrillTimer(); state.tableDrill=null; state.selectedTopic=topicButton.dataset.topic; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise"; newTask();
+      if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned");
+      if (MATRIX_DRILL_TOPICS.has(topicButton.dataset.topic)) { startMatrixDrill(topicButton.dataset.topic); return; }
+      stopMatrixDrillTimer(); state.matrixDrill=null; state.selectedTopic=topicButton.dataset.topic; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise"; newTask();
     }
     if (studentButton) { state.expandedStudent=studentButton.dataset.student; state.teacherTopicDetail=null; state.studentProfileNotice=""; renderTeacher(); }
     if (classButton) { state.activeClassId=classButton.dataset.class; state.expandedStudent=null; state.teacherTopicDetail=null; state.studentFormOpen=false; state.classRenameFormOpen=false; state.studentProfileNotice=""; renderTeacher(); return; }
@@ -1248,21 +1366,25 @@
     if (reportTopicButton) { state.teacherTopicDetail=reportTopicButton.dataset.reportTopic; renderTeacher(); return; }
     if (!actionButton) return;
     const action=actionButton.dataset.action;
-    if (action==="guest-login") { stopTableDrillTimer(); Object.assign(state,{user:createGuest(),view:"student",task:null,tableDrill:null,questionNumber:1,sessionCorrect:0,sessionAnswers:[]}); renderStudentHome(); return; }
-    if (action==="logout") { if (state.tableDrill && !state.tableDrill.finalizedAt) await finalizeTableDrillSession("abandoned"); stopTableDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,tableDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
+    if (action==="guest-login") { stopMatrixDrillTimer(); Object.assign(state,{user:createGuest(),view:"student",task:null,matrixDrill:null,questionNumber:1,sessionCorrect:0,sessionAnswers:[]}); renderStudentHome(); return; }
+    if (action==="logout") { if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,matrixDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
     if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
-    if (action==="home") { if (state.tableDrill && !state.tableDrill.finalizedAt) await finalizeTableDrillSession("abandoned"); stopTableDrillTimer(); state.tableDrill=null; state.task=null; state.view="student"; renderStudentHome(); }
-    if (action==="toggle-exercise-timer" && state.tableDrill) {
+    if (action==="home") { if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); state.matrixDrill=null; state.task=null; state.view="student"; renderStudentHome(); }
+    if (action==="toggle-exercise-timer" && state.matrixDrill) {
       state.showExerciseTimer=!state.showExerciseTimer;
       try { sessionStorage.setItem(TIMER_VISIBILITY_KEY,String(state.showExerciseTimer)); }
       catch { /* Indstillingen gælder stadig i den aktuelle sidevisning. */ }
-      renderTableDrill();
+      renderMatrixDrill();
     }
-    if (action==="restart-table-drill") { if (state.tableDrill && !state.tableDrill.finalizedAt) await finalizeTableDrillSession(state.tableDrill.completedAt ? "completed" : "abandoned"); startTableDrill(); }
-    if (action==="practice-table-troubles" && state.tableDrill) {
-      const drill=state.tableDrill;
-      const pairs=Object.entries(drill.roundResults).filter(([,attempt])=>!attempt.correct || attempt.responseTime>4).map(([key])=>{ const [row,column]=key.split("-").map(Number); return {row,column}; });
-      if (pairs.length) startTableDrill({pairs,cells:drill.cells,confirmationMode:drill.confirmationMode});
+    if (["restart-table-drill","restart-division-drill"].includes(action)) {
+      const topic=action === "restart-division-drill" ? "divisionDrill" : "tableDrill";
+      if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession(state.matrixDrill.completedAt ? "completed" : "abandoned");
+      startMatrixDrill(topic);
+    }
+    if (["practice-table-troubles","practice-division-troubles"].includes(action) && state.matrixDrill) {
+      const drill=state.matrixDrill;
+      const pairs=Object.entries(drill.roundResults).filter(([,attempt])=>!attempt.correct || attempt.responseTime>4).map(([key])=>matrixDrillPairFromKey(drill,key)).filter(Boolean);
+      if (pairs.length) startMatrixDrill(drill.topic,{pairs,cells:drill.cells,confirmationMode:drill.confirmationMode,layout:drill.layout});
     }
     if (action==="continue-after-correction") { state.questionNumber++; newTask(); }
     if (action==="close-topic-detail") { state.teacherTopicDetail=null; renderTeacher(); }
@@ -1285,8 +1407,9 @@
       const count=(student.results || []).filter(item=>item.topic===topic && isPracticeResult(item)).length;
       if (confirm(`Vil du nulstille fremskridtet i ${TOPICS[topic].name} for ${student.name}? ${count} besvarelser slettes permanent.`)) {
         try {
-          if (usingCentralDatabase) { await backend.deleteResults(student.id, topic); if (topic === "tableDrill") await backend.deleteResults(student.id, "tableDrillSession"); }
-          student.results=(student.results || []).filter(item=>item.topic!==topic && !(topic === "tableDrill" && item.topic === "tableDrillSession")); state.teacherTopicDetail=null; await save(); renderTeacher();
+          const sessionTopic=DRILL_SESSION_TOPICS[topic];
+          if (usingCentralDatabase) { await backend.deleteResults(student.id, topic); if (sessionTopic) await backend.deleteResults(student.id, sessionTopic); }
+          student.results=(student.results || []).filter(item=>item.topic!==topic && (!sessionTopic || item.topic!==sessionTopic)); state.teacherTopicDetail=null; await save(); renderTeacher();
         } catch (resetError) { alert("Fremskridtet kunne ikke nulstilles."); console.error(resetError); }
       }
     }
@@ -1366,7 +1489,7 @@
     if (event.key === "Enter") handleKeypad("enter");
   });
   window.addEventListener("pagehide", () => {
-    if (state.tableDrill && !state.tableDrill.finalizedAt) finalizeTableDrillSession("abandoned");
+    if (state.matrixDrill && !state.matrixDrill.finalizedAt) finalizeMatrixDrillSession("abandoned");
   });
   async function start() {
     if (!usingCentralDatabase) { render(); return; }
