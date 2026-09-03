@@ -386,14 +386,14 @@
       <div class="login-wrap">
         <section class="login-intro">
           <div class="login-copy">
-            <span class="eyebrow">Matematik der følger dig</span>
-            <h1>Bliv stærkere, ét svar ad gangen.</h1>
-            <p>jacobmatematik finder det niveau, der udfordrer dig tilpas — og giver mere træning dér, hvor du har brug for den.</p>
-            <div class="math-trail" aria-hidden="true"><span>7 × 8</span><span>−4 + 9</span><span>3(2 + 5)</span><span>6 + 2 × 4</span></div>
+            <h1>Matematik på solidt fundament</h1>
+          </div>
+          <div class="login-mastery-tower">
+            <img class="login-mastery-tower-image" src="assets/figurer/matematik-mestringstaarn.webp" width="858" height="1832" alt="Matematik-mestringstårn med Erling Ærgerlig nederst, Luigi Lækkermat med sine pizzaer, Divisions-Dennis med slikkepinde og Kaptajn Kvadratrod øverst" fetchpriority="high" decoding="async">
           </div>
           <div class="character-stage" aria-label="Figurerne fra Jacob Matematik">
             <figure class="character-card captain">
-              <div class="character-frame"><img src="assets/figurer/kaptajn-kvadratrod.webp" width="900" height="1350" alt="Kaptajn Kvadratrod med passer og lommeregner" fetchpriority="high" decoding="async"></div>
+              <div class="character-frame"><img src="assets/figurer/kaptajn-kvadratrod.webp" width="900" height="1350" alt="Kaptajn Kvadratrod med passer og lommeregner" decoding="async"></div>
               <figcaption>Kaptajn Kvadratrod</figcaption>
             </figure>
             <figure class="character-card dennis">
