@@ -13,6 +13,7 @@
     multiplication: { name: "Lille tabel", icon: "7 × 8", description: "Gangestykker fra 0×0 til 10×10" },
     tableDrill: { name: "Tabel-drill", icon: "3 × 4", description: "Udfyld hele 1–9-tabellen på tid" },
     divisionDrill: { name: "Division-drill", icon: "63 ÷ 7", description: "Find den manglende faktor i hele 1–9-tabellen" },
+    divisionLollipops: { name: "Divisions-slikkepinde", icon: "9 │ 63", description: "Træk cifret ned og løs divisionen trin for trin" },
     pemdas: { name: "Regnehierarki", icon: "2 + 3 × 4", description: "Gange før plus og minus" },
     negatives: { name: "Negative tal", icon: "−4 + 7", description: "Plus, minus og gange" },
     distributive: { name: "Distributiv lov", icon: "3(4 + 5)", description: "Gang ind i parentesen" },
@@ -43,6 +44,11 @@
   const SINGLE_DIGITS = Array.from({length:10}, (_,index) => index);
   const ORDERED_NUMBER_KEYS = [...SMALL_TABLES.slice(1), 0];
   const TABLE_DRILL_VALUES = Array.from({length:9}, (_,index) => index + 1);
+  const DIVISION_LOLLIPOP_FACTS = TABLE_DRILL_VALUES.flatMap(divisor => TABLE_DRILL_VALUES.map(quotient => ({
+    divisor,
+    quotient,
+    dividend:divisor * quotient,
+  })));
   const MATRIX_DRILL_TOPICS = new Set(["tableDrill", "divisionDrill"]);
   const DRILL_SESSION_TOPICS = { tableDrill:"tableDrillSession", divisionDrill:"divisionDrillSession" };
   const LETTER_ITEMS = [
@@ -73,6 +79,8 @@
   ];
   let luigiSurpriseIndex = 0;
   let luigiSurpriseTimer = null;
+  let divisionLollipopDeck = [];
+  let divisionLollipopDrag = null;
   const makeTask = (topic, expression, answer, hint = "", options = {}) => ({ topic, expression, answer, hint, ...options });
 
   /* Hvert emne er et selvstændigt modul med generate, calculate og evaluate. */
@@ -158,6 +166,28 @@
       generate() {
         const knownFactor = pick(TABLE_DRILL_VALUES), quotient = pick(TABLE_DRILL_VALUES);
         return makeTask("divisionDrill", `${knownFactor * quotient} ÷ ${knownFactor}`, quotient, "", { knownFactor, quotient, dividend:knownFactor * quotient });
+      },
+      calculate: (dividend, divisor) => dividend / divisor,
+      evaluate: (answer, task) => Number(answer) === task.answer,
+    },
+    divisionLollipops: {
+      generate() {
+        if (!divisionLollipopDeck.length) divisionLollipopDeck = shuffle(DIVISION_LOLLIPOP_FACTS);
+        const fact = divisionLollipopDeck.pop();
+        const digits = String(fact.dividend).split("").map(Number);
+        const twoDigit = digits.length === 2;
+        return makeTask("divisionLollipops", `${fact.dividend} ÷ ${fact.divisor}`, fact.quotient, "", {
+          ...fact,
+          digits,
+          twoDigit,
+          stage:twoDigit ? "leading-zero" : "quotient",
+          leadingAnswer:"",
+          quotientAnswer:"",
+          pulledDown:false,
+          stepError:"",
+          resultCorrect:null,
+          pizzaVariant:rand(1, 3),
+        });
       },
       calculate: (dividend, divisor) => dividend / divisor,
       evaluate: (answer, task) => Number(answer) === task.answer,
@@ -289,7 +319,7 @@
   const app = document.getElementById("app");
   const backend = window.JacobBackend;
   const usingCentralDatabase = Boolean(backend?.configured);
-  const GUEST_TOPICS = new Set(["multiplication", "tableDrill", "divisionDrill"]);
+  const GUEST_TOPICS = new Set(["multiplication", "tableDrill", "divisionDrill", "divisionLollipops"]);
   const isGuest = () => state.user?.role === "guest";
   const createGuest = () => ({
     id:`guest-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`,
@@ -429,7 +459,7 @@
             <button class="btn full" type="submit">Log ind</button>
             <div class="login-divider"><span>eller</span></div>
             <button class="btn secondary full guest-login" type="button" data-action="guest-login">Gæst</button>
-            <small class="guest-note">Prøv Tabel-drill, Division-drill og Lille tabel uden bruger. Fremskridt gemmes ikke.</small>
+            <small class="guest-note">Prøv Tabel-drill, Division-drill, Divisions-slikkepinde og Lille tabel uden bruger. Fremskridt gemmes ikke.</small>
           </form>
         </section>
       </div>`;
@@ -551,6 +581,7 @@
   function renderExercise() {
     const task = state.task;
     if (MATRIX_DRILL_TOPICS.has(task?.topic)) { renderMatrixDrill(); return; }
+    if (task?.topic === "divisionLollipops") { renderDivisionLollipop(); return; }
     if (task?.topic === "letters") { renderLetterExercise(); return; }
     const cycleStart = Math.floor((state.questionNumber - 1) / 10) * 10;
     const cycleAnswers = state.sessionAnswers.slice(cycleStart, cycleStart + 10);
@@ -651,6 +682,214 @@
       luigiSurpriseTimer = null;
     }, 1100);
   }
+
+  function divisionLollipopKeypad(task) {
+    const selected = task.stage === "leading-zero" ? task.leadingAnswer : task.quotientAnswer;
+    return `<div class="lollipop-keypad" role="group" aria-label="Taltastatur">
+      ${[...TABLE_DRILL_VALUES,0].map(number => `<button class="key ${String(number) === selected ? "selected" : ""}" type="button" data-lollipop-key="${number}" aria-pressed="${String(number) === selected}">${number}</button>`).join("")}
+      <button class="key utility lollipop-delete" type="button" data-lollipop-key="delete">Slet</button>
+    </div>`;
+  }
+
+  function divisionLollipopSteps(task) {
+    const labels = task.twoDigit ? ["Første ciffer", "Træk ned", "Svar"] : ["Svar"];
+    const currentIndex = task.twoDigit
+      ? task.stage === "leading-zero" ? 0 : task.stage === "pull-down" ? 1 : 2
+      : 0;
+    return `<ol class="lollipop-steps" aria-label="Opgavens trin">${labels.map((label,index) => {
+      const status = state.answered
+        ? index === labels.length - 1 && task.resultCorrect === false ? "wrong" : "complete"
+        : index < currentIndex ? "complete" : index === currentIndex ? "active" : "";
+      return `<li class="${status}" ${!state.answered && index === currentIndex ? `aria-current="step"` : ""}><span>${status === "complete" ? "✓" : index + 1}</span><small>${label}</small></li>`;
+    }).join("")}</ol>`;
+  }
+
+  function divisionLollipopFigure(task) {
+    const [firstDigit, secondDigit] = task.twoDigit ? task.digits : [null, task.digits[0]];
+    const leadingComplete = task.leadingAnswer === "0";
+    const resultClass = state.answered ? task.resultCorrect ? "correct" : "wrong" : "";
+    const topLeft = task.twoDigit
+      ? task.pulledDown
+        ? `<span class="lollipop-source-digit moved" aria-hidden="true">${firstDigit}</span>`
+        : `<button class="lollipop-source-digit ${task.stage === "pull-down" ? "ready" : ""}" type="button" data-pull-digit aria-label="Træk ${firstDigit} ned foran ${secondDigit}" aria-grabbed="false" ${task.stage === "pull-down" ? "" : "disabled"}>${firstDigit}</button>`
+      : "";
+    const topRight = task.twoDigit
+      ? `<output class="lollipop-answer-slot ${task.stage === "leading-zero" ? "active" : ""} ${leadingComplete ? "complete" : ""}" aria-label="Det øverste svarfelt">${escapeHtml(task.leadingAnswer)}</output>`
+      : `<span aria-hidden="true"></span>`;
+    const lowerNumber = task.twoDigit
+      ? `<span class="lollipop-combined-number"><span class="lollipop-drop-zone ${task.stage === "pull-down" ? "active" : ""} ${task.pulledDown ? "filled" : ""}" data-drop-digit aria-label="Slip ${firstDigit} her">${task.pulledDown ? firstDigit : ""}</span><span class="lollipop-ones-digit">${secondDigit}</span></span>`
+      : `<span class="lollipop-ones-digit">${secondDigit}</span>`;
+    const lowerRight = `<output class="lollipop-answer-slot ${task.stage === "quotient" && !state.answered ? "active" : ""} ${resultClass}" aria-label="Det nederste svarfelt">${escapeHtml(task.quotientAnswer)}</output>`;
+    return `<div class="division-lollipop-figure ${task.twoDigit ? "two-digit" : "single-digit"}" role="group" aria-label="${task.dividend} divideret med ${task.divisor} vist som divisions-slikkepind">
+      <div class="lollipop-divisor">${task.divisor}</div>
+      <span class="lollipop-stick" aria-hidden="true"></span>
+      <div class="lollipop-work">
+        <div class="lollipop-work-row"><span class="lollipop-left">${topLeft}</span><span aria-hidden="true"></span><span class="lollipop-right">${topRight}</span></div>
+        <div class="lollipop-work-row"><span class="lollipop-left">${lowerNumber}</span><span aria-hidden="true"></span><span class="lollipop-right">${lowerRight}</span></div>
+      </div>
+    </div>`;
+  }
+
+  function divisionLollipopInstruction(task) {
+    if (state.answered && task.resultCorrect) return `<div class="lollipop-message success"><strong>Hele slikkepinden er rigtig!</strong><span>${task.dividend} ÷ ${task.divisor} = ${task.quotient}</span></div>`;
+    if (state.answered) return `<div class="lollipop-message correction" role="alert"><strong>Ikke helt.</strong><span>${task.divisor} × ${task.quotient} = ${task.dividend}, så det nederste felt skulle være ${task.quotient}.</span><button class="btn secondary full" type="button" data-action="next-division-lollipop">Næste slikkepind</button></div>`;
+    if (task.stage === "leading-zero") return `<div class="lollipop-prompt"><span class="eyebrow">Trin 1</span><h2>Hvor mange gange går ${task.divisor} op i ${task.digits[0]}?</h2><p>Skriv svaret i det øverste felt.</p>${divisionLollipopKeypad(task)}</div>`;
+    if (task.stage === "pull-down") return `<div class="lollipop-prompt"><span class="eyebrow">Trin 2</span><h2>Træk ${task.digits[0]} ned foran ${task.digits[1]}</h2><p>Tag fat i ${task.digits[0]}-tallet på slikkepinden, og slip det i det stiplede felt.</p><div class="lollipop-drag-cue" aria-hidden="true"><strong>${task.digits[0]}</strong><span>↓</span><strong>${task.digits[0]}${task.digits[1]}</strong></div></div>`;
+    const prompt = `<div class="lollipop-prompt"><span class="eyebrow">${task.twoDigit ? "Trin 3" : "Division"}</span><h2>Hvor mange gange går ${task.divisor} op i ${task.dividend}?</h2><p>Skriv svaret i ${task.twoDigit ? "det nederste" : "feltet"}.</p>${divisionLollipopKeypad(task)}<form id="division-lollipop-form"><input type="hidden" name="answer" value="${escapeHtml(task.quotientAnswer)}"><button class="btn full lollipop-finish" type="submit" ${task.quotientAnswer === "" ? "disabled" : ""}>Færdig!</button></form></div>`;
+    return prompt;
+  }
+
+  function luigiCalculationPizza(task) {
+    return `<section class="luigi-pizza-reward" aria-labelledby="luigi-pizza-title">
+      <div class="luigi-pizza-copy"><span class="eyebrow">Belønning låst op</span><h2 id="luigi-pizza-title">Luigis regnepizza</h2><p>Øverst står hele pizzaen. Nederst står de to tal, der kan ganges sammen til den.</p><button class="btn" type="button" data-action="next-division-lollipop">Næste slikkepind →</button></div>
+      <div class="calculation-pizza pizza-variant-${task.pizzaVariant}" role="img" aria-label="Regnepizza med ${task.dividend} øverst, ${task.divisor} nederst til venstre og ${task.quotient} nederst til højre">
+        <strong class="pizza-value pizza-value-top">${task.dividend}</strong>
+        <strong class="pizza-value pizza-value-left">${task.divisor}</strong>
+        <strong class="pizza-value pizza-value-right">${task.quotient}</strong>
+      </div>
+    </section>`;
+  }
+
+  function renderDivisionLollipop() {
+    const task = state.task;
+    const cycleStart = Math.floor((state.questionNumber - 1) / 10) * 10;
+    const cycleAnswers = state.sessionAnswers.slice(cycleStart, cycleStart + 10);
+    app.innerHTML = `${header()}<div class="page division-lollipop-page">
+      <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${TOPICS[task.topic].name}</span></div>
+      <section class="division-lollipop-card">
+        <div class="lollipop-card-head"><span class="question-number">Opgave ${state.questionNumber}</span><strong>${task.dividend} ÷ ${task.divisor}</strong></div>
+        <div class="division-lollipop-layout">
+          <div class="lollipop-board">${divisionLollipopFigure(task)}</div>
+          <div class="lollipop-controls">${divisionLollipopSteps(task)}${divisionLollipopInstruction(task)}<p id="lollipop-error" class="lollipop-error" role="alert">${escapeHtml(task.stepError || "")}</p></div>
+        </div>
+      </section>
+      <div class="progress-row" aria-label="Svar i denne runde">${Array.from({length:10},(_,i)=>`<i class="progress-dot ${cycleAnswers[i] === true ? "correct" : cycleAnswers[i] === false ? "wrong" : ""}"></i>`).join("")}</div>
+      ${state.answered && task.resultCorrect ? luigiCalculationPizza(task) : ""}
+    </div>`;
+  }
+
+  function handleDivisionLollipopKey(key) {
+    const task = state.task;
+    if (!task || task.topic !== "divisionLollipops" || state.answered || task.stage === "pull-down") return;
+    task.stepError="";
+    if (key === "delete") {
+      if (task.stage === "leading-zero") task.leadingAnswer="";
+      else task.quotientAnswer="";
+      renderDivisionLollipop();
+      return;
+    }
+    if (!/^\d$/.test(key)) return;
+    if (task.stage === "leading-zero") {
+      if (key !== "0") {
+        task.stepError=`${task.divisor} går ikke op i ${task.digits[0]}. Prøv igen.`;
+        renderDivisionLollipop();
+        return;
+      }
+      task.leadingAnswer="0";
+      task.stage="pull-down";
+      renderDivisionLollipop();
+      return;
+    }
+    task.quotientAnswer=key;
+    renderDivisionLollipop();
+  }
+
+  function completeDivisionLollipopPull() {
+    const task = state.task;
+    if (!task || task.topic !== "divisionLollipops" || state.answered || task.stage !== "pull-down") return;
+    task.pulledDown=true;
+    task.stage="quotient";
+    task.stepError="";
+    renderDivisionLollipop();
+  }
+
+  function positionDivisionLollipopGhost(event) {
+    if (!divisionLollipopDrag?.ghost) return;
+    divisionLollipopDrag.ghost.style.left=`${event.clientX - divisionLollipopDrag.width / 2}px`;
+    divisionLollipopDrag.ghost.style.top=`${event.clientY - divisionLollipopDrag.height / 2}px`;
+  }
+
+  function beginDivisionLollipopDrag(event, source) {
+    if (event.button !== undefined && event.button !== 0) return;
+    const task=state.task;
+    if (!task || task.topic !== "divisionLollipops" || state.answered || task.stage !== "pull-down") return;
+    event.preventDefault();
+    const rect=source.getBoundingClientRect();
+    const ghost=source.cloneNode(true);
+    ghost.removeAttribute("data-pull-digit");
+    ghost.removeAttribute("disabled");
+    ghost.setAttribute("aria-hidden","true");
+    ghost.tabIndex=-1;
+    ghost.className="lollipop-drag-ghost";
+    ghost.style.width=`${rect.width}px`;
+    ghost.style.height=`${rect.height}px`;
+    document.body.appendChild(ghost);
+    source.classList.add("dragging");
+    source.setAttribute("aria-grabbed","true");
+    try { source.setPointerCapture(event.pointerId); } catch { /* Pointer capture er kun ekstra robusthed. */ }
+    divisionLollipopDrag={pointerId:event.pointerId,source,ghost,width:rect.width,height:rect.height,moved:false};
+    positionDivisionLollipopGhost(event);
+  }
+
+  function moveDivisionLollipopDrag(event) {
+    if (!divisionLollipopDrag || event.pointerId !== divisionLollipopDrag.pointerId) return;
+    event.preventDefault();
+    divisionLollipopDrag.moved=true;
+    positionDivisionLollipopGhost(event);
+  }
+
+  function clearDivisionLollipopDrag() {
+    if (!divisionLollipopDrag) return;
+    const {source,ghost,pointerId}=divisionLollipopDrag;
+    source?.classList.remove("dragging");
+    source?.setAttribute("aria-grabbed","false");
+    try { if (source?.hasPointerCapture(pointerId)) source.releasePointerCapture(pointerId); } catch { /* Kilden kan være fjernet ved en ny visning. */ }
+    ghost?.remove();
+    divisionLollipopDrag=null;
+  }
+
+  function finishDivisionLollipopDrag(event, cancelled = false) {
+    if (!divisionLollipopDrag || event.pointerId !== divisionLollipopDrag.pointerId) return;
+    const task=state.task;
+    const dropZone=document.querySelector("[data-drop-digit]");
+    const rect=dropZone?.getBoundingClientRect();
+    const dropped=!cancelled && rect && event.clientX >= rect.left - 16 && event.clientX <= rect.right + 16 && event.clientY >= rect.top - 16 && event.clientY <= rect.bottom + 16;
+    clearDivisionLollipopDrag();
+    if (dropped) { completeDivisionLollipopPull(); return; }
+    if (!cancelled && task?.topic === "divisionLollipops" && task.stage === "pull-down") {
+      task.stepError=`Slip ${task.digits[0]} i feltet foran ${task.digits[1]}.`;
+      renderDivisionLollipop();
+    }
+  }
+
+  async function submitDivisionLollipop() {
+    const task=state.task;
+    if (!task || task.topic !== "divisionLollipops" || state.answered || task.stage !== "quotient") return;
+    if (task.quotientAnswer === "") { task.stepError="Skriv et svar først."; renderDivisionLollipop(); return; }
+    const correct=MathModules.divisionLollipops.evaluate(task.quotientAnswer,task);
+    const responseTime=Math.max(.1,(Date.now()-state.taskStartedAt)/1000);
+    const result={topic:task.topic,problem:task.expression,answer:Number(task.quotientAnswer),correctAnswer:task.answer,correct,responseTime:+responseTime.toFixed(2),timestamp:new Date().toISOString(),divisionDividend:task.dividend,divisionKnownDivisor:task.divisor,divisionQuotient:task.quotient,divisionMethod:"lollipop",divisionPulledDown:task.pulledDown};
+    state.answered=true;
+    task.resultCorrect=correct;
+    task.stepError="";
+    state.sessionAnswers.push(correct);
+    if (correct) state.sessionCorrect++;
+    state.user.results.push(result);
+    try {
+      if (usingCentralDatabase && !isGuest()) result.remoteId=await backend.appendResult(state.user.id,result);
+      else await save();
+    } catch (error) {
+      state.user.results.pop();
+      state.sessionAnswers.pop();
+      if (correct) state.sessionCorrect--;
+      state.answered=false;
+      task.resultCorrect=null;
+      task.stepError="Svaret kunne ikke gemmes. Kontrollér forbindelsen og prøv igen.";
+      console.error(error);
+    }
+    renderDivisionLollipop();
+  }
+
   function renderLetterExercise() {
     const task = state.task;
     const cycleStart = Math.floor((state.questionNumber - 1) / 10) * 10;
@@ -1410,10 +1649,13 @@
         const newStudent = { id:remoteStudent?.id || `s-${Date.now().toString(36)}`, classId:state.activeClassId, role:"student", username, ...(usingCentralDatabase ? {} : { password }), name, results:[], assignedLetters:[...LETTER_KEYS], assignedNumbers:[...SMALL_TABLES], assignedTables:[...SMALL_TABLES], assignedAddends:[...SINGLE_DIGITS], assignedAddendSeconds:[...SINGLE_DIGITS] };
         db.users.push(newStudent); state.expandedStudent=newStudent.id; state.teacherTopicDetail=null; state.studentFormOpen=false; await save(); renderTeacher();
       } catch (studentError) { error.textContent="Eleven kunne ikke oprettes. Brugernavnet kan allerede være i brug."; console.error(studentError); }
-    } else if (event.target.id === "answer-form") await submitAnswer(event.target);
+    } else if (event.target.id === "division-lollipop-form") await submitDivisionLollipop();
+    else if (event.target.id === "answer-form") await submitAnswer(event.target);
   });
   document.addEventListener("click", async (event) => {
-    const keyButton=event.target.closest("[data-key]"), luigiButton=event.target.closest("[data-luigi-surprise]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
+    const lollipopKeyButton=event.target.closest("[data-lollipop-key]"), pullDigitButton=event.target.closest("[data-pull-digit]"), keyButton=event.target.closest("[data-key]"), luigiButton=event.target.closest("[data-luigi-surprise]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
+    if (lollipopKeyButton) { handleDivisionLollipopKey(lollipopKeyButton.dataset.lollipopKey); return; }
+    if (pullDigitButton && event.detail === 0) { completeDivisionLollipopPull(); return; }
     if (keyButton) { handleKeypad(keyButton.dataset.key); return; }
     if (luigiButton) { triggerLuigiSurprise(luigiButton); return; }
     if (letterAudioButton && state.task?.topic === "letters") { letterAudioButton.classList.remove("needs-tap"); playLetterLearningAudio(); return; }
@@ -1426,8 +1668,10 @@
     }
     if (topicButton) {
       if (isGuest() && !GUEST_TOPICS.has(topicButton.dataset.topic)) return;
+      clearDivisionLollipopDrag();
       if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned");
       if (MATRIX_DRILL_TOPICS.has(topicButton.dataset.topic)) { startMatrixDrill(topicButton.dataset.topic); return; }
+      if (topicButton.dataset.topic === "divisionLollipops") divisionLollipopDeck=[];
       stopMatrixDrillTimer(); state.matrixDrill=null; state.selectedTopic=topicButton.dataset.topic; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise"; newTask();
     }
     if (studentButton) { state.expandedStudent=studentButton.dataset.student; state.teacherTopicDetail=null; state.studentProfileNotice=""; renderTeacher(); }
@@ -1440,9 +1684,10 @@
     if (!actionButton) return;
     const action=actionButton.dataset.action;
     if (action==="guest-login") { stopMatrixDrillTimer(); Object.assign(state,{user:createGuest(),view:"student",task:null,matrixDrill:null,questionNumber:1,sessionCorrect:0,sessionAnswers:[]}); renderStudentHome(); return; }
-    if (action==="logout") { if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,matrixDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
+    if (action==="logout") { clearDivisionLollipopDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,matrixDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
     if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
-    if (action==="home") { if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); state.matrixDrill=null; state.task=null; state.view="student"; renderStudentHome(); }
+    if (action==="home") { clearDivisionLollipopDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); state.matrixDrill=null; state.task=null; state.view="student"; renderStudentHome(); }
+    if (action==="next-division-lollipop" && state.task?.topic === "divisionLollipops" && state.answered) { state.questionNumber++; newTask(); }
     if (action==="toggle-exercise-timer" && state.matrixDrill) {
       state.showExerciseTimer=!state.showExerciseTimer;
       try { sessionStorage.setItem(TIMER_VISIBILITY_KEY,String(state.showExerciseTimer)); }
@@ -1498,6 +1743,13 @@
     }
     if (action==="reset-demo") { if (confirm("Vil du nulstille alle demoresultater?")) { db=normalizeDatabase(defaultDatabase()); state.user=db.users.find(u=>u.role==="teacher"); state.studentFormOpen=false; save(); renderTeacher(); } }
   });
+  document.addEventListener("pointerdown", event => {
+    const source=event.target.closest?.("[data-pull-digit]");
+    if (source) beginDivisionLollipopDrag(event,source);
+  });
+  document.addEventListener("pointermove", moveDivisionLollipopDrag, {passive:false});
+  document.addEventListener("pointerup", event => finishDivisionLollipopDrag(event));
+  document.addEventListener("pointercancel", event => finishDivisionLollipopDrag(event,true));
   document.addEventListener("change", event => {
     const letterStudentId = event.target.dataset?.letterStudent;
     if (letterStudentId) {
@@ -1556,12 +1808,20 @@
     const student=event.target.closest?.("[data-student]");
     if (student && (event.key==="Enter"||event.key===" ")) { event.preventDefault(); student.click(); return; }
     if (state.view !== "exercise" || state.answered) return;
+    if (state.task?.topic === "divisionLollipops") {
+      if (event.target.closest?.("[data-pull-digit]")) return;
+      if (/^\d$/.test(event.key)) { event.preventDefault(); handleDivisionLollipopKey(event.key); }
+      else if (event.key === "Backspace") { event.preventDefault(); handleDivisionLollipopKey("delete"); }
+      else if (event.key === "Enter" && state.task.stage === "quotient") { event.preventDefault(); document.getElementById("division-lollipop-form")?.requestSubmit(); }
+      return;
+    }
     if (/^\d$/.test(event.key)) handleKeypad(event.key);
     if (event.key === "-") handleKeypad("minus");
     if (event.key === "Backspace") handleKeypad("delete");
     if (event.key === "Enter") handleKeypad("enter");
   });
   window.addEventListener("pagehide", () => {
+    clearDivisionLollipopDrag();
     if (state.matrixDrill && !state.matrixDrill.finalizedAt) finalizeMatrixDrillSession("abandoned");
   });
   async function start() {
