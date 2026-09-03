@@ -9,6 +9,7 @@
     letters: { name: "Bogstavlæring", icon: "A B C", description: "Find billedet med den rigtige startlyd" },
     numbers: { name: "Tallene", icon: "● ● ●", description: "Tæl figurer og fingre fra 0 til 10" },
     addition: { name: "Plusstykker", icon: "4 + 5", description: "Plus med etcifrede tal" },
+    subtractionBorrowing: { name: "Minus", icon: "31 − 19", description: "Lån en tier og træk fra trin for trin" },
     basics: { name: "Basisregler", icon: "0 · 1", description: "Regneregler med 0 og 1" },
     multiplication: { name: "Lille tabel", icon: "7 × 8", description: "Gangestykker fra 0×0 til 10×10" },
     tableDrill: { name: "Tabel-drill", icon: "3 × 4", description: "Udfyld hele 1–9-tabellen på tid" },
@@ -49,6 +50,22 @@
     quotient,
     dividend:divisor * quotient,
   })));
+  const BORROWING_SUBTRACTION_FACTS = Array.from({length:7}, (_,tensIndex) => tensIndex + 3).flatMap(minuendTens =>
+    Array.from({length:9}, (_,ones) => ones).flatMap(minuendOnes =>
+      Array.from({length:minuendTens - 2}, (_,subtrahendIndex) => subtrahendIndex + 1).flatMap(subtrahendTens =>
+        Array.from({length:9 - minuendOnes}, (_,onesIndex) => ({
+          minuendTens,
+          minuendOnes,
+          subtrahendTens,
+          subtrahendOnes:minuendOnes + onesIndex + 1,
+        }))
+      )
+    )
+  ).map(fact => ({
+    ...fact,
+    minuend:fact.minuendTens * 10 + fact.minuendOnes,
+    subtrahend:fact.subtrahendTens * 10 + fact.subtrahendOnes,
+  }));
   const MATRIX_DRILL_TOPICS = new Set(["tableDrill", "divisionDrill"]);
   const DRILL_SESSION_TOPICS = { tableDrill:"tableDrillSession", divisionDrill:"divisionDrillSession" };
   const LETTER_ITEMS = [
@@ -81,6 +98,8 @@
   let luigiSurpriseTimer = null;
   let divisionLollipopDeck = [];
   let divisionLollipopDrag = null;
+  let borrowingSubtractionDeck = [];
+  let borrowingSubtractionDrag = null;
   const makeTask = (topic, expression, answer, hint = "", options = {}) => ({ topic, expression, answer, hint, ...options });
 
   /* Hvert emne er et selvstændigt modul med generate, calculate og evaluate. */
@@ -123,6 +142,25 @@
         return makeTask("addition", `${a} + ${b}`, this.calculate(a, b));
       },
       calculate: (a, b) => a + b,
+      evaluate: (answer, task) => Number(answer) === task.answer,
+    },
+    subtractionBorrowing: {
+      generate() {
+        if (!borrowingSubtractionDeck.length) borrowingSubtractionDeck = shuffle(BORROWING_SUBTRACTION_FACTS);
+        const fact = borrowingSubtractionDeck.pop();
+        return makeTask("subtractionBorrowing", `${fact.minuend} − ${fact.subtrahend}`, fact.minuend - fact.subtrahend, "", {
+          ...fact,
+          borrowedMinuendTens:fact.minuendTens - 1,
+          borrowedOnes:fact.minuendOnes + 10,
+          stage:"ones-check",
+          borrowed:false,
+          onesAnswer:"",
+          tensAnswer:"",
+          mistakes:0,
+          stepError:"",
+        });
+      },
+      calculate: (minuend, subtrahend) => minuend - subtrahend,
       evaluate: (answer, task) => Number(answer) === task.answer,
     },
     basics: {
@@ -319,7 +357,7 @@
   const app = document.getElementById("app");
   const backend = window.JacobBackend;
   const usingCentralDatabase = Boolean(backend?.configured);
-  const GUEST_TOPICS = new Set(["multiplication", "tableDrill", "divisionDrill", "divisionLollipops"]);
+  const GUEST_TOPICS = new Set(["multiplication", "tableDrill", "divisionDrill", "divisionLollipops", "subtractionBorrowing"]);
   const isGuest = () => state.user?.role === "guest";
   const createGuest = () => ({
     id:`guest-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`,
@@ -459,7 +497,7 @@
             <button class="btn full" type="submit">Log ind</button>
             <div class="login-divider"><span>eller</span></div>
             <button class="btn secondary full guest-login" type="button" data-action="guest-login">Gæst</button>
-            <small class="guest-note">Prøv Tabel-drill, Division-drill, Divisions-slikkepinde og Lille tabel uden bruger. Fremskridt gemmes ikke.</small>
+            <small class="guest-note">Prøv Minus, Tabel-drill, Division-drill, Divisions-slikkepinde og Lille tabel uden bruger. Fremskridt gemmes ikke.</small>
           </form>
         </section>
       </div>`;
@@ -581,6 +619,7 @@
   function renderExercise() {
     const task = state.task;
     if (MATRIX_DRILL_TOPICS.has(task?.topic)) { renderMatrixDrill(); return; }
+    if (task?.topic === "subtractionBorrowing") { renderBorrowingSubtraction(); return; }
     if (task?.topic === "divisionLollipops") { renderDivisionLollipop(); return; }
     if (task?.topic === "letters") { renderLetterExercise(); return; }
     const cycleStart = Math.floor((state.questionNumber - 1) / 10) * 10;
@@ -890,6 +929,186 @@
     renderDivisionLollipop();
   }
 
+  function borrowingSubtractionSteps(task) {
+    const labels = ["Se på enerne", "Lån en tier", "Regn enerne", "Regn tierne"];
+    const stageIndex = { "ones-check":0, borrow:1, "ones-answer":2, "tens-answer":3 }[task.stage] ?? 3;
+    return `<ol class="subtraction-steps" aria-label="Opgavens trin">${labels.map((label,index) => {
+      const status = state.answered || index < stageIndex ? "complete" : index === stageIndex ? "active" : "";
+      return `<li class="${status}" ${!state.answered && index === stageIndex ? `aria-current="step"` : ""}><span>${status === "complete" ? "✓" : index + 1}</span><small>${label}</small></li>`;
+    }).join("")}</ol>`;
+  }
+
+  function borrowingSubtractionKeypad(task) {
+    const selected = task.stage === "ones-answer" ? task.onesAnswer : task.tensAnswer;
+    return `<div class="subtraction-keypad" role="group" aria-label="Taltastatur">
+      ${[...TABLE_DRILL_VALUES,0].map(number => `<button class="key ${String(number) === selected ? "selected" : ""}" type="button" data-subtraction-key="${number}" aria-pressed="${String(number) === selected}">${number}</button>`).join("")}
+    </div>`;
+  }
+
+  function borrowingSubtractionColumn(task) {
+    const sourceReady = task.stage === "borrow" && !task.borrowed && !state.answered;
+    const shownTens = task.borrowed ? task.borrowedMinuendTens : task.minuendTens;
+    const minuendTens = sourceReady
+      ? `<button class="subtraction-tens-source ready" type="button" data-borrow-ten aria-label="Tag en tier fra ${task.minuendTens} og flyt den over til ${task.minuendOnes}" aria-grabbed="false"><strong>${shownTens}</strong><small>10'er</small></button>`
+      : `<span class="subtraction-column-digit ${task.borrowed ? "changed" : ""}">${shownTens}</span>`;
+    const borrowedMark = task.borrowed
+      ? `<span class="subtraction-borrow-mark complete" aria-label="En tier er lavet om til 10 enere">1</span>`
+      : `<span class="subtraction-borrow-mark ${sourceReady ? "active" : ""}" data-borrow-drop aria-label="Slip 10'eren her"></span>`;
+    const tensResult = task.tensAnswer === "" ? "" : task.tensAnswer;
+    const onesResult = task.onesAnswer === "" ? "" : task.onesAnswer;
+    return `<div class="column-subtraction" role="group" aria-label="${task.minuend} minus ${task.subtrahend} stillet op under hinanden">
+      <div class="subtraction-borrow-row" aria-hidden="true"><span></span><span></span>${borrowedMark}</div>
+      <div class="subtraction-number-row subtraction-minuend-row"><span></span>${minuendTens}<span class="subtraction-column-digit">${task.minuendOnes}</span></div>
+      <div class="subtraction-number-row subtraction-subtrahend-row"><span class="subtraction-sign">−</span><span class="subtraction-column-digit">${task.subtrahendTens}</span><span class="subtraction-column-digit">${task.subtrahendOnes}</span></div>
+      <span class="subtraction-rule" aria-hidden="true"></span>
+      <div class="subtraction-number-row subtraction-result-row"><span></span><output class="subtraction-answer-slot ${task.stage === "tens-answer" && !state.answered ? "active" : ""} ${state.answered ? "correct" : ""}" aria-label="Svar på tiernes plads">${tensResult}</output><output class="subtraction-answer-slot ${task.stage === "ones-answer" ? "active" : ""} ${onesResult !== "" ? "complete" : ""}" aria-label="Svar på enernes plads">${onesResult}</output></div>
+    </div>`;
+  }
+
+  function borrowingSubtractionInstruction(task) {
+    if (state.answered) {
+      const detail = task.mistakes ? `Du rettede ${task.mistakes} ${task.mistakes === 1 ? "trin" : "trin"} undervejs.` : "Alle trin var rigtige.";
+      return `<div class="subtraction-message success"><strong>Opgaven er løst!</strong><span>${task.minuend} − ${task.subtrahend} = ${task.answer}</span><small>${detail}</small><button class="btn full" type="button" data-action="next-subtraction">Næste opgave →</button></div>`;
+    }
+    if (task.stage === "ones-check") return `<div class="subtraction-prompt"><span class="eyebrow">Trin 1</span><h2>${task.minuendOnes} − ${task.subtrahendOnes} = ?</h2><p>Kan du trække ${task.subtrahendOnes} fra ${task.minuendOnes} i ener-kolonnen?</p><button class="btn full subtraction-cannot" type="button" data-action="subtraction-cannot">Kan ikke</button></div>`;
+    if (task.stage === "borrow") return `<div class="subtraction-prompt"><span class="eyebrow">Trin 2</span><h2>Lav én tier om til 10 enere</h2><p>Tag fat i ${task.minuendTens}-tallet. Træk en 10'er skråt over ${task.minuendOnes}-tallet.</p><div class="subtraction-drag-cue" aria-hidden="true"><strong>10</strong><span>↗</span><strong>${task.borrowedOnes}</strong></div></div>`;
+    if (task.stage === "ones-answer") return `<div class="subtraction-prompt"><span class="eyebrow">Trin 3</span><h2>${task.borrowedOnes} − ${task.subtrahendOnes} = ?</h2><p>Skriv svaret på enernes plads.</p>${borrowingSubtractionKeypad(task)}</div>`;
+    return `<div class="subtraction-prompt"><span class="eyebrow">Trin 4</span><h2>${task.borrowedMinuendTens} − ${task.subtrahendTens} = ?</h2><p>Skriv svaret på tiernes plads.</p>${borrowingSubtractionKeypad(task)}</div>`;
+  }
+
+  function renderBorrowingSubtraction() {
+    const task=state.task;
+    const cycleStart=Math.floor((state.questionNumber - 1) / 10) * 10;
+    const cycleAnswers=state.sessionAnswers.slice(cycleStart, cycleStart + 10);
+    app.innerHTML = `${header()}<div class="page subtraction-page">
+      <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${TOPICS[task.topic].name}</span></div>
+      <section class="subtraction-card">
+        <div class="subtraction-card-head"><span class="question-number">Opgave ${state.questionNumber}</span><strong>${task.minuend} − ${task.subtrahend}</strong></div>
+        <div class="subtraction-layout">
+          <div class="subtraction-board">${borrowingSubtractionColumn(task)}</div>
+          <div class="subtraction-controls">${borrowingSubtractionSteps(task)}${borrowingSubtractionInstruction(task)}<p class="subtraction-error" role="alert">${escapeHtml(task.stepError || "")}</p></div>
+        </div>
+      </section>
+      <div class="progress-row" aria-label="Svar i denne runde">${Array.from({length:10},(_,i)=>`<i class="progress-dot ${cycleAnswers[i] === true ? "correct" : cycleAnswers[i] === false ? "wrong" : ""}"></i>`).join("")}</div>
+    </div>`;
+  }
+
+  function startBorrowingSubtraction() {
+    const task=state.task;
+    if (!task || task.topic !== "subtractionBorrowing" || state.answered || task.stage !== "ones-check") return;
+    task.stage="borrow";
+    task.stepError="";
+    renderBorrowingSubtraction();
+  }
+
+  function completeBorrowingSubtractionBorrow() {
+    const task=state.task;
+    if (!task || task.topic !== "subtractionBorrowing" || state.answered || task.stage !== "borrow") return;
+    task.borrowed=true;
+    task.stage="ones-answer";
+    task.stepError="";
+    renderBorrowingSubtraction();
+  }
+
+  async function completeBorrowingSubtraction() {
+    const task=state.task;
+    if (!task || task.topic !== "subtractionBorrowing" || state.answered || task.stage !== "tens-answer") return;
+    const correct=task.mistakes === 0;
+    const responseTime=Math.max(.1,(Date.now()-state.taskStartedAt)/1000);
+    const result={topic:task.topic,problem:task.expression,answer:task.answer,correctAnswer:task.answer,correct,responseTime:+responseTime.toFixed(2),timestamp:new Date().toISOString(),subtractionMethod:"borrowing",subtractionBorrowed:true,subtractionMistakes:task.mistakes};
+    state.answered=true;
+    state.sessionAnswers.push(correct);
+    if (correct) state.sessionCorrect++;
+    state.user.results.push(result);
+    try {
+      if (usingCentralDatabase && !isGuest()) result.remoteId=await backend.appendResult(state.user.id,result);
+      else await save();
+    } catch (error) {
+      state.user.results.pop();
+      state.sessionAnswers.pop();
+      if (correct) state.sessionCorrect--;
+      state.answered=false;
+      task.stepError="Opgaven kunne ikke gemmes. Kontrollér forbindelsen og prøv igen.";
+      console.error(error);
+    }
+    renderBorrowingSubtraction();
+  }
+
+  async function handleBorrowingSubtractionKey(key) {
+    const task=state.task;
+    if (!task || task.topic !== "subtractionBorrowing" || state.answered || !["ones-answer","tens-answer"].includes(task.stage) || !/^\d$/.test(key)) return;
+    const isOnes=task.stage === "ones-answer";
+    const expected=isOnes ? task.borrowedOnes - task.subtrahendOnes : task.borrowedMinuendTens - task.subtrahendTens;
+    if (Number(key) !== expected) {
+      task.mistakes++;
+      task.stepError=`${key} passer ikke. Prøv ${isOnes ? "enerne" : "tierne"} igen.`;
+      renderBorrowingSubtraction();
+      return;
+    }
+    task.stepError="";
+    if (isOnes) {
+      task.onesAnswer=key;
+      task.stage="tens-answer";
+      renderBorrowingSubtraction();
+      return;
+    }
+    task.tensAnswer=key;
+    await completeBorrowingSubtraction();
+  }
+
+  function positionBorrowingSubtractionGhost(event) {
+    if (!borrowingSubtractionDrag?.ghost) return;
+    borrowingSubtractionDrag.ghost.style.left=`${event.clientX - borrowingSubtractionDrag.width / 2}px`;
+    borrowingSubtractionDrag.ghost.style.top=`${event.clientY - borrowingSubtractionDrag.height / 2}px`;
+  }
+
+  function beginBorrowingSubtractionDrag(event, source) {
+    if (event.button !== undefined && event.button !== 0) return;
+    const task=state.task;
+    if (!task || task.topic !== "subtractionBorrowing" || state.answered || task.stage !== "borrow") return;
+    event.preventDefault();
+    const ghost=document.createElement("span");
+    ghost.className="subtraction-borrow-ghost";
+    ghost.textContent="10";
+    ghost.setAttribute("aria-hidden","true");
+    document.body.appendChild(ghost);
+    source.classList.add("dragging");
+    source.setAttribute("aria-grabbed","true");
+    try { source.setPointerCapture(event.pointerId); } catch { /* Pointer capture er kun ekstra robusthed. */ }
+    borrowingSubtractionDrag={pointerId:event.pointerId,source,ghost,width:76,height:62};
+    positionBorrowingSubtractionGhost(event);
+  }
+
+  function moveBorrowingSubtractionDrag(event) {
+    if (!borrowingSubtractionDrag || event.pointerId !== borrowingSubtractionDrag.pointerId) return;
+    event.preventDefault();
+    positionBorrowingSubtractionGhost(event);
+  }
+
+  function clearBorrowingSubtractionDrag() {
+    if (!borrowingSubtractionDrag) return;
+    const {source,ghost,pointerId}=borrowingSubtractionDrag;
+    source?.classList.remove("dragging");
+    source?.setAttribute("aria-grabbed","false");
+    try { if (source?.hasPointerCapture(pointerId)) source.releasePointerCapture(pointerId); } catch { /* Kilden kan være fjernet ved en ny visning. */ }
+    ghost?.remove();
+    borrowingSubtractionDrag=null;
+  }
+
+  function finishBorrowingSubtractionDrag(event, cancelled = false) {
+    if (!borrowingSubtractionDrag || event.pointerId !== borrowingSubtractionDrag.pointerId) return;
+    const task=state.task;
+    const dropZone=document.querySelector("[data-borrow-drop]");
+    const rect=dropZone?.getBoundingClientRect();
+    const dropped=!cancelled && rect && event.clientX >= rect.left - 22 && event.clientX <= rect.right + 22 && event.clientY >= rect.top - 22 && event.clientY <= rect.bottom + 22;
+    clearBorrowingSubtractionDrag();
+    if (dropped) { completeBorrowingSubtractionBorrow(); return; }
+    if (!cancelled && task?.topic === "subtractionBorrowing" && task.stage === "borrow") {
+      task.stepError=`Slip 10'eren skråt over ${task.minuendOnes}-tallet.`;
+      renderBorrowingSubtraction();
+    }
+  }
+
   function renderLetterExercise() {
     const task = state.task;
     const cycleStart = Math.floor((state.questionNumber - 1) / 10) * 10;
@@ -1182,6 +1401,7 @@
       multiplication:"Træn korte serier i de tabeller, hvor svartiden er højest. Stop, mens sikkerheden stadig er god.",
       tableDrill:"Brug drillen til at finde de gangestykker, der tager længst tid. Øv derefter netop disse i korte serier.",
       divisionDrill:"Brug drillen til at finde de divisionsstykker, der tager længst tid. Knyt hvert stykke tilbage til det tilsvarende gangestykke.",
+      subtractionBorrowing:"Lad eleven sige hvert trin højt: Kan ikke, lån en tier, regn enerne og regn tierne.",
       pemdas:"Lad eleven markere gange- og divisionsled før udregningen. Brug få led og øg gradvist.",
       negatives:"Brug tallinje og lad eleven forklare retningen, før svaret tastes. Start med plus og minus.",
       distributive:"Lad eleven sige de to delprodukter højt, før de lægges sammen. Brug små tal først.",
@@ -1653,7 +1873,9 @@
     else if (event.target.id === "answer-form") await submitAnswer(event.target);
   });
   document.addEventListener("click", async (event) => {
-    const lollipopKeyButton=event.target.closest("[data-lollipop-key]"), pullDigitButton=event.target.closest("[data-pull-digit]"), keyButton=event.target.closest("[data-key]"), luigiButton=event.target.closest("[data-luigi-surprise]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
+    const subtractionKeyButton=event.target.closest("[data-subtraction-key]"), borrowTenButton=event.target.closest("[data-borrow-ten]"), lollipopKeyButton=event.target.closest("[data-lollipop-key]"), pullDigitButton=event.target.closest("[data-pull-digit]"), keyButton=event.target.closest("[data-key]"), luigiButton=event.target.closest("[data-luigi-surprise]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
+    if (subtractionKeyButton) { await handleBorrowingSubtractionKey(subtractionKeyButton.dataset.subtractionKey); return; }
+    if (borrowTenButton && event.detail === 0) { completeBorrowingSubtractionBorrow(); return; }
     if (lollipopKeyButton) { handleDivisionLollipopKey(lollipopKeyButton.dataset.lollipopKey); return; }
     if (pullDigitButton && event.detail === 0) { completeDivisionLollipopPull(); return; }
     if (keyButton) { handleKeypad(keyButton.dataset.key); return; }
@@ -1669,9 +1891,11 @@
     if (topicButton) {
       if (isGuest() && !GUEST_TOPICS.has(topicButton.dataset.topic)) return;
       clearDivisionLollipopDrag();
+      clearBorrowingSubtractionDrag();
       if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned");
       if (MATRIX_DRILL_TOPICS.has(topicButton.dataset.topic)) { startMatrixDrill(topicButton.dataset.topic); return; }
       if (topicButton.dataset.topic === "divisionLollipops") divisionLollipopDeck=[];
+      if (topicButton.dataset.topic === "subtractionBorrowing") borrowingSubtractionDeck=[];
       stopMatrixDrillTimer(); state.matrixDrill=null; state.selectedTopic=topicButton.dataset.topic; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise"; newTask();
     }
     if (studentButton) { state.expandedStudent=studentButton.dataset.student; state.teacherTopicDetail=null; state.studentProfileNotice=""; renderTeacher(); }
@@ -1684,9 +1908,11 @@
     if (!actionButton) return;
     const action=actionButton.dataset.action;
     if (action==="guest-login") { stopMatrixDrillTimer(); Object.assign(state,{user:createGuest(),view:"student",task:null,matrixDrill:null,questionNumber:1,sessionCorrect:0,sessionAnswers:[]}); renderStudentHome(); return; }
-    if (action==="logout") { clearDivisionLollipopDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,matrixDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
+    if (action==="logout") { clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,matrixDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
     if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
-    if (action==="home") { clearDivisionLollipopDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); state.matrixDrill=null; state.task=null; state.view="student"; renderStudentHome(); }
+    if (action==="home") { clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); state.matrixDrill=null; state.task=null; state.view="student"; renderStudentHome(); }
+    if (action==="subtraction-cannot" && state.task?.topic === "subtractionBorrowing") { startBorrowingSubtraction(); return; }
+    if (action==="next-subtraction" && state.task?.topic === "subtractionBorrowing" && state.answered) { state.questionNumber++; newTask(); return; }
     if (action==="next-division-lollipop" && state.task?.topic === "divisionLollipops" && state.answered) { state.questionNumber++; newTask(); }
     if (action==="toggle-exercise-timer" && state.matrixDrill) {
       state.showExerciseTimer=!state.showExerciseTimer;
@@ -1744,12 +1970,14 @@
     if (action==="reset-demo") { if (confirm("Vil du nulstille alle demoresultater?")) { db=normalizeDatabase(defaultDatabase()); state.user=db.users.find(u=>u.role==="teacher"); state.studentFormOpen=false; save(); renderTeacher(); } }
   });
   document.addEventListener("pointerdown", event => {
+    const borrowSource=event.target.closest?.("[data-borrow-ten]");
+    if (borrowSource) { beginBorrowingSubtractionDrag(event,borrowSource); return; }
     const source=event.target.closest?.("[data-pull-digit]");
     if (source) beginDivisionLollipopDrag(event,source);
   });
-  document.addEventListener("pointermove", moveDivisionLollipopDrag, {passive:false});
-  document.addEventListener("pointerup", event => finishDivisionLollipopDrag(event));
-  document.addEventListener("pointercancel", event => finishDivisionLollipopDrag(event,true));
+  document.addEventListener("pointermove", event => { moveBorrowingSubtractionDrag(event); moveDivisionLollipopDrag(event); }, {passive:false});
+  document.addEventListener("pointerup", event => { finishBorrowingSubtractionDrag(event); finishDivisionLollipopDrag(event); });
+  document.addEventListener("pointercancel", event => { finishBorrowingSubtractionDrag(event,true); finishDivisionLollipopDrag(event,true); });
   document.addEventListener("change", event => {
     const letterStudentId = event.target.dataset?.letterStudent;
     if (letterStudentId) {
@@ -1808,6 +2036,11 @@
     const student=event.target.closest?.("[data-student]");
     if (student && (event.key==="Enter"||event.key===" ")) { event.preventDefault(); student.click(); return; }
     if (state.view !== "exercise" || state.answered) return;
+    if (state.task?.topic === "subtractionBorrowing") {
+      if (event.target.closest?.("[data-borrow-ten]")) return;
+      if (/^\d$/.test(event.key)) { event.preventDefault(); handleBorrowingSubtractionKey(event.key); }
+      return;
+    }
     if (state.task?.topic === "divisionLollipops") {
       if (event.target.closest?.("[data-pull-digit]")) return;
       if (/^\d$/.test(event.key)) { event.preventDefault(); handleDivisionLollipopKey(event.key); }
@@ -1822,6 +2055,7 @@
   });
   window.addEventListener("pagehide", () => {
     clearDivisionLollipopDrag();
+    clearBorrowingSubtractionDrag();
     if (state.matrixDrill && !state.matrixDrill.finalizedAt) finalizeMatrixDrillSession("abandoned");
   });
   async function start() {

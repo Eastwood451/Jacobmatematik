@@ -194,6 +194,58 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
 .lollipop-message strong { font-size:25px; line-height:1.1; }.lollipop-message span { color:inherit; font-size:17px; }
 .lollipop-message.success { color:#126848; border:1px solid #a5dcc8; background:#e8f8f0; }
 .lollipop-message.correction { color:#963b37; border:1px solid #efb6b2; background:#fff0ef; }
+.subtraction-page { max-width:1080px; }
+.subtraction-card { overflow:hidden; border:1px solid var(--line); border-radius:28px; background:var(--paper); box-shadow:var(--shadow); }
+.subtraction-card-head { min-height:64px; padding:14px clamp(18px,3vw,30px); display:flex; align-items:center; justify-content:space-between; gap:18px; border-bottom:1px solid var(--line); background:#f0ede5; }
+.subtraction-card-head>strong { color:var(--ink); font:800 clamp(24px,3vw,34px)/1 Georgia,serif; }
+.subtraction-layout { display:grid; grid-template-columns:minmax(360px,1.08fr) minmax(330px,.92fr); min-height:540px; }
+.subtraction-board { min-width:0; padding:clamp(28px,5vw,54px); display:grid; place-items:center; border-right:1px solid var(--line); background:radial-gradient(circle at 50% 22%,rgba(91,75,218,.09),transparent 15rem),#fffdf8; }
+.subtraction-controls { min-width:0; padding:clamp(24px,3.5vw,40px); display:flex; flex-direction:column; justify-content:center; background:#faf8f3; }
+.subtraction-steps { position:relative; margin:0 0 38px; padding:0; display:grid; grid-template-columns:repeat(4,1fr); list-style:none; }
+.subtraction-steps::before { content:""; position:absolute; top:17px; left:12.5%; right:12.5%; height:3px; background:#d8d4ca; }
+.subtraction-steps li { position:relative; z-index:1; display:grid; justify-items:center; gap:7px; color:#8993a4; }
+.subtraction-steps li>span { width:36px; height:36px; display:grid; place-items:center; border:2px solid #cec9bf; border-radius:50%; background:#faf8f3; font-size:14px; font-weight:900; }
+.subtraction-steps li small { text-align:center; font-size:11px; font-weight:800; line-height:1.15; }
+.subtraction-steps li.active { color:var(--purple-dark); }.subtraction-steps li.active>span { border-color:var(--purple); color:white; background:var(--purple); box-shadow:0 0 0 5px rgba(91,75,218,.12); }
+.subtraction-steps li.complete { color:#187550; }.subtraction-steps li.complete>span { border-color:var(--mint); color:white; background:var(--mint); }
+.subtraction-prompt h2 { margin:7px 0 9px; font-size:clamp(30px,4vw,43px); line-height:1.08; letter-spacing:-.035em; }
+.subtraction-prompt>p { margin-bottom:21px; color:var(--muted); line-height:1.5; }
+.subtraction-cannot { min-height:58px; font-size:19px; }
+.subtraction-keypad { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
+.subtraction-keypad .key { min-height:54px; border-radius:12px; font-size:21px; box-shadow:0 3px 0 #d8d4ca; }
+.subtraction-keypad .key.selected { border-color:var(--purple); color:white; background:var(--purple); box-shadow:0 3px 0 var(--purple-dark); }
+.subtraction-error { min-height:24px; margin:15px 0 0; color:#b13f3a; font-size:14px; font-weight:750; line-height:1.35; }
+.subtraction-drag-cue { min-height:92px; padding:13px 18px; display:flex; align-items:center; justify-content:center; gap:20px; border:2px dashed #b8b0ef; border-radius:18px; color:var(--purple-dark); background:#f0edff; }
+.subtraction-drag-cue strong { min-width:54px; text-align:center; font:800 36px/1 Georgia,serif; }.subtraction-drag-cue span { font-size:36px; font-weight:900; }
+.column-subtraction { width:min(310px,100%); display:grid; justify-items:center; color:#202733; font-family:Georgia,serif; }
+.subtraction-borrow-row,.subtraction-number-row { width:268px; display:grid; grid-template-columns:52px 98px 98px; align-items:center; justify-items:center; }
+.subtraction-borrow-row { min-height:72px; align-items:end; }
+.subtraction-number-row { min-height:94px; }
+.subtraction-column-digit { display:grid; place-items:center; min-width:78px; min-height:82px; font:800 74px/1 Georgia,serif; }
+.subtraction-column-digit.changed { color:#202733; animation:subtraction-number-change .28s ease both; }
+.subtraction-sign { display:grid; place-items:center; width:52px; min-height:82px; font:500 63px/1 Georgia,serif; }
+.subtraction-tens-source { position:relative; min-width:82px; min-height:84px; padding:0; border:0; border-radius:15px; color:#202733; background:transparent; cursor:grab; touch-action:none; filter:drop-shadow(0 5px 0 rgba(91,75,218,.15)); animation:subtraction-source-ready 1s ease-in-out infinite; }
+.subtraction-tens-source strong { font:800 74px/1 Georgia,serif; }
+.subtraction-tens-source small { position:absolute; top:-8px; left:-22px; padding:5px 7px; border:2px solid var(--purple); border-radius:9px; color:var(--purple-dark); background:#f0edff; font:900 12px/1 ui-rounded,system-ui,sans-serif; transform:rotate(-7deg); }
+.subtraction-tens-source:focus-visible { outline:4px solid #a9a0ff; outline-offset:4px; }
+.subtraction-tens-source.dragging { opacity:.22; cursor:grabbing; animation:none; }
+.subtraction-borrow-mark { width:68px; height:58px; display:grid; place-items:center; border:3px dashed transparent; border-radius:13px; transform:translate(-21px,14px) rotate(-5deg); }
+.subtraction-borrow-mark.active { border-color:var(--purple); background:#f0edff; box-shadow:0 0 0 6px rgba(91,75,218,.09); animation:subtraction-drop-ready 1s ease-in-out infinite; }
+.subtraction-borrow-mark.complete { border:0; color:#d64842; background:transparent; box-shadow:none; font:800 58px/1 Georgia,serif; animation:subtraction-borrow-appears .3s ease both; }
+.subtraction-rule { width:252px; height:5px; margin:4px 0 13px; border-radius:999px; background:#202733; }
+.subtraction-result-row { min-height:88px; }
+.subtraction-answer-slot { width:78px; height:78px; display:grid; place-items:center; border:4px solid #cec9bf; border-radius:13px; color:var(--purple); background:white; box-shadow:0 5px 0 rgba(23,36,61,.10); font:800 58px/1 Georgia,serif; }
+.subtraction-answer-slot.active { border-color:var(--purple); box-shadow:0 0 0 6px rgba(91,75,218,.15),0 5px 0 rgba(64,50,186,.25); }
+.subtraction-answer-slot.complete,.subtraction-answer-slot.correct { border-color:#15845a; color:#126c4a; background:#e6f8ef; }
+.subtraction-borrow-ghost { position:fixed; z-index:1000; width:76px; height:62px; display:grid; place-items:center; pointer-events:none; border:3px solid var(--purple); border-radius:14px; color:#202733; background:#fff7bd; box-shadow:0 12px 26px rgba(23,36,61,.25); font:800 38px/1 Georgia,serif; transform:rotate(-6deg) scale(1.04); }
+.subtraction-message { padding:24px; display:grid; gap:9px; border-radius:20px; line-height:1.45; }
+.subtraction-message strong { font-size:27px; line-height:1.1; }.subtraction-message>span { font:800 34px/1.15 Georgia,serif; }.subtraction-message small { color:#32785e; font-size:14px; }
+.subtraction-message.success { color:#126848; border:1px solid #a5dcc8; background:#e8f8f0; }
+.subtraction-message .btn { margin-top:9px; }
+@keyframes subtraction-source-ready { 50% { transform:translate(-3px,1px); color:var(--purple-dark); } }
+@keyframes subtraction-drop-ready { 50% { box-shadow:0 0 0 11px rgba(91,75,218,.04); } }
+@keyframes subtraction-borrow-appears { from { opacity:0; transform:translate(-42px,-6px) rotate(-14deg) scale(.7); } }
+@keyframes subtraction-number-change { from { opacity:.35; transform:scale(1.2); } }
 .luigi-pizza-reward { margin-top:20px; padding:clamp(24px,4vw,42px); display:grid; grid-template-columns:minmax(0,1fr) minmax(220px,310px); align-items:center; gap:clamp(24px,5vw,60px); overflow:hidden; border:4px solid #202733; border-radius:28px; background:linear-gradient(135deg,#fff7bd,#ffd66f); box-shadow:8px 9px 0 #202733; }
 .luigi-pizza-copy h2 { margin:7px 0 10px; font-size:clamp(32px,5vw,52px); letter-spacing:-.05em; }.luigi-pizza-copy p { max-width:500px; color:#66511b; line-height:1.55; }
 .calculation-pizza { position:relative; width:min(280px,100%); aspect-ratio:1; justify-self:center; overflow:hidden; border:10px solid #9a531f; border-radius:50%; background:#f7c84b; box-shadow:0 13px 0 rgba(112,54,19,.18),inset 0 0 0 7px rgba(255,245,177,.48); transform:rotate(2deg); }
@@ -482,6 +534,9 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
   .division-lollipop-layout { grid-template-columns:1fr; }
   .lollipop-board { border-right:0; border-bottom:1px solid var(--line); }
   .lollipop-controls { min-height:390px; }
+  .subtraction-layout { grid-template-columns:1fr; }
+  .subtraction-board { border-right:0; border-bottom:1px solid var(--line); }
+  .subtraction-controls { min-height:390px; }
   .luigi-pizza-reward { grid-template-columns:minmax(0,1fr) minmax(220px,280px); }
 }
 @media (max-width:560px) {
@@ -522,6 +577,31 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
   .lollipop-keypad .key { min-height:48px; font-size:19px; }
   .lollipop-keypad .lollipop-delete { min-height:42px; }
   .lollipop-drag-cue { min-height:82px; }
+  .subtraction-page { width:100%; padding-top:16px; }
+  .subtraction-page>.exercise-head { padding:0 12px; margin-bottom:12px; }
+  .subtraction-card { border-radius:20px; }
+  .subtraction-card-head { min-height:56px; padding:10px 16px; }
+  .subtraction-board { padding:18px 10px 22px; }
+  .subtraction-controls { min-height:0; padding:24px 18px 22px; }
+  .subtraction-steps { margin-bottom:27px; }
+  .subtraction-steps li small { font-size:10px; }
+  .subtraction-borrow-row,.subtraction-number-row { width:230px; grid-template-columns:42px 86px 86px; }
+  .subtraction-borrow-row { min-height:60px; }
+  .subtraction-number-row { min-height:78px; }
+  .subtraction-column-digit { min-width:68px; min-height:68px; font-size:61px; }
+  .subtraction-sign { width:42px; min-height:68px; font-size:52px; }
+  .subtraction-tens-source { min-width:72px; min-height:72px; }
+  .subtraction-tens-source strong { font-size:61px; }
+  .subtraction-tens-source small { left:-16px; }
+  .subtraction-borrow-mark { width:58px; height:50px; transform:translate(-17px,12px) rotate(-5deg); }
+  .subtraction-borrow-mark.complete { font-size:49px; }
+  .subtraction-rule { width:218px; height:4px; margin-top:3px; }
+  .subtraction-result-row { min-height:74px; }
+  .subtraction-answer-slot { width:66px; height:66px; border-width:3px; font-size:49px; }
+  .subtraction-prompt h2 { font-size:34px; }
+  .subtraction-keypad { gap:7px; }
+  .subtraction-keypad .key { min-height:49px; font-size:19px; }
+  .subtraction-drag-cue { min-height:82px; }
   .luigi-pizza-reward { margin:18px 12px 8px; padding:24px 20px 28px; grid-template-columns:1fr; text-align:center; box-shadow:6px 7px 0 #202733; }
   .calculation-pizza { grid-row:1; width:min(220px,72vw); }
   .luigi-pizza-copy { grid-row:2; }.luigi-pizza-copy p { margin-left:auto; margin-right:auto; }
