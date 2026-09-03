@@ -382,8 +382,50 @@
     return `<header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions"><span class="user-pill">${userLabel}</span>${passwordButton}<button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
   }
   function renderLogin() {
-    app.innerHTML = `<div class="login-wrap"><section class="login-intro"><span class="eyebrow">Matematik der følger dig</span><h1>Bliv stærkere, ét svar ad gangen.</h1><p>jacobmatematik finder det niveau, der udfordrer dig tilpas — og giver mere træning dér, hvor du har brug for den.</p><div class="math-trail"><span>7 × 8</span><span>−4 + 9</span><span>3(2 + 5)</span><span>6 + 2 × 4</span></div></section><section class="login-panel"><form class="login-card" id="login-form"><h2>Godt at se dig</h2><p>Log ind som elev eller lærer for at fortsætte.</p><div class="field"><label for="username">Brugernavn</label><input id="username" name="username" autocomplete="username" autocapitalize="none" placeholder="fx alma7" required></div><div class="field"><label for="password">Adgangskode</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Din adgangskode" required></div><p id="login-error" class="error" role="alert"></p><button class="btn full" type="submit">Log ind</button><div class="login-divider"><span>eller</span></div><button class="btn secondary full guest-login" type="button" data-action="guest-login">Gæst</button><small class="guest-note">Prøv Tabel-drill, Division-drill og Lille tabel uden bruger. Fremskridt gemmes ikke.</small></form></section></div>`;
-    document.getElementById("username").focus();
+    app.innerHTML = `
+      <div class="login-wrap">
+        <section class="login-intro">
+          <div class="login-copy">
+            <span class="eyebrow">Matematik der følger dig</span>
+            <h1>Bliv stærkere, ét svar ad gangen.</h1>
+            <p>jacobmatematik finder det niveau, der udfordrer dig tilpas — og giver mere træning dér, hvor du har brug for den.</p>
+            <div class="math-trail" aria-hidden="true"><span>7 × 8</span><span>−4 + 9</span><span>3(2 + 5)</span><span>6 + 2 × 4</span></div>
+          </div>
+          <div class="character-stage" aria-label="Figurerne fra Jacob Matematik">
+            <figure class="character-card captain">
+              <div class="character-frame"><img src="assets/figurer/kaptajn-kvadratrod.webp" width="900" height="1350" alt="Kaptajn Kvadratrod med passer og lommeregner" fetchpriority="high" decoding="async"></div>
+              <figcaption>Kaptajn Kvadratrod</figcaption>
+            </figure>
+            <figure class="character-card dennis">
+              <div class="character-frame"><img src="assets/figurer/divisions-dennis.webp" width="900" height="1350" alt="Divisions-Dennis med divisionsslikkepinde" decoding="async"></div>
+              <figcaption>Divisions-Dennis</figcaption>
+            </figure>
+            <figure class="character-card luigi">
+              <div class="character-frame"><img src="assets/figurer/luigi-laekkermat.webp" width="900" height="1350" alt="Luigi Lækkermat med multiplikationspizzaer" decoding="async"></div>
+              <figcaption>Luigi Lækkermat</figcaption>
+            </figure>
+            <figure class="character-card erling">
+              <div class="character-frame"><img src="assets/figurer/erling-aergerlig.webp" width="630" height="1080" alt="Erling Ærgerlig" decoding="async"></div>
+              <figcaption>Erling Ærgerlig</figcaption>
+            </figure>
+          </div>
+        </section>
+        <section class="login-panel">
+          <form class="login-card" id="login-form">
+            <div class="login-brand"><span class="brand-mark" aria-hidden="true">∑</span><span>jacobmatematik</span></div>
+            <h2>Godt at se dig</h2>
+            <p>Log ind som elev eller lærer for at fortsætte.</p>
+            <div class="field"><label for="username">Brugernavn</label><input id="username" name="username" autocomplete="username" autocapitalize="none" placeholder="fx alma7" required></div>
+            <div class="field"><label for="password">Adgangskode</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Din adgangskode" required></div>
+            <p id="login-error" class="error" role="alert"></p>
+            <button class="btn full" type="submit">Log ind</button>
+            <div class="login-divider"><span>eller</span></div>
+            <button class="btn secondary full guest-login" type="button" data-action="guest-login">Gæst</button>
+            <small class="guest-note">Prøv Tabel-drill, Division-drill og Lille tabel uden bruger. Fremskridt gemmes ikke.</small>
+          </form>
+        </section>
+      </div>`;
+    if (window.matchMedia("(min-width: 901px) and (pointer: fine)").matches) document.getElementById("username").focus();
   }
   function renderStudentHome() {
     const availableTopics = isGuest() ? Object.keys(TOPICS).filter(topic => GUEST_TOPICS.has(topic)) : Object.keys(TOPICS);
