@@ -137,6 +137,25 @@ h1,h2,h3,p { margin-top:0; }
 .feedback { margin:0 25px 25px; padding:17px 19px; border-radius:16px; display:flex; justify-content:space-between; align-items:center; gap:16px; }
 .feedback.correct { background:#ddf6eb; color:#166a4c; } .feedback.wrong { background:#fee7e5; color:#973c38; } .feedback strong { font-size:18px; }
 .progress-row { display:flex; gap:8px; margin-top:18px; } .progress-dot { height:7px; border-radius:20px; background:#d8d4ca; flex:1; } .progress-dot.correct { background:var(--mint); } .progress-dot.wrong { background:var(--red); }
+.luigi-playground { min-height:clamp(320px,42vh,480px); padding:clamp(24px,4vh,42px) 0 8px; display:grid; place-items:center; overflow:hidden; }
+.luigi-surprise { position:relative; width:min(280px,56vw); padding:0; border:0; border-radius:28px; background:transparent; color:var(--ink); cursor:pointer; touch-action:manipulation; -webkit-tap-highlight-color:transparent; }
+.luigi-character { display:block; width:100%; height:auto; pointer-events:none; user-select:none; transform-origin:50% 92%; animation:luigi-idle 3.4s ease-in-out infinite; filter:drop-shadow(0 14px 12px rgba(23,36,61,.18)); transition:filter .2s ease,transform .2s ease; }
+.luigi-surprise:hover .luigi-character { filter:drop-shadow(0 17px 14px rgba(23,36,61,.24)); transform:translateY(-4px) scale(1.015); }
+.luigi-surprise:focus-visible { outline:4px solid #a9a0ff; outline-offset:8px; }
+.luigi-speech { position:absolute; z-index:3; top:2%; right:-12%; max-width:190px; padding:9px 13px; border:2px solid var(--ink); border-radius:16px 16px 5px 16px; background:#fff7bd; box-shadow:4px 4px 0 var(--ink); pointer-events:none; transform:rotate(2deg); font-size:14px; font-weight:900; line-height:1.22; }
+.luigi-pizza-pop { position:absolute; z-index:4; opacity:0; pointer-events:none; font-size:clamp(28px,5vw,44px); filter:drop-shadow(0 4px 3px rgba(23,36,61,.22)); }
+.pizza-one { left:12%; top:38%; }.pizza-two { right:10%; top:43%; }.pizza-three { left:46%; top:24%; }
+.luigi-surprise.celebrating .luigi-character { animation:luigi-celebrate 1s cubic-bezier(.2,.75,.25,1); }
+.luigi-surprise.celebrating .luigi-speech { animation:luigi-speech-pop .48s ease both; }
+.luigi-surprise.celebrating .pizza-one { animation:luigi-pizza-left .9s ease-out both; }
+.luigi-surprise.celebrating .pizza-two { animation:luigi-pizza-right .95s .05s ease-out both; }
+.luigi-surprise.celebrating .pizza-three { animation:luigi-pizza-centre .82s .12s ease-out both; }
+@keyframes luigi-idle { 0%,100% { transform:translateY(0) rotate(-.4deg); } 50% { transform:translateY(-6px) rotate(.4deg); } }
+@keyframes luigi-celebrate { 0%,100% { transform:translateY(0) rotate(0) scale(1); } 22% { transform:translateY(-18px) rotate(-5deg) scale(1.03); } 48% { transform:translateY(-28px) rotate(5deg) scale(1.06); } 72% { transform:translateY(-10px) rotate(-3deg) scale(1.02); } }
+@keyframes luigi-speech-pop { 0% { transform:rotate(2deg) scale(.7); } 60% { transform:rotate(-3deg) scale(1.1); } 100% { transform:rotate(2deg) scale(1); } }
+@keyframes luigi-pizza-left { 0% { opacity:0; transform:translate(0,0) rotate(0) scale(.6); } 20% { opacity:1; } 100% { opacity:0; transform:translate(-95px,-150px) rotate(-520deg) scale(1.15); } }
+@keyframes luigi-pizza-right { 0% { opacity:0; transform:translate(0,0) rotate(0) scale(.6); } 20% { opacity:1; } 100% { opacity:0; transform:translate(100px,-145px) rotate(540deg) scale(1.12); } }
+@keyframes luigi-pizza-centre { 0% { opacity:0; transform:translate(0,0) rotate(0) scale(.5); } 22% { opacity:1; } 100% { opacity:0; transform:translate(8px,-175px) rotate(460deg) scale(1); } }
 .letter-learning-page { max-width:1000px; }
 .letter-learning-card { padding:clamp(18px,4vw,38px); border:1px solid var(--line); border-radius:28px; background:var(--paper); box-shadow:var(--shadow); }
 .letter-prompt { display:grid; justify-items:center; text-align:center; }
@@ -406,5 +425,8 @@ h1,h2,h3,p { margin-top:0; }
   .login-panel { padding:34px 18px 44px; }
   .login-card { padding:23px 18px 25px; border-radius:22px; }
   .login-brand { margin-bottom:22px; }.login-card h2 { font-size:30px; }
+  .luigi-playground { min-height:340px; padding-top:24px; }
+  .luigi-surprise { width:min(230px,58vw); }
+  .luigi-speech { right:-17%; max-width:155px; padding:8px 10px; font-size:13px; }
 }
 @media (prefers-reduced-motion:reduce) { * { scroll-behavior:auto!important; transition:none!important; animation:none!important; } }

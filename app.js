@@ -65,6 +65,14 @@
   const LETTER_KEYS = LETTER_ITEMS.map(item => item.letter);
   let activeLetterAudio = null;
   const SPEED_DRILLS = new Set(["numbers", "addition", "multiplication", "tableDrill", "divisionDrill"]);
+  const LUIGI_SURPRISE_LINES = [
+    "Mamma mia! 6 × 8 = 48!",
+    "7 × 9 = 63 — pizza klar!",
+    "Multiplikation med ekstra ost!",
+    "Perfetto! Endnu en pizza!",
+  ];
+  let luigiSurpriseIndex = 0;
+  let luigiSurpriseTimer = null;
   const makeTask = (topic, expression, answer, hint = "", options = {}) => ({ topic, expression, answer, hint, ...options });
 
   /* Hvert emne er et selvstændigt modul med generate, calculate og evaluate. */
@@ -609,6 +617,15 @@
         ? renderCountingHands(task.count)
         : `<div class="counting-field" role="img" aria-label="${task.count ? Array.from({length:task.count},()=>"figur").join(", ") : "Et tomt felt"}">${task.shapes.map((shape,index) => `<span class="count-shape ${shape} color-${index%4}" aria-hidden="true"></span>`).join("")}</div>`
       : `<div class="expression">${task.expression}</div>`;
+    const luigiPlayground = task.topic === "multiplication" ? `<section class="luigi-playground" aria-label="Luigi Lækkermats pizzakøkken">
+      <button class="luigi-surprise" type="button" data-luigi-surprise aria-label="Få Luigi Lækkermat til at jonglere med pizzaerne">
+        <span class="luigi-speech" aria-live="polite">Tryk på Luigi!</span>
+        <span class="luigi-pizza-pop pizza-one" aria-hidden="true">🍕</span>
+        <span class="luigi-pizza-pop pizza-two" aria-hidden="true">🍕</span>
+        <span class="luigi-pizza-pop pizza-three" aria-hidden="true">🍕</span>
+        <img class="luigi-character" src="assets/figurer/luigi-laekkermat-cutout.webp" width="1024" height="1536" loading="lazy" decoding="async" alt="Luigi Lækkermat holder pizzaerne 48 delt i 6 og 8 samt 63 delt i 7 og 9">
+      </button>
+    </section>` : "";
 
     app.innerHTML = `${header()}<div class="page exercise-page">
       <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${TOPICS[task.topic].name}</span></div>
@@ -617,8 +634,22 @@
         ${state.answered ? correctionSection : answerSection}
       </section>
       <div class="progress-row" aria-label="Svar i denne runde">${Array.from({length:10},(_,i)=>`<i class="progress-dot ${cycleAnswers[i] === true ? "correct" : cycleAnswers[i] === false ? "wrong" : ""}"></i>`).join("")}</div>
+      ${luigiPlayground}
       ${learnedSection}
     </div>`;
+  }
+
+  function triggerLuigiSurprise(button) {
+    const speech = button.querySelector(".luigi-speech");
+    if (speech) speech.textContent = LUIGI_SURPRISE_LINES[luigiSurpriseIndex++ % LUIGI_SURPRISE_LINES.length];
+    button.classList.remove("celebrating");
+    void button.offsetWidth;
+    button.classList.add("celebrating");
+    if (luigiSurpriseTimer) clearTimeout(luigiSurpriseTimer);
+    luigiSurpriseTimer = setTimeout(() => {
+      button.classList.remove("celebrating");
+      luigiSurpriseTimer = null;
+    }, 1100);
   }
   function renderLetterExercise() {
     const task = state.task;
@@ -1382,8 +1413,9 @@
     } else if (event.target.id === "answer-form") await submitAnswer(event.target);
   });
   document.addEventListener("click", async (event) => {
-    const keyButton=event.target.closest("[data-key]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
+    const keyButton=event.target.closest("[data-key]"), luigiButton=event.target.closest("[data-luigi-surprise]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
     if (keyButton) { handleKeypad(keyButton.dataset.key); return; }
+    if (luigiButton) { triggerLuigiSurprise(luigiButton); return; }
     if (letterAudioButton && state.task?.topic === "letters") { letterAudioButton.classList.remove("needs-tap"); playLetterLearningAudio(); return; }
     if (letterContinueButton && state.task?.topic === "letters") { stopLetterLearningAudio(); state.task.phase="image-choice"; state.taskStartedAt=Date.now(); renderLetterExercise(); return; }
     if (letterChoiceButton) { submitLetterAnswer(letterChoiceButton.dataset.letterAnswer); return; }
