@@ -79,6 +79,8 @@
   ];
   let activeErlingAudio = null;
   let lastErlingAudioIndex = -1;
+  const KAPTAJN_AUDIO_CLIP = "assets/figurer/audio/kaptajn-tyggegummi-og-regnestykker.mp3";
+  let activeKaptajnAudio = null;
   const SPEED_DRILLS = new Set(["numbers", "addition", "multiplication", "tableDrill", "divisionDrill"]);
   const LUIGI_SURPRISE_LINES = [
     "Mamma mia! 6 × 8 = 48!",
@@ -437,6 +439,7 @@
     document.querySelector("[data-erling-audio]")?.classList.remove("is-speaking");
   }
   function playErlingAudio(card) {
+    stopKaptajnAudio();
     stopErlingAudio();
     const choices=ERLING_AUDIO_CLIPS.map((_,index)=>index).filter(index=>index!==lastErlingAudioIndex);
     const nextIndex=pick(choices.length ? choices : ERLING_AUDIO_CLIPS.map((_,index)=>index));
@@ -446,6 +449,28 @@
     card.classList.add("is-speaking");
     const finish=()=>{
       if (activeErlingAudio===audio) activeErlingAudio=null;
+      card.classList.remove("is-speaking");
+    };
+    audio.addEventListener("ended",finish,{once:true});
+    audio.addEventListener("error",finish,{once:true});
+    audio.play().catch(finish);
+  }
+  function stopKaptajnAudio() {
+    if (activeKaptajnAudio) {
+      activeKaptajnAudio.pause();
+      activeKaptajnAudio.currentTime=0;
+      activeKaptajnAudio=null;
+    }
+    document.querySelector("[data-kaptajn-audio]")?.classList.remove("is-speaking");
+  }
+  function playKaptajnAudio(card) {
+    stopErlingAudio();
+    stopKaptajnAudio();
+    const audio=new Audio(KAPTAJN_AUDIO_CLIP);
+    activeKaptajnAudio=audio;
+    card.classList.add("is-speaking");
+    const finish=()=>{
+      if (activeKaptajnAudio===audio) activeKaptajnAudio=null;
       card.classList.remove("is-speaking");
     };
     audio.addEventListener("ended",finish,{once:true});
@@ -463,7 +488,7 @@
             <img class="login-mastery-tower-image" src="assets/figurer/matematik-mestringstaarn.webp" width="858" height="1832" alt="Matematik-mestringstårn med Erling Ærgerlig nederst, Luigi Lækkermat med sine pizzaer, Divisions-Dennis med slikkepinde og Kaptajn Kvadratrod øverst" fetchpriority="high" decoding="async">
           </div>
           <div class="character-stage" aria-label="Figurerne fra Jacob Matematik">
-            <figure class="character-card captain">
+            <figure class="character-card captain" data-kaptajn-audio role="button" tabindex="0" aria-label="Afspil Kaptajn Kvadratrods superheltereplik">
               <div class="character-frame"><img src="assets/figurer/kaptajn-kvadratrod.webp" width="900" height="1350" alt="Kaptajn Kvadratrod med passer og lommeregner" decoding="async"></div>
               <figcaption>Kaptajn Kvadratrod</figcaption>
             </figure>
@@ -1616,6 +1641,7 @@
         } else state.user = db.users.find(user => user.username.toLowerCase() === username && user.password === password);
         if (!state.user) throw new Error("Brugeren blev ikke fundet.");
         if (usingCentralDatabase && state.user.role === "teacher") await save();
+        stopErlingAudio(); stopKaptajnAudio();
         state.view=state.user.role==="teacher"?"teacher":"student"; render();
       } catch (loginError) {
         error.textContent="Brugernavn eller adgangskode passer ikke.";
@@ -1686,12 +1712,13 @@
     else if (event.target.id === "answer-form") await submitAnswer(event.target);
   });
   document.addEventListener("click", async (event) => {
-    const lollipopKeyButton=event.target.closest("[data-lollipop-key]"), pullDigitButton=event.target.closest("[data-pull-digit]"), keyButton=event.target.closest("[data-key]"), luigiButton=event.target.closest("[data-luigi-surprise]"), erlingButton=event.target.closest("[data-erling-audio]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
+    const lollipopKeyButton=event.target.closest("[data-lollipop-key]"), pullDigitButton=event.target.closest("[data-pull-digit]"), keyButton=event.target.closest("[data-key]"), luigiButton=event.target.closest("[data-luigi-surprise]"), erlingButton=event.target.closest("[data-erling-audio]"), kaptajnButton=event.target.closest("[data-kaptajn-audio]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
     if (lollipopKeyButton) { handleDivisionLollipopKey(lollipopKeyButton.dataset.lollipopKey); return; }
     if (pullDigitButton && event.detail === 0) { completeDivisionLollipopPull(); return; }
     if (keyButton) { handleKeypad(keyButton.dataset.key); return; }
     if (luigiButton) { triggerLuigiSurprise(luigiButton); return; }
     if (erlingButton) { playErlingAudio(erlingButton); return; }
+    if (kaptajnButton) { playKaptajnAudio(kaptajnButton); return; }
     if (letterAudioButton && state.task?.topic === "letters") { letterAudioButton.classList.remove("needs-tap"); playLetterLearningAudio(); return; }
     if (letterContinueButton && state.task?.topic === "letters") { stopLetterLearningAudio(); state.task.phase="image-choice"; state.taskStartedAt=Date.now(); renderLetterExercise(); return; }
     if (letterChoiceButton) { submitLetterAnswer(letterChoiceButton.dataset.letterAnswer); return; }
@@ -1717,7 +1744,7 @@
     if (reportTopicButton) { state.teacherTopicDetail=reportTopicButton.dataset.reportTopic; renderTeacher(); return; }
     if (!actionButton) return;
     const action=actionButton.dataset.action;
-    if (action==="guest-login") { stopMatrixDrillTimer(); Object.assign(state,{user:createGuest(),view:"student",task:null,matrixDrill:null,questionNumber:1,sessionCorrect:0,sessionAnswers:[]}); renderStudentHome(); return; }
+    if (action==="guest-login") { stopErlingAudio(); stopKaptajnAudio(); stopMatrixDrillTimer(); Object.assign(state,{user:createGuest(),view:"student",task:null,matrixDrill:null,questionNumber:1,sessionCorrect:0,sessionAnswers:[]}); renderStudentHome(); return; }
     if (action==="logout") { clearDivisionLollipopDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,matrixDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
     if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
     if (action==="home") { clearDivisionLollipopDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); state.matrixDrill=null; state.task=null; state.view="student"; renderStudentHome(); }
@@ -1839,6 +1866,8 @@
     student.classId=targetClass.id; state.expandedStudent=null; state.teacherTopicDetail=null; save(); renderTeacher();
   });
   document.addEventListener("keydown", event => {
+    const kaptajn=event.target.closest?.("[data-kaptajn-audio]");
+    if (kaptajn && (event.key==="Enter"||event.key===" ")) { event.preventDefault(); kaptajn.click(); return; }
     const erling=event.target.closest?.("[data-erling-audio]");
     if (erling && (event.key==="Enter"||event.key===" ")) { event.preventDefault(); erling.click(); return; }
     const student=event.target.closest?.("[data-student]");
@@ -1857,6 +1886,8 @@
     if (event.key === "Enter") handleKeypad("enter");
   });
   window.addEventListener("pagehide", () => {
+    stopErlingAudio();
+    stopKaptajnAudio();
     clearDivisionLollipopDrag();
     if (state.matrixDrill && !state.matrixDrill.finalizedAt) finalizeMatrixDrillSession("abandoned");
   });

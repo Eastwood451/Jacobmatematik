@@ -31,6 +31,12 @@ h1,h2,h3,p { margin-top:0; }
 .character-card { --tilt:0deg; --caption-tilt:0deg; --rise:0px; --tag:#fff; --tag-ink:var(--ink); position:relative; min-width:0; margin:0; transform:translateY(var(--rise)) rotate(var(--tilt)); transform-origin:50% 90%; animation:character-in .6s cubic-bezier(.2,.75,.2,1) both; transition:transform .2s ease,filter .2s ease; }
 .character-card:nth-child(2) { animation-delay:.06s; }.character-card:nth-child(3) { animation-delay:.12s; }.character-card:nth-child(4) { animation-delay:.18s; }
 .character-card.captain { --tilt:-2.2deg; --caption-tilt:1.4deg; --rise:8px; --tag:#e83f39; --tag-ink:#fff; }
+.character-card.captain[data-kaptajn-audio] { cursor:pointer; touch-action:manipulation; }
+.character-card.captain[data-kaptajn-audio]:focus-visible { outline:4px solid #e83f39; outline-offset:7px; border-radius:18px; }
+.character-card.captain[data-kaptajn-audio]:active .character-frame { transform:translateY(3px) scale(.98); }
+.character-card.captain.is-speaking .character-frame { animation:kaptajn-boom .48s cubic-bezier(.2,.9,.35,1) infinite alternate; filter:contrast(1.1) saturate(1.16); }
+.character-card.captain.is-speaking figcaption { box-shadow:3px 3px 0 var(--ink),0 0 18px rgba(232,63,57,.65); }
+@keyframes kaptajn-boom { from { transform:translateY(1px) scale(1); } to { transform:translateY(-4px) scale(1.035) rotate(-.5deg); } }
 .character-card.dennis { --tilt:1.7deg; --caption-tilt:-1.1deg; --rise:-7px; --tag:#45d8c9; }
 .character-card.luigi { --tilt:-1.2deg; --caption-tilt:.8deg; --rise:7px; --tag:#f4bb42; }
 .character-card.erling { --tilt:2.3deg; --caption-tilt:-1.5deg; --rise:-3px; --tag:#eee3ce; }
@@ -46,7 +52,7 @@ h1,h2,h3,p { margin-top:0; }
 .character-card.captain img { object-position:50% 40%; }.character-card.erling img { object-position:50% 47%; }
 .character-card figcaption { position:absolute; z-index:3; left:50%; bottom:-13px; min-width:calc(100% - 8px); max-width:calc(100% + 14px); padding:7px 8px; border:2px solid var(--ink); border-radius:999px; color:var(--tag-ink); background:var(--tag); box-shadow:3px 3px 0 var(--ink); transform:translateX(-50%) rotate(var(--caption-tilt)); text-align:center; white-space:nowrap; font-size:clamp(12px,.88vw,14px); font-weight:900; letter-spacing:-.02em; line-height:1.1; }
 @keyframes character-in { from { opacity:0; transform:translateY(calc(var(--rise) + 28px)) rotate(var(--tilt)) scale(.94); } to { opacity:1; transform:translateY(var(--rise)) rotate(var(--tilt)) scale(1); } }
-@media (prefers-reduced-motion:reduce) { .character-card.erling.is-speaking .character-frame { animation:none; } }
+@media (prefers-reduced-motion:reduce) { .character-card.erling.is-speaking .character-frame,.character-card.captain.is-speaking .character-frame { animation:none; } }
 @media (hover:hover) { .character-card:hover { z-index:5; filter:saturate(1.06); transform:translateY(calc(var(--rise) - 8px)) rotate(0deg) scale(1.025); } }
 .login-panel { position:relative; z-index:3; overflow:hidden; color:white; padding:clamp(28px,4.3vw,72px) clamp(24px,4.3vw,68px); display:flex; align-items:center; background:radial-gradient(circle at 15% 8%,rgba(91,75,218,.38),transparent 25rem),linear-gradient(150deg,#21304e 0%,#14213a 52%,#0b1426 100%); box-shadow:-28px 0 70px rgba(23,36,61,.18); }
 .login-panel::before { content:""; position:absolute; inset:0; pointer-events:none; opacity:.08; background-image:linear-gradient(rgba(255,255,255,.28) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.28) 1px,transparent 1px); background-size:34px 34px; -webkit-mask-image:linear-gradient(to bottom,black,transparent 88%); mask-image:linear-gradient(to bottom,black,transparent 88%); }
