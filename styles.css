@@ -246,7 +246,7 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
 .subtraction-borrow-mark.active { border-color:var(--purple); background:#f0edff; box-shadow:0 0 0 6px rgba(91,75,218,.09); animation:subtraction-drop-ready 1s ease-in-out infinite; }
 .subtraction-ones-group { position:relative; isolation:isolate; min-width:78px; min-height:82px; display:grid; place-items:center; }
 .subtraction-ones-group>.subtraction-column-digit { position:relative; z-index:2; }
-.subtraction-ones-group.borrowed::after { content:""; position:absolute; z-index:1; top:-52px; left:-55px; width:140px; height:143px; border:3px dashed var(--purple); border-radius:48% 54% 49% 56%; pointer-events:none; transform:rotate(12deg); animation:subtraction-eleven-outline .3s ease both; }
+.subtraction-ones-group.show-eleven-guide::after { content:""; position:absolute; z-index:1; top:-52px; left:-55px; width:140px; height:143px; border:3px dashed var(--purple); border-radius:48% 54% 49% 56%; pointer-events:none; transform:rotate(12deg); animation:subtraction-eleven-outline .3s ease both; }
 .subtraction-ones-group .subtraction-borrow-mark.complete { position:absolute; z-index:3; top:-47px; left:-48px; width:58px; height:68px; border:0; color:#d64842; background:transparent; box-shadow:none; font:800 58px/1 Georgia,serif; transform:rotate(-5deg); animation:subtraction-borrow-appears .3s ease both; }
 .subtraction-rule { width:252px; height:5px; margin:4px 0 13px; border-radius:999px; background:#202733; }
 .subtraction-result-row { min-height:88px; }
@@ -616,7 +616,7 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
   .subtraction-tens-source small { left:-16px; }
   .subtraction-borrow-mark { width:58px; height:50px; transform:translate(-17px,12px) rotate(-5deg); }
   .subtraction-ones-group { min-width:68px; min-height:68px; }
-  .subtraction-ones-group.borrowed::after { top:-45px; left:-47px; width:122px; height:125px; border-width:3px; }
+  .subtraction-ones-group.show-eleven-guide::after { top:-45px; left:-47px; width:122px; height:125px; border-width:3px; }
   .subtraction-ones-group .subtraction-borrow-mark.complete { top:-41px; left:-41px; width:50px; height:58px; font-size:49px; }
   .subtraction-rule { width:218px; height:4px; margin-top:3px; }
   .subtraction-result-row { min-height:74px; }
