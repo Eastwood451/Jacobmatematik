@@ -596,6 +596,23 @@
     const [row,column]=key.split("-").map(Number);
     return { row, column };
   }
+  function previousTableDrillTroublePairs(user, excludedSessionId = null) {
+    const latestAttempts = new Map();
+    (user.results || [])
+      .filter(item => item.topic === "tableDrill" && item.drillSessionId && item.drillSessionId !== excludedSessionId)
+      .sort((left,right) => new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime())
+      .forEach(item => {
+        const match=String(item.problem || "").match(/^(\d+)\s*×\s*(\d+)$/);
+        const row=Number(item.drillRow || match?.[1]);
+        const column=Number(item.drillColumn || match?.[2]);
+        if (TABLE_DRILL_VALUES.includes(row) && TABLE_DRILL_VALUES.includes(column)) {
+          latestAttempts.set(`${row}-${column}`,{row,column,attempt:item});
+        }
+      });
+    return [...latestAttempts.values()]
+      .filter(({attempt}) => !attempt.correct || recordedTime(attempt) > 4)
+      .map(({row,column}) => ({row,column}));
+  }
   async function finalizeMatrixDrillSession(status = "abandoned") {
     const drill=state.matrixDrill;
     if (!drill || drill.finalizedAt || isGuest()) return;
@@ -1071,6 +1088,12 @@
       .filter(([,attempt]) => !attempt.correct || attempt.responseTime > 4)
       .map(([key]) => matrixDrillPairFromKey(drill,key))
       .filter(Boolean);
+    const previousTroublePairs = !isDivision && !drill.troubleRound
+      ? previousTableDrillTroublePairs(state.user,drill.sessionId)
+      : [];
+    const previousTroubleButton = previousTroublePairs.length
+      ? `<button class="btn compact" type="button" data-action="practice-previous-table-troubles">Øv tidligere drillere (${previousTroublePairs.length})</button>`
+      : "";
     const placementAt = (row,column) => isDivision ? drill.layout.find(pair => pair.gridRow === row && pair.gridColumn === column) : { row, column };
     const columnHeading = column => {
       if (!isDivision) return column;
@@ -1106,7 +1129,7 @@
     const timerStatus = state.showExerciseTimer
       ? `<span>Tid: <strong id="matrix-drill-time">${formatMatrixDrillTime(elapsed)}</strong></span>`
       : `<span class="table-drill-time-hidden">Tid skjult</span>`;
-    app.innerHTML = `${header()}<div class="page table-drill-page"><div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${drill.troubleRound ? `${drillName} · drillere` : drillName}</span></div><section class="table-drill-card"><div class="table-drill-status">${timerStatus}<button class="table-drill-timer-toggle" type="button" data-action="toggle-exercise-timer" aria-pressed="${state.showExerciseTimer}">${state.showExerciseTimer ? "Skjul tid" : "Vis tid"}</button><span>Fejl: <strong>${drill.errors}</strong></span><span>${progressLabel}: <strong>${completedInRound}/${drill.pairs.length}</strong></span></div><div class="table-drill-layout"><div class="table-drill-board">${grid}</div>${answerPanel}</div></section></div>`;
+    app.innerHTML = `${header()}<div class="page table-drill-page"><div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${drill.troubleRound ? `${drillName} · drillere` : drillName}</span></div><section class="table-drill-card"><div class="table-drill-status">${timerStatus}<button class="table-drill-timer-toggle" type="button" data-action="toggle-exercise-timer" aria-pressed="${state.showExerciseTimer}">${state.showExerciseTimer ? "Skjul tid" : "Vis tid"}</button>${previousTroubleButton}<span>Fejl: <strong>${drill.errors}</strong></span><span>${progressLabel}: <strong>${completedInRound}/${drill.pairs.length}</strong></span></div><div class="table-drill-layout"><div class="table-drill-board">${grid}</div>${answerPanel}</div></section></div>`;
   }
   function renderCountingHand(activeFingers, mirrored = false) {
     // Fingrene vises i rækkefølgen tommel, pege-, lange-, ring- og lillefinger.
@@ -1788,6 +1811,15 @@
       const topic=action === "restart-division-drill" ? "divisionDrill" : "tableDrill";
       if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession(state.matrixDrill.completedAt ? "completed" : "abandoned");
       startMatrixDrill(topic);
+    }
+    if (action==="practice-previous-table-troubles" && state.matrixDrill?.topic === "tableDrill") {
+      const drill=state.matrixDrill;
+      const pairs=previousTableDrillTroublePairs(state.user,drill.sessionId);
+      if (pairs.length) {
+        if (!drill.finalizedAt && Object.keys(drill.roundResults).length) await finalizeMatrixDrillSession(drill.completedAt ? "completed" : "abandoned");
+        else stopMatrixDrillTimer();
+        startMatrixDrill("tableDrill",{pairs,confirmationMode:drill.confirmationMode});
+      }
     }
     if (["practice-table-troubles","practice-division-troubles"].includes(action) && state.matrixDrill) {
       const drill=state.matrixDrill;
