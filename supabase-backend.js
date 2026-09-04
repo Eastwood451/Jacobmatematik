@@ -11,6 +11,25 @@
     return safeUser;
   };
   const throwIfError = ({ error }) => { if (error) throw error; };
+  const RESULTS_PAGE_SIZE = 1000;
+
+  async function fetchResultRows(after = null) {
+    const rows = [];
+    for (let from = 0; ; from += RESULTS_PAGE_SIZE) {
+      let query = client
+        .from("results")
+        .select("id,student_id,data,created_at")
+        .order("created_at", { ascending:true })
+        .order("id", { ascending:true })
+        .range(from, from + RESULTS_PAGE_SIZE - 1);
+      if (after) query=query.gte("created_at",after);
+      const response = await query;
+      throwIfError(response);
+      const page = response.data || [];
+      rows.push(...page);
+      if (page.length < RESULTS_PAGE_SIZE) return rows;
+    }
+  }
 
   async function signIn(username, password) {
     const response = await client.auth.signInWithPassword({ email:emailForUsername(username), password });
@@ -33,13 +52,12 @@
       ? await client.from("school_state").select("data").eq("teacher_id", teacherId).single()
       : await client.rpc("get_my_student_state");
     throwIfError(stateResponse);
-    const resultResponse = await client.from("results").select("id,student_id,data,created_at").order("created_at", { ascending:true });
-    throwIfError(resultResponse);
+    const resultRows = await fetchResultRows();
     const school = (profile.role === "teacher" ? stateResponse.data?.data : stateResponse.data) || { classes:[], users:[] };
     const users = (school.users || []).map(item => ({ ...item, results:[] }));
     const current = users.find(item => item.id === profile.id);
     if (!current) users.push({ ...profile, classId:null, results:[] });
-    (resultResponse.data || []).forEach(row => {
+    resultRows.forEach(row => {
       const student = users.find(item => item.id === row.student_id);
       if (student) student.results.push({ ...row.data, remoteId:row.id });
     });
@@ -59,11 +77,8 @@
   }
 
   async function loadResults(after = null) {
-    let query = client.from("results").select("id,student_id,data,created_at").order("created_at", { ascending:true });
-    if (after) query=query.gte("created_at",after);
-    const response = await query;
-    throwIfError(response);
-    return (response.data || []).map(row => ({ ...row.data, remoteId:row.id, studentId:row.student_id, createdAt:row.created_at }));
+    const rows = await fetchResultRows(after);
+    return rows.map(row => ({ ...row.data, remoteId:row.id, studentId:row.student_id, createdAt:row.created_at }));
   }
 
   async function appendResult(studentId, result) {
