@@ -20,6 +20,7 @@ LINES = [
     ("det-er-kedeligt", "Det er KEDELIGT!"),
     ("det-er-kun-skyer-der-regner", "Det er kun SKYER, der REGNER!"),
     ("tal-er-for-tumper", "Tal er for TUMPER!"),
+    ("kloge-mennesker-er-dumme", "Kloge mennesker er DUMME!"),
 ]
 
 
