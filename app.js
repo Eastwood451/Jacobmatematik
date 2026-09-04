@@ -454,7 +454,17 @@
   // Den faktiske svartid bruges til læring. Farveskalaer kan stadig afrunde visuelt ved 10 sekunder.
   const recordedTime = (result) => Math.max(0, Number(result.responseTime) || 0);
   const isPracticeResult = result => Boolean(TOPICS[result?.topic]) && !Object.values(DRILL_SESSION_TOPICS).includes(result?.topic);
-  const practiceResults = user => (user.results || []).filter(isPracticeResult);
+  const progressResetTime = (user, topic) => {
+    const resetAt=new Date(user?.progressResetAt?.[topic] || 0).getTime();
+    return Number.isFinite(resetAt) ? resetAt : 0;
+  };
+  // En nulstilling starter en ny fremskridtsperiode. De gamle resultater bliver
+  // liggende, så hvert historisk heatmap fortsat kan genskabes.
+  const practiceResults = user => (user.results || []).filter(result => {
+    if (!isPracticeResult(result)) return false;
+    const resetAt=progressResetTime(user,result.topic);
+    return !resetAt || new Date(result.timestamp).getTime() > resetAt;
+  });
 
   /* De seneste 20 svar pr. emne styrer nøjagtighed, tid, niveau og vægt. */
   function getStats(user, topic) {
@@ -643,7 +653,7 @@
   }
   function previousTableDrillTroublePairs(user, excludedSessionId = null) {
     const masteryByPair = new Map();
-    (user.results || [])
+    practiceResults(user)
       .filter(item => item.topic === "tableDrill" && item.drillSessionId && item.drillSessionId !== excludedSessionId)
       .sort((left,right) => new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime())
       .forEach(item => {
@@ -749,7 +759,7 @@
     const cycleAnswers = state.sessionAnswers.slice(cycleStart, cycleStart + 10);
     // Historikken følger den konkrete opgave. Fx vurderes 7 + 2 og 2 + 7 hver for sig.
     const drillAttempts = SPEED_DRILLS.has(task.topic)
-      ? (state.user.results || []).filter(item => item.topic === task.topic && item.problem === task.expression).sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp)).slice(-8)
+      ? practiceResults(state.user).filter(item => item.topic === task.topic && item.problem === task.expression).sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp)).slice(-8)
       : [];
     const masterySeconds = task.topic === "numbers" ? 10 : 5;
     const attemptHistory = drillAttempts.length ? `<aside class="pair-history" aria-label="Historik for denne opgave">${drillAttempts.map(item => {
@@ -1773,7 +1783,7 @@
   }
 
   function renderTableDrillHistory(user) {
-    const sessions=tableDrillSessions(user).slice(0,8);
+    const sessions=tableDrillSessions(user);
     const dateLabel=value => new Intl.DateTimeFormat("da-DK",{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"}).format(new Date(value));
     const timeLabel=value => new Intl.DateTimeFormat("da-DK",{hour:"2-digit",minute:"2-digit"}).format(new Date(value));
     const heatmap=session => `<table class="table-drill-history-grid" aria-label="Heatmap for tabel-drill startet ${dateLabel(session.startedAt)} klokken ${timeLabel(session.startedAt)}"><thead><tr><th aria-hidden="true"></th>${TABLE_DRILL_VALUES.map(column => `<th scope="col">${column}</th>`).join("")}</tr></thead><tbody>${TABLE_DRILL_VALUES.map(row => `<tr><th scope="row">${row}</th>${TABLE_DRILL_VALUES.map(column => { const attempt=session.attempts[`${row}-${column}`]; const label=attempt ? `${row} gange ${column}: ${attempt.correct ? "korrekt" : "forkert"} på ${recordedTime(attempt).toFixed(1)} sekunder` : `${row} gange ${column}: ikke besvaret`; return `<td class="${attempt ? "answered" : ""} ${attempt && !attempt.correct ? "wrong" : ""}" ${attempt ? `style="${matrixDrillCellStyle(attempt)}"` : ""} title="${label}" aria-label="${label}">${attempt ? `<strong>${row*column}</strong>${attempt.correct ? "" : "<i>×</i>"}` : ""}</td>`; }).join("")}</tr>`).join("")}</tbody></table>`;
@@ -1785,7 +1795,7 @@
       const end=session.endedAt || (!active ? session.lastActivity : null);
       return `<article class="table-drill-history-card"><header><div><span class="eyebrow">${dateLabel(session.startedAt)}</span><h4>${session.troubleRound ? "Drillerunde" : "Tabel-drill"}</h4><p>Start ${timeLabel(session.startedAt)} · ${end ? `slut ${timeLabel(end)}` : `senest aktiv ${timeLabel(session.lastActivity)}`}</p></div><div class="table-drill-history-status ${completed ? "completed" : active ? "active" : "abandoned"}"><strong>${status}</strong><span>${answered}/${session.expected}</span></div></header>${heatmap(session)}</article>`;
     }).join("");
-    return `<section class="pair-detail table-drill-history" aria-labelledby="table-drill-history-title"><div class="pair-detail-head"><div><span class="eyebrow">Sessionshistorik</span><h3 id="table-drill-history-title">Seneste heatmaps</h3><p>Afsluttede drills og seneste status fra forladte sessioner.</p></div><button class="btn secondary" data-action="close-topic-detail">Luk</button></div>${cards ? `<div class="table-drill-history-list">${cards}</div>` : `<p class="empty">Ingen gemte Tabel-drill-sessioner endnu. Nye drills vises her, så snart eleven har besvaret den første opgave.</p>`}</section>`;
+    return `<section class="pair-detail table-drill-history" aria-labelledby="table-drill-history-title"><div class="pair-detail-head"><div><span class="eyebrow">Sessionshistorik</span><h3 id="table-drill-history-title">Alle heatmaps</h3><p>Alle afsluttede og forladte Tabel-drill-sessioner bevares.</p></div><button class="btn secondary" data-action="close-topic-detail">Luk</button></div>${cards ? `<div class="table-drill-history-list">${cards}</div>` : `<p class="empty">Ingen gemte Tabel-drill-sessioner endnu. Nye drills vises her, så snart eleven har besvaret den første opgave.</p>`}</section>`;
   }
 
   function normalizeDivisionDrillLayout(value) {
@@ -1819,7 +1829,7 @@
   }
 
   function renderDivisionDrillHistory(user) {
-    const sessions=divisionDrillSessions(user).slice(0,8);
+    const sessions=divisionDrillSessions(user);
     const dateLabel=value => new Intl.DateTimeFormat("da-DK",{weekday:"short",day:"2-digit",month:"2-digit",year:"numeric"}).format(new Date(value));
     const timeLabel=value => new Intl.DateTimeFormat("da-DK",{hour:"2-digit",minute:"2-digit"}).format(new Date(value));
     const heatmap=session => `<table class="table-drill-history-grid division-drill-history-grid" aria-label="Heatmap for division-drill startet ${dateLabel(session.startedAt)} klokken ${timeLabel(session.startedAt)}"><thead><tr><th aria-hidden="true">÷</th>${TABLE_DRILL_VALUES.map(() => `<th aria-hidden="true"></th>`).join("")}</tr></thead><tbody>${TABLE_DRILL_VALUES.map(row => `<tr><th aria-hidden="true"></th>${TABLE_DRILL_VALUES.map(column => { const pair=session.layout.find(item=>item.gridRow===row&&item.gridColumn===column), attempt=session.attempts[`${row}-${column}`]; const dividend=pair?.dividend ?? Number(attempt?.divisionDividend); const divisor=pair?.knownFactor ?? Number(attempt?.divisionKnownDivisor); const quotient=pair?.quotient ?? Number(attempt?.divisionQuotient); const hasFact=Number.isFinite(dividend)&&Number.isFinite(divisor)&&Number.isFinite(quotient); const label=hasFact ? `${dividend} divideret med ${divisor} er ${quotient}${attempt ? `: ${attempt.correct ? "korrekt" : "forkert"} på ${recordedTime(attempt).toFixed(1)} sekunder` : ": ikke besvaret"}` : "Placering uden registreret opgave"; return `<td class="${attempt ? "answered" : ""} ${attempt && !attempt.correct ? "wrong" : ""}" ${attempt ? `style="${matrixDrillCellStyle(attempt)}"` : ""} title="${label}" aria-label="${label}">${hasFact ? `<strong>${dividend}</strong>${attempt && !attempt.correct ? "<i>×</i>" : ""}` : ""}</td>`; }).join("")}</tr>`).join("")}</tbody></table>`;
@@ -1831,7 +1841,7 @@
       const end=session.endedAt || (!active ? session.lastActivity : null);
       return `<article class="table-drill-history-card"><header><div><span class="eyebrow">${dateLabel(session.startedAt)}</span><h4>${session.troubleRound ? "Drillerunde" : "Division-drill"}</h4><p>Start ${timeLabel(session.startedAt)} · ${end ? `slut ${timeLabel(end)}` : `senest aktiv ${timeLabel(session.lastActivity)}`}</p></div><div class="table-drill-history-status ${completed ? "completed" : active ? "active" : "abandoned"}"><strong>${status}</strong><span>${answered}/${session.expected}</span></div></header>${heatmap(session)}</article>`;
     }).join("");
-    return `<section class="pair-detail table-drill-history" aria-labelledby="division-drill-history-title"><div class="pair-detail-head"><div><span class="eyebrow">Sessionshistorik</span><h3 id="division-drill-history-title">Seneste Division-heatmaps</h3><p>Farverne viser elevens svartid og fejl for hvert divisionsstykke.</p></div><button class="btn secondary" data-action="close-topic-detail">Luk</button></div>${cards ? `<div class="table-drill-history-list">${cards}</div>` : `<p class="empty">Ingen gemte Division-drill-sessioner endnu. Nye drills vises her, så snart eleven har besvaret den første opgave.</p>`}</section>`;
+    return `<section class="pair-detail table-drill-history" aria-labelledby="division-drill-history-title"><div class="pair-detail-head"><div><span class="eyebrow">Sessionshistorik</span><h3 id="division-drill-history-title">Alle Division-heatmaps</h3><p>Alle sessioner bevares. Farverne viser elevens svartid og fejl for hvert divisionsstykke.</p></div><button class="btn secondary" data-action="close-topic-detail">Luk</button></div>${cards ? `<div class="table-drill-history-list">${cards}</div>` : `<p class="empty">Ingen gemte Division-drill-sessioner endnu. Nye drills vises her, så snart eleven har besvaret den første opgave.</p>`}</section>`;
   }
 
   function renderTeacher() {
@@ -2111,12 +2121,21 @@
     if (action==="reset-topic-progress") {
       const topic=actionButton.dataset.resetTopic, student=db.users.find(user=>user.id===actionButton.dataset.resetStudent && user.role==="student");
       if (!student || !TOPICS[topic]) return;
-      const count=(student.results || []).filter(item=>item.topic===topic && isPracticeResult(item)).length;
-      if (confirm(`Vil du nulstille fremskridtet i ${TOPICS[topic].name} for ${student.name}? ${count} besvarelser slettes permanent.`)) {
+      const count=practiceResults(student).filter(item=>item.topic===topic).length;
+      const keepsHeatmaps=MATRIX_DRILL_TOPICS.has(topic);
+      const resetMessage=keepsHeatmaps
+        ? `Vil du nulstille fremskridtet i ${TOPICS[topic].name} for ${student.name}? ${count} besvarelser fjernes fra den aktuelle fremskridtsmåling, men alle tidligere heatmaps bevares.`
+        : `Vil du nulstille fremskridtet i ${TOPICS[topic].name} for ${student.name}? ${count} besvarelser slettes permanent.`;
+      if (confirm(resetMessage)) {
         try {
           const sessionTopic=DRILL_SESSION_TOPICS[topic];
-          if (usingCentralDatabase) { await backend.deleteResults(student.id, topic); if (sessionTopic) await backend.deleteResults(student.id, sessionTopic); }
-          student.results=(student.results || []).filter(item=>item.topic!==topic && (!sessionTopic || item.topic!==sessionTopic)); state.teacherTopicDetail=null; await save(); renderTeacher();
+          if (keepsHeatmaps) {
+            student.progressResetAt={...(student.progressResetAt || {}),[topic]:new Date().toISOString()};
+          } else {
+            if (usingCentralDatabase) { await backend.deleteResults(student.id, topic); if (sessionTopic) await backend.deleteResults(student.id, sessionTopic); }
+            student.results=(student.results || []).filter(item=>item.topic!==topic && (!sessionTopic || item.topic!==sessionTopic));
+          }
+          state.teacherTopicDetail=null; await save(); renderTeacher();
         } catch (resetError) { alert("Fremskridtet kunne ikke nulstilles."); console.error(resetError); }
       }
     }
