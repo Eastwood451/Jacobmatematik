@@ -1107,7 +1107,7 @@
     const previousTroubleButton = previousTroublePairs.length
       ? `<button class="btn compact" type="button" data-action="practice-previous-table-troubles">Øv tidligere drillere (${previousTroublePairs.length})</button>`
       : "";
-    const unresolvedHistoricalPairs = !isDivision && drill.previousTroubleRound
+    const unresolvedHistoricalPairs = !isDivision && drill.troubleRound
       ? previousTableDrillTroublePairs(state.user)
       : [];
     const unresolvedHistoricalKeys = new Set(unresolvedHistoricalPairs.map(pair => matrixDrillPairKey("tableDrill",pair)));
