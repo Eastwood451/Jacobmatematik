@@ -1074,14 +1074,18 @@
     const minuendTens = sourceReady
       ? `<button class="subtraction-tens-source ready" type="button" data-borrow-ten aria-label="Tag en tier fra ${task.minuendTens} og flyt den over til ${task.minuendOnes}" aria-grabbed="false"><strong>${shownTens}</strong><small>10'er</small></button>`
       : `<span class="subtraction-column-digit ${task.borrowed ? "changed" : ""}">${shownTens}</span>`;
-    const borrowedMark = task.borrowed
-      ? `<span class="subtraction-borrow-mark complete" aria-label="En tier er lavet om til 10 enere">1</span>`
+    const borrowDrop = task.borrowed
+      ? `<span></span>`
       : `<span class="subtraction-borrow-mark ${sourceReady ? "active" : ""}" data-borrow-drop aria-label="Slip 10'eren her"></span>`;
+    const minuendOnes = `<span class="subtraction-ones-group ${task.borrowed ? "borrowed" : ""}" aria-label="${task.borrowed ? task.borrowedOnes : task.minuendOnes}">
+      ${task.borrowed ? `<span class="subtraction-borrow-mark complete" aria-hidden="true">1</span>` : ""}
+      <span class="subtraction-column-digit" aria-hidden="true">${task.minuendOnes}</span>
+    </span>`;
     const tensResult = task.tensAnswer === "" ? "" : task.tensAnswer;
     const onesResult = task.onesAnswer === "" ? "" : task.onesAnswer;
     return `<div class="column-subtraction" role="group" aria-label="${task.minuend} minus ${task.subtrahend} stillet op under hinanden">
-      <div class="subtraction-borrow-row" aria-hidden="true"><span></span><span></span>${borrowedMark}</div>
-      <div class="subtraction-number-row subtraction-minuend-row"><span></span>${minuendTens}<span class="subtraction-column-digit">${task.minuendOnes}</span></div>
+      <div class="subtraction-borrow-row" aria-hidden="true"><span></span><span></span>${borrowDrop}</div>
+      <div class="subtraction-number-row subtraction-minuend-row"><span></span>${minuendTens}${minuendOnes}</div>
       <div class="subtraction-number-row subtraction-subtrahend-row"><span class="subtraction-sign">−</span><span class="subtraction-column-digit">${task.subtrahendTens}</span><span class="subtraction-column-digit">${task.subtrahendOnes}</span></div>
       <span class="subtraction-rule" aria-hidden="true"></span>
       <div class="subtraction-number-row subtraction-result-row"><span></span><output class="subtraction-answer-slot ${task.stage === "tens-answer" && !state.answered ? "active" : ""} ${state.answered ? "correct" : ""}" aria-label="Svar på tiernes plads">${tensResult}</output><output class="subtraction-answer-slot ${task.stage === "ones-answer" ? "active" : ""} ${onesResult !== "" ? "complete" : ""}" aria-label="Svar på enernes plads">${onesResult}</output></div>
