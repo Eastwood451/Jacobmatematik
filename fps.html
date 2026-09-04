@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#121820">
+  <title>Erling FPS · Jacob Matematik</title>
+  <link rel="stylesheet" href="fps.css?v=20260904-fps1">
+</head>
+<body>
+  <main id="game-shell">
+    <canvas id="game" aria-label="Erling FPS"></canvas>
+
+    <header class="hud hud-top" aria-live="polite">
+      <a class="hud-button back-button" href="index.html">← Tilbage</a>
+      <div class="hud-pill"><span>Liv</span><strong id="lives">♥ ♥ ♥ ♥ ♥</strong></div>
+      <div class="hud-pill"><span>Blyanter</span><strong id="ammo">0</strong></div>
+      <div class="hud-pill"><span>Ramt</span><strong id="score">0</strong></div>
+    </header>
+
+    <div id="crosshair" aria-hidden="true"><span></span><span></span></div>
+
+    <section class="math-panel" aria-live="polite">
+      <span class="math-kicker">ERLINGS GANGESTYKKE</span>
+      <div id="problem" class="problem">? × ?</div>
+      <div class="answer-row">
+        <div id="answer" class="answer-box" aria-label="Dit svar">_</div>
+        <span class="key-hint">skriv tal · Enter</span>
+      </div>
+      <p id="feedback" class="feedback">Svar rigtigt for at få en blyant.</p>
+    </section>
+
+    <div id="damage-flash" aria-hidden="true"></div>
+    <div id="shot-flash" aria-hidden="true"></div>
+
+    <section id="start-overlay" class="overlay open">
+      <div class="overlay-card">
+        <span class="eyebrow">JACOB MATEMATIK · FPS</span>
+        <h1>Erling er løs på skolen.</h1>
+        <p>Han kommer langsomt efter dig med et gangestykke over hovedet. Svar rigtigt, få en blyant, og ram ham med venstreklik.</p>
+        <div class="controls-grid">
+          <div><kbd>W A S D</kbd><span>bevæg dig</span></div>
+          <div><kbd>Mus</kbd><span>se dig omkring</span></div>
+          <div><kbd>Space</kbd><span>hop</span></div>
+          <div><kbd>0–9 + Enter</kbd><span>svar</span></div>
+          <div><kbd>Venstreklik</kbd><span>skyd blyant</span></div>
+          <div><kbd>Esc</kbd><span>frigiv mus</span></div>
+        </div>
+        <button id="start-button" class="start-button" type="button">IND PÅ SKOLEN</button>
+      </div>
+    </section>
+
+    <section id="game-over" class="overlay">
+      <div class="overlay-card game-over-card">
+        <span class="eyebrow">ERLING VANDT DENNE OMGANG</span>
+        <h2>Fem liv brugt.</h2>
+        <p>Du nåede at ramme <strong id="final-score">0</strong> Erlings.</p>
+        <button id="restart-button" class="start-button" type="button">PRØV IGEN</button>
+      </div>
+    </section>
+
+    <div id="pointer-note" class="pointer-note">Klik i spillet for at fange musen</div>
+  </main>
+
+  <script type="module" src="fps.js?v=20260904-fps1"></script>
+</body>
+</html>
