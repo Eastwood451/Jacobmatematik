@@ -76,6 +76,7 @@
     "assets/figurer/audio/erling-det-er-kun-skyer-der-regner.mp3",
     "assets/figurer/audio/erling-tal-er-for-tumper.mp3",
     "assets/figurer/audio/erling-kloge-mennesker-er-dumme.mp3",
+    "assets/figurer/audio/erling-jeg-kan-godt-jeg-gider-bare-ikke.mp3",
   ];
   let activeErlingAudio = null;
   let lastErlingAudioIndex = -1;

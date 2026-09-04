@@ -21,6 +21,7 @@ LINES = [
     ("det-er-kun-skyer-der-regner", "Det er kun SKYER, der REGNER!"),
     ("tal-er-for-tumper", "Tal er for TUMPER!"),
     ("kloge-mennesker-er-dumme", "Kloge mennesker er DUMME!"),
+    ("jeg-kan-godt-jeg-gider-bare-ikke", "Jeg kan godt. Jeg gider bare ikke."),
 ]
 
 
