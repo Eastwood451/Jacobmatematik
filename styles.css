@@ -34,12 +34,19 @@ h1,h2,h3,p { margin-top:0; }
 .character-card.dennis { --tilt:1.7deg; --caption-tilt:-1.1deg; --rise:-7px; --tag:#45d8c9; }
 .character-card.luigi { --tilt:-1.2deg; --caption-tilt:.8deg; --rise:7px; --tag:#f4bb42; }
 .character-card.erling { --tilt:2.3deg; --caption-tilt:-1.5deg; --rise:-3px; --tag:#eee3ce; }
+.character-card.erling[data-erling-audio] { cursor:pointer; touch-action:manipulation; }
+.character-card.erling[data-erling-audio]:focus-visible { outline:4px solid var(--purple); outline-offset:7px; border-radius:18px; }
+.character-card.erling[data-erling-audio]:active .character-frame { transform:translateY(3px) rotate(-1deg); }
+.character-card.erling.is-speaking .character-frame { animation:erling-rant .17s steps(2,end) infinite; filter:contrast(1.08) saturate(.9); }
+.character-card.erling.is-speaking figcaption { background:#f4bb42; }
+@keyframes erling-rant { 0% { transform:translate(-1px,1px) rotate(-.7deg); } 50% { transform:translate(2px,-1px) rotate(.8deg); } 100% { transform:translate(-1px,0) rotate(-.4deg); } }
 .character-frame { position:relative; aspect-ratio:2/3; overflow:hidden; border:clamp(2px,.24vw,4px) solid var(--ink); border-radius:clamp(14px,1.5vw,22px); background:#0b1324; box-shadow:6px 7px 0 var(--ink),0 18px 32px rgba(23,36,61,.18); }
 .character-frame::after { content:""; position:absolute; inset:0; border-radius:inherit; pointer-events:none; box-shadow:inset 0 0 0 1px rgba(255,255,255,.16),inset 0 -50px 55px rgba(5,10,20,.14); }
 .character-frame img { width:100%; height:100%; display:block; object-fit:cover; }
 .character-card.captain img { object-position:50% 40%; }.character-card.erling img { object-position:50% 47%; }
 .character-card figcaption { position:absolute; z-index:3; left:50%; bottom:-13px; min-width:calc(100% - 8px); max-width:calc(100% + 14px); padding:7px 8px; border:2px solid var(--ink); border-radius:999px; color:var(--tag-ink); background:var(--tag); box-shadow:3px 3px 0 var(--ink); transform:translateX(-50%) rotate(var(--caption-tilt)); text-align:center; white-space:nowrap; font-size:clamp(12px,.88vw,14px); font-weight:900; letter-spacing:-.02em; line-height:1.1; }
 @keyframes character-in { from { opacity:0; transform:translateY(calc(var(--rise) + 28px)) rotate(var(--tilt)) scale(.94); } to { opacity:1; transform:translateY(var(--rise)) rotate(var(--tilt)) scale(1); } }
+@media (prefers-reduced-motion:reduce) { .character-card.erling.is-speaking .character-frame { animation:none; } }
 @media (hover:hover) { .character-card:hover { z-index:5; filter:saturate(1.06); transform:translateY(calc(var(--rise) - 8px)) rotate(0deg) scale(1.025); } }
 .login-panel { position:relative; z-index:3; overflow:hidden; color:white; padding:clamp(28px,4.3vw,72px) clamp(24px,4.3vw,68px); display:flex; align-items:center; background:radial-gradient(circle at 15% 8%,rgba(91,75,218,.38),transparent 25rem),linear-gradient(150deg,#21304e 0%,#14213a 52%,#0b1426 100%); box-shadow:-28px 0 70px rgba(23,36,61,.18); }
 .login-panel::before { content:""; position:absolute; inset:0; pointer-events:none; opacity:.08; background-image:linear-gradient(rgba(255,255,255,.28) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.28) 1px,transparent 1px); background-size:34px 34px; -webkit-mask-image:linear-gradient(to bottom,black,transparent 88%); mask-image:linear-gradient(to bottom,black,transparent 88%); }

@@ -70,6 +70,14 @@
   }));
   const LETTER_KEYS = LETTER_ITEMS.map(item => item.letter);
   let activeLetterAudio = null;
+  const ERLING_AUDIO_CLIPS = [
+    "assets/figurer/audio/erling-hvad-skal-jeg-bruge-det-til.mp3",
+    "assets/figurer/audio/erling-det-er-kedeligt.mp3",
+    "assets/figurer/audio/erling-det-er-kun-skyer-der-regner.mp3",
+    "assets/figurer/audio/erling-tal-er-for-tumper.mp3",
+  ];
+  let activeErlingAudio = null;
+  let lastErlingAudioIndex = -1;
   const SPEED_DRILLS = new Set(["numbers", "addition", "multiplication", "tableDrill", "divisionDrill"]);
   const LUIGI_SURPRISE_LINES = [
     "Mamma mia! 6 × 8 = 48!",
@@ -419,6 +427,30 @@
     const passwordButton = state.user.role === "student" ? `<button class="btn ghost" data-action="change-password">Skift adgangskode</button>` : "";
     return `<header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions"><span class="user-pill">${userLabel}</span>${passwordButton}<button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
   }
+  function stopErlingAudio() {
+    if (activeErlingAudio) {
+      activeErlingAudio.pause();
+      activeErlingAudio.currentTime=0;
+      activeErlingAudio=null;
+    }
+    document.querySelector("[data-erling-audio]")?.classList.remove("is-speaking");
+  }
+  function playErlingAudio(card) {
+    stopErlingAudio();
+    const choices=ERLING_AUDIO_CLIPS.map((_,index)=>index).filter(index=>index!==lastErlingAudioIndex);
+    const nextIndex=pick(choices.length ? choices : ERLING_AUDIO_CLIPS.map((_,index)=>index));
+    lastErlingAudioIndex=nextIndex;
+    const audio=new Audio(ERLING_AUDIO_CLIPS[nextIndex]);
+    activeErlingAudio=audio;
+    card.classList.add("is-speaking");
+    const finish=()=>{
+      if (activeErlingAudio===audio) activeErlingAudio=null;
+      card.classList.remove("is-speaking");
+    };
+    audio.addEventListener("ended",finish,{once:true});
+    audio.addEventListener("error",finish,{once:true});
+    audio.play().catch(finish);
+  }
   function renderLogin() {
     app.innerHTML = `
       <div class="login-wrap">
@@ -442,7 +474,7 @@
               <div class="character-frame"><img src="assets/figurer/luigi-laekkermat.webp" width="900" height="1350" alt="Luigi Lækkermat med multiplikationspizzaer" decoding="async"></div>
               <figcaption>Luigi Lækkermat</figcaption>
             </figure>
-            <figure class="character-card erling">
+            <figure class="character-card erling" data-erling-audio role="button" tabindex="0" aria-label="Afspil en sur kommentar fra Erling Ærgerlig">
               <div class="character-frame"><img src="assets/figurer/erling-aergerlig.webp" width="630" height="1080" alt="Erling Ærgerlig" decoding="async"></div>
               <figcaption>Erling Ærgerlig</figcaption>
             </figure>
@@ -1653,11 +1685,12 @@
     else if (event.target.id === "answer-form") await submitAnswer(event.target);
   });
   document.addEventListener("click", async (event) => {
-    const lollipopKeyButton=event.target.closest("[data-lollipop-key]"), pullDigitButton=event.target.closest("[data-pull-digit]"), keyButton=event.target.closest("[data-key]"), luigiButton=event.target.closest("[data-luigi-surprise]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
+    const lollipopKeyButton=event.target.closest("[data-lollipop-key]"), pullDigitButton=event.target.closest("[data-pull-digit]"), keyButton=event.target.closest("[data-key]"), luigiButton=event.target.closest("[data-luigi-surprise]"), erlingButton=event.target.closest("[data-erling-audio]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
     if (lollipopKeyButton) { handleDivisionLollipopKey(lollipopKeyButton.dataset.lollipopKey); return; }
     if (pullDigitButton && event.detail === 0) { completeDivisionLollipopPull(); return; }
     if (keyButton) { handleKeypad(keyButton.dataset.key); return; }
     if (luigiButton) { triggerLuigiSurprise(luigiButton); return; }
+    if (erlingButton) { playErlingAudio(erlingButton); return; }
     if (letterAudioButton && state.task?.topic === "letters") { letterAudioButton.classList.remove("needs-tap"); playLetterLearningAudio(); return; }
     if (letterContinueButton && state.task?.topic === "letters") { stopLetterLearningAudio(); state.task.phase="image-choice"; state.taskStartedAt=Date.now(); renderLetterExercise(); return; }
     if (letterChoiceButton) { submitLetterAnswer(letterChoiceButton.dataset.letterAnswer); return; }
@@ -1805,6 +1838,8 @@
     student.classId=targetClass.id; state.expandedStudent=null; state.teacherTopicDetail=null; save(); renderTeacher();
   });
   document.addEventListener("keydown", event => {
+    const erling=event.target.closest?.("[data-erling-audio]");
+    if (erling && (event.key==="Enter"||event.key===" ")) { event.preventDefault(); erling.click(); return; }
     const student=event.target.closest?.("[data-student]");
     if (student && (event.key==="Enter"||event.key===" ")) { event.preventDefault(); student.click(); return; }
     if (state.view !== "exercise" || state.answered) return;
