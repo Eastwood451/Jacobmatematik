@@ -670,6 +670,7 @@
       finalizedAt:null,
       confirmationMode:options.confirmationMode || previousMode,
       troubleRound:Boolean(options.pairs),
+      previousTroubleRound:Boolean(options.previousTroubles),
     };
     state.selectedTopic=topic; state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[]; state.view="exercise";
     matrixDrillTimerId = setInterval(updateMatrixDrillTimer, 1000);
@@ -1106,6 +1107,10 @@
     const previousTroubleButton = previousTroublePairs.length
       ? `<button class="btn compact" type="button" data-action="practice-previous-table-troubles">Øv tidligere drillere (${previousTroublePairs.length})</button>`
       : "";
+    const unresolvedHistoricalPairs = !isDivision && drill.previousTroubleRound
+      ? previousTableDrillTroublePairs(state.user)
+      : [];
+    const unresolvedHistoricalKeys = new Set(unresolvedHistoricalPairs.map(pair => matrixDrillPairKey("tableDrill",pair)));
     const placementAt = (row,column) => isDivision ? drill.layout.find(pair => pair.gridRow === row && pair.gridColumn === column) : { row, column };
     const columnHeading = column => {
       if (!isDivision) return column;
@@ -1120,22 +1125,26 @@
     const grid = `<table class="table-drill-grid ${isDivision ? "division-drill-grid" : ""}" aria-label="${isDivision ? "Division med produkter fra 1–9-tabellen" : "Gangetabel fra 1 til 9"}">
       <thead><tr><th aria-hidden="true">${isDivision ? "÷" : ""}</th>${TABLE_DRILL_VALUES.map(column => `<th class="${column === activeColumn ? "active-axis" : ""}" scope="col">${columnHeading(column)}</th>`).join("")}</tr></thead>
       <tbody>${TABLE_DRILL_VALUES.map(row => `<tr><th class="${row === activeRow ? "active-axis" : ""}" scope="row">${rowHeading(row)}</th>${TABLE_DRILL_VALUES.map(column => {
-        const pair=placementAt(row,column), key=matrixDrillPairKey(drill.topic,pair), attempt=drill.cells[key], solved=Boolean(attempt), active=row===activeRow && column===activeColumn;
-        const classes=[row===activeRow?"active-row":"",column===activeColumn?"active-column":"",solved?"solved timed":"",attempt && !attempt.correct?"wrong":"",active?"active-cell":""].filter(Boolean).join(" ");
+        const pair=placementAt(row,column), key=matrixDrillPairKey(drill.topic,pair), attempt=drill.cells[key], active=row===activeRow && column===activeColumn;
+        const historicalTrouble=Boolean(drill.previousTroubleRound && unresolvedHistoricalKeys.has(key));
+        const historicalLearned=Boolean(drill.previousTroubleRound && !historicalTrouble);
+        const solved=Boolean(attempt) || historicalLearned;
+        const classes=[row===activeRow?"active-row":"",column===activeColumn?"active-column":"",solved?"solved timed":"",attempt && !attempt.correct?"wrong":"",historicalTrouble?"historical-trouble":"",historicalLearned?"historical-learned":"",active?"active-cell":""].filter(Boolean).join(" ");
         const shownValue=isDivision ? pair.dividend : row * column;
         const contents=isDivision
           ? `<strong>${shownValue}</strong>${attempt && !attempt.correct ? `<i aria-hidden="true">×</i>` : ""}`
-          : active ? `<span>${row}×${column}</span><strong id="matrix-drill-cell-answer"></strong>` : solved ? `<strong>${shownValue}</strong>${attempt.correct ? "" : `<i aria-hidden="true">×</i>`}` : "";
-        const timing=solved ? `${attempt.correct ? "korrekt" : "forkert"} på ${attempt.responseTime.toFixed(1)} sekunder` : "";
+          : active ? `<span>${row}×${column}</span><strong id="matrix-drill-cell-answer"></strong>` : historicalLearned ? `<strong>${shownValue}</strong>` : attempt ? `<strong>${shownValue}</strong>${attempt.correct ? "" : `<i aria-hidden="true">×</i>`}` : "";
+        const timing=attempt ? `${attempt.correct ? "korrekt" : "forkert"} på ${attempt.responseTime.toFixed(1)} sekunder` : historicalLearned ? "lært" : historicalTrouble ? "driller" : "";
         const taskLabel=isDivision ? `${pair.dividend} divideret med ${pair.knownFactor} er ${pair.quotient}` : `${row} gange ${column} er ${shownValue}`;
-        return `<td class="${classes}" ${solved ? `style="${matrixDrillCellStyle(attempt)}"` : ""} aria-label="${taskLabel}${solved ? `, ${timing}` : active ? ", aktiv opgave" : ""}">${contents}</td>`;
+        const cellStyle=historicalLearned ? "--cell-color:hsl(138 55% 72%)" : solved && !historicalTrouble ? matrixDrillCellStyle(attempt) : "";
+        return `<td class="${classes}" ${cellStyle ? `style="${cellStyle}"` : ""} aria-label="${taskLabel}${timing ? `, ${timing}` : active ? ", aktiv opgave" : ""}">${contents}</td>`;
       }).join("")}</tr>`).join("")}</tbody>
     </table>`;
     const drillName=TOPICS[drill.topic].name;
     const troubleAction=isDivision ? "practice-division-troubles" : "practice-table-troubles";
     const restartAction=isDivision ? "restart-division-drill" : "restart-table-drill";
     const completionTroublePairs = !isDivision && drill.troubleRound
-      ? previousTableDrillTroublePairs(state.user)
+      ? unresolvedHistoricalPairs
       : troublePairs;
     const completionTroubleCopy = !isDivision && drill.troubleRound
       ? "Hvert stykke skal besvares korrekt på under 4 sekunder fem gange i træk."
@@ -1148,7 +1157,7 @@
     const timerStatus = state.showExerciseTimer
       ? `<span>Tid: <strong id="matrix-drill-time">${formatMatrixDrillTime(elapsed)}</strong></span>`
       : `<span class="table-drill-time-hidden">Tid skjult</span>`;
-    app.innerHTML = `${header()}<div class="page table-drill-page"><div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${drill.troubleRound ? `${drillName} · drillere` : drillName}</span></div><section class="table-drill-card"><div class="table-drill-status">${timerStatus}<button class="table-drill-timer-toggle" type="button" data-action="toggle-exercise-timer" aria-pressed="${state.showExerciseTimer}">${state.showExerciseTimer ? "Skjul tid" : "Vis tid"}</button>${previousTroubleButton}<span>Fejl: <strong>${drill.errors}</strong></span><span>${progressLabel}: <strong>${completedInRound}/${drill.pairs.length}</strong></span></div><div class="table-drill-layout"><div class="table-drill-board">${grid}</div>${answerPanel}</div></section></div>`;
+    app.innerHTML = `${header()}<div class="page table-drill-page"><div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${drill.previousTroubleRound ? `${drillName} · tidligere drillere` : drill.troubleRound ? `${drillName} · drillere` : drillName}</span></div><section class="table-drill-card"><div class="table-drill-status">${timerStatus}<button class="table-drill-timer-toggle" type="button" data-action="toggle-exercise-timer" aria-pressed="${state.showExerciseTimer}">${state.showExerciseTimer ? "Skjul tid" : "Vis tid"}</button>${previousTroubleButton}<span>Fejl: <strong>${drill.errors}</strong></span><span>${progressLabel}: <strong>${completedInRound}/${drill.pairs.length}</strong></span></div><div class="table-drill-layout"><div class="table-drill-board">${grid}</div>${answerPanel}</div></section></div>`;
   }
   function renderCountingHand(activeFingers, mirrored = false) {
     // Fingrene vises i rækkefølgen tommel, pege-, lange-, ring- og lillefinger.
@@ -1837,7 +1846,7 @@
       if (pairs.length) {
         if (!drill.finalizedAt && Object.keys(drill.roundResults).length) await finalizeMatrixDrillSession(drill.completedAt ? "completed" : "abandoned");
         else stopMatrixDrillTimer();
-        startMatrixDrill("tableDrill",{pairs,confirmationMode:drill.confirmationMode});
+        startMatrixDrill("tableDrill",{pairs,confirmationMode:drill.confirmationMode,previousTroubles:true});
       }
     }
     if (["practice-table-troubles","practice-division-troubles"].includes(action) && state.matrixDrill) {
@@ -1845,7 +1854,7 @@
       const pairs=drill.topic === "tableDrill" && drill.troubleRound
         ? previousTableDrillTroublePairs(state.user)
         : Object.entries(drill.roundResults).filter(([,attempt])=>!attempt.correct || attempt.responseTime>=4).map(([key])=>matrixDrillPairFromKey(drill,key)).filter(Boolean);
-      if (pairs.length) startMatrixDrill(drill.topic,{pairs,cells:drill.cells,confirmationMode:drill.confirmationMode,layout:drill.layout});
+      if (pairs.length) startMatrixDrill(drill.topic,{pairs,cells:drill.cells,confirmationMode:drill.confirmationMode,layout:drill.layout,previousTroubles:drill.previousTroubleRound});
     }
     if (action==="continue-after-correction") { state.questionNumber++; newTask(); }
     if (action==="close-topic-detail") { state.teacherTopicDetail=null; renderTeacher(); }
