@@ -82,6 +82,8 @@
   let lastErlingAudioIndex = -1;
   const KAPTAJN_AUDIO_CLIP = "assets/figurer/audio/kaptajn-tyggegummi-og-regnestykker.mp3";
   let activeKaptajnAudio = null;
+  const LUIGI_AUDIO_CLIP = "assets/figurer/audio/luigi-nummer-treogtres.mp3";
+  let activeLuigiAudio = null;
   const SPEED_DRILLS = new Set(["numbers", "addition", "multiplication", "tableDrill", "divisionDrill"]);
   const LUIGI_SURPRISE_LINES = [
     "Mamma mia! 6 × 8 = 48!",
@@ -441,6 +443,7 @@
   }
   function playErlingAudio(card) {
     stopKaptajnAudio();
+    stopLuigiAudio();
     stopErlingAudio();
     const choices=ERLING_AUDIO_CLIPS.map((_,index)=>index).filter(index=>index!==lastErlingAudioIndex);
     const nextIndex=pick(choices.length ? choices : ERLING_AUDIO_CLIPS.map((_,index)=>index));
@@ -450,6 +453,29 @@
     card.classList.add("is-speaking");
     const finish=()=>{
       if (activeErlingAudio===audio) activeErlingAudio=null;
+      card.classList.remove("is-speaking");
+    };
+    audio.addEventListener("ended",finish,{once:true});
+    audio.addEventListener("error",finish,{once:true});
+    audio.play().catch(finish);
+  }
+  function stopLuigiAudio() {
+    if (activeLuigiAudio) {
+      activeLuigiAudio.pause();
+      activeLuigiAudio.currentTime=0;
+      activeLuigiAudio=null;
+    }
+    document.querySelector("[data-luigi-audio]")?.classList.remove("is-speaking");
+  }
+  function playLuigiAudio(card) {
+    stopErlingAudio();
+    stopKaptajnAudio();
+    stopLuigiAudio();
+    const audio=new Audio(LUIGI_AUDIO_CLIP);
+    activeLuigiAudio=audio;
+    card.classList.add("is-speaking");
+    const finish=()=>{
+      if (activeLuigiAudio===audio) activeLuigiAudio=null;
       card.classList.remove("is-speaking");
     };
     audio.addEventListener("ended",finish,{once:true});
@@ -466,6 +492,7 @@
   }
   function playKaptajnAudio(card) {
     stopErlingAudio();
+    stopLuigiAudio();
     stopKaptajnAudio();
     const audio=new Audio(KAPTAJN_AUDIO_CLIP);
     activeKaptajnAudio=audio;
@@ -497,7 +524,7 @@
               <div class="character-frame"><img src="assets/figurer/divisions-dennis.webp" width="900" height="1350" alt="Divisions-Dennis med divisionsslikkepinde" decoding="async"></div>
               <figcaption>Divisions-Dennis</figcaption>
             </figure>
-            <figure class="character-card luigi">
+            <figure class="character-card luigi" data-luigi-audio role="button" tabindex="0" aria-label="Afspil Luigi Lækkermats italienske replik">
               <div class="character-frame"><img src="assets/figurer/luigi-laekkermat.webp" width="900" height="1350" alt="Luigi Lækkermat med multiplikationspizzaer" decoding="async"></div>
               <figcaption>Luigi Lækkermat</figcaption>
             </figure>
@@ -1642,7 +1669,7 @@
         } else state.user = db.users.find(user => user.username.toLowerCase() === username && user.password === password);
         if (!state.user) throw new Error("Brugeren blev ikke fundet.");
         if (usingCentralDatabase && state.user.role === "teacher") await save();
-        stopErlingAudio(); stopKaptajnAudio();
+        stopErlingAudio(); stopKaptajnAudio(); stopLuigiAudio();
         state.view=state.user.role==="teacher"?"teacher":"student"; render();
       } catch (loginError) {
         error.textContent="Brugernavn eller adgangskode passer ikke.";
@@ -1713,11 +1740,12 @@
     else if (event.target.id === "answer-form") await submitAnswer(event.target);
   });
   document.addEventListener("click", async (event) => {
-    const lollipopKeyButton=event.target.closest("[data-lollipop-key]"), pullDigitButton=event.target.closest("[data-pull-digit]"), keyButton=event.target.closest("[data-key]"), luigiButton=event.target.closest("[data-luigi-surprise]"), erlingButton=event.target.closest("[data-erling-audio]"), kaptajnButton=event.target.closest("[data-kaptajn-audio]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
+    const lollipopKeyButton=event.target.closest("[data-lollipop-key]"), pullDigitButton=event.target.closest("[data-pull-digit]"), keyButton=event.target.closest("[data-key]"), luigiButton=event.target.closest("[data-luigi-surprise]"), luigiAudioButton=event.target.closest("[data-luigi-audio]"), erlingButton=event.target.closest("[data-erling-audio]"), kaptajnButton=event.target.closest("[data-kaptajn-audio]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
     if (lollipopKeyButton) { handleDivisionLollipopKey(lollipopKeyButton.dataset.lollipopKey); return; }
     if (pullDigitButton && event.detail === 0) { completeDivisionLollipopPull(); return; }
     if (keyButton) { handleKeypad(keyButton.dataset.key); return; }
     if (luigiButton) { triggerLuigiSurprise(luigiButton); return; }
+    if (luigiAudioButton) { playLuigiAudio(luigiAudioButton); return; }
     if (erlingButton) { playErlingAudio(erlingButton); return; }
     if (kaptajnButton) { playKaptajnAudio(kaptajnButton); return; }
     if (letterAudioButton && state.task?.topic === "letters") { letterAudioButton.classList.remove("needs-tap"); playLetterLearningAudio(); return; }
@@ -1745,7 +1773,7 @@
     if (reportTopicButton) { state.teacherTopicDetail=reportTopicButton.dataset.reportTopic; renderTeacher(); return; }
     if (!actionButton) return;
     const action=actionButton.dataset.action;
-    if (action==="guest-login") { stopErlingAudio(); stopKaptajnAudio(); stopMatrixDrillTimer(); Object.assign(state,{user:createGuest(),view:"student",task:null,matrixDrill:null,questionNumber:1,sessionCorrect:0,sessionAnswers:[]}); renderStudentHome(); return; }
+    if (action==="guest-login") { stopErlingAudio(); stopKaptajnAudio(); stopLuigiAudio(); stopMatrixDrillTimer(); Object.assign(state,{user:createGuest(),view:"student",task:null,matrixDrill:null,questionNumber:1,sessionCorrect:0,sessionAnswers:[]}); renderStudentHome(); return; }
     if (action==="logout") { clearDivisionLollipopDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,matrixDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
     if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
     if (action==="home") { clearDivisionLollipopDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); state.matrixDrill=null; state.task=null; state.view="student"; renderStudentHome(); }
@@ -1867,6 +1895,8 @@
     student.classId=targetClass.id; state.expandedStudent=null; state.teacherTopicDetail=null; save(); renderTeacher();
   });
   document.addEventListener("keydown", event => {
+    const luigi=event.target.closest?.("[data-luigi-audio]");
+    if (luigi && (event.key==="Enter"||event.key===" ")) { event.preventDefault(); luigi.click(); return; }
     const kaptajn=event.target.closest?.("[data-kaptajn-audio]");
     if (kaptajn && (event.key==="Enter"||event.key===" ")) { event.preventDefault(); kaptajn.click(); return; }
     const erling=event.target.closest?.("[data-erling-audio]");
@@ -1889,6 +1919,7 @@
   window.addEventListener("pagehide", () => {
     stopErlingAudio();
     stopKaptajnAudio();
+    stopLuigiAudio();
     clearDivisionLollipopDrag();
     if (state.matrixDrill && !state.matrixDrill.finalizedAt) finalizeMatrixDrillSession("abandoned");
   });
