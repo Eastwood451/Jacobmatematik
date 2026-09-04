@@ -1,5 +1,5 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
-import { PointerLockControls } from 'https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/controls/PointerLockControls.js';
+import * as THREE from 'three';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
 const canvas=document.getElementById('game');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true});
@@ -32,23 +32,18 @@ const floorMat=mat(0xc8b992), wallMat=mat(0xe7dfc8), trimMat=mat(0x375d67), desk
 function box(x,y,z,w,h,d,material=wallMat,solid=true){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;scene.add(m);if(solid)colliders.push(new THREE.Box3().setFromObject(m));return m;}
 
 box(0,-.12,0,WORLD,.24,WORLD,floorMat,false);
-// Ydervægge
 box(0,WALL_H/2,-WORLD/2,WORLD,WALL_H,.45); box(0,WALL_H/2,WORLD/2,WORLD,WALL_H,.45); box(-WORLD/2,WALL_H/2,0,.45,WALL_H,WORLD); box(WORLD/2,WALL_H/2,0,.45,WALL_H,WORLD);
-// Skolekorridorer og klasselokaler. Døråbninger efterlades mellem segmenterne.
 [
  [-13,-17,18,.35],[-13,1,18,.35],[-13,20,14,.35],[13,-20,13,.35],[13,-4,13,.35],[13,13,18,.35],
  [-20,-10,.35,13],[-5,-10,.35,13],[10,-10,.35,11],[22,-10,.35,9],[-21,10,.35,14],[-6,10,.35,12],[9,10,.35,10],[21,10,.35,11]
 ].forEach(([x,z,w,d])=>box(x,WALL_H/2,z,w,WALL_H,d,wallMat));
-// Farvede paneler, tavler og opslag
 box(-26,1.15,-2,.08,1.25,8,trimMat,false);box(26,1.15,5,.08,1.25,9,trimMat,false);
 box(-19,1.65,-26.7,8,1.55,.08,mat(0x29483e),false);box(19,1.65,26.7,8,1.55,.08,mat(0x29483e),false);
-// Møbler
-[[-20,-19],[-16,-19],[-20,-15],[-16,-15],[18,-18],[22,-18],[18,-14],[22,-14],[-20,18],[-16,18],[-20,22],[-16,22],[18,17],[22,17],[18,21],[22,21]].forEach(([x,z],i)=>{
+[[-20,-19],[-16,-19],[-20,-15],[-16,-15],[18,-18],[22,-18],[18,-14],[22,-14],[-20,18],[-16,18],[-20,22],[-16,22],[18,17],[22,17],[18,21],[22,21]].forEach(([x,z])=>{
  box(x,.55,z,2.3,.12,1.25,deskMat,true); box(x-.85,.27,z,.12,.55,1,deskMat,true);box(x+.85,.27,z,.12,.55,1,deskMat,true);
 });
 for(let z=-20;z<=20;z+=2.2)box(-25.4,1,z,.8,2,1.7,lockerMat,true);
-// Loftslamper
-for(let z=-21;z<=21;z+=7){const lamp=box(0,3.48,z,4,.08,.7,mat(0xf6e6ae),false);const light=new THREE.PointLight(0xffe8ad,.85,10);light.position.set(0,3.15,z);scene.add(light);}
+for(let z=-21;z<=21;z+=7){box(0,3.48,z,4,.08,.7,mat(0xf6e6ae),false);const light=new THREE.PointLight(0xffe8ad,.85,10);light.position.set(0,3.15,z);scene.add(light);}
 
 const keys={}; let vy=0,onGround=true,last=performance.now(),lives=5,ammo=0,score=0,answer='',gameActive=false,enemy=null,problem=null,invulnerableUntil=0;
 const livesEl=document.getElementById('lives'),ammoEl=document.getElementById('ammo'),scoreEl=document.getElementById('score'),problemEl=document.getElementById('problem'),answerEl=document.getElementById('answer'),feedbackEl=document.getElementById('feedback');
