@@ -597,7 +597,7 @@
     return { row, column };
   }
   function previousTableDrillTroublePairs(user, excludedSessionId = null) {
-    const latestAttempts = new Map();
+    const masteryByPair = new Map();
     (user.results || [])
       .filter(item => item.topic === "tableDrill" && item.drillSessionId && item.drillSessionId !== excludedSessionId)
       .sort((left,right) => new Date(left.timestamp).getTime() - new Date(right.timestamp).getTime())
@@ -605,12 +605,24 @@
         const match=String(item.problem || "").match(/^(\d+)\s*×\s*(\d+)$/);
         const row=Number(item.drillRow || match?.[1]);
         const column=Number(item.drillColumn || match?.[2]);
-        if (TABLE_DRILL_VALUES.includes(row) && TABLE_DRILL_VALUES.includes(column)) {
-          latestAttempts.set(`${row}-${column}`,{row,column,attempt:item});
+        if (!TABLE_DRILL_VALUES.includes(row) || !TABLE_DRILL_VALUES.includes(column)) return;
+        const key=`${row}-${column}`;
+        const mastery=masteryByPair.get(key) || {row,column,isTrouble:false,fastStreak:0};
+        const fastAndCorrect=item.correct && recordedTime(item) < 4;
+        if (!fastAndCorrect) {
+          mastery.isTrouble=true;
+          mastery.fastStreak=0;
+        } else if (mastery.isTrouble) {
+          mastery.fastStreak++;
+          if (mastery.fastStreak >= 5) {
+            mastery.isTrouble=false;
+            mastery.fastStreak=0;
+          }
         }
+        masteryByPair.set(key,mastery);
       });
-    return [...latestAttempts.values()]
-      .filter(({attempt}) => !attempt.correct || recordedTime(attempt) > 4)
+    return [...masteryByPair.values()]
+      .filter(({isTrouble}) => isTrouble)
       .map(({row,column}) => ({row,column}));
   }
   async function finalizeMatrixDrillSession(status = "abandoned") {
@@ -1085,7 +1097,7 @@
     const elapsed = (drill.completedAt || Date.now()) - drill.startedAt;
     const completedInRound = Object.keys(drill.roundResults).length;
     const troublePairs = Object.entries(drill.roundResults)
-      .filter(([,attempt]) => !attempt.correct || attempt.responseTime > 4)
+      .filter(([,attempt]) => !attempt.correct || attempt.responseTime >= 4)
       .map(([key]) => matrixDrillPairFromKey(drill,key))
       .filter(Boolean);
     const previousTroublePairs = !isDivision && !drill.troubleRound
@@ -1122,8 +1134,15 @@
     const drillName=TOPICS[drill.topic].name;
     const troubleAction=isDivision ? "practice-division-troubles" : "practice-table-troubles";
     const restartAction=isDivision ? "restart-division-drill" : "restart-table-drill";
+    const completionTroublePairs = !isDivision && drill.troubleRound
+      ? previousTableDrillTroublePairs(state.user)
+      : troublePairs;
+    const completionTroubleCopy = !isDivision && drill.troubleRound
+      ? "Hvert stykke skal besvares korrekt på under 4 sekunder fem gange i træk."
+      : "Øv dem, der var forkerte eller tog 4 sekunder eller mere.";
+    const troubleButtonLabel = !isDivision && drill.troubleRound ? "Øv drillerne igen" : "Øv drillerne";
     const answerPanel = drill.completedAt
-      ? `<section class="table-drill-complete"><span class="complete-mark">${troublePairs.length ? "↻" : "✓"}</span><h2>${troublePairs.length ? `${troublePairs.length} ${troublePairs.length === 1 ? "driller" : "drillere"}` : "Alle sidder hurtigt!"}</h2><p>${troublePairs.length ? "Øv dem, der var forkerte eller tog over 4 sekunder." : "Alle blev besvaret korrekt på højst 4 sekunder."}</p><strong>${formatMatrixDrillTime(elapsed)}</strong><p>${drill.errors} ${drill.errors === 1 ? "fejl" : "fejl"}</p>${troublePairs.length ? `<button class="btn full" type="button" data-action="${troubleAction}">Øv drillerne (${troublePairs.length})</button>` : ""}<button class="btn secondary full" type="button" data-action="${restartAction}">Start hele tabellen igen</button></section>`
+      ? `<section class="table-drill-complete"><span class="complete-mark">${completionTroublePairs.length ? "↻" : "✓"}</span><h2>${completionTroublePairs.length ? `${completionTroublePairs.length} ${completionTroublePairs.length === 1 ? "driller" : "drillere"}` : "Alle sidder hurtigt!"}</h2><p>${completionTroublePairs.length ? completionTroubleCopy : "Alle blev besvaret korrekt på under 4 sekunder fem gange i træk."}</p><strong>${formatMatrixDrillTime(elapsed)}</strong><p>${drill.errors} ${drill.errors === 1 ? "fejl" : "fejl"}</p>${completionTroublePairs.length ? `<button class="btn full" type="button" data-action="${troubleAction}">${troubleButtonLabel} (${completionTroublePairs.length})</button>` : ""}<button class="btn secondary full" type="button" data-action="${restartAction}">Start hele tabellen igen</button></section>`
       : `<form class="table-drill-answer" id="answer-form"><fieldset class="table-drill-mode"><legend>Svarmetode</legend><button class="${drill.confirmationMode === "enter" ? "active" : ""}" type="button" data-drill-mode="enter" aria-pressed="${drill.confirmationMode === "enter"}">Bekræft med Enter</button><button class="${drill.confirmationMode === "auto" ? "active" : ""}" type="button" data-drill-mode="auto" aria-pressed="${drill.confirmationMode === "auto"}">Autobekræft</button></fieldset><label for="answer">${isDivision ? "Skriv det manglende tal" : "Skriv resultatet"}</label><input class="sr-only" id="answer" name="answer" inputmode="none" autocomplete="off" readonly><div class="table-drill-answer-preview" aria-live="polite"><span>${isDivision ? `${task.dividend} ÷ ${task.knownFactor}` : `${task.row} × ${task.column}`} =</span><strong id="matrix-drill-answer-preview">?</strong></div><div class="keypad table-drill-keypad ${drill.confirmationMode === "auto" ? "auto" : ""}" aria-label="Taltastatur">${TABLE_DRILL_VALUES.map(number => `<button class="key" type="button" data-key="${number}">${number}</button>`).join("")}<button class="key" type="button" data-key="0">0</button><button class="key utility" type="button" data-key="delete">Slet</button>${drill.confirmationMode === "enter" ? `<button class="key enter" type="button" data-key="enter">Enter</button>` : ""}</div><p id="answer-error" class="error" role="alert"></p></form>`;
     const progressLabel=drill.troubleRound ? "Drillere" : "Udfyldt";
     const timerStatus = state.showExerciseTimer
@@ -1823,7 +1842,9 @@
     }
     if (["practice-table-troubles","practice-division-troubles"].includes(action) && state.matrixDrill) {
       const drill=state.matrixDrill;
-      const pairs=Object.entries(drill.roundResults).filter(([,attempt])=>!attempt.correct || attempt.responseTime>4).map(([key])=>matrixDrillPairFromKey(drill,key)).filter(Boolean);
+      const pairs=drill.topic === "tableDrill" && drill.troubleRound
+        ? previousTableDrillTroublePairs(state.user)
+        : Object.entries(drill.roundResults).filter(([,attempt])=>!attempt.correct || attempt.responseTime>=4).map(([key])=>matrixDrillPairFromKey(drill,key)).filter(Boolean);
       if (pairs.length) startMatrixDrill(drill.topic,{pairs,cells:drill.cells,confirmationMode:drill.confirmationMode,layout:drill.layout});
     }
     if (action==="continue-after-correction") { state.questionNumber++; newTask(); }
