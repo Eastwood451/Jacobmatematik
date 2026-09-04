@@ -1077,7 +1077,7 @@
     const borrowDrop = task.borrowed
       ? `<span></span>`
       : `<span class="subtraction-borrow-mark ${sourceReady ? "active" : ""}" data-borrow-drop aria-label="Slip 10'eren her"></span>`;
-    const minuendOnes = `<span class="subtraction-ones-group ${task.borrowed ? "borrowed" : ""}" aria-label="${task.borrowed ? task.borrowedOnes : task.minuendOnes}">
+    const minuendOnes = `<span class="subtraction-ones-group ${task.borrowed ? "borrowed" : ""} ${task.stage === "ones-answer" ? "show-eleven-guide" : ""}" aria-label="${task.borrowed ? task.borrowedOnes : task.minuendOnes}">
       ${task.borrowed ? `<span class="subtraction-borrow-mark complete" aria-hidden="true">1</span>` : ""}
       <span class="subtraction-column-digit" aria-hidden="true">${task.minuendOnes}</span>
     </span>`;
