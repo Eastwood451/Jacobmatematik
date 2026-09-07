@@ -68,7 +68,7 @@ async function solve(page){
     await waitText(b,'#online-status',/Ingen server fundet/);
     await b.locator('#leave-room').click();
     await b.locator('#start-button').click();
-    await b.keyboard.press('Escape');
+    await b.evaluate(()=>document.exitPointerLock());
     await solve(b);
     assert.deepEqual(errors,[]);console.log('Invalid room and zero browser runtime errors: passed');
   }finally{await browser.close();server.close();}

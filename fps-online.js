@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createPlayerMovement } from './fps-movement.js?v=20260907-ducts1';
 import { GameRoom, roomCode } from './fps-room.js?v=20260907-online1';
 import { createErlingRig, animateErling, disposeErlingRig } from './fps-visuals.js?v=20260907-sprites1';
 import { createGunnarRig } from './fps-gunnar.js?v=20260907-sprites1';
@@ -8,10 +9,11 @@ const colours=[0x43cbb7,0xf6b94d,0xa3a0ff,0xfc8c93];
 const text=(el,value)=>{if(el.textContent!==String(value)) el.textContent=String(value);};
 
 export function createOnlineGame({scene,camera,controls,colliders,makePencil,prepare,ready,textures,startAudio,flash}) {
-  let room=null, state=null, me=null, epoch=-1, answer='', velocityY=0, grounded=true;
+  let room=null, state=null, me=null, epoch=-1, answer='';
   let busy=false, lastPhase='', previousHp=5, problemId=null, syncing=false;
   const keys={}, objects=new Map();
-  const blocked=(x,z,r=.48)=>colliders.some(c=>x+r>c.min.x && x-r<c.max.x && z+r>c.min.z && z-r<c.max.z && c.max.y>0 && c.min.y<2);
+  const movement=createPlayerMovement({camera,colliders,keys});
+  const blocked=(x,z,r=.48,y=0,height=1.95)=>colliders.some(c=>x+r>c.min.x && x-r<c.max.x && z+r>c.min.z && z-r<c.max.z && c.max.y>y+.025 && c.min.y<y+height);
 
   function clearObjects() {
     for(const object of objects.values()) dispose(object);
@@ -25,7 +27,7 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
   function stop(message='') {
     const previous=room; room=null; void previous?.close();
     clearObjects(); state=null; me=null; epoch=-1; lastPhase=''; problemId=null;
-    velocityY=0; grounded=true; answer=''; syncing=false;
+    movement.reset(0,18); answer=''; syncing=false;
     for(const key of Object.keys(keys)) delete keys[key];
     controls.unlock(); $('online-hud').hidden=true;
     $('online-setup').hidden=false; $('online-lobby').hidden=true;
@@ -84,10 +86,10 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
     }
     if(player.epoch!==epoch) {
       epoch=player.epoch; room.epoch=epoch; room.actions=[];
-      camera.position.set(player.x,player.y,player.z);camera.rotation.set(0,player.yaw,0);
-      velocityY=0; grounded=true;answer='';previousHp=player.hp;
+      movement.reset(player.x,player.z);camera.rotation.set(0,player.yaw,0);
+      answer='';previousHp=player.hp;
     } else if(Math.hypot(camera.position.x-player.x,camera.position.z-player.z)>1.6) {
-      camera.position.set(player.x,player.y,player.z);
+      movement.reset(player.x,player.z);
     }
     if(player.hp<previousHp) flash('damage-flash');
     previousHp=player.hp;
@@ -127,14 +129,14 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
           const rig=item.type==='gunnar'?createGunnarRig(textures().gunnar):createErlingRig(textures().erling);
           object={group:rig.group,rig};scene.add(object.group);
         } else {object={group:makePencil()};scene.add(object.group);}
-        object.group.position.set(item.x,item.kind==='player'?item.y-1.7:item.y||0,item.z);objects.set(id,object);
+        object.group.position.set(item.x,item.kind==='player'?item.y-(item.crouching?.78:1.7):item.y||0,item.z);objects.set(id,object);
       }
       object.group.visible=item.hp!==0;
       const old=object.group.position.clone();
-      const target=new THREE.Vector3(item.x,item.kind==='player'?item.y-1.7:item.y||0,item.z);
+      const target=new THREE.Vector3(item.x,item.kind==='player'?item.y-(item.crouching?.78:1.7):item.y||0,item.z);
       object.group.position.lerp(target,1-Math.exp(-18*dt));
       if(item.kind==='shot') object.group.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0),new THREE.Vector3(item.dx,item.dy,item.dz));
-      else if(item.kind==='player') object.group.rotation.y=item.yaw;
+      else if(item.kind==='player') {object.group.rotation.y=item.yaw;object.group.scale.y=item.crouching?.55:1;}
       else {
         object.group.lookAt(camera.position.x,0,camera.position.z);
         animateErling(object.rig,dt,time,object.group.position.distanceTo(old));
@@ -145,26 +147,18 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
   function update(dt,time) {
     if(!room || !state || state.phase!=='playing') return;
     if(me?.hp>0 && controls.isLocked) {
-      let dx=(keys.KeyD?1:0)-(keys.KeyA?1:0), dz=(keys.KeyS?1:0)-(keys.KeyW?1:0);
-      const length=Math.hypot(dx,dz);
-      if(length) {
-        const forward=new THREE.Vector3();camera.getWorldDirection(forward);forward.y=0;forward.normalize();
-        const right=new THREE.Vector3().crossVectors(forward,new THREE.Vector3(0,1,0)).normalize();
-        const move=forward.multiplyScalar(-dz/length*5.4*dt).add(right.multiplyScalar(dx/length*5.4*dt));
-        if(!blocked(camera.position.x+move.x,camera.position.z)) camera.position.x+=move.x;
-        if(!blocked(camera.position.x,camera.position.z+move.z)) camera.position.z+=move.z;
-      }
-      velocityY-=17*dt;camera.position.y+=velocityY*dt;
-      if(camera.position.y<=1.7) {camera.position.y=1.7;velocityY=0;grounded=true;}
+      movement.update(dt);
     }
-    room.pose={x:camera.position.x,y:camera.position.y,z:camera.position.z,yaw:camera.rotation.y};
+    room.pose={x:camera.position.x,y:camera.position.y,z:camera.position.z,yaw:camera.rotation.y,crouching:movement.crouching,sprinting:Boolean(keys.ShiftLeft||keys.ShiftRight)};
     renderObjects(dt,time);
   }
   function keydown(e) {
     if(!state || state.phase!=='playing' || /INPUT|TEXTAREA/.test(e.target?.tagName)) return;
+    if(e.code==='Escape') {controls.unlock();return;}
     keys[e.code]=true;
+    if(/^(Control|Shift|Key[WASD]|Space|Digit|Numpad|Enter|Backspace)/.test(e.code)) e.preventDefault();
     if(me?.hp<=0) return;
-    if(e.code==='Space' && grounded && controls.isLocked) {velocityY=6.4;grounded=false;e.preventDefault();}
+    if(e.code==='Space' && !e.repeat && controls.isLocked) movement.jump();
     if(/^Digit\d$/.test(e.code) && answer.length<3) {answer+=e.code.slice(-1);text($('answer'),answer);}
     if(e.code==='Backspace') {e.preventDefault();answer=answer.slice(0,-1);text($('answer'),answer||'_');}
     if(e.code==='Enter' && answer && !e.repeat && !syncing) {

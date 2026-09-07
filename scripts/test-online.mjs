@@ -61,3 +61,15 @@ test('deathmatch ends at ten points and rematch resets scores',()=>{
 test('leaving deathmatch ends a match that no longer has two players',()=>{
   const m=game();m.leave('b');assert.equal(m.phase,'finished');
 });
+test('sprint allowance and crouched body height preserve shared movement rules',()=>{
+  const m=game('deathmatch',(x,z,r,y=0,height=1.95)=>Math.abs(x-1)<.2 && y+height>1.2);
+  const p=m.players.get('a');Object.assign(p,{x:0,z:0,poseAt:0});m.clock=.5;
+  m.input('a',{epoch:p.epoch,pose:{x:1,y:.78,z:0,yaw:0,crouching:true}});
+  assert.equal(p.x,1);assert.equal(p.crouching,true);
+  m.input('a',{epoch:p.epoch,pose:{x:1,y:1.7,z:0,yaw:0}});assert.equal(p.crouching,true);
+  m.clock=1;Object.assign(p,{x:0,z:10,poseAt:.5});
+  m.input('a',{epoch:p.epoch,pose:{x:4,y:1.7,z:10,yaw:0,sprinting:true}});
+  // Use an unobstructed direction; the lintel still blocks standing movement.
+  assert.equal(p.x,0);
+  m.input('a',{epoch:p.epoch,pose:{x:-4,y:1.7,z:10,yaw:0,sprinting:true}});assert.equal(p.x,-4);
+});
