@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createElseAttacks, ELSE_THROW_INTERVAL } from './fps-else-attacks.js?v=20260907-else-division1';
 import { createSchoolyard } from './fps-schoolyard.js?v=20260907-courtyard1';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { createErlingRig, animateErling, disposeErlingRig, addSchoolWallArt } from './fps-visuals.js?v=20260907-sprites1';
@@ -40,6 +41,10 @@ const WALL_H = 3.7;
 const PLAYER_R = .48;
 const EYE = 1.7;
 const colliders = [];
+const elseAttacks = createElseAttacks({ scene, colliders, onPlayerHit: () => {
+  hurt(null, true);
+  return gameActive;
+} });
 
 let erlingTexture = null;
 let gunnarTexture = null;
@@ -294,6 +299,7 @@ function updateBossHud() {
 }
 
 function showVictory() {
+  elseAttacks.clear();
   gameActive = false;
   controls.unlock();
   updateBossHud();
@@ -325,8 +331,9 @@ function divisionProblem() {
 }
 function newProblem() {
   if (divisionChallenge?.active) return;
-  problem = normalProblem();
-  mathKickerEl.textContent = schoolyardEntered ? 'EKSAMENS AMMUNITION' : 'ERLINGS GANGESTYKKE';
+  problem = schoolyardEntered ? divisionProblem() : normalProblem();
+  if (schoolyardEntered) problem.expression = problem.expression.replace(' ÷ ', ' : ');
+  mathKickerEl.textContent = schoolyardEntered ? 'EKSAMENS AMMUNITION · DIVISION' : 'ERLINGS GANGESTYKKE';
   problemEl.textContent = problem.expression;
   answer = '';
   answerEl.textContent = '_';
@@ -362,6 +369,7 @@ function createGunnar() {
 }
 function createElse() {
   const enemy = createElseRig(elseTexture);
+  enemy.throwCooldown = 2;
   enemy.group.position.set(0, 0, 60);
   scene.add(enemy.group);
   enemies.push(enemy);
@@ -806,6 +814,8 @@ function enterSchoolyard() {
   schoolyardEntered = true;
   schoolyardDoorOpen = false;
   removeSchoolyardArrows();
+  elseAttacks.clear();
+  [...projectiles].forEach(removeProjectile);
   buildSchoolyard();
   setSchoolyardLighting(true);
   clearEnemies();
@@ -817,7 +827,7 @@ function enterSchoolyard() {
   lastPlayerMoveAt = performance.now();
   newProblem();
   createElse();
-  feedbackEl.textContent = 'EKSAMENS-ELSE! 25 blyanttræffere kræves.';
+  feedbackEl.textContent = 'Løs divisioner. Undvig Elses linealer og røde tuscher!';
   feedbackEl.className = 'feedback bad';
 }
 
@@ -873,9 +883,9 @@ function flash(id) {
   void el.offsetWidth;
   el.classList.add('flash');
 }
-function hurt(enemy) {
+function hurt(enemy, projectileHit = false) {
   const now = performance.now();
-  if (now < invulnerableUntil || divisionChallenge?.active) return;
+  if (!gameActive || divisionChallenge?.active || (!projectileHit && now < invulnerableUntil)) return;
   invulnerableUntil = now + 1200;
   lives--;
   flash('damage-flash');
@@ -888,6 +898,7 @@ function hurt(enemy) {
     controls.unlock();
     document.getElementById('final-score').textContent = score;
     document.getElementById('game-over').classList.add('open');
+    elseAttacks.clear();
     return;
   }
   if (!schoolyardEntered && enemies.length === 0 && !schoolyardDoorOpen) spawnWave(1,true);
@@ -969,6 +980,9 @@ controls.addEventListener('lock', () => document.getElementById('pointer-note').
 controls.addEventListener('unlock', () => { if (gameActive) document.getElementById('pointer-note').classList.add('show'); });
 
 function resetGame() {
+  elseAttacks.clear();
+  [...projectiles].forEach(removeProjectile);
+  invulnerableUntil = 0;
   setSchoolyardLighting(false);
   lives = 5;
   ammo = 0;
@@ -1087,13 +1101,22 @@ function update(dt, time) {
       else if (enemy.type === 'else') animateElse(enemy,dt,time,distanceMoved,() => spawnStompWave(enemy));
       else animateErling(enemy,dt,time,distanceMoved);
       enemy.group.lookAt(camera.position.x,0,camera.position.z);
+      if (enemy.type === 'else' && schoolyardEntered && gameActive) {
+        enemy.throwCooldown -= dt;
+        if (enemy.throwCooldown <= 0) {
+          elseAttacks.throwAt(enemy, camera.position);
+          enemy.throwCooldown = ELSE_THROW_INTERVAL;
+        }
+      }
       const hitDistance = enemy.type === 'else' ? 3.25 : 1.15;
       if (dist < hitDistance) hurt(enemy);
     }
     maybeSpeakWhileMoving(time);
   }
 
+  if (!gameActive) return;
   updateProjectiles(dt);
+  if (gameActive && schoolyardEntered) elseAttacks.update(dt,camera.position);
   updateStompWaves(dt,time);
 }
 
