@@ -3,6 +3,8 @@ import { createPlayerMovement } from './fps-movement.js?v=20260907-ducts1';
 import { createDuctBuilder } from './fps-ducts.js?v=20260907-ducts1';
 import { createSchoolInteriorMaterials, applySchoolSurfaceUV } from './fps-interior.js?v=20260907-interior1';
 import { createElseAttacks, ELSE_THROW_INTERVAL } from './fps-else-attacks.js?v=20260907-ducts1';
+import { createOnlineGame } from './fps-online.js?v=20260907-online1';
+let multiplayer = null;
 import { createSchoolyard } from './fps-schoolyard.js?v=20260907-courtyard1';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { createErlingRig, animateErling, disposeErlingRig, addSchoolWallArt } from './fps-visuals.js?v=20260907-sprites1';
@@ -459,7 +461,7 @@ function ensureMusic() {
   const bass = [55,55,65.41,55,73.42,65.41,55,49];
   const lead = [220,261.63,293.66,329.63,293.66,261.63,220,196];
   musicTimer = setInterval(() => {
-    if (!gameActive || musicMuted || audioCtx.state !== 'running') return;
+    if ((!gameActive && !multiplayer?.active) || musicMuted || audioCtx.state !== 'running') return;
     const now = audioCtx.currentTime;
     const hit = (freq, duration, type, gainValue) => {
       const osc = audioCtx.createOscillator();
@@ -511,6 +513,7 @@ function makePencil() {
   return group;
 }
 function firePencil() {
+  if (multiplayer?.active) { multiplayer.fire(); return; }
   if (!gameActive || !controls.isLocked || ammo <= 0 || divisionChallenge?.active) return;
   ammo--;
   updateHUD();
@@ -965,6 +968,12 @@ function updateCamping(now, moved) {
 }
 
 addEventListener('keydown', e => {
+  if (multiplayer?.active) {
+    if (e.code === 'KeyM' && !e.repeat && !/INPUT|TEXTAREA/.test(e.target?.tagName)) toggleMusic();
+    multiplayer.keydown(e);
+    return;
+  }
+  if (/INPUT|TEXTAREA/.test(e.target?.tagName)) return;
   keys[e.code] = true;
   if (gameActive && /^(Control|Shift|Key[WASD]|Space|Digit|Numpad|Enter|Backspace)/.test(e.code)) e.preventDefault();
   if (e.code === 'KeyM' && !e.repeat) {
@@ -995,7 +1004,7 @@ canvas.addEventListener('click', () => { if (gameActive && !controls.isLocked) c
 controls.addEventListener('lock', () => document.getElementById('pointer-note').classList.remove('show'));
 controls.addEventListener('unlock', () => { clearMovementKeys(); if (gameActive) document.getElementById('pointer-note').classList.add('show'); });
 
-function resetGame() {
+function resetGame(online = false) {
   elseAttacks.clear();
   [...projectiles].forEach(removeProjectile);
   invulnerableUntil = 0;
@@ -1021,7 +1030,7 @@ function resetGame() {
   updateHUD();
   clearEnemies();
   newProblem();
-  spawnWave(1,true);
+  if (!online) spawnWave(1,true);
 }
 
 startButton.addEventListener('click', () => {
@@ -1048,6 +1057,7 @@ document.getElementById('restart-button').addEventListener('click', () => {
 });
 
 function update(dt, time) {
+  if (multiplayer?.active) { multiplayer.update(dt,time); return; }
   if (!gameActive) return;
   const moved = playerMovement.update(dt);
   updateCamping(time,moved);
@@ -1125,3 +1135,11 @@ addEventListener('resize', () => {
 
 createSchoolyardDoor();
 updateHUD();
+
+multiplayer = createOnlineGame({
+  scene, camera, controls, colliders, makePencil, flash,
+  prepare: () => { gameActive = false; resetGame(true); },
+  ready: () => charactersReady && playerRulesReady,
+  textures: () => ({ erling:erlingTexture, gunnar:gunnarTexture }),
+  startAudio: () => { ensureMusic(); audioCtx?.resume(); },
+});
