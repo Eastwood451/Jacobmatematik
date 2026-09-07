@@ -111,6 +111,8 @@
 
   window.JacobBackend = {
     configured,
+    // Share the existing authenticated client with ephemeral game rooms.
+    realtimeClient:client,
     signIn,
     signOut,
     loadDatabase,

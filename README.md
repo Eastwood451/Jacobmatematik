@@ -14,6 +14,48 @@ En responsiv matematikapp til elever og lærere, bygget i ren HTML, CSS og JavaS
 - Mestring efter tre hurtige korrekte svar i træk; Tallene bruger 10 sekunder, og de øvrige fartøvelser bruger 5 sekunder
 - Korrekt svar vises som en trykbar illustration efter et forkert svar
 - Valgfri central Supabase-database, så lærer og elever deler klasser og resultater på tværs af enheder
+- Erling FPS: singleplayer samt online deathmatch og co-op med rumkode til 2–4 spillere
+
+## Erling online
+
+Åbn `fps.html` via en webserver, vælg **Spil online med klassen** og skriv et kaldenavn.
+Værten vælger deathmatch eller co-op og trykker **Start server**. De øvrige elever
+indtaster koden på otte tegn eller åbner det kopierede invitationslink. Værten kan
+starte kampen, når mindst to spillere er i rummet. Man kan ikke joine midt i en kamp.
+
+- **Deathmatch:** Først til 10 point. En nedlagt modstander giver ét point. Spillere
+  har fem liv, genopstår efter tre sekunder og får tre sekunders beskyttelse.
+- **Co-op:** Overlev fem bølger af Erling og Gunnar i skolens indendørs bane.
+  Ingen skade på holdkammerater. Faldne spillere genoplives ved næste bølge;
+  hvis alle falder, taber holdet. Overlevende får ét liv tilbage mellem bølger.
+- Rigtige gangestykker giver én blyant, højst 30 i beholdningen. Shift, Ctrl og
+  ventilation bruger samme bevægelsesregler som singleplayer.
+- Værten kan starte en ny kamp efter resultatet. Rummet lukkes, når værten forlader
+  serveren; der er ingen automatisk overførsel af værtsrollen eller gemte kampe.
+
+Online bruger den eksisterende Supabase-klient med Broadcast og Presence, uden
+nye tabeller, migrations eller servernøgler. Værtens browser beregner spillet;
+den skal forblive åben og aktiv. Der udsendes fem opdateringer pr. sekund med
+lokal bevægelse og udjævning af de andre figurer. Kapacitetsgrænsen er fire
+spillere pr. rum, og flere samtidige rum deler projektets Realtime-kvoter.
+En hel klasses samtidige belastning er ikke verificeret.
+
+Rummene er midlertidige offentlige Realtime-kanaler med tilfældige koder og
+kaldenavne. De er beregnet til spil mellem klassekammerater, ikke fortrolige data
+eller konkurrencer med sikker beskyttelse mod snyd. Værten validerer bevægelse,
+vægge, ammunition, svar og træffere, men en modificeret klient kan forfalske
+Broadcast-afsenderfelter. Skoleprofiler, elevresultater og loginoplysninger sendes
+aldrig gennem spilrummene. Se [Broadcast](https://supabase.com/docs/guides/realtime/broadcast)
+og [Realtime-kvoter](https://supabase.com/docs/guides/realtime/limits).
+
+### Kontrol af multiplayer
+
+Kør `node --test scripts/test-online.mjs` for spillereglerne. Med Playwright og
+Chrome installeret kan `node scripts/test-online-browser.cjs` afprøve to isolerede
+browser-sessioner gennem projektets rigtige Realtime-forbindelse. Testen åbner
+midlertidige rum, prøver begge spilformer, regnesvar, et skud mellem spillerne,
+lukning af serveren, ugyldig kode og singleplayer. Rum ryddes ved afslutning;
+skærmbilleder gemmes i den ignorerede mappe `test-results/`.
 
 ## Kør lokalt
 

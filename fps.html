@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#121820">
   <title>Erling FPS · Jacob Matematik</title>
-  <link rel="stylesheet" href="fps.css?v=20260904-fps1">
+  <link rel="stylesheet" href="fps.css?v=20260907-online1">
   <script type="importmap">
   {
     "imports": {
@@ -57,8 +57,44 @@
           <div><kbd>M</kbd><span>sluk/tænd musik</span></div>
         </div>
         <button id="start-button" class="start-button" type="button" disabled>FIGURERNE ER PÅ VEJ…</button>
+        <button id="online-button" class="start-button online-button" type="button">SPIL ONLINE MED KLASSEN</button>
       </div>
     </section>
+
+    <section id="online-overlay" class="overlay" aria-label="Online spilrum">
+      <div class="overlay-card online-card">
+        <span class="eyebrow">ERLING ONLINE · 2–4 SPILLERE</span>
+        <h2 id="online-title">Sammen eller mod hinanden?</h2>
+        <div id="online-setup">
+          <label class="online-label" for="online-name">Dit kaldenavn</label>
+          <input id="online-name" maxlength="18" autocomplete="off" placeholder="Fx Blyanthelten">
+          <fieldset class="mode-options">
+            <legend>Vælg spilform til din server</legend>
+            <label><input type="radio" name="online-mode" value="deathmatch" checked><span><strong>Deathmatch</strong><small>Mod hinanden · Først til 10 point. Du genopstår efter 3 sekunder.</small></span></label>
+            <label><input type="radio" name="online-mode" value="coop"><span><strong>Co-op</strong><small>På samme hold · Overlev 5 bølger med Erling og Gunnar. Holdkammerater genoplives ved næste bølge.</small></span></label>
+          </fieldset>
+          <p class="online-help">Løs gangestykker for at få blyanter. Værten skal holde spillet åbent under kampen.</p>
+          <button id="create-room" class="start-button" type="button">START SERVER</button>
+          <div class="join-row"><label for="room-code">Har du en kode?</label><input id="room-code" maxlength="8" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="8 tegn"><button id="join-room" type="button">JOIN SERVER</button></div>
+        </div>
+        <div id="online-lobby" hidden>
+          <div class="room-code-row"><span>KODE <strong id="lobby-code"></strong></span><button id="copy-room" type="button">Kopiér link</button></div>
+          <p id="lobby-mode"></p>
+          <ul id="lobby-players" class="player-list"></ul>
+          <p id="lobby-instructions">Send koden til dine klassekammerater.</p>
+          <button id="begin-match" class="start-button" type="button" disabled>START KAMPEN</button>
+        </div>
+        <p id="online-status" role="status" aria-live="polite"></p>
+        <button id="leave-room" class="online-secondary" type="button">Tilbage til menuen</button>
+      </div>
+    </section>
+
+    <aside id="online-hud" hidden>
+      <strong id="online-match-label"></strong>
+      <ol id="online-scores"></ol>
+      <p id="online-objective"></p>
+      <button id="exit-match" type="button">Forlad server (Esc → klik)</button>
+    </aside>
 
     <section id="game-over" class="overlay">
       <div class="overlay-card game-over-card">
@@ -74,8 +110,8 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=66d7f7d7"></script>
-  <script src="supabase-backend.js?v=20260902-supabase1"></script>
-  <script type="module" src="fps.js?v=20260907-ducts1"></script>
+  <script src="supabase-backend.js?v=20260907-online1"></script>
+  <script type="module" src="fps.js?v=20260907-online1"></script>
   <script src="fps-ammo-ui.js?v=20260905-ammo1" defer></script>
 </body>
 </html>
