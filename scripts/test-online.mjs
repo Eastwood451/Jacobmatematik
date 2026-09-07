@@ -9,6 +9,13 @@ function game(mode='deathmatch',blocked) {
 function action(m,id,values) {
   const p=m.players.get(id);m.input(id,{epoch:p.epoch,actions:[{seq:p.ack+1,...values}]});
 }
+test('avatars reference the unchanged existing character artwork',()=>{
+  assert.deepEqual(AVATARS.map(a=>a.image),[
+    'assets/figurer/divisions-dennis.webp',
+    'assets/figurer/luigi-laekkermat-cutout.webp',
+    'assets/figurer/kaptajn-kvadratrod.webp',
+  ]);
+});
 test('only the three avatars are accepted and survive respawn/rematch snapshots',()=>{
   assert.deepEqual(AVATARS.map(a=>a.id),['dennis','luigi','kaptajn']);
   assert.equal(normalizeAvatar('https://example.com/custom.png'),'dennis');
