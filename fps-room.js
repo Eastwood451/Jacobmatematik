@@ -1,4 +1,5 @@
-import { Match, MAX_PLAYERS, validCode, cleanName } from './fps-match.js?v=20260907-online1';
+import { Match, MAX_PLAYERS, validCode, cleanName } from './fps-match.js?v=20260907-avatar1';
+import { normalizeAvatar } from './fps-avatars.js?v=20260907-avatar1';
 
 const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 export function roomCode() {
@@ -14,13 +15,13 @@ export class GameRoom {
     this.id=crypto.randomUUID(); this.channel=null; this.timers=[]; this.seq=0; this.actions=[];
     this.seen=new Map(); this.active=false; this.connected=false;
   }
-  async open({code,mode,name,host=false}) {
+  async open({code,mode,name,avatar,host=false}) {
     if (!this.client) throw new Error('Onlineforbindelsen er ikke tilgængelig. Genindlæs siden.');
     code=String(code||'').trim().toUpperCase();
     if (!validCode(code)) throw new Error('Skriv rummets kode på 8 tegn.');
-    this.code=code; this.host=host; this.name=cleanName(name); this.active=true;
+    this.code=code; this.host=host; this.name=cleanName(name); this.avatar=normalizeAvatar(avatar); this.active=true;
     this.lastState=performance.now(); this.openedAt=performance.now();
-    if (host) { this.hostId=this.id; this.match=new Match(mode,this.blocked); this.match.join(this.id,this.name); }
+    if (host) { this.hostId=this.id; this.match=new Match(mode,this.blocked); this.match.join(this.id,this.name,this.avatar); }
     const ch=this.channel=this.client.channel(`erling-v1:${code}`,{config:{broadcast:{self:false},presence:{key:this.id}}});
     ch.on('broadcast',{event:'packet'},({payload})=>this.receive(payload));
     await new Promise((resolve,reject)=>{
@@ -59,7 +60,7 @@ export class GameRoom {
     if (!this.active || !m || m.v!==1 || typeof m.from!=='string' || m.from.length>64 || m.from===this.id) return;
     if (this.host) {
       if (m.type==='hello') {
-        if (!this.match.join(m.from,m.name)) {
+        if (!this.match.join(m.from,m.name,m.avatar)) {
           this.send({type:'reject',to:m.from,message:this.match.phase==='lobby'?`Rummet er fyldt (${MAX_PLAYERS} spillere).`:'Kampen er startet. Join næste kamp.'});
         } else this.seen.set(m.from,performance.now());
       } else if (m.type==='input' && this.match.players.has(m.from)) {
@@ -92,7 +93,7 @@ export class GameRoom {
       this.send({type:'state',state});
     } else if(!this.hostId) {
       if(now-this.openedAt>10000) {this.fail('Ingen server fundet. Kontrollér koden og at værten har rummet åbent.');return;}
-      if(!this.helloAt || now-this.helloAt>1000) {this.send({type:'hello',name:this.name});this.helloAt=now;}
+      if(!this.helloAt || now-this.helloAt>1000) {this.send({type:'hello',name:this.name,avatar:this.avatar});this.helloAt=now;}
     } else {
       if(now-this.lastState>10000) {this.fail('Serveren svarer ikke. Værten kan have lukket eller mistet forbindelsen.');return;}
       this.send({type:'input',data:{pose:this.pose,epoch:this.epoch,actions:this.actions}});

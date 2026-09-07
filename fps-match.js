@@ -1,3 +1,4 @@
+import { normalizeAvatar } from './fps-avatars.js?v=20260907-avatar1';
 // Host-owned rules, independent of Three.js and the transport.
 export const MAX_PLAYERS = 4;
 export const TARGET_SCORE = 10;
@@ -42,10 +43,10 @@ export class Match {
     p.respawnAt = 0;
     this.problem(p);
   }
-  join(id, name) {
+  join(id, name, avatar) {
     if (this.players.has(id)) return true;
     if (this.phase !== 'lobby' || this.players.size >= MAX_PLAYERS) return false;
-    const p = { id, name:cleanName(name), score:0, deaths:0, epoch:0, ack:0, shotAt:-1, note:'' };
+    const p = { id, name:cleanName(name), avatar:normalizeAvatar(avatar), score:0, deaths:0, epoch:0, ack:0, shotAt:-1, note:'' };
     this.players.set(id,p);
     this.spawn(p);
     return true;

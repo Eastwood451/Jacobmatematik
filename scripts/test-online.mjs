@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Match, MAX_PLAYERS, validCode } from '../fps-match.js';
+import { AVATARS, normalizeAvatar } from '../fps-avatars.js';
 
 function game(mode='deathmatch',blocked) {
   const m=new Match(mode,blocked,()=>.2);m.join('a','Anna');m.join('b','Bo');m.start();return m;
@@ -8,6 +9,14 @@ function game(mode='deathmatch',blocked) {
 function action(m,id,values) {
   const p=m.players.get(id);m.input(id,{epoch:p.epoch,actions:[{seq:p.ack+1,...values}]});
 }
+test('only the three avatars are accepted and survive respawn/rematch snapshots',()=>{
+  assert.deepEqual(AVATARS.map(a=>a.id),['dennis','luigi','kaptajn']);
+  assert.equal(normalizeAvatar('https://example.com/custom.png'),'dennis');
+  const m=new Match('deathmatch');m.join('a','Anna','luigi');m.join('b','Bo','kaptajn');m.join('c','Clara','dennis');
+  m.start();assert.deepEqual(m.snapshot().players.map(p=>p.avatar),['luigi','kaptajn','dennis']);
+  m.spawn(m.players.get('b'));assert.equal(m.players.get('b').avatar,'kaptajn');
+  m.finish('Færdig');m.start();assert.equal(m.players.get('a').avatar,'luigi');
+});
 test('room syntax, capacity, start requirement and late joins',()=>{
   assert.equal(validCode('ABCD2345'),true);assert.equal(validCode('abcd2345'),false);assert.equal(validCode('ABCD234!'),false);
   const m=new Match('coop');m.join('a','<Anna>');assert.equal(m.players.get('a').name,'Anna');assert.equal(m.start(),false);

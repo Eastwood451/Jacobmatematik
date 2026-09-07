@@ -6,7 +6,7 @@ import { createPlayerMovement } from './fps-movement.js?v=20260907-ducts1';
 import { createDuctBuilder } from './fps-ducts.js?v=20260907-ducts1';
 import { createSchoolInteriorMaterials, applySchoolSurfaceUV } from './fps-interior.js?v=20260907-interior1';
 import { createElseAttacks, ELSE_THROW_INTERVAL } from './fps-else-attacks.js?v=20260907-ducts1';
-import { createOnlineGame } from './fps-online.js?v=20260907-online1';
+import { createOnlineGame } from './fps-online.js?v=20260907-avatar1';
 let multiplayer = null;
 import { createSchoolyard } from './fps-schoolyard.js?v=20260907-courtyard1';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';

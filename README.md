@@ -19,6 +19,10 @@ En responsiv matematikapp til elever og lærere, bygget i ren HTML, CSS og JavaS
 ## Erling online
 
 Åbn `fps.html` via en webserver, vælg **Spil online med klassen** og skriv et kaldenavn.
+Vælg Divisions-Dennis, Luigi Lækkermat eller Kaptajn Kvadratrod som avatar, før
+du starter eller joiner serveren. Valget huskes på enheden og vises i lobbyen,
+på din egen skærm og som din figur hos de andre spillere i begge spilformer.
+Avatarerne har samme liv, hastighed og træffeflade.
 Værten vælger deathmatch eller co-op og trykker **Start server**. De øvrige elever
 indtaster koden på otte tegn eller åbner det kopierede invitationslink. Værten kan
 starte kampen, når mindst to spillere er i rummet. Man kan ikke joine midt i en kamp.
