@@ -568,7 +568,7 @@
             <h1>Matematik på solidt fundament</h1>
           </div>
           <div class="login-mastery-tower">
-            <img class="login-mastery-tower-image" src="assets/figurer/matematik-mestringstaarn.webp" width="858" height="1832" alt="Matematik-mestringstårn med Erling Ærgerlig nederst, Luigi Lækkermat med sine pizzaer, Divisions-Dennis med slikkepinde og Kaptajn Kvadratrod øverst" fetchpriority="high" decoding="async">
+            <img class="login-mastery-tower-image" src="assets/figurer/matematik-mestringstaarn.webp?v=20260907-no-smykker1" width="858" height="1832" alt="Matematik-mestringstårn med Erling Ærgerlig nederst, Luigi Lækkermat med sine pizzaer, Divisions-Dennis med slikkepinde og Kaptajn Kvadratrod øverst" fetchpriority="high" decoding="async">
           </div>
           <div class="character-stage" aria-label="Figurerne fra Jacob Matematik">
             <figure class="character-card captain" data-kaptajn-audio role="button" tabindex="0" aria-label="Afspil Kaptajn Kvadratrods superheltereplik">
@@ -580,7 +580,7 @@
               <figcaption>Divisions-Dennis</figcaption>
             </figure>
             <figure class="character-card luigi" data-luigi-audio role="button" tabindex="0" aria-label="Afspil Luigi Lækkermats italienske replik">
-              <div class="character-frame"><img src="assets/figurer/luigi-laekkermat.webp" width="900" height="1350" alt="Luigi Lækkermat med multiplikationspizzaer" decoding="async"></div>
+              <div class="character-frame"><img src="assets/figurer/luigi-laekkermat.webp?v=20260907-no-smykker1" width="900" height="1350" alt="Luigi Lækkermat med multiplikationspizzaer" decoding="async"></div>
               <figcaption>Luigi Lækkermat</figcaption>
             </figure>
             <figure class="character-card erling" data-erling-audio role="button" tabindex="0" aria-label="Afspil en sur kommentar fra Erling Ærgerlig">
@@ -898,7 +898,7 @@
         <span class="luigi-pizza-pop pizza-one" aria-hidden="true">🍕</span>
         <span class="luigi-pizza-pop pizza-two" aria-hidden="true">🍕</span>
         <span class="luigi-pizza-pop pizza-three" aria-hidden="true">🍕</span>
-        <img class="luigi-character" src="assets/figurer/luigi-laekkermat-cutout.webp" width="1024" height="1536" loading="lazy" decoding="async" alt="Luigi Lækkermat holder pizzaerne 48 delt i 6 og 8 samt 63 delt i 7 og 9">
+        <img class="luigi-character" src="assets/figurer/luigi-laekkermat-cutout.webp?v=20260907-no-smykker1" width="1024" height="1536" loading="lazy" decoding="async" alt="Luigi Lækkermat holder pizzaerne 48 delt i 6 og 8 samt 63 delt i 7 og 9">
       </button>
     </section>` : "";
 

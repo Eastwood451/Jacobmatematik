@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createSchoolWindows } from './fps-windows.js?v=20260907-windows1';
 import { createGameVoicePlayer } from './fps-voice.js?v=20260907-danish1';
 const gameVoice = createGameVoicePlayer();
 import { createPlayerMovement } from './fps-movement.js?v=20260907-ducts1';
@@ -9,7 +10,7 @@ import { createOnlineGame } from './fps-online.js?v=20260907-online1';
 let multiplayer = null;
 import { createSchoolyard } from './fps-schoolyard.js?v=20260907-courtyard1';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { createErlingRig, animateErling, disposeErlingRig, addSchoolWallArt } from './fps-visuals.js?v=20260907-sprites1';
+import { createErlingRig, animateErling, disposeErlingRig, addSchoolWallArt } from './fps-visuals.js?v=20260907-no-smykker1';
 import { createGunnarRig, animateGunnar, disposeGunnarRig } from './fps-gunnar.js?v=20260907-sprites1';
 import { createElseRig, animateElse, disposeElseRig } from './fps-else.js?v=20260907-sprites1';
 
@@ -207,7 +208,7 @@ box(0, WALL_H + .1, 0, WORLD + .45, .2, WORLD + .45, interiorMaterials.ceiling, 
 box(0, WALL_H / 2, -WORLD / 2, WORLD, WALL_H, .45);
 box(0, WALL_H / 2, WORLD / 2, WORLD, WALL_H, .45);
 box(-WORLD / 2, WALL_H / 2, 0, .45, WALL_H, WORLD);
-box(WORLD / 2, WALL_H / 2, 0, .45, WALL_H, WORLD);
+const schoolWindows = createSchoolWindows({ scene, box, wallMaterial:wallMat, wallHeight:WALL_H });
 const schoolPartition = createDuctBuilder({ box, wallMaterial:wallMat, wallHeight:WALL_H, renderer });
 [
   [-13,-17,18,.35,true],[-13,1,18,.35],[-13,20,14,.35],
@@ -216,7 +217,7 @@ const schoolPartition = createDuctBuilder({ box, wallMaterial:wallMat, wallHeigh
   [-21,10,.35,14],[-6,10,.35,12,true],[9,10,.35,10,true],[21,10,.35,11],
 ].forEach(([x,z,w,d,hasDuct]) => schoolPartition(x,z,w,d,hasDuct));
 box(-26, 1.15, -2, .08, 1.25, 8, trimMat, false);
-box(26, 1.15, 5, .08, 1.25, 9, trimMat, false);
+box(26, 1.15, 7, .08, 1.25, 4, trimMat, false);
 box(-19, 1.65, -26.7, 8, 1.55, .08, mat(0x29483e), false);
 box(19, 1.65, 26.7, 8, 1.55, .08, mat(0x29483e), false);
 [
@@ -1117,6 +1118,7 @@ function update(dt, time) {
 function loop(t) {
   const dt = Math.min((t - last) / 1000, .04);
   last = t;
+  schoolWindows.update(t);
   update(dt,t);
   renderer.render(scene,camera);
   requestAnimationFrame(loop);

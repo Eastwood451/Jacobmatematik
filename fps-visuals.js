@@ -166,7 +166,7 @@ export function addSchoolWallArt(scene, renderer) {
   ].forEach(([x, y, z, yaw]) => mount(brand.texture, 'jacobmatematik.dk', x, y, z, 5.2, 1.3, yaw));
 
   const heroes = [
-    { name: 'LUIGI LÆKKERMAT', file: 'luigi-laekkermat.webp', color: '#bf5738', motto: 'EN BID AD GANGEN', number: '01' },
+    { name: 'LUIGI LÆKKERMAT', file: 'luigi-laekkermat.webp?v=20260907-no-smykker1', color: '#bf5738', motto: 'EN BID AD GANGEN', number: '01' },
     { name: 'DIVISIONS-DENNIS', file: 'divisions-dennis.webp', color: '#277d7d', motto: 'DEL OG HERSK', number: '02' },
     { name: 'KAPTAJN KVADRATROD', file: 'kaptajn-kvadratrod.webp', color: '#335c7d', motto: 'STYR PÅ RØDDERNE', number: '03' },
   ];
