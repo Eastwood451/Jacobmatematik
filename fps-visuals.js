@@ -3,33 +3,21 @@ import * as THREE from 'three';
 const WIDTH = 2.1, HEIGHT = 3.6;
 const smooth = THREE.MathUtils.smoothstep;
 
-// A small skeletal rig keeps the original drawing: the head and limbs pivot
-// around joints, with blending only at the neck, shoulders and hips.
-export function createErlingRig(texture, phase = Math.random() * Math.PI * 2) {
-  const geometry = new THREE.PlaneGeometry(WIDTH, HEIGHT, 40, 64);
+// Every illustrated enemy uses the same small skeletal rig. Character modules
+// only describe where their head and limbs are located in their own artwork.
+export function createSpriteRig(texture, options) {
+  const {
+    width, height, bodyY, joints, skinWeights, motion = {},
+    phase = Math.random() * Math.PI * 2,
+    segmentsX = 48, segmentsY = 72,
+  } = options;
+  const geometry = new THREE.PlaneGeometry(width, height, segmentsX, segmentsY);
   const indices = [], weights = [], uv = geometry.attributes.uv;
   for (let i = 0; i < uv.count; i++) {
     const u = uv.getX(i), v = uv.getY(i);
-    let bone = 0, weight = 0;
-    if (v > .59) {
-      bone = 1; weight = smooth(v, .59, .67);
-    } else if (v < .34) {
-      bone = u < .49 ? 4 : 5;
-      weight = (1 - smooth(v, .26, .34)) * smooth(Math.abs(u - .49), 0, .035);
-    } else if (v > .40 && v < .62) {
-      // Follow the arm/vest outlines, keeping the belly out of the arm weights.
-      const leftEdge = .325 + Math.max(0, v - .45) * .26;
-      const shoulder = 1 - smooth(v, .58, .62);
-      if (u < leftEdge) {
-        bone = 2;
-        weight = (1 - smooth(u, leftEdge - .018, leftEdge)) * smooth(v, .415, .44) * shoulder;
-      }
-      const rightEdge = v < .50 ? .57 + Math.abs(v - .477) * 1.4 : .62;
-      if (u > rightEdge && v > .445) {
-        bone = 3;
-        weight = smooth(u, rightEdge, rightEdge + .018) * smooth(v, .445, .47) * shoulder;
-      }
-    }
+    const influence = skinWeights(u, v, smooth) || { bone: 0, weight: 0 };
+    const bone = influence.bone || 0;
+    const weight = THREE.MathUtils.clamp(influence.weight || 0, 0, 1);
     indices.push(0, bone, 0, 0);
     weights.push(1 - weight, weight, 0, 0);
   }
@@ -41,38 +29,88 @@ export function createErlingRig(texture, phase = Math.random() * Math.PI * 2) {
   });
   const body = new THREE.SkinnedMesh(geometry, material);
   const root = new THREE.Bone();
-  const joint = (u, v) => {
+  const joint = ([u, v]) => {
     const bone = new THREE.Bone();
-    bone.position.set((u - .5) * WIDTH, (v - .5) * HEIGHT, 0);
+    bone.position.set((u - .5) * width, (v - .5) * height, 0);
     root.add(bone);
     return bone;
   };
-  const head = joint(.49, .62), leftArm = joint(.37, .59), rightArm = joint(.62, .59);
-  const leftLeg = joint(.42, .30), rightLeg = joint(.55, .30);
+  const head = joint(joints.head), leftArm = joint(joints.leftArm), rightArm = joint(joints.rightArm);
+  const leftLeg = joint(joints.leftLeg), rightLeg = joint(joints.rightLeg);
   body.add(root);
   body.bind(new THREE.Skeleton([root, head, leftArm, rightArm, leftLeg, rightLeg]));
-  body.position.y = 1.39; // The illustration includes blank space below the shoes.
+  body.position.y = bodyY;
   body.frustumCulled = false;
   const group = new THREE.Group();
   group.add(body);
-  return { group, body, head, leftArm, rightArm, leftLeg, rightLeg, phase, stride: 0 };
+  return {
+    group, body, head, leftArm, rightArm, leftLeg, rightLeg, phase, stride: 0,
+    bodyBaseY: bodyY,
+    leftLegRestY: leftLeg.position.y,
+    rightLegRestY: rightLeg.position.y,
+    motion,
+  };
+}
+
+// Erlings weight map follows his vest, arms and shoes. The same animator below
+// is shared by Gunnar Gider-ik and Eksamens-Else.
+export function createErlingRig(texture, phase = Math.random() * Math.PI * 2) {
+  return createSpriteRig(texture, {
+    width: WIDTH,
+    height: HEIGHT,
+    bodyY: 1.39,
+    phase,
+    joints: {
+      head: [.49, .62], leftArm: [.37, .59], rightArm: [.62, .59],
+      leftLeg: [.42, .30], rightLeg: [.55, .30],
+    },
+    skinWeights(u, v, ease) {
+      if (v > .59) return { bone: 1, weight: ease(v, .59, .67) };
+      if (v < .34) {
+        return {
+          bone: u < .49 ? 4 : 5,
+          weight: (1 - ease(v, .26, .34)) * ease(Math.abs(u - .49), 0, .035),
+        };
+      }
+      if (v > .40 && v < .62) {
+        // Follow the arm/vest outlines, keeping the belly out of the arm weights.
+        const leftEdge = .325 + Math.max(0, v - .45) * .26;
+        const shoulder = 1 - ease(v, .58, .62);
+        if (u < leftEdge) {
+          return {
+            bone: 2,
+            weight: (1 - ease(u, leftEdge - .018, leftEdge)) * ease(v, .415, .44) * shoulder,
+          };
+        }
+        const rightEdge = v < .50 ? .57 + Math.abs(v - .477) * 1.4 : .62;
+        if (u > rightEdge && v > .445) {
+          return {
+            bone: 3,
+            weight: ease(u, rightEdge, rightEdge + .018) * ease(v, .445, .47) * shoulder,
+          };
+        }
+      }
+      return null;
+    },
+  });
 }
 
 export function animateErling(enemy, dt, time, distanceMoved) {
   // Feet stop marching when a wall blocks him. Head and arms remain restless.
-  enemy.stride += distanceMoved * 6;
-  const walking = Math.min(1, distanceMoved / Math.max(dt * 1.1, .001));
+  const motion = enemy.motion || {};
+  enemy.stride += distanceMoved * (motion.strideRate ?? 6);
+  const walking = Math.min(1, distanceMoved / Math.max(dt * (motion.walkingDivisor ?? 1.1), .001));
   const step = Math.sin(enemy.stride + enemy.phase) * walking;
-  const idle = Math.sin(time * .0018 + enemy.phase);
-  enemy.leftLeg.rotation.z = step * .17;
-  enemy.rightLeg.rotation.z = -step * .17;
-  enemy.leftLeg.position.y = -.72 + Math.max(0, step) * .10;
-  enemy.rightLeg.position.y = -.72 + Math.max(0, -step) * .10;
-  enemy.leftArm.rotation.z = -.03 + step * .16 + idle * .04;
-  enemy.rightArm.rotation.z = .03 - step * .14 - idle * .04;
-  enemy.head.rotation.z = idle * .075 + step * .025;
-  enemy.head.rotation.y = Math.sin(time * .0013 + enemy.phase) * .12;
-  enemy.body.position.y = 1.39 + Math.abs(step) * .025;
+  const idle = Math.sin(time * (motion.idleRate ?? .0018) + enemy.phase);
+  enemy.leftLeg.rotation.z = step * (motion.legSwing ?? .17);
+  enemy.rightLeg.rotation.z = -step * (motion.legSwing ?? .17);
+  enemy.leftLeg.position.y = enemy.leftLegRestY + Math.max(0, step) * (motion.legLift ?? .10);
+  enemy.rightLeg.position.y = enemy.rightLegRestY + Math.max(0, -step) * (motion.legLift ?? .10);
+  enemy.leftArm.rotation.z = (motion.leftArmBase ?? -.03) + step * (motion.leftArmSwing ?? .16) + idle * (motion.armIdle ?? .04);
+  enemy.rightArm.rotation.z = (motion.rightArmBase ?? .03) - step * (motion.rightArmSwing ?? .14) - idle * (motion.armIdle ?? .04);
+  enemy.head.rotation.z = idle * (motion.headTilt ?? .075) + step * (motion.headStep ?? .025);
+  enemy.head.rotation.y = Math.sin(time * (motion.headTurnRate ?? .0013) + enemy.phase) * (motion.headTurn ?? .12);
+  enemy.body.position.y = enemy.bodyBaseY + Math.abs(step) * (motion.bodyBob ?? .025);
 }
 
 export function disposeErlingRig(enemy) {
