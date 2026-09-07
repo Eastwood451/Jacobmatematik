@@ -1,6 +1,8 @@
 import * as THREE from 'three';
+import { createPlayerMovement } from './fps-movement.js?v=20260907-ducts1';
+import { createDuctBuilder } from './fps-ducts.js?v=20260907-ducts1';
 import { createSchoolInteriorMaterials, applySchoolSurfaceUV } from './fps-interior.js?v=20260907-interior1';
-import { createElseAttacks, ELSE_THROW_INTERVAL } from './fps-else-attacks.js?v=20260907-else-division1';
+import { createElseAttacks, ELSE_THROW_INTERVAL } from './fps-else-attacks.js?v=20260907-ducts1';
 import { createSchoolyard } from './fps-schoolyard.js?v=20260907-courtyard1';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { createErlingRig, animateErling, disposeErlingRig, addSchoolWallArt } from './fps-visuals.js?v=20260907-sprites1';
@@ -40,8 +42,6 @@ scene.add(sun);
 
 const WORLD = 54;
 const WALL_H = 4.2;
-const PLAYER_R = .48;
-const EYE = 1.7;
 const colliders = [];
 const elseAttacks = createElseAttacks({ scene, colliders, onPlayerHit: () => {
   hurt(null, true);
@@ -204,12 +204,13 @@ box(0, WALL_H / 2, -WORLD / 2, WORLD, WALL_H, .45);
 box(0, WALL_H / 2, WORLD / 2, WORLD, WALL_H, .45);
 box(-WORLD / 2, WALL_H / 2, 0, .45, WALL_H, WORLD);
 box(WORLD / 2, WALL_H / 2, 0, .45, WALL_H, WORLD);
+const schoolPartition = createDuctBuilder({ box, wallMaterial:wallMat, wallHeight:WALL_H, renderer });
 [
-  [-13,-17,18,.35],[-13,1,18,.35],[-13,20,14,.35],
-  [13,-20,13,.35],[13,-4,13,.35],[13,13,18,.35],
+  [-13,-17,18,.35,true],[-13,1,18,.35],[-13,20,14,.35],
+  [13,-20,13,.35],[13,-4,13,.35,true],[13,13,18,.35],
   [-20,-10,.35,13],[-5,-10,.35,13],[10,-10,.35,11],[22,-10,.35,9],
-  [-21,10,.35,14],[-6,10,.35,12],[9,10,.35,10],[21,10,.35,11],
-].forEach(([x,z,w,d]) => box(x, WALL_H / 2, z, w, WALL_H, d, wallMat));
+  [-21,10,.35,14],[-6,10,.35,12,true],[9,10,.35,10,true],[21,10,.35,11],
+].forEach(([x,z,w,d,hasDuct]) => schoolPartition(x,z,w,d,hasDuct));
 box(-26, 1.15, -2, .08, 1.25, 8, trimMat, false);
 box(26, 1.15, 5, .08, 1.25, 9, trimMat, false);
 box(-19, 1.65, -26.7, 8, 1.55, .08, mat(0x29483e), false);
@@ -242,8 +243,7 @@ for(const x of [-17,17])for(const z of [-18,0,18])ceilingFixture(x,z);
 addSchoolWallArt(scene, renderer);
 
 const keys = {};
-let vy = 0;
-let onGround = true;
+const playerMovement = createPlayerMovement({camera,colliders,keys});
 let last = performance.now();
 let lives = 5;
 let ammo = 0;
@@ -838,7 +838,7 @@ function enterSchoolyard() {
   setSchoolyardLighting(true);
   clearEnemies();
   removeMagicCircle();
-  camera.position.set(0,EYE,38);
+  playerMovement.reset(0,38);
   camera.rotation.set(0,Math.PI,0);
   campBoost = false;
   campMovementStartedAt = 0;
@@ -880,10 +880,6 @@ function updateStompWaves(dt, time) {
   }
 }
 
-function playerBlocked(next) {
-  const sphere = new THREE.Sphere(new THREE.Vector3(next.x,1,next.z), PLAYER_R);
-  return colliders.some(c => c.intersectsSphere(sphere));
-}
 function enemyBlocked(next) {
   const radius = schoolyardEntered ? 1.2 : .5;
   const sphere = new THREE.Sphere(new THREE.Vector3(next.x,1,next.z), radius);
@@ -970,18 +966,18 @@ function updateCamping(now, moved) {
 
 addEventListener('keydown', e => {
   keys[e.code] = true;
+  if (gameActive && /^(Control|Shift|Key[WASD]|Space|Digit|Numpad|Enter|Backspace)/.test(e.code)) e.preventDefault();
   if (e.code === 'KeyM' && !e.repeat) {
     toggleMusic();
     return;
   }
-  if (e.code === 'Space' && onGround && gameActive) {
-    vy = 6.4;
-    onGround = false;
+  if (e.code === 'Space' && !e.repeat && gameActive) {
+    playerMovement.jump();
     e.preventDefault();
   }
   if (/^Digit\d$/.test(e.code) && gameActive) {
     if (answer.length < 3) {
-      answer += e.key;
+      answer += e.code.slice(-1);
       answerEl.textContent = answer;
     }
   }
@@ -992,10 +988,12 @@ addEventListener('keydown', e => {
   if (e.code === 'Enter' && gameActive) submitAnswer();
 });
 addEventListener('keyup', e => keys[e.code] = false);
+function clearMovementKeys() { for (const key of Object.keys(keys)) delete keys[key]; }
+addEventListener('blur', clearMovementKeys);
 addEventListener('mousedown', e => { if (e.button === 0) firePencil(); });
 canvas.addEventListener('click', () => { if (gameActive && !controls.isLocked) controls.lock(); });
 controls.addEventListener('lock', () => document.getElementById('pointer-note').classList.remove('show'));
-controls.addEventListener('unlock', () => { if (gameActive) document.getElementById('pointer-note').classList.add('show'); });
+controls.addEventListener('unlock', () => { clearMovementKeys(); if (gameActive) document.getElementById('pointer-note').classList.add('show'); });
 
 function resetGame() {
   elseAttacks.clear();
@@ -1018,7 +1016,7 @@ function resetGame() {
   removeMagicCircle();
   removeSchoolyardArrows();
   if (schoolyardDoor) schoolyardDoor.visible = false;
-  camera.position.set(0,EYE,18);
+  playerMovement.reset(0,18);
   camera.rotation.set(0,0,0);
   updateHUD();
   clearEnemies();
@@ -1051,35 +1049,7 @@ document.getElementById('restart-button').addEventListener('click', () => {
 
 function update(dt, time) {
   if (!gameActive) return;
-  const old = camera.position.clone();
-  const speed = 5.4;
-  let dx = 0, dz = 0;
-  if (keys.KeyW) dz -= 1;
-  if (keys.KeyS) dz += 1;
-  if (keys.KeyA) dx -= 1;
-  if (keys.KeyD) dx += 1;
-  if (dx || dz) {
-    const len = Math.hypot(dx,dz);
-    dx /= len; dz /= len;
-    const forward = new THREE.Vector3();
-    camera.getWorldDirection(forward);
-    forward.y = 0;
-    forward.normalize();
-    const right = new THREE.Vector3().crossVectors(forward,new THREE.Vector3(0,1,0)).normalize();
-    const move = forward.multiplyScalar(-dz * speed * dt).add(right.multiplyScalar(dx * speed * dt));
-    const nx = old.clone().add(new THREE.Vector3(move.x,0,0));
-    if (!playerBlocked(nx)) camera.position.x = nx.x;
-    const nz = camera.position.clone().add(new THREE.Vector3(0,0,move.z));
-    if (!playerBlocked(nz)) camera.position.z = nz.z;
-  }
-  vy -= 17 * dt;
-  camera.position.y += vy * dt;
-  if (camera.position.y <= EYE) {
-    camera.position.y = EYE;
-    vy = 0;
-    onGround = true;
-  }
-  const moved = Math.hypot(camera.position.x - old.x, camera.position.z - old.z) > .012;
+  const moved = playerMovement.update(dt);
   updateCamping(time,moved);
   updateSchoolyardArrows(time);
 
@@ -1134,7 +1104,7 @@ function update(dt, time) {
 
   if (!gameActive) return;
   updateProjectiles(dt);
-  if (gameActive && schoolyardEntered) elseAttacks.update(dt,camera.position);
+  if (gameActive && schoolyardEntered) elseAttacks.update(dt,camera.position,playerMovement.bounds);
   updateStompWaves(dt,time);
 }
 

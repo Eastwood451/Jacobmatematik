@@ -68,9 +68,9 @@ export function createElseAttacks({ scene, colliders, onPlayerHit }) {
     scene.add(mesh);
     shots.push({mesh,velocity,life:18,kind:ruler?'ruler':'marker'});
   }
-  function update(dt, playerPosition) {
+  function update(dt, playerPosition, bodyBounds = null) {
     // The body follows the camera while jumping; ground-level tools can be jumped over.
-    const playerBox=new THREE.Box3(
+    const playerBox=bodyBounds || new THREE.Box3(
       new THREE.Vector3(playerPosition.x-.48,playerPosition.y-1.7,playerPosition.z-.48),
       new THREE.Vector3(playerPosition.x+.48,playerPosition.y+.12,playerPosition.z+.48)
     );
