@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createSchoolyard } from './fps-schoolyard.js?v=20260907-courtyard1';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { createErlingRig, animateErling, disposeErlingRig, addSchoolWallArt } from './fps-visuals.js?v=20260907-sprites1';
 import { createGunnarRig, animateGunnar, disposeGunnarRig } from './fps-gunnar.js?v=20260907-sprites1';
@@ -783,39 +784,21 @@ function openSchoolyardDoor() {
   feedbackEl.className = 'feedback good';
 }
 
+let schoolyardScenery = null;
 function buildSchoolyard() {
   if (schoolyardBuilt) return;
   schoolyardBuilt = true;
-  const concrete = mat(0xa9adb0), fence = mat(0x46525b), brick = mat(0x9a5748), bench = mat(0x72503c);
-  box(0,-.10,52,40,.2,40,concrete,false);
-  box(-20,1.3,52,.3,2.6,40,fence,true);
-  box(20,1.3,52,.3,2.6,40,fence,true);
-  box(0,1.3,72,40,2.6,.3,fence,true);
-  box(0,2.2,32,40,4.4,.4,brick,true);
-  const yardDoor = new THREE.Mesh(new THREE.PlaneGeometry(3.4,3.5), new THREE.MeshBasicMaterial({ color:0x182a30 }));
-  yardDoor.position.set(0,1.75,31.78);
-  scene.add(yardDoor);
-  [[-13,44],[13,44],[-13,61],[13,61]].forEach(([x,z]) => {
-    box(x,.45,z,3.6,.18,.65,bench,true);
-    box(x-1.45,.22,z,.15,.45,.55,bench,true);
-    box(x+1.45,.22,z,.15,.45,.55,bench,true);
-  });
-  [-12,12].forEach(x => {
-    box(x,2.2,69,.18,4.4,.18,fence,true);
-    const back = new THREE.Mesh(new THREE.PlaneGeometry(2.1,1.3), new THREE.MeshBasicMaterial({ color:0xf3e8ce }));
-    back.position.set(x,3.25,68.86);
-    scene.add(back);
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(.42,.045,10,32), new THREE.MeshStandardMaterial({ color:0xc84932 }));
-    rim.rotation.x = Math.PI / 2;
-    rim.position.set(x,2.75,68.35);
-    scene.add(rim);
-  });
-  for (let i = -3; i <= 3; i++) {
-    const chalk = new THREE.Mesh(new THREE.PlaneGeometry(.045,28), new THREE.MeshBasicMaterial({ color:0xe9e3d1, transparent:true, opacity:.5, side:THREE.DoubleSide }));
-    chalk.rotation.x = -Math.PI / 2;
-    chalk.position.set(i * 3,.015,52);
-    scene.add(chalk);
-  }
+  schoolyardScenery = createSchoolyard({ scene, box, renderer });
+}
+
+function setSchoolyardLighting(active) {
+  schoolyardScenery?.setActive(active);
+  sun.position.set(-18,28,active ? 64 : 12);
+  sun.target.position.set(0,0,active ? 52 : 0);
+  sun.target.updateMatrixWorld();
+  scene.fog.color.set(active ? 0xc9dadb : 0x8eb5c4);
+  scene.fog.near = active ? 55 : 36;
+  scene.fog.far = active ? 125 : 96;
 }
 
 function enterSchoolyard() {
@@ -824,6 +807,7 @@ function enterSchoolyard() {
   schoolyardDoorOpen = false;
   removeSchoolyardArrows();
   buildSchoolyard();
+  setSchoolyardLighting(true);
   clearEnemies();
   removeMagicCircle();
   camera.position.set(0,EYE,38);
@@ -985,6 +969,7 @@ controls.addEventListener('lock', () => document.getElementById('pointer-note').
 controls.addEventListener('unlock', () => { if (gameActive) document.getElementById('pointer-note').classList.add('show'); });
 
 function resetGame() {
+  setSchoolyardLighting(false);
   lives = 5;
   ammo = 0;
   score = 0;
