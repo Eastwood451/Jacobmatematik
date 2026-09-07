@@ -606,12 +606,84 @@
       </div>`;
     if (window.matchMedia("(min-width: 901px) and (pointer: fine)").matches) document.getElementById("username").focus();
   }
+  const MATH_TOWER_LEVELS = [
+    { label:"Negative tal", symbol:"−4", topics:["negatives"] },
+    { label:"Regnehierarki", symbol:"( )", topics:["pemdas"] },
+    { label:"Division", symbol:":", topics:["divisionLollipops", "divisionDrill"] },
+    { label:"Gange", symbol:"·", topics:["multiplication", "tableDrill"] },
+    { label:"Minus", symbol:"−", topics:["subtractionBorrowing"] },
+    { label:"Plus", symbol:"+", topics:["addition"] },
+    { label:"Tælle", symbol:"1 2 3", topics:["numbers"] },
+  ];
+  function mathTowerStage(score) {
+    if (score >= 95) return { key:"granite", name:"Granit" };
+    if (score >= 60) return { key:"timber", name:"Bindingsværk" };
+    if (score >= 30) return { key:"wood", name:"Træ" };
+    return { key:"frame", name:"Rammeværk" };
+  }
+  function mathTowerScore(user, topics) {
+    // Match the existing topic scores; unpractised associated topics count as zero.
+    return topics.reduce((sum, topic) => sum + getStats(user, topic).accuracy * 100, 0) / topics.length;
+  }
+  function mathTowerFloorArt(stage, index) {
+    const outline = 'stroke="#343a40" stroke-width="3" stroke-linejoin="round"';
+    const beams = `<path d="M17 8L22 109M278 8L274 109M20 15L277 15M22 103L274 103" stroke="#67472f" stroke-width="9" fill="none"/><path d="M22 15L148 103L276 15M148 15V103" stroke="#755035" stroke-width="6" fill="none"/>`;
+    let art;
+    if (stage === "frame") {
+      art = `<path d="M24 111L16 11L276 6L284 110M18 13L283 107M277 9L26 107M17 10L278 6M23 108L283 110" fill="none" stroke="#88775e" stroke-width="5" stroke-linecap="round"/><path d="M16 26L35 24M262 18L280 17M17 91L36 89M268 92L287 91" stroke="#c9b791" stroke-width="3"/><path d="M30 113H272" stroke="#746a58" stroke-width="5"/>`;
+    } else if (stage === "wood") {
+      art = `<path d="M14 8L285 11L281 112L18 111Z" fill="#bb8549" ${outline}/>`;
+      for (let row = 0; row < 5; row++) {
+        const y=13+row*19;
+        art += `<path d="M20 ${y}L280 ${y+2}" stroke="#704b2c" stroke-width="2"/><path d="M29 ${y+8}Q75 ${y+3} 115 ${y+9}T268 ${y+8}" fill="none" stroke="#dda76b" stroke-width="2"/><circle cx="26" cy="${y+5}" r="1.6" fill="#423a30"/><circle cx="273" cy="${y+5}" r="1.6" fill="#423a30"/>`;
+      }
+      art += `<path d="M20 8L24 112M279 10L276 112" stroke="#805632" stroke-width="8"/>`;
+    } else if (stage === "timber") {
+      art = `<path d="M14 8H285L280 112H20Z" fill="#e8dbc0" ${outline}/><path d="M25 26L269 96M30 96L268 27" stroke="#d5c4a4" stroke-width="2"/>${beams}`;
+    } else {
+      art = `<path d="M12 6H287V114H12Z" fill="#939da2" ${outline}/>`;
+      for (let row=0; row<4; row++) {
+        for (let col=0; col<5; col++) {
+          const x=15+col*70-(row%2)*35, y=9+row*25;
+          const left=Math.max(15,x), right=Math.min(284,x+66);
+          if(right<=left) continue;
+          art += `<rect x="${left}" y="${y}" width="${right-left}" height="22" rx="2" fill="${['#aeb5b6','#939da1','#bdc2c0'][(row+col+index)%3]}" stroke="#535e65" stroke-width="1.5"/><path d="M${left+3} ${y+4}H${right-3}" stroke="#dce0db" stroke-opacity=".55"/><path d="M${left+5} ${y+16}l4 -2m9 -6l3 2" stroke="#69777f" stroke-opacity=".5"/>`;
+        }
+      }
+      art += `<path d="M8 110H292V119H8Z" fill="#697780" ${outline}/>`;
+    }
+    return `<svg class="math-tower-floor-art" viewBox="0 0 300 124" preserveAspectRatio="none" aria-hidden="true" focusable="false">${art}</svg>`;
+  }
+  function renderMathTower(availableTopics) {
+    return `<aside class="math-tower" aria-labelledby="math-tower-title">
+      <span class="eyebrow">Byg din viden</span>
+      <h2 id="math-tower-title">Matematiktårnet</h2>
+      <p>Stærke grundfærdigheder.<br>Et stærkere tårn.</p>
+      <nav class="math-tower-building" aria-label="Matematiktårnets etager – Tælle er fundamentet">
+        <div class="math-tower-crown" aria-hidden="true"><svg viewBox="0 0 300 48"><path d="M16 46V9H53V26H89V9H127V26H166V9H205V26H242V9H281V46Z" fill="#79858b" stroke="#343a40" stroke-width="3"/><path d="M19 40H278" stroke="#bac1c1" stroke-width="3"/></svg></div>
+        ${MATH_TOWER_LEVELS.map((level, index) => {
+          const score = mathTowerScore(state.user, level.topics);
+          const stage = mathTowerStage(score);
+          const topic = level.topics.find(key => availableTopics.includes(key));
+          const percentage = Math.floor(score + 1e-9);
+          const description = `${level.label}: ${percentage} %, ${stage.name}. ${level.topics.map(key => TOPICS[key].name).join(" og ")}.`;
+          return `<button type="button" class="math-tower-level tower-${stage.key}" style="--floor:${index}" ${topic ? `data-topic="${topic}"` : "disabled"} aria-label="${description}${topic ? " Klik for at øve." : " Log ind for at øve."}" title="${description}">
+            ${mathTowerFloorArt(stage.key, index)}
+            <span class="math-tower-plaque"><span class="math-tower-symbol" aria-hidden="true">${level.symbol}</span><span class="math-tower-name">${level.label}<small>${stage.name}</small></span><span class="math-tower-score">${percentage}<small>%</small></span></span>
+          </button>`;
+        }).join("")}
+      </nav>
+      <div class="math-tower-foundation">Et solidt fundament</div>
+      <div class="math-tower-legend" aria-label="Tårnets byggestadier"><span><i class="legend-frame"></i>0 % · Rammeværk</span><span><i class="legend-wood"></i>30 % · Træ</span><span><i class="legend-timber"></i>60 % · Bindingsværk</span><span><i class="legend-granite"></i>95 % · Granit</span></div>
+      <details class="math-tower-help"><summary>Hvordan bygges tårnet?</summary><p>Vælg en etage for at øve. Materialet følger din score: andelen af rigtige blandt dine seneste 20 svar i hvert tilknyttet modul. Har etagen flere moduler, bruges gennemsnittet; moduler uden svar tæller som 0 %. Scoren kan både stige og falde.</p><p>Gange: Lille tabel og Tabel-drill. Division: Divisions-slikkepinde og Division-drill. De øvrige etager følger hver deres øvelse.</p></details>
+    </aside>`;
+  }
   function renderStudentHome() {
     const availableTopics = isGuest() ? Object.keys(TOPICS).filter(topic => GUEST_TOPICS.has(topic)) : Object.keys(TOPICS);
     const stats = availableTopics.map(topic => ({ topic, ...getStats(state.user, topic) }));
     const total = practiceResults(state.user).length;
     const guestCopy = isGuest() ? `<p class="guest-session-note">Din træning er midlertidig og slettes, når du forlader siden.</p>` : "";
-    app.innerHTML = `${header()}<div class="page"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section><h2 class="section-label">Vælg et område</h2><section class="topic-grid">${availableTopics.map(key => { const t=TOPICS[key]; return `<button class="topic-card" data-topic="${key}"><span class="topic-icon">${t.icon}</span><strong>${t.name}</strong><small>${t.description}</small></button>`; }).join("")}${isGuest() ? "" : `<button class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`}</section><h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div>`;
+    app.innerHTML = `${header()}<div class="page student-home-layout">${renderMathTower(availableTopics)}<div class="student-home-content"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section><h2 class="section-label">Vælg et område</h2><section class="topic-grid">${availableTopics.map(key => { const t=TOPICS[key]; return `<button class="topic-card" data-topic="${key}"><span class="topic-icon">${t.icon}</span><strong>${t.name}</strong><small>${t.description}</small></button>`; }).join("")}${isGuest() ? "" : `<button class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`}</section><h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div></div>`;
   }
   function renderStudentPassword() {
     app.innerHTML = `${header()}<div class="page"><section class="class-manager"><div class="class-manager-title"><div><span class="eyebrow">Min profil</span><h1>Skift adgangskode</h1><p>Vælg en ny adgangskode til din bruger.</p></div></div><form id="student-password-form" class="student-form"><div class="field"><label for="current-password">Nuværende adgangskode</label><input id="current-password" name="currentPassword" type="password" autocomplete="current-password" required></div><div class="field"><label for="new-password">Ny adgangskode</label><input id="new-password" name="newPassword" type="password" autocomplete="new-password" required></div><div class="field"><label for="confirm-password">Gentag ny adgangskode</label><input id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" required></div><p id="password-error" class="student-error" role="alert"></p><div class="student-manager-buttons"><button class="btn" type="submit">Gem adgangskode</button><button class="btn secondary" type="button" data-action="home">Annuller</button></div></form></section></div>`;
@@ -2265,3 +2337,4 @@
   }
   start();
 })();
+

@@ -631,3 +631,50 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
   .luigi-pizza-copy .btn { width:100%; }
 }
 @media (prefers-reduced-motion:reduce) { * { scroll-behavior:auto!important; transition:none!important; animation:none!important; } }
+
+
+/* Student home: seven skill floors change building material with the student's score. */
+.student-home-layout { width:min(1440px,calc(100% - 40px)); display:grid; grid-template-columns:280px minmax(0,1fr); gap:36px; align-items:start; }
+.student-home-content { min-width:0; }
+.student-home-content .topic-grid,.student-home-content .recent-strip { grid-template-columns:repeat(3,minmax(0,1fr)); }
+.math-tower { padding-top:16px; text-align:center; }
+.math-tower h2 { font:900 29px/1.1 Georgia,serif; letter-spacing:-.04em; margin:7px 0 10px; }
+.math-tower>p { color:var(--muted); font-size:14px; line-height:1.5; margin:0 auto 12px; }
+.math-tower-building { position:relative; display:flex; flex-direction:column; padding:0 4px; filter:drop-shadow(3px 7px 4px #17243d15); }
+.math-tower-crown { width:80%; margin:0 auto -3px; line-height:0; }
+.math-tower-crown svg { width:100%; }
+.math-tower-level { position:relative; isolation:isolate; display:block; width:calc(84% + var(--floor)*2.6%); align-self:center; height:92px; flex-shrink:0; padding:0 17px; border:0; background:transparent; color:#17243d; cursor:pointer; text-align:left; }
+.math-tower-floor-art { position:absolute; inset:0; width:100%; height:100%; z-index:-1; }
+.math-tower-plaque { display:flex; align-items:center; gap:6px; width:100%; padding:8px 7px; border:1px solid #544932; border-radius:4px; background:#fff7e8f2; box-shadow:1px 3px 0 #27313a40; }
+.math-tower-name { flex:1; min-width:0; font-size:13px; font-weight:850; line-height:1.2; }
+.math-tower-name small { display:block; margin-top:3px; font-size:10px; font-weight:600; color:#59616b; }
+.math-tower-symbol { flex:0 0 27px; text-align:center; font:900 25px/1 Georgia,serif; color:#5144ba; }
+.math-tower-level:last-child .math-tower-symbol { font-size:14px; }
+.math-tower-score { font-size:18px; font-weight:900; white-space:nowrap; }
+.math-tower-score small { font-size:10px; margin-left:1px; }
+.tower-frame .math-tower-floor-art { transform-origin:50% 100%; animation:tower-wobble 4.8s ease-in-out infinite; animation-delay:calc(var(--floor)*-.7s); }
+.tower-frame .math-tower-plaque { border-style:dashed; background:#f7f0e3f5; }
+.tower-wood .math-tower-plaque { background:#ffebc9f2; }
+.tower-timber .math-tower-plaque { background:#f7efdff5; }
+.tower-granite .math-tower-plaque { background:#edf3f3f5; border-color:#52626b; }
+.tower-granite .math-tower-score { color:#285347; }
+.math-tower-level:not(:disabled):hover .math-tower-plaque { outline:2px solid var(--purple); outline-offset:2px; }
+.math-tower-level:focus-visible { outline:3px solid var(--purple); outline-offset:2px; border-radius:5px; }
+.math-tower-level:disabled { cursor:default; }
+.math-tower-level:disabled .math-tower-plaque { color:#626570; }
+.math-tower-foundation { position:relative; padding:13px 8px; background:#343b46; color:#fff3d7; border-radius:5px 5px 12px 12px; font-size:12px; font-weight:850; letter-spacing:.09em; text-transform:uppercase; box-shadow:0 9px 20px #17243d15; }
+.math-tower-legend { display:grid; grid-template-columns:1fr 1fr; gap:9px 6px; margin:19px 0 14px; text-align:left; font-size:10px; font-weight:700; color:#515b66; }
+.math-tower-legend span { display:flex; align-items:center; gap:5px; }
+.math-tower-legend i { width:15px; height:15px; border:1px solid #655b4a; display:inline-block; flex-shrink:0; }
+.legend-frame { background:linear-gradient(45deg,transparent 42%,#88775e 43% 57%,transparent 58%); }
+.legend-wood { background:repeating-linear-gradient(0deg,#bb8549 0 4px,#805632 4px 5px); }
+.legend-timber { background:linear-gradient(45deg,transparent 42%,#67472f 43% 57%,transparent 58%),#e8dbc0; }
+.legend-granite { background:repeating-linear-gradient(0deg,#aeb5b6 0 5px,#535e65 5px 6px); }
+.math-tower-help { color:var(--muted); font-size:12px; text-align:left; line-height:1.5; }
+.math-tower-help summary { cursor:pointer; text-align:center; }
+.math-tower-help p { margin:10px 0; }
+@keyframes tower-wobble { 0%,100% { transform:rotate(-.8deg); } 50% { transform:rotate(.8deg); } }
+@media(max-width:1100px) { .student-home-layout { grid-template-columns:260px minmax(0,1fr); gap:24px; } .student-home-content .topic-grid,.student-home-content .recent-strip { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+@media(max-width:760px) { .student-home-layout { grid-template-columns:minmax(0,1fr); width:calc(100% - 24px); gap:28px; padding-top:20px; } .math-tower { width:min(310px,100%); margin:auto; } .math-tower-level { height:76px; } }
+@media(max-width:560px) { .student-home-content .topic-grid,.student-home-content .recent-strip { grid-template-columns:minmax(0,1fr); } }
+@media(prefers-reduced-motion:reduce) { .tower-frame .math-tower-floor-art { animation:none; } }
