@@ -1,4 +1,9 @@
 import * as THREE from 'three';
+import { createOnlineGame } from './fps-online.js?v=20260907-online1';
+let multiplayer = null;
+import { createGameVoicePlayer } from './fps-voice.js?v=20260907-danish1';
+const gameVoice = createGameVoicePlayer();
+import { createSchoolWindows } from './fps-windows.js?v=20260907-windows1';
 import { createPlayerMovement } from './fps-movement.js?v=20260907-ducts1';
 import { createDuctBuilder } from './fps-ducts.js?v=20260907-ducts1';
 import { createSchoolInteriorMaterials, applySchoolSurfaceUV } from './fps-interior.js?v=20260907-interior1';
@@ -203,7 +208,7 @@ box(0, WALL_H + .1, 0, WORLD + .45, .2, WORLD + .45, interiorMaterials.ceiling, 
 box(0, WALL_H / 2, -WORLD / 2, WORLD, WALL_H, .45);
 box(0, WALL_H / 2, WORLD / 2, WORLD, WALL_H, .45);
 box(-WORLD / 2, WALL_H / 2, 0, .45, WALL_H, WORLD);
-box(WORLD / 2, WALL_H / 2, 0, .45, WALL_H, WORLD);
+const schoolWindows = createSchoolWindows({ scene, box, wallMaterial:wallMat, wallHeight:WALL_H });
 const schoolPartition = createDuctBuilder({ box, wallMaterial:wallMat, wallHeight:WALL_H, renderer });
 [
   [-13,-17,18,.35,true],[-13,1,18,.35],[-13,20,14,.35],
@@ -212,7 +217,7 @@ const schoolPartition = createDuctBuilder({ box, wallMaterial:wallMat, wallHeigh
   [-21,10,.35,14],[-6,10,.35,12,true],[9,10,.35,10,true],[21,10,.35,11],
 ].forEach(([x,z,w,d,hasDuct]) => schoolPartition(x,z,w,d,hasDuct));
 box(-26, 1.15, -2, .08, 1.25, 8, trimMat, false);
-box(26, 1.15, 5, .08, 1.25, 9, trimMat, false);
+box(26, 1.15, 7, .08, 1.25, 4, trimMat, false);
 box(-19, 1.65, -26.7, 8, 1.55, .08, mat(0x29483e), false);
 box(19, 1.65, 26.7, 8, 1.55, .08, mat(0x29483e), false);
 [
@@ -313,6 +318,7 @@ function updateBossHud() {
 }
 
 function showVictory() {
+  gameVoice.stop();
   elseAttacks.clear();
   gameActive = false;
   controls.unlock();
@@ -409,16 +415,7 @@ function clearEnemies() {
 }
 
 function speakLine(text, opts = {}) {
-  if (!('speechSynthesis' in window)) return;
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'da-DK';
-  u.rate = opts.rate || .86;
-  u.pitch = opts.pitch || .68;
-  u.volume = opts.volume || .92;
-  const voices = speechSynthesis.getVoices();
-  const danish = voices.find(v => /^da(-|_)/i.test(v.lang)) || voices.find(v => /danish/i.test(v.name));
-  if (danish) u.voice = danish;
-  speechSynthesis.speak(u);
+  void gameVoice.play(text, { volume:opts.volume ?? .92 });
 }
 function speakSpawn() {
   const lines = ['Nu kommer Erling!', 'Ned med de dygtige!'];
@@ -435,7 +432,7 @@ function speakElse(force = false) {
   speakLine('Tid til eksamen!', { rate:.68, pitch:.58, volume:1 });
 }
 function maybeSpeakWhileMoving(now) {
-  if (divisionChallenge?.active || now - lastMoveVoiceAt < 5600 || !('speechSynthesis' in window) || speechSynthesis.speaking) return;
+  if (divisionChallenge?.active || now - lastMoveVoiceAt < 5600 || gameVoice.speaking) return;
   lastMoveVoiceAt = now;
   if (enemies.some(e => e.type === 'else')) { speakElse(); return; }
   if (enemies.some(e => e.type === 'gunnar')) { speakGunnar(); return; }
@@ -459,7 +456,7 @@ function ensureMusic() {
   const bass = [55,55,65.41,55,73.42,65.41,55,49];
   const lead = [220,261.63,293.66,329.63,293.66,261.63,220,196];
   musicTimer = setInterval(() => {
-    if (!gameActive || musicMuted || audioCtx.state !== 'running') return;
+    if ((!gameActive && !multiplayer?.active) || musicMuted || audioCtx.state !== 'running') return;
     const now = audioCtx.currentTime;
     const hit = (freq, duration, type, gainValue) => {
       const osc = audioCtx.createOscillator();
@@ -511,6 +508,7 @@ function makePencil() {
   return group;
 }
 function firePencil() {
+  if (multiplayer?.active) { multiplayer.fire(); return; }
   if (!gameActive || !controls.isLocked || ammo <= 0 || divisionChallenge?.active) return;
   ammo--;
   updateHUD();
@@ -908,6 +906,7 @@ function hurt(enemy, projectileHit = false) {
   else if (enemy?.type === 'else') enemy.group.position.set(0,0,60);
   else if (enemy) removeEnemy(enemy);
   if (lives <= 0) {
+    gameVoice.stop();
     gameActive = false;
     controls.unlock();
     document.getElementById('final-score').textContent = score;
@@ -965,6 +964,12 @@ function updateCamping(now, moved) {
 }
 
 addEventListener('keydown', e => {
+  if (multiplayer?.active) {
+    if (e.code === 'KeyM' && !e.repeat && !/INPUT|TEXTAREA/.test(e.target?.tagName)) toggleMusic();
+    multiplayer.keydown(e);
+    return;
+  }
+  if (/INPUT|TEXTAREA/.test(e.target?.tagName)) return;
   keys[e.code] = true;
   if (gameActive && /^(Control|Shift|Key[WASD]|Space|Digit|Numpad|Enter|Backspace)/.test(e.code)) e.preventDefault();
   if (e.code === 'KeyM' && !e.repeat) {
@@ -995,7 +1000,8 @@ canvas.addEventListener('click', () => { if (gameActive && !controls.isLocked) c
 controls.addEventListener('lock', () => document.getElementById('pointer-note').classList.remove('show'));
 controls.addEventListener('unlock', () => { clearMovementKeys(); if (gameActive) document.getElementById('pointer-note').classList.add('show'); });
 
-function resetGame() {
+function resetGame(online = false) {
+  gameVoice.stop();
   elseAttacks.clear();
   [...projectiles].forEach(removeProjectile);
   invulnerableUntil = 0;
@@ -1021,7 +1027,7 @@ function resetGame() {
   updateHUD();
   clearEnemies();
   newProblem();
-  spawnWave(1,true);
+  if (!online) spawnWave(1,true);
 }
 
 startButton.addEventListener('click', () => {
@@ -1048,6 +1054,7 @@ document.getElementById('restart-button').addEventListener('click', () => {
 });
 
 function update(dt, time) {
+  if (multiplayer?.active) { multiplayer.update(dt,time); return; }
   if (!gameActive) return;
   const moved = playerMovement.update(dt);
   updateCamping(time,moved);
@@ -1111,6 +1118,7 @@ function update(dt, time) {
 function loop(t) {
   const dt = Math.min((t - last) / 1000, .04);
   last = t;
+  schoolWindows.update(t);
   update(dt,t);
   renderer.render(scene,camera);
   requestAnimationFrame(loop);
@@ -1125,3 +1133,11 @@ addEventListener('resize', () => {
 
 createSchoolyardDoor();
 updateHUD();
+
+multiplayer = createOnlineGame({
+  scene, camera, controls, colliders, makePencil, flash,
+  prepare: () => { gameActive = false; resetGame(true); },
+  ready: () => charactersReady && playerRulesReady,
+  textures: () => ({ erling:erlingTexture, gunnar:gunnarTexture }),
+  startAudio: () => { ensureMusic(); audioCtx?.resume(); },
+});
