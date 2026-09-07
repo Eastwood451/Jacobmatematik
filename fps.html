@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#121820">
   <title>Erling FPS · Jacob Matematik</title>
-  <link rel="stylesheet" href="fps.css?v=20260907-online1">
+  <link rel="stylesheet" href="fps.css?v=20260907-avatar1">
   <script type="importmap">
   {
     "imports": {
@@ -68,6 +68,8 @@
         <div id="online-setup">
           <label class="online-label" for="online-name">Dit kaldenavn</label>
           <input id="online-name" maxlength="18" autocomplete="off" placeholder="Fx Blyanthelten">
+          <fieldset id="avatar-options" class="avatar-options"><legend>Vælg din avatar</legend></fieldset>
+          <p class="avatar-hint">De andre ser dig som denne figur. Alle tre har samme evner.</p>
           <fieldset class="mode-options">
             <legend>Vælg spilform til din server</legend>
             <label><input type="radio" name="online-mode" value="deathmatch" checked><span><strong>Deathmatch</strong><small>Mod hinanden · Først til 10 point. Du genopstår efter 3 sekunder.</small></span></label>
@@ -91,6 +93,7 @@
 
     <aside id="online-hud" hidden>
       <strong id="online-match-label"></strong>
+      <div class="self-avatar-row"><img id="self-avatar" alt="" width="36" height="42"><span id="self-avatar-name"></span></div>
       <ol id="online-scores"></ol>
       <p id="online-objective"></p>
       <button id="exit-match" type="button">Forlad server (Esc → klik)</button>
@@ -111,7 +114,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=66d7f7d7"></script>
   <script src="supabase-backend.js?v=20260907-online1"></script>
-  <script type="module" src="fps.js?v=20260907-windows-no-smykker1"></script>
+  <script type="module" src="fps.js?v=20260907-avatar1"></script>
   <script src="fps-ammo-ui.js?v=20260905-ammo1" defer></script>
 </body>
 </html>

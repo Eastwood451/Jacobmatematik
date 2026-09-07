@@ -22,7 +22,7 @@ async function solve(page){
 }
 (async()=>{
   await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
-  const base=`http://127.0.0.1:${server.address().port}/fps.html`;
+  const base=process.env.ERLING_TEST_URL||`http://127.0.0.1:${server.address().port}/fps.html`;
   const browser=await chromium.launch({channel:'chrome',headless:true,args:['--autoplay-policy=no-user-gesture-required']});
   const errors=[];
   try{
@@ -37,15 +37,31 @@ async function solve(page){
     for(const mode of ['deathmatch','coop']){
       if(mode==='deathmatch') await Promise.all([a.locator('#online-button').click(),b.locator('#online-button').click()]);
       await a.locator('#online-name').fill('Test Anna');await b.locator('#online-name').fill('Test Bo');
+      const annaAvatar=mode==='deathmatch'?'luigi':'dennis',boAvatar=mode==='deathmatch'?'kaptajn':'luigi';
+      await a.locator(`[name=online-avatar][value=${annaAvatar}]`).check();
+      await b.locator(`[name=online-avatar][value=${boAvatar}]`).check();
+      assert.equal(await a.locator('[name=online-avatar]').count(),3);
+      assert.equal(await a.evaluate(()=>localStorage.getItem('erling-avatar')),annaAvatar);
+      if(mode==='deathmatch') {
+        await a.screenshot({path:path.join(root,'test-results/avatar-picker.png')});
+        await a.setViewportSize({width:390,height:844});
+        await a.locator('#avatar-options').scrollIntoViewIfNeeded();
+        await a.screenshot({path:path.join(root,'test-results/avatar-picker-mobile.png')});
+        await a.setViewportSize({width:1365,height:900});
+      }
       await a.locator(`[name=online-mode][value=${mode}]`).check();await a.locator('#create-room').click();
       await waitText(a,'#lobby-code',/^[A-Z2-9]{8}$/);
       const code=await a.locator('#lobby-code').innerText();
       await b.locator('#room-code').fill(code);await b.locator('#join-room').click();
       await waitText(a,'#lobby-players',/Test Bo/);await waitText(b,'#lobby-players',/Test Anna/);
+      await waitText(a,`#lobby-players li[data-avatar=${boAvatar}]`,/Test Bo/);
+      await waitText(b,`#lobby-players li[data-avatar=${annaAvatar}]`,/Test Anna/);
       await a.screenshot({path:path.join(root,`test-results/${mode}-lobby.png`)});
       await a.locator('#begin-match').click();
       await Promise.all([a.locator('#online-overlay').waitFor({state:'hidden'}),b.locator('#online-overlay').waitFor({state:'hidden'})]);
       await solve(a);await solve(b);
+      assert.equal(await a.locator('#self-avatar').getAttribute('data-avatar'),annaAvatar);
+      assert.equal(await b.locator('#self-avatar').getAttribute('data-avatar'),boAvatar);
       if(mode==='deathmatch') {
         // Both spawn in the main corridor facing each other. Exercise a real
         // pointer-lock shot and observe the victim's host-owned health remotely.
@@ -54,6 +70,8 @@ async function solve(page){
         await a.mouse.click(682,400);
         await waitText(a,'#ammo',/^0$/);
         await waitText(b,'#online-scores',/Test Bo \(dig\) — 0 point · 4 ♥/);
+        await a.keyboard.down('Shift');await a.keyboard.down('w');await a.waitForTimeout(3500);
+        await a.keyboard.up('w');await a.keyboard.up('Shift');
         await a.keyboard.press('Escape');
       }
       await a.screenshot({path:path.join(root,`test-results/${mode}-match.png`)});

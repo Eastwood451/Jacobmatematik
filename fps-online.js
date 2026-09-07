@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { createPlayerMovement } from './fps-movement.js?v=20260907-ducts1';
-import { GameRoom, roomCode } from './fps-room.js?v=20260907-online1';
+import { GameRoom, roomCode } from './fps-room.js?v=20260907-avatar1';
+import { AVATARS, avatarFor, normalizeAvatar } from './fps-avatars.js?v=20260907-avatar1';
 import { createErlingRig, animateErling, disposeErlingRig } from './fps-visuals.js?v=20260907-sprites1';
 import { createGunnarRig } from './fps-gunnar.js?v=20260907-sprites1';
 
@@ -12,6 +13,28 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
   let room=null, state=null, me=null, epoch=-1, answer='';
   let busy=false, lastPhase='', previousHp=5, problemId=null, syncing=false;
   const keys={}, objects=new Map();
+  const avatarTextures=new Map();
+  let selectedAvatar='dennis';
+  try {selectedAvatar=normalizeAvatar(localStorage.getItem('erling-avatar'));} catch {}
+  for(const avatar of AVATARS) {
+    const label=document.createElement('label');label.className='avatar-card';
+    const input=document.createElement('input');input.type='radio';input.name='online-avatar';input.value=avatar.id;input.checked=avatar.id===selectedAvatar;
+    const img=document.createElement('img');img.src=avatar.image;img.alt='';img.width=100;img.height=112;
+    const title=document.createElement('span');title.textContent=avatar.name;
+    label.append(input,img,title);$('avatar-options').append(label);
+    input.addEventListener('change',()=>{
+      selectedAvatar=avatar.id;
+      try {localStorage.setItem('erling-avatar',selectedAvatar);} catch {}
+    });
+  }
+  async function loadAvatars() {
+    await Promise.all(AVATARS.map(async avatar=>{
+      if(avatarTextures.has(avatar.id)) return;
+      const texture=await new THREE.TextureLoader().loadAsync(avatar.image);
+      texture.colorSpace=THREE.SRGBColorSpace;
+      avatarTextures.set(avatar.id,texture);
+    }));
+  }
   const movement=createPlayerMovement({camera,colliders,keys});
   const blocked=(x,z,r=.48,y=0,height=1.95)=>colliders.some(c=>x+r>c.min.x && x-r<c.max.x && z+r>c.min.z && z-r<c.max.z && c.max.y>y+.025 && c.min.y<y+height);
 
@@ -22,7 +45,7 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
   function dispose(object) {
     scene.remove(object.group);
     if(object.rig) disposeErlingRig(object.rig);
-    else object.group.traverse(o=>{o.geometry?.dispose();if(o.material){o.material.map?.dispose();o.material.dispose();}});
+    else object.group.traverse(o=>{o.geometry?.dispose();if(o.material){if(!o.userData.sharedAvatarTexture)o.material.map?.dispose();o.material.dispose();}});
   }
   function stop(message='') {
     const previous=room; room=null; void previous?.close();
@@ -49,12 +72,15 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
     const next=new GameRoom(window.JacobBackend?.realtimeClient,{blocked,onState:receive,onError:message=>stop(message)});
     room=next;
     try {
-      await next.open({host,code:host?roomCode():$('room-code').value,mode:document.querySelector('[name=online-mode]:checked').value,name:$('online-name').value||`Elev ${Math.floor(Math.random()*90)+10}`});
+      text($('online-status'),'Henter avatarer…');
+      await loadAvatars();
+      if(room!==next) return;
+      await next.open({host,code:host?roomCode():$('room-code').value,mode:document.querySelector('[name=online-mode]:checked').value,name:$('online-name').value||`Elev ${Math.floor(Math.random()*90)+10}`,avatar:selectedAvatar});
       if(room!==next) return;
       $('online-setup').hidden=true; $('online-lobby').hidden=false;
       text($('lobby-code'),next.code);
       text($('online-status'),host?'Serveren er klar. Del koden eller linket.':'Venter på svar fra værten…');
-    } catch(error) { if(room===next) stop(error.message); }
+    } catch(error) { if(room===next) stop(error.message||'Avatarerne kunne ikke hentes. Prøv igen.'); }
     finally {setBusy(false);}
   }
   function receive(next,player) {
@@ -81,8 +107,16 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
     }
     const rows=next.players.map(p=>`${p.name}${p.id===room.id?' (dig)':''}${p.id===room.hostId?' · vært':''} — ${p.score} point · ${p.hp} ♥`);
     for(const id of ['lobby-players','online-scores']) {
-      const list=$(id), joined=rows.join('\n');
-      if(list.dataset.rows!==joined) {list.replaceChildren(...rows.map(row=>{const li=document.createElement('li');li.textContent=row;return li;}));list.dataset.rows=joined;}
+      const list=$(id), joined=rows.join('\n')+next.players.map(p=>normalizeAvatar(p.avatar)).join(',');
+      if(list.dataset.rows!==joined) {
+        list.replaceChildren(...rows.map((row,index)=>{
+          const li=document.createElement('li'),img=document.createElement('img'),span=document.createElement('span');
+          const avatar=avatarFor(next.players[index].avatar);
+          img.src=avatar.image;img.alt='';img.title=avatar.name;img.className='player-avatar';
+          span.textContent=id==='lobby-players'?`${row} · ${avatar.name}`:row;
+          li.dataset.avatar=avatar.id;li.append(img,span);return li;
+        }));list.dataset.rows=joined;
+      }
     }
     if(player.epoch!==epoch) {
       epoch=player.epoch; room.epoch=epoch; room.actions=[];
@@ -101,20 +135,27 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
     text(document.querySelector('.math-kicker'),next.mode==='coop'?'HOLDETS BLYANTER · GANGESTYKKER':'DEATHMATCH · GANGESTYKKER');
     text($('feedback'),player.hp<=0?(next.mode==='coop'?'Du genoplives ved næste bølge. Hep på holdet!':'Du genopstår om et øjeblik…'):(player.note||'Svar rigtigt for at få en blyant.'));
     text($('online-match-label'),`${next.mode==='coop'?'CO-OP':'DEATHMATCH'} · ${room.code}`);
+    const ownAvatar=avatarFor(player.avatar);
+    if($('self-avatar').dataset.avatar!==ownAvatar.id) {
+      $('self-avatar').src=ownAvatar.image;$('self-avatar').dataset.avatar=ownAvatar.id;
+      text($('self-avatar-name'),`Du er ${ownAvatar.name}`);
+    }
     text($('online-objective'),next.mode==='coop'?`Bølge ${Math.min(next.wave,5)}/5 · ${next.enemies.length} fjender tilbage · ${next.kills} besejret`:'Først til 10 point. Tre sekunders beskyttelse efter genopståen.');
     lastPhase=next.phase;
   }
   function playerObject(p,index) {
     const group=new THREE.Group(), colour=colours[index%colours.length];
-    const body=new THREE.Mesh(new THREE.CylinderGeometry(.32,.36,1.05,10),new THREE.MeshStandardMaterial({color:colour}));body.position.y=.92;
-    const head=new THREE.Mesh(new THREE.SphereGeometry(.26,12,8),new THREE.MeshStandardMaterial({color:0xf0ceb0}));head.position.y=1.65;
-    const nose=new THREE.Mesh(new THREE.BoxGeometry(.12,.12,.18),new THREE.MeshStandardMaterial({color:0xf0ceb0}));nose.position.set(0,1.65,-.26);
-    group.add(body,head,nose);
-    for(const x of [-.19,.19]) {const leg=new THREE.Mesh(new THREE.BoxGeometry(.2,.45,.25),new THREE.MeshStandardMaterial({color:0x223748}));leg.position.set(x,.23,0);group.add(leg);}
+    const avatar=avatarFor(p.avatar),map=avatarTextures.get(avatar.id);
+    const sprite=new THREE.Sprite(new THREE.SpriteMaterial({map,transparent:true,alphaTest:.12,depthWrite:true,toneMapped:false}));
+    sprite.name=`avatar:${avatar.id}`;sprite.userData.sharedAvatarTexture=true;sprite.center.set(.5,0);
+    sprite.scale.set(1.95*map.image.width/map.image.height,1.95,1);
+    const ring=new THREE.Mesh(new THREE.RingGeometry(.45,.52,32),new THREE.MeshBasicMaterial({color:colour,side:THREE.DoubleSide}));
+    ring.rotation.x=-Math.PI/2;ring.position.y=.025;
+    group.add(sprite,ring);
     const canvas=document.createElement('canvas');canvas.width=512;canvas.height=80;
     const ctx=canvas.getContext('2d');ctx.fillStyle='#14252f';ctx.fillRect(0,0,512,80);ctx.fillStyle='#fff6df';ctx.font='bold 38px Arial';ctx.textAlign='center';ctx.fillText(p.name,256,54,490);
     const label=new THREE.Sprite(new THREE.SpriteMaterial({map:new THREE.CanvasTexture(canvas),depthTest:true}));label.position.y=2.3;label.scale.set(2.8,.44,1);group.add(label);
-    scene.add(group);return {group};
+    scene.add(group);return {group,sprite};
   }
   function renderObjects(dt,time) {
     if(!state || state.phase!=='playing') return;
@@ -136,7 +177,10 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
       const target=new THREE.Vector3(item.x,item.kind==='player'?item.y-(item.crouching?.78:1.7):item.y||0,item.z);
       object.group.position.lerp(target,1-Math.exp(-18*dt));
       if(item.kind==='shot') object.group.quaternion.setFromUnitVectors(new THREE.Vector3(1,0,0),new THREE.Vector3(item.dx,item.dy,item.dz));
-      else if(item.kind==='player') {object.group.rotation.y=item.yaw;object.group.scale.y=item.crouching?.55:1;}
+      else if(item.kind==='player') {
+        object.group.rotation.y=item.yaw;object.group.scale.y=item.crouching?.55:1;
+        object.sprite.position.y=Math.sin(time*.012)*Math.min(.035,object.group.position.distanceTo(old)*.4);
+      }
       else {
         object.group.lookAt(camera.position.x,0,camera.position.z);
         animateErling(object.rig,dt,time,object.group.position.distanceTo(old));
