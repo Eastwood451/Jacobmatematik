@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createSchoolInteriorMaterials, applySchoolSurfaceUV } from './fps-interior.js?v=20260907-interior1';
 import { createElseAttacks, ELSE_THROW_INTERVAL } from './fps-else-attacks.js?v=20260907-else-division1';
 import { createSchoolyard } from './fps-schoolyard.js?v=20260907-courtyard1';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
@@ -18,15 +19,16 @@ renderer.toneMappingExposure = 1.05;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x8eb5c4);
-scene.fog = new THREE.Fog(0x8eb5c4, 36, 96);
+scene.fog = new THREE.Fog(0xc8c6b7, 36, 96);
 
 const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, .08, 130);
 camera.position.set(0, 1.7, 18);
 const controls = new PointerLockControls(camera, document.body);
 scene.add(camera);
 
-scene.add(new THREE.HemisphereLight(0xdcefff, 0x62594c, 2.4));
-const sun = new THREE.DirectionalLight(0xfff1cf, 2.6);
+const hemisphere = new THREE.HemisphereLight(0xf4f1dc, 0xa4a29a, 2.2);
+scene.add(hemisphere);
+const sun = new THREE.DirectionalLight(0xfff1cf, .45);
 sun.position.set(-18, 28, 12);
 sun.castShadow = true;
 sun.shadow.mapSize.set(2048, 2048);
@@ -37,7 +39,7 @@ sun.shadow.camera.bottom = -45;
 scene.add(sun);
 
 const WORLD = 54;
-const WALL_H = 3.7;
+const WALL_H = 4.2;
 const PLAYER_R = .48;
 const EYE = 1.7;
 const colliders = [];
@@ -177,8 +179,9 @@ loadPlayerRules();
 function mat(color) {
   return new THREE.MeshStandardMaterial({ color, roughness:.82, metalness:.02 });
 }
-const floorMat = mat(0xc8b992);
-const wallMat = mat(0xe7dfc8);
+const interiorMaterials = createSchoolInteriorMaterials(renderer);
+const floorMat = interiorMaterials.floor;
+const wallMat = interiorMaterials.wall;
 const trimMat = mat(0x375d67);
 const deskMat = mat(0x9a633e);
 const lockerMat = mat(0x66838a);
@@ -186,6 +189,7 @@ const lockerMat = mat(0x66838a);
 function box(x, y, z, w, h, d, material = wallMat, solid = true) {
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
   mesh.position.set(x, y, z);
+  applySchoolSurfaceUV(mesh.geometry, material, mesh.position);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   scene.add(mesh);
@@ -194,6 +198,8 @@ function box(x, y, z, w, h, d, material = wallMat, solid = true) {
 }
 
 box(0, -.12, 0, WORLD, .24, WORLD, floorMat, false);
+// Closed roof over the indoor school only; also stops fired pencils.
+box(0, WALL_H + .1, 0, WORLD + .45, .2, WORLD + .45, interiorMaterials.ceiling, true);
 box(0, WALL_H / 2, -WORLD / 2, WORLD, WALL_H, .45);
 box(0, WALL_H / 2, WORLD / 2, WORLD, WALL_H, .45);
 box(-WORLD / 2, WALL_H / 2, 0, .45, WALL_H, WORLD);
@@ -219,12 +225,20 @@ box(19, 1.65, 26.7, 8, 1.55, .08, mat(0x29483e), false);
   box(x + .85, .27, z, .12, .55, 1, deskMat, true);
 });
 for (let z = -20; z <= 20; z += 2.2) box(-25.4, 1, z, .8, 2, 1.7, lockerMat, true);
+const fixtureMat = mat(0xbabeb5);
+const tubeMat = new THREE.MeshStandardMaterial({ color:0xfff4d5, emissive:0xffedc2, emissiveIntensity:1.2, roughness:.45 });
+function ceilingFixture(x,z) {
+  box(x,WALL_H-.09,z,2.8,.16,.62,fixtureMat,false);
+  for(const offset of [-.17,.17]) box(x,WALL_H-.19,z+offset,2.5,.08,.095,tubeMat,false);
+}
 for (let z = -21; z <= 21; z += 7) {
-  box(0, 3.48, z, 4, .08, .7, mat(0xf6e6ae), false);
-  const light = new THREE.PointLight(0xffe8ad, .85, 10);
-  light.position.set(0, 3.15, z);
+  ceilingFixture(0,z);
+  const light = new THREE.PointLight(0xffefd0,14,17);
+  light.position.set(0,WALL_H-.35,z);
   scene.add(light);
 }
+for(const x of [-17,17])for(const z of [-18,0,18])ceilingFixture(x,z);
+
 addSchoolWallArt(scene, renderer);
 
 const keys = {};
@@ -801,10 +815,14 @@ function buildSchoolyard() {
 
 function setSchoolyardLighting(active) {
   schoolyardScenery?.setActive(active);
+  sun.intensity = active ? 2.6 : .45;
+  hemisphere.color.set(active ? 0xdcefff : 0xf4f1dc);
+  hemisphere.groundColor.set(active ? 0x62594c : 0xa4a29a);
+  hemisphere.intensity = active ? 2.4 : 2.2;
   sun.position.set(-18,28,active ? 64 : 12);
   sun.target.position.set(0,0,active ? 52 : 0);
   sun.target.updateMatrixWorld();
-  scene.fog.color.set(active ? 0xc9dadb : 0x8eb5c4);
+  scene.fog.color.set(active ? 0xc9dadb : 0xc8c6b7);
   scene.fog.near = active ? 55 : 36;
   scene.fog.far = active ? 125 : 96;
 }
