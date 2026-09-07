@@ -63,6 +63,18 @@ skærmbilleder gemmes i den ignorerede mappe `test-results/`.
 
 Se `SUPABASE_SETUP.md` for opsætning af central database og login.
 
+## Danske stemmer i Erling FPS
+
+Spillets replikker afspilles fra faste danske MP3-filer via `fps-voice.js`.
+Browserens sprog og installerede oplæsningsstemmer påvirker derfor ikke udtalen.
+Replikker og stemmeprofiler findes i `fps-voice-lines.json`; lydfilerne ligger i
+`assets/figurer/audio/`. Nye replikker skal have en lydfil før brug.
+
+Genopbyg med `python scripts/generate_fps_audio.py` (kræver `edge-tts` og
+`imageio-ffmpeg`). Eksisterende klip bevares; `--force` regenererer dem.
+`node scripts/test-fps-voice.cjs` afprøver engelsk Chrome uden browseroplæsning
+(kræver Playwright). Ingen stemmegenerering eller ekstern lydtjeneste bruges under spillet.
+
 ## Webadresse
 
 - https://jacobmatematik.dk

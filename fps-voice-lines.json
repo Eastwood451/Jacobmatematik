@@ -1,0 +1,19 @@
+{
+  "profiles": {
+    "erling": { "voice": "da-DK-JeppeNeural", "rate": "-11%", "pitch": "-15Hz" },
+    "gunnar": { "voice": "da-DK-JeppeNeural", "rate": "-3%", "pitch": "+5Hz" },
+    "else": { "voice": "da-DK-ChristelNeural", "rate": "-16%", "pitch": "-8Hz" }
+  },
+  "lines": [
+    { "id": "erling-nu-kommer-erling", "character": "erling", "text": "Nu kommer Erling!" },
+    { "id": "erling-ned-med-de-dygtige", "character": "erling", "text": "Ned med de dygtige!" },
+    { "id": "erling-nu-har-jeg-dig", "character": "erling", "text": "Nu har jeg dig!" },
+    { "id": "erling-matematik-eksamen", "character": "erling", "text": "Jeg slapper din matematik-eksamen!" },
+    { "id": "erling-du-skal-vaere-et-nul", "character": "erling", "text": "Du skal være et nul ligesom mig!" },
+    { "id": "erling-du-camper", "character": "erling", "text": "Du CAMPER! Jeg HAR dig!" },
+    { "id": "gunnar-jeg-er-den-seje", "character": "gunnar", "text": "Jeg er den seje!" },
+    { "id": "gunnar-giv-mig-din-madpakke", "character": "gunnar", "text": "Giv mig din madpakke!" },
+    { "id": "gunnar-in-the-house", "character": "gunnar", "text": "Gunnar in the house!" },
+    { "id": "else-tid-til-eksamen", "character": "else", "text": "Tid til eksamen!" }
+  ]
+}

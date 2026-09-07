@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { createGameVoicePlayer } from './fps-voice.js?v=20260907-danish1';
+const gameVoice = createGameVoicePlayer();
 import { createPlayerMovement } from './fps-movement.js?v=20260907-ducts1';
 import { createDuctBuilder } from './fps-ducts.js?v=20260907-ducts1';
 import { createSchoolInteriorMaterials, applySchoolSurfaceUV } from './fps-interior.js?v=20260907-interior1';
@@ -315,6 +317,7 @@ function updateBossHud() {
 }
 
 function showVictory() {
+  gameVoice.stop();
   elseAttacks.clear();
   gameActive = false;
   controls.unlock();
@@ -411,16 +414,7 @@ function clearEnemies() {
 }
 
 function speakLine(text, opts = {}) {
-  if (!('speechSynthesis' in window)) return;
-  const u = new SpeechSynthesisUtterance(text);
-  u.lang = 'da-DK';
-  u.rate = opts.rate || .86;
-  u.pitch = opts.pitch || .68;
-  u.volume = opts.volume || .92;
-  const voices = speechSynthesis.getVoices();
-  const danish = voices.find(v => /^da(-|_)/i.test(v.lang)) || voices.find(v => /danish/i.test(v.name));
-  if (danish) u.voice = danish;
-  speechSynthesis.speak(u);
+  void gameVoice.play(text, { volume:opts.volume ?? .92 });
 }
 function speakSpawn() {
   const lines = ['Nu kommer Erling!', 'Ned med de dygtige!'];
@@ -437,7 +431,7 @@ function speakElse(force = false) {
   speakLine('Tid til eksamen!', { rate:.68, pitch:.58, volume:1 });
 }
 function maybeSpeakWhileMoving(now) {
-  if (divisionChallenge?.active || now - lastMoveVoiceAt < 5600 || !('speechSynthesis' in window) || speechSynthesis.speaking) return;
+  if (divisionChallenge?.active || now - lastMoveVoiceAt < 5600 || gameVoice.speaking) return;
   lastMoveVoiceAt = now;
   if (enemies.some(e => e.type === 'else')) { speakElse(); return; }
   if (enemies.some(e => e.type === 'gunnar')) { speakGunnar(); return; }
@@ -911,6 +905,7 @@ function hurt(enemy, projectileHit = false) {
   else if (enemy?.type === 'else') enemy.group.position.set(0,0,60);
   else if (enemy) removeEnemy(enemy);
   if (lives <= 0) {
+    gameVoice.stop();
     gameActive = false;
     controls.unlock();
     document.getElementById('final-score').textContent = score;
@@ -1005,6 +1000,7 @@ controls.addEventListener('lock', () => document.getElementById('pointer-note').
 controls.addEventListener('unlock', () => { clearMovementKeys(); if (gameActive) document.getElementById('pointer-note').classList.add('show'); });
 
 function resetGame(online = false) {
+  gameVoice.stop();
   elseAttacks.clear();
   [...projectiles].forEach(removeProjectile);
   invulnerableUntil = 0;
