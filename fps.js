@@ -671,6 +671,10 @@ function nextDivisionProblem() {
 function finishDivisionChallenge(success) {
   if (!divisionChallenge?.active) return;
   divisionChallenge.active = false;
+  const finishedProblem = problem;
+  if (finishedProblem) finishedProblem.resolved = true;
+  answer = '';
+  answerEl.textContent = '_';
   removeMagicCircle();
   lastPlayerMoveAt = performance.now();
   if (success) {
@@ -686,11 +690,14 @@ function finishDivisionChallenge(success) {
     feedbackEl.textContent = 'Fjenderne bevæger sig igen.';
     feedbackEl.className = 'feedback bad';
   }
-  setTimeout(() => { if (gameActive) newProblem(); }, 850);
+  setTimeout(() => {
+    if (gameActive && problem === finishedProblem && !divisionChallenge?.active) newProblem();
+  }, 850);
 }
 function submitDivisionAnswer() {
-  if (!divisionChallenge?.active || !answer) return;
+  if (!divisionChallenge?.active || !problem || problem.resolved || !answer) return;
   if (Number(answer) === problem.answer) {
+    problem.resolved = true;
     divisionChallenge.correct++;
     answer = '';
     answerEl.textContent = '_';
@@ -917,17 +924,23 @@ function hurt(enemy, projectileHit = false) {
   if (!schoolyardEntered && enemies.length === 0 && !schoolyardDoorOpen) spawnWave(1,true);
 }
 function submitAnswer() {
+  if (!gameActive || !problem || problem.resolved || !answer) return;
   if (divisionChallenge?.active) {
     submitDivisionAnswer();
     return;
   }
-  if (!problem || !answer) return;
   if (Number(answer) === problem.answer) {
+    // Consume this problem before granting ammo, including repeated/synthetic Enter events.
+    const solvedProblem = problem;
+    solvedProblem.resolved = true;
+    answer = '';
     ammo++;
     feedbackEl.textContent = 'KORREKT! +1 BLYANT ✎';
     feedbackEl.className = 'feedback good';
     updateHUD();
-    setTimeout(() => { if (gameActive && !divisionChallenge?.active) newProblem(); },420);
+    setTimeout(() => {
+      if (gameActive && problem === solvedProblem && !divisionChallenge?.active) newProblem();
+    },420);
   } else {
     feedbackEl.textContent = 'Forkert. Prøv igen.';
     feedbackEl.className = 'feedback bad';
@@ -980,13 +993,13 @@ addEventListener('keydown', e => {
     playerMovement.jump();
     e.preventDefault();
   }
-  if (/^Digit\d$/.test(e.code) && gameActive) {
+  if (/^Digit\d$/.test(e.code) && gameActive && problem && !problem.resolved) {
     if (answer.length < 3) {
       answer += e.code.slice(-1);
       answerEl.textContent = answer;
     }
   }
-  if (e.code === 'Backspace' && gameActive) {
+  if (e.code === 'Backspace' && gameActive && problem && !problem.resolved) {
     answer = answer.slice(0,-1);
     answerEl.textContent = answer || '_';
   }
