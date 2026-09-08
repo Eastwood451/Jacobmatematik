@@ -90,7 +90,9 @@ og [sidens oplysninger om brug](rettigheder.html). Offentlig adgang til
 repository'et er ikke en generel open source-licens til projektets eget
 beskyttede indhold. Tredjepartskomponenter følger deres egne licenser.
 
-**Klargøring før merge:** Udfyld juridisk ejer og kontakt i `LICENSE` og
-`rettigheder.html`, fjern udkastmarkeringen på rettighedssiden og gennemgå
+**Valgt ejer:** Jacob Elgaard.
+
+**Klargøring før merge:** Udfyld kontaktoplysningen i `rettigheder.html`,
+fjern udkastmarkeringen på rettighedssiden og gennemgå
 grundlaget for at give de beskrevne tilladelser. Den afgrænsede gennemgang
 af browserbiblioteker dokumenterer ikke lydtjenesternes outputrettigheder.
