@@ -4,8 +4,16 @@
   const config = window.JACOBMATEMATIK_SUPABASE || {};
   const configured = Boolean(config.url && config.publishableKey && window.supabase?.createClient);
   const client = configured ? window.supabase.createClient(config.url, config.publishableKey) : null;
-  const loginDomain = "users.jacobmatematik.invalid";
-  const emailForUsername = username => `${String(username).trim().toLowerCase()}@${loginDomain}`;
+  const normalizeUsername = value => String(value || "").trim().normalize("NFC").toLowerCase();
+  async function emailForUsername(value) {
+    const username = normalizeUsername(value);
+    // Keep existing ASCII logins unchanged. Unicode names use an ASCII-only
+    // internal address; the original name stays in profiles and school_state.
+    if (!/[æøå]/.test(username)) return `${username}@users.jacobmatematik.invalid`;
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(username));
+    const alias = Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, "0")).join("");
+    return `${alias}@unicode.users.jacobmatematik.invalid`;
+  }
   const withoutSecrets = user => {
     const { password, ...safeUser } = user;
     return safeUser;
@@ -32,7 +40,7 @@
   }
 
   async function signIn(username, password) {
-    const response = await client.auth.signInWithPassword({ email:emailForUsername(username), password });
+    const response = await client.auth.signInWithPassword({ email:await emailForUsername(username), password });
     throwIfError(response);
     return loadDatabase();
   }
@@ -96,6 +104,14 @@
   }
 
   async function manageStudent(action, values) {
+    if (["create", "profile", "username"].includes(action) && /[æøå]/.test(normalizeUsername(values.username))) {
+      // GitHub Pages and Edge Functions deploy independently. Do not let an
+      // older server create a Unicode account with an incompatible auth alias.
+      const support = await client.functions.invoke("manage-student", { body:{ action:"capabilities" } });
+      if (support.error || !support.data?.danishUsernames) {
+        throw new Error("Brugernavne med æ, ø og å afventer opdatering af elevadministrationen i Supabase.");
+      }
+    }
     const response = await client.functions.invoke("manage-student", { body:{ action, ...values } });
     throwIfError(response);
     if (response.data?.error) throw new Error(response.data.error);
@@ -103,7 +119,7 @@
   }
 
   async function changeOwnPassword(username, currentPassword, password) {
-    const signedIn = await client.auth.signInWithPassword({ email:emailForUsername(username), password:currentPassword });
+    const signedIn = await client.auth.signInWithPassword({ email:await emailForUsername(username), password:currentPassword });
     throwIfError(signedIn);
     const response = await client.auth.updateUser({ password });
     throwIfError(response);

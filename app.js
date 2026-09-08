@@ -2,6 +2,7 @@
 (() => {
   "use strict";
 
+  const normalizeUsername = value => String(value || "").trim().normalize("NFC").toLowerCase();
   const STORAGE_KEY = "jacobmatematik-db-v1";
   const TIMER_VISIBILITY_KEY = "jacobmatematik-show-exercise-timer";
   const LEGACY_STORAGE_KEYS = ["matbootcamp-db-v1", "talvaerkstedet-db-v1"];
@@ -2023,14 +2024,14 @@
   document.addEventListener("submit", async (event) => {
     event.preventDefault();
     if (event.target.id === "login-form") {
-      const data = new FormData(event.target), username=String(data.get("username")).trim().toLowerCase(), password=String(data.get("password"));
+      const data = new FormData(event.target), username=normalizeUsername(data.get("username")), password=String(data.get("password"));
       const error = document.getElementById("login-error");
       try {
         if (usingCentralDatabase) {
           const loaded = await backend.signIn(username, password);
           db = normalizeDatabase(loaded.database, false);
           state.user = db.users.find(user => user.id === loaded.currentUserId);
-        } else state.user = db.users.find(user => user.username.toLowerCase() === username && user.password === password);
+        } else state.user = db.users.find(user => normalizeUsername(user.username) === username && user.password === password);
         if (!state.user) throw new Error("Brugeren blev ikke fundet.");
         if (usingCentralDatabase && state.user.role === "teacher") await save();
         stopErlingAudio(); stopKaptajnAudio(); stopLuigiAudio();
@@ -2058,14 +2059,14 @@
       const data = new FormData(event.target);
       const student = db.users.find(user => user.id === String(data.get("studentId") || "") && user.role === "student" && user.classId === state.activeClassId);
       const name = String(data.get("studentName") || "").trim();
-      const username = String(data.get("studentUsername") || "").trim().toLowerCase();
+      const username = normalizeUsername(data.get("studentUsername"));
       const password = String(data.get("studentPassword") || "");
       const message = document.getElementById("student-profile-message");
       message.classList.remove("success");
       if (state.user.role !== "teacher" || !student) { message.textContent="Eleven blev ikke fundet."; return; }
       if (!name || !username) { message.textContent="Navn og brugernavn skal udfyldes."; return; }
-      if (!/^[a-z0-9._-]+$/i.test(username)) { message.textContent="Brugernavnet må kun indeholde bogstaver, tal, punktum, bindestreg og understregning."; return; }
-      if (db.users.some(user => user.id !== student.id && user.username.toLowerCase() === username)) { message.textContent="Brugernavnet er allerede i brug."; return; }
+      if (!/^[a-zæøå0-9._-]{1,40}$/i.test(username)) { message.textContent="Brug 1–40 tegn: a–z, æ, ø, å, tal, punktum, bindestreg eller understregning."; return; }
+      if (db.users.some(user => user.id !== student.id && normalizeUsername(user.username) === username)) { message.textContent="Brugernavnet er allerede i brug."; return; }
       try {
         if (usingCentralDatabase) {
           await backend.manageStudent("profile", { studentId:student.id, username, name, password });
@@ -2089,12 +2090,12 @@
     } else if (event.target.id === "student-form") {
       const data = new FormData(event.target);
       const name = String(data.get("studentName") || "").trim();
-      const username = String(data.get("studentUsername") || "").trim().toLowerCase();
+      const username = normalizeUsername(data.get("studentUsername"));
       const password = String(data.get("studentPassword") || "");
       const error = document.getElementById("student-error");
       if (!name || !username || !password) { error.textContent="Udfyld navn, brugernavn og adgangskode."; return; }
-      if (!/^[a-z0-9._-]+$/i.test(username)) { error.textContent="Brugernavnet må kun indeholde bogstaver, tal, punktum, bindestreg og understregning."; return; }
-      if (db.users.some(user => user.username.toLowerCase() === username)) { error.textContent="Brugernavnet er allerede i brug."; return; }
+      if (!/^[a-zæøå0-9._-]{1,40}$/i.test(username)) { error.textContent="Brug 1–40 tegn: a–z, æ, ø, å, tal, punktum, bindestreg eller understregning."; return; }
+      if (db.users.some(user => normalizeUsername(user.username) === username)) { error.textContent="Brugernavnet er allerede i brug."; return; }
       try {
         const remoteStudent = usingCentralDatabase ? await backend.manageStudent("create", { username, password, name }) : null;
         const newStudent = { id:remoteStudent?.id || `s-${Date.now().toString(36)}`, classId:state.activeClassId, role:"student", username, ...(usingCentralDatabase ? {} : { password }), name, results:[], assignedLetters:[...LETTER_KEYS], assignedNumbers:[...SMALL_TABLES], assignedTables:[...SMALL_TABLES], assignedAddends:[...SINGLE_DIGITS], assignedAddendSeconds:[...SINGLE_DIGITS] };
