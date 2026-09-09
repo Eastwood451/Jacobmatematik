@@ -13,22 +13,19 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
       - name: Add exam paper area attack integration
-        shell: python
         run: |
+          python3 <<'PY'
           from pathlib import Path
           p=Path('fps.js')
           s=p.read_text()
-
-          old="import { createElseAttacks, ELSE_THROW_INTERVAL } from './fps-else-attacks.js?v=20260907-ducts1';"
-          new="import { createElseAttacks, ELSE_THROW_INTERVAL, ELSE_EXAM_INTERVAL } from './fps-else-attacks.js?v=20260909-examdrop1';"
-          assert old in s, 'attack import not found'
-          s=s.replace(old,new,1)
-
-          old="""const elseAttacks = createElseAttacks({ scene, colliders, onPlayerHit: () => {
+          replacements=[
+            ("import { createElseAttacks, ELSE_THROW_INTERVAL } from './fps-else-attacks.js?v=20260907-ducts1';",
+             "import { createElseAttacks, ELSE_THROW_INTERVAL, ELSE_EXAM_INTERVAL } from './fps-else-attacks.js?v=20260909-examdrop1';"),
+            ("""const elseAttacks = createElseAttacks({ scene, colliders, onPlayerHit: () => {
   hurt(null, true);
   return gameActive;
-} });"""
-          new="""const elseAttacks = createElseAttacks({
+} });""",
+             """const elseAttacks = createElseAttacks({
   scene,
   colliders,
   onPlayerHit: () => {
@@ -40,30 +37,24 @@ jobs:
     feedbackEl.textContent = 'DUMPET! Flyt dig ud af den røde markering!';
     feedbackEl.className = 'feedback bad';
   },
-});"""
-          assert old in s, 'elseAttacks setup not found'
-          s=s.replace(old,new,1)
-
-          old="""function createElse() {
+});"""),
+            ("""function createElse() {
   const enemy = createElseRig(elseTexture);
   enemy.throwCooldown = 2;
-  enemy.group.position.set(0, 0, 60);"""
-          new="""function createElse() {
+  enemy.group.position.set(0, 0, 60);""",
+             """function createElse() {
   const enemy = createElseRig(elseTexture);
   enemy.throwCooldown = 2;
   enemy.examDropCooldown = 3.4;
-  enemy.group.position.set(0, 0, 60);"""
-          assert old in s, 'createElse block not found'
-          s=s.replace(old,new,1)
-
-          old="""      if (enemy.type === 'else' && schoolyardEntered && gameActive) {
+  enemy.group.position.set(0, 0, 60);"""),
+            ("""      if (enemy.type === 'else' && schoolyardEntered && gameActive) {
         enemy.throwCooldown -= dt;
         if (enemy.throwCooldown <= 0) {
           elseAttacks.throwAt(enemy, camera.position);
           enemy.throwCooldown = ELSE_THROW_INTERVAL;
         }
-      }"""
-          new="""      if (enemy.type === 'else' && schoolyardEntered && gameActive) {
+      }""",
+             """      if (enemy.type === 'else' && schoolyardEntered && gameActive) {
         enemy.throwCooldown -= dt;
         enemy.examDropCooldown -= dt;
         if (enemy.throwCooldown <= 0) {
@@ -74,20 +65,19 @@ jobs:
           elseAttacks.dropExamAt(enemy, camera.position);
           enemy.examDropCooldown = ELSE_EXAM_INTERVAL;
         }
-      }"""
-          assert old in s, 'Else attack loop not found'
-          s=s.replace(old,new,1)
-
-          old="feedbackEl.textContent = 'Løs divisioner. Undvig Elses linealer og røde tuscher!';"
-          new="feedbackEl.textContent = 'Løs divisioner. Undvig linealer, tuscher, chokbølger og røde nedslagsfelter!';"
-          assert old in s, 'schoolyard feedback not found'
-          s=s.replace(old,new,1)
+      }"""),
+            ("feedbackEl.textContent = 'Løs divisioner. Undvig Elses linealer og røde tuscher!';",
+             "feedbackEl.textContent = 'Løs divisioner. Undvig linealer, tuscher, chokbølger og røde nedslagsfelter!';"),
+          ]
+          for old,new in replacements:
+              if old not in s:
+                  raise SystemExit('Missing expected fps.js block: '+old[:80])
+              s=s.replace(old,new,1)
           p.write_text(s)
-
           h=Path('fps.html')
-          hs=h.read_text()
-          hs=hs.replace('fps.js?v=20260909-shockwave1','fps.js?v=20260909-examdrop1')
+          hs=h.read_text().replace('fps.js?v=20260909-shockwave1','fps.js?v=20260909-examdrop1')
           h.write_text(hs)
+          PY
       - name: Commit patch and remove one-shot workflow
         run: |
           rm .github/workflows/patch-else-exam-drop.yml
