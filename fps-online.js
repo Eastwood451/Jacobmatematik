@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createPlayerMovement } from './fps-movement.js?v=20260907-ducts1';
+import { createPlayerMovement } from './fps-movement.js?v=20260909-touch1';
 import { GameRoom, roomCode } from './fps-room.js?v=20260907-avatar1';
 import { AVATARS, avatarFor, normalizeAvatar } from './fps-avatars.js?v=20260907-avatar1';
 import { createErlingRig, animateErling, disposeErlingRig } from './fps-visuals.js?v=20260907-sprites1';
@@ -9,7 +9,7 @@ const $=id=>document.getElementById(id);
 const colours=[0x43cbb7,0xf6b94d,0xa3a0ff,0xfc8c93];
 const text=(el,value)=>{if(el.textContent!==String(value)) el.textContent=String(value);};
 
-export function createOnlineGame({scene,camera,controls,colliders,makePencil,prepare,ready,textures,startAudio,flash}) {
+export function createOnlineGame({scene,camera,controls,colliders,makePencil,prepare,ready,textures,startAudio,flash,inputReady,touchInput,touchEnabled}) {
   let room=null, state=null, me=null, epoch=-1, answer='';
   let busy=false, lastPhase='', previousHp=5, problemId=null, syncing=false;
   const keys={}, objects=new Map();
@@ -35,7 +35,7 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
       avatarTextures.set(avatar.id,texture);
     }));
   }
-  const movement=createPlayerMovement({camera,colliders,keys});
+  const movement=createPlayerMovement({camera,colliders,keys,input:touchInput});
   const blocked=(x,z,r=.48,y=0,height=1.95)=>colliders.some(c=>x+r>c.min.x && x-r<c.max.x && z+r>c.min.z && z-r<c.max.z && c.max.y>y+.025 && c.min.y<y+height);
 
   function clearObjects() {
@@ -190,10 +190,10 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
   }
   function update(dt,time) {
     if(!room || !state || state.phase!=='playing') return;
-    if(me?.hp>0 && controls.isLocked) {
+    if(me?.hp>0 && inputReady()) {
       movement.update(dt);
     }
-    room.pose={x:camera.position.x,y:camera.position.y,z:camera.position.z,yaw:camera.rotation.y,crouching:movement.crouching,sprinting:Boolean(keys.ShiftLeft||keys.ShiftRight)};
+    room.pose={x:camera.position.x,y:camera.position.y,z:camera.position.z,yaw:camera.rotation.y,crouching:movement.crouching,sprinting:Boolean(keys.ShiftLeft||keys.ShiftRight||touchInput.sprint)};
     renderObjects(dt,time);
   }
   function keydown(e) {
@@ -202,7 +202,7 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
     keys[e.code]=true;
     if(/^(Control|Shift|Key[WASD]|Space|Digit|Numpad|Enter|Backspace)/.test(e.code)) e.preventDefault();
     if(me?.hp<=0) return;
-    if(e.code==='Space' && !e.repeat && controls.isLocked) movement.jump();
+    if(e.code==='Space' && !e.repeat && inputReady()) movement.jump();
     if(/^Digit\d$/.test(e.code) && answer.length<3) {answer+=e.code.slice(-1);text($('answer'),answer);}
     if(e.code==='Backspace') {e.preventDefault();answer=answer.slice(0,-1);text($('answer'),answer||'_');}
     if(e.code==='Enter' && answer && !e.repeat && !syncing) {
@@ -212,7 +212,7 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
     }
   }
   function fire() {
-    if(!room || state?.phase!=='playing' || !controls.isLocked || !me || me.hp<=0 || me.ammo<=0) return;
+    if(!room || state?.phase!=='playing' || !inputReady() || !me || me.hp<=0 || me.ammo<=0) return;
     const dir=new THREE.Vector3();camera.getWorldDirection(dir);
     room.action({type:'shoot',dir:{x:dir.x,y:dir.y,z:dir.z}});flash('shot-flash');
   }
@@ -232,10 +232,10 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
   const clearKeys=()=>{for(const key of Object.keys(keys)) delete keys[key];};
   addEventListener('blur',clearKeys);controls.addEventListener('unlock',clearKeys);
   addEventListener('pagehide',()=>void room?.close());
-  $('game').addEventListener('click',()=>{if(room && state?.phase==='playing' && !controls.isLocked) controls.lock();});
+  $('game').addEventListener('click',()=>{if(room && state?.phase==='playing' && !touchEnabled() && !controls.isLocked) controls.lock();});
   controls.addEventListener('lock',()=>$('pointer-note').classList.remove('show'));
   controls.addEventListener('unlock',()=>{if(room && state?.phase==='playing') $('pointer-note').classList.add('show');});
   const supplied=new URLSearchParams(location.search).get('room');
   if(supplied) {$('room-code').value=supplied.slice(0,8).toUpperCase();showSetup();}
-  return {get active(){return Boolean(room);},update,keydown,fire};
+  return {get active(){return Boolean(room);},get playing(){return state?.phase==='playing';},clearKeys,update,keydown,fire};
 }

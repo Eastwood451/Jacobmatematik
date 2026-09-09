@@ -16,7 +16,7 @@ export function playerBodyBounds(x,feetY,z,height) {
   );
 }
 
-export function createPlayerMovement({camera,colliders,keys}) {
+export function createPlayerMovement({camera,colliders,keys,input={}}) {
   let feetY=0,velocityY=0,grounded=true,crouching=false;
   const standingBlocked=()=>blocked(camera.position.x,feetY,camera.position.z,STANDING_HEIGHT);
   function blocked(x,y,z,height=crouching?CROUCH_HEIGHT:STANDING_HEIGHT) {
@@ -24,7 +24,7 @@ export function createPlayerMovement({camera,colliders,keys}) {
     return colliders.some(box=>box.intersectsBox(bounds));
   }
   function updatePosture() {
-    crouching=!!(keys.ControlLeft||keys.ControlRight)||standingBlocked();
+    crouching=!!(keys.ControlLeft||keys.ControlRight||input.crouch)||standingBlocked();
   }
   function syncCamera() {camera.position.y=feetY+(crouching?CROUCH_EYE:STANDING_EYE);}
   function reset(x,z) {
@@ -39,12 +39,12 @@ export function createPlayerMovement({camera,colliders,keys}) {
   function update(dt) {
     updatePosture();
     const startX=camera.position.x,startZ=camera.position.z;
-    let dx=Number(!!keys.KeyD)-Number(!!keys.KeyA),dz=Number(!!keys.KeyS)-Number(!!keys.KeyW);
+    let dx=Number(!!keys.KeyD)-Number(!!keys.KeyA)+(input.x||0),dz=Number(!!keys.KeyS)-Number(!!keys.KeyW)+(input.z||0);
     if(dx||dz){
-      const length=Math.hypot(dx,dz);dx/=length;dz/=length;
+      const length=Math.max(1,Math.hypot(dx,dz));dx/=length;dz/=length;
       const forward=new THREE.Vector3();camera.getWorldDirection(forward);forward.y=0;forward.normalize();
       const right=new THREE.Vector3().crossVectors(forward,new THREE.Vector3(0,1,0));
-      const speed=crouching?CROUCH_SPEED:(keys.ShiftLeft||keys.ShiftRight)?SPRINT_SPEED:WALK_SPEED;
+      const speed=crouching?CROUCH_SPEED:(keys.ShiftLeft||keys.ShiftRight||input.sprint)?SPRINT_SPEED:WALK_SPEED;
       const move=forward.multiplyScalar(-dz*speed*dt).addScaledVector(right,dx*speed*dt);
       // Small steps prevent sprinting diagonally through thin walls and vent rims.
       const steps=Math.max(1,Math.ceil(move.length()/.1));
