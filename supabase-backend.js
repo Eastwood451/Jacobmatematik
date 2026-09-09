@@ -113,6 +113,12 @@
     };
   }
 
+  async function loadSchoolState(teacherId) {
+    const response = await client.from("school_state").select("data").eq("teacher_id", teacherId).single();
+    throwIfError(response);
+    return response.data?.data || { classes:[], users:[] };
+  }
+
   async function saveSchoolState(database, teacherId) {
     const data = {
       classes:(database.classes || []).map(item => ({ id:item.id, name:item.name })),
@@ -175,6 +181,7 @@
     loadDatabase,
     loadResults,
     saveSchoolState,
+    loadSchoolState,
     appendResult,
     deleteResults,
     manageStudent,

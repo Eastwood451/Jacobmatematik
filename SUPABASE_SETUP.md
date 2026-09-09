@@ -59,7 +59,9 @@ grundinstallationen; nye installationer skal også køre migrations i rækkeføl
 Oprettelse bruger Supabase Auth `signUp` og den eksisterende interne loginadresse.
 Brugeren indtaster kun brugernavn og adgangskode (mindst seks tegn). Auth står for
 hashing og rate limits. En databasetrigger opretter samtidig elevprofilen uden
-lærer eller klasse. Brugerens metadata kan aldrig tildele lærerrolle eller klasse.
+klasse. Efter elevkort-migrationen knyttes profilen til den konfigurerede lærer
+og den almindelige elevoversigt. Brugerens metadata kan aldrig tildele lærerrolle
+eller vælge lærer eller klasse.
 Se https://supabase.com/docs/reference/javascript/auth-signup og
 https://supabase.com/docs/guides/auth/managing-user-data.
 
@@ -92,3 +94,20 @@ Kontrol: `node scripts/test-self-registration.cjs` og
 `node scripts/test-danish-usernames.cjs`. SQL-integrationskontrollen
 `supabase/tests/self_registration.sql` køres i en testdatabase efter migrationen;
 den bruger syntetiske konti og ruller hele kontrollen tilbage.
+
+## Fælles elevkort for selvoprettede brugere
+
+Kør også `supabase/migrations/20260909191247_self_registered_student_cards.sql`.
+`registration_settings.teacher_id` peger på den eksisterende registreringsadministrator
+Jacob. Både nye og eksisterende selvoprettede elever får denne lærerrelation og en
+post i `school_state.users` med `classId: null`. Ingen elev får automatisk en klasse.
+
+Dermed gælder de samme eksisterende RLS-regler, den samme `manage-student`-funktion,
+øvelsesvalg, resultatlagring og historik for begge typer elever. Ingen nye RLS-politikker
+eller Edge Function-deploy er nødvendige. Andre lærere får ikke adgang.
+
+I lærerportalen ligger eleverne under **Uden klasse** med det almindelige elevkort.
+**Vis elevkort** i registreringsoversigten åbner samme kort. Klassevælgeren flytter
+eleven til en rigtig klasse uden at ændre konto eller resultater. Listen opdateres
+løbende, når nye selvoprettede brugere kommer til. `list_self_registered.assigned`
+betyder nu, at eleven har en klasse, ikke blot at eleven har en lærerrelation.
