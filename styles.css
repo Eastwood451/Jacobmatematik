@@ -694,3 +694,7 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
   .registration-status { text-align: right; }
   .registration-row .btn { width: 100%; }
 }
+
+.registration-profile { border:0; background:transparent; color:inherit; text-align:left; padding:0; cursor:pointer; font:inherit; }
+.registration-profile span { display:block; color:#5c43cb; margin-top:4px; font-size:13px; text-decoration:underline; }
+.registration-profile:focus-visible { outline:2px solid #5c43cb; outline-offset:4px; border-radius:3px; }

@@ -71,7 +71,7 @@ const source = file => fs.readFileSync(path.join(root, file), 'utf8');
   // Execute real UI event handlers with a minimal DOM, without live accounts.
   const elements = new Map(); const listeners = {};
   const element = id => {
-    if (!elements.has(id)) elements.set(id, { innerHTML:'', textContent:'', focus() {} });
+    if (!elements.has(id)) elements.set(id, { innerHTML:'', textContent:'', lastElementChild:{textContent:''}, classList:{remove(){}}, focus() {} });
     return elements.get(id);
   };
   let submitCount = 0, resolveSignup, failLoad = false;
@@ -82,11 +82,11 @@ const source = file => fs.readFileSync(path.join(root, file), 'utf8');
   const ui = { console, Intl, Date, Math, Set, Map,
     localStorage:{ getItem:() => null }, sessionStorage:{ getItem:() => null },
     FormData:class { constructor(form) { this.data=form.values; } get(key) { return this.data[key]; } },
-    document:{ getElementById:element, querySelector:() => null, addEventListener:(name, callback) => { listeners[name]=callback; } },
+    document:{ hidden:true, getElementById:element, querySelector:() => null, addEventListener:(name, callback) => { listeners[name]=callback; } },
     window:{ JacobBackend:uiBackend, matchMedia:() => ({ matches:false }), addEventListener() {}, setInterval:() => 1, clearInterval() {} },
   };
   vm.createContext(ui);
-  vm.runInContext(source('app.js').replace('  start();\n})();', '  window.testApi = { state, registrations, renderLogin, renderRegistrations, normalizeDatabase };\n})();'), ui);
+  vm.runInContext(source('app.js').replace('  start();\n})();', '  window.testApi = { state, registrations, renderLogin, renderRegistrations, renderTeacher, refreshTeacherResults, normalizeDatabase, setDatabase:value=>db=value, getDatabase:()=>db, flushSaves:()=>remoteSaveQueue };\n})();'), ui);
   const api=ui.window.testApi;
   api.renderLogin();
   assert.match(element('app').innerHTML, /Opret bruger/);
@@ -125,5 +125,55 @@ const source = file => fs.readFileSync(path.join(root, file), 'utf8');
   assert.doesNotMatch(registry, /<script>/);
   api.state.user.canManageRegistrations=false;
   assert.equal(api.renderRegistrations(), '', 'Other teachers cannot see registry');
+  // The same card, editor, exercise settings and history work before class placement.
+  const teacher={ id:'teacher', role:'teacher', name:'Jacob', canManageRegistrations:true };
+  const unclassified={ id:'self-student', role:'student', name:'Testkaj', username:'testkaj', classId:null, selfRegistered:true,
+    results:[{ topic:'addition', problem:'2 + 3', correct:true, answer:5, correctAnswer:5, responseTime:2, timestamp:'2026-09-09T12:00:00Z', remoteId:'saved-1' }] };
+  api.setDatabase(api.normalizeDatabase({ classes:[{id:'class-7',name:'7. klasse'}], users:[teacher,unclassified] }, false));
+  api.state.user=teacher; api.state.view='teacher'; api.state.activeClassId='__unassigned__';
+  api.state.expandedStudent=unclassified.id; api.state.teacherTopicDetail='tableDrill';
+  api.renderTeacher();
+  let card=element('app').innerHTML;
+  assert.match(card, /Uden klasse/);
+  assert.match(card, /id="student-profile-form"/);
+  assert.match(card, /name="studentId" value="self-student"/);
+  assert.match(card, /data-student-class="self-student"/);
+  assert.match(card, /id="table-drill-history-title">Alle heatmaps/);
+  assert.match(card, /Bogstavlæring til Testkaj/);
+  assert.match(card, /Rigtige svar over tid/);
+  assert.match(card, /data-action="delete-class" disabled/);
+  let editCall, savedSchool;
+  uiBackend.manageStudent=async (action,values)=>{ editCall={action,...values}; };
+  uiBackend.saveSchoolState=async database=>{savedSchool=structuredClone(database);};
+  await listeners.submit({ preventDefault(){}, target:{ id:'student-profile-form',dataset:{},values:{studentId:unclassified.id,studentName:'Kaj',studentUsername:'testkaj',studentPassword:''} } });
+  assert.equal(editCall.action,'profile');
+  assert.equal(editCall.studentId,'self-student');
+  assert.equal(savedSchool.users.find(x=>x.id==='self-student').classId,null);
+  assert.equal(savedSchool.users.find(x=>x.id==='self-student').name,'Kaj');
+  listeners.change({target:{dataset:{tableStudent:'self-student'},value:'2',checked:false}});
+  await api.flushSaves();
+  assert.equal(savedSchool.users.find(x=>x.id==='self-student').assignedTables.includes(2),false);
+  assert.equal(savedSchool.classes.some(x=>x.id==='__unassigned__'),false,'Virtual tab is never saved as a class');
+  listeners.change({target:{dataset:{studentClass:'self-student'},value:'class-7'}});
+  await api.flushSaves();
+  assert.equal(api.state.activeClassId,'class-7');
+  assert.equal(api.state.expandedStudent,'self-student');
+  assert.equal(savedSchool.users.find(x=>x.id==='self-student').results[0].remoteId,'saved-1');
+  // Registry link opens the common card for a classified account as well.
+  uiBackend.loadDatabase=async()=>({database:structuredClone(api.getDatabase()),currentUserId:'teacher'});
+  const openCard={dataset:{action:'open-registration-profile',registrationStudent:'self-student'}};
+  await listeners.click({target:{closest:selector=>selector==='[data-action]'?openCard:null}});
+  assert.equal(api.state.expandedStudent,'self-student');
+  assert.equal(api.state.activeClassId,'class-7');
+  // New accounts appear during a live lesson without replacing unsaved existing fields.
+  ui.document.hidden=false;
+  uiBackend.loadSchoolState=async()=>({users:[{id:'live-student',role:'student',name:'Ny elev',username:'ny',classId:null,selfRegistered:true}]});
+  uiBackend.loadResults=async()=>[{studentId:'live-student',remoteId:'live-result',topic:'addition',correct:true,responseTime:3,timestamp:'2026-09-09T12:00:01Z',createdAt:'2026-09-09T12:00:01Z'}];
+  ui.requestAnimationFrame=callback=>callback(); ui.window.scrollTo=()=>{};
+  await api.refreshTeacherResults();
+  assert.equal(api.getDatabase().users.find(x=>x.id==='live-student').results.length,1);
+  assert.equal(api.getDatabase().users.find(x=>x.id==='self-student').name,'Kaj');
+  ui.document.hidden=true;
+  console.log('PASS: shared unclassified student card, profile editing, exercise settings, heatmaps, class placement, registry link and live newcomers.');
   console.log('PASS: signup gating, validation, aliases, duplicate/rate errors, unassigned login and results, RPC parameters, secret stripping, login UI, double-submit and post-signup recovery.');
 })().catch(error => { console.error(error); process.exitCode=1; });

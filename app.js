@@ -388,6 +388,8 @@
     assignedAddends:[...SINGLE_DIGITS], assignedAddendSeconds:[...SINGLE_DIGITS],
     assignedLetters:[...LETTER_KEYS],
   });
+  const UNASSIGNED_CLASS_ID = "__unassigned__";
+  const inActiveClass = user => state.activeClassId === UNASSIGNED_CLASS_ID ? user.classId == null : user.classId === state.activeClassId;
   let remoteSaveQueue = Promise.resolve();
   let signupBusy = false;
   const registrations = { open:false, rows:[], search:"", offset:0, more:false, loading:false, error:"", notice:"", request:0 };
@@ -406,7 +408,7 @@
   };
   const currentResultsSignature = () => db.users
     .filter(user => user.role === "student")
-    .flatMap(user => (user.results || []).map(result => `${user.id}:${result.remoteId || `${result.timestamp}:${result.problem}`}`))
+    .flatMap(user => [`user:${user.id}`, ...(user.results || []).map(result => `${user.id}:${result.remoteId || `${result.timestamp}:${result.problem}`}`)])
     .sort()
     .join("|");
   function setTeacherLiveStatus(kind, text) {
@@ -419,8 +421,17 @@
     if (!usingCentralDatabase || state.user?.role !== "teacher" || state.view !== "teacher" || teacherLiveRefreshInFlight || document.hidden) return;
     teacherLiveRefreshInFlight=true;
     try {
+      const teacherId = state.user.id;
+      const school = await backend.loadSchoolState(teacherId);
+      if (state.user?.id !== teacherId || state.view !== "teacher") return;
+      // Add newly registered students without overwriting an editor or unsaved choices.
+      const knownUsers = new Set(db.users.map(user => user.id));
+      const newcomers = normalizeDatabase({ classes:db.classes, users:(school.users || []).filter(user => user.role === "student" && !knownUsers.has(user.id)) }, false).users;
+      db.users.push(...newcomers.map(user => ({ ...user, results:[] })));
       const rows=await backend.loadResults(teacherResultsCursor);
-      if (rows.length) teacherResultsCursor=rows[rows.length-1].createdAt;
+      if (state.user?.id !== teacherId || state.view !== "teacher") return;
+      // Do not skip results if an account appeared between the two requests.
+      if (rows.length && rows.every(row => db.users.some(user => user.id === row.studentId))) teacherResultsCursor=rows[rows.length-1].createdAt;
       const existingIds=new Set(db.users.flatMap(user=>(user.results || []).map(result=>result.remoteId)).filter(Boolean));
       rows.forEach(({studentId,createdAt,...result})=>{
         if (existingIds.has(result.remoteId)) return;
@@ -1924,7 +1935,7 @@
     if (!state.user?.canManageRegistrations) return "";
     const disabled = registrations.loading ? "disabled" : "";
     const rows = registrations.rows.map(user => `<form class="registration-row" data-registration-form="${escapeHtml(user.id)}">
-      <div class="registration-identity"><strong>${escapeHtml(user.username)}</strong><small>${escapeHtml(user.name)} · Oprettet ${new Intl.DateTimeFormat("da-DK").format(new Date(user.created_at))}</small></div>
+      <div class="registration-identity"><button type="button" class="registration-profile" data-action="open-registration-profile" data-registration-student="${escapeHtml(user.id)}"><strong>${escapeHtml(user.username)}</strong><span>Vis elevkort →</span></button><small>${escapeHtml(user.name)} · Oprettet ${new Intl.DateTimeFormat("da-DK").format(new Date(user.created_at))}</small></div>
       <span class="registration-status">${user.assigned ? escapeHtml(user.class_name || "Tilknyttet dig") : "Uden klasse"}</span>
       <label class="sr-only" for="registration-class-${escapeHtml(user.id)}">Klasse til ${escapeHtml(user.username)}</label>
       <select id="registration-class-${escapeHtml(user.id)}" name="classId" required ${disabled}>
@@ -1934,7 +1945,7 @@
     </form>`).join("");
     return `<section id="self-registered-panel" class="class-manager registrations-panel" aria-label="Selvoprettede brugere">
       <div class="class-manager-title"><div><span class="eyebrow">Brugeroversigt</span><h2>Selvoprettede brugere</h2></div><button class="btn secondary" type="button" data-action="toggle-registrations" aria-expanded="${registrations.open}" ${disabled}>${registrations.open ? "Luk oversigt" : "Åbn oversigt"}</button></div>
-      ${registrations.open ? `<p>Vælg en af dine klasser. Brugerens tidligere resultater følger med.</p>
+      ${registrations.open ? `<p>Åbn elevkortet for at se statistik og redigere brugeren. Du kan også placere brugeren i en klasse.</p>
         <form id="registration-search-form" class="registration-search"><label class="sr-only" for="registration-search">Søg efter brugernavn eller navn</label><input id="registration-search" name="search" type="search" maxlength="40" placeholder="Søg efter brugernavn eller navn" value="${escapeHtml(registrations.search)}" ${disabled}><button class="btn secondary" type="submit" ${disabled}>Søg</button><button class="btn secondary" type="button" data-action="refresh-registrations" ${disabled}>Opdatér</button></form>
         <p role="status">${registrations.loading ? "Henter brugere…" : escapeHtml(registrations.notice)}</p><p class="error" role="alert">${escapeHtml(registrations.error)}</p>
         ${rows || (!registrations.loading && !registrations.error ? '<p class="empty">Ingen selvoprettede brugere fundet.</p>' : "")}
@@ -1965,15 +1976,20 @@
 
   function renderTeacher() {
     const classes = db.classes || [];
-    const activeClass = classes.find(item => item.id === state.activeClassId) || classes[0];
+    const unassignedStudents = db.users.filter(user => user.role === "student" && user.classId == null);
+    const showUnassigned = Boolean(state.user?.canManageRegistrations || unassignedStudents.length);
+    const unassigned = showUnassigned && state.activeClassId === UNASSIGNED_CLASS_ID;
+    const activeClass = unassigned ? { id:UNASSIGNED_CLASS_ID, name:"Uden klasse" } : classes.find(item => item.id === state.activeClassId) || classes[0];
     state.activeClassId = activeClass.id;
-    const students = db.users.filter(user => user.role === "student" && user.classId === activeClass.id);
+    const students = db.users.filter(user => user.role === "student" && inActiveClass(user));
     const selected = students.find(student => student.id === state.expandedStudent) || students[0] || null;
     state.expandedStudent = selected?.id || null;
     const allResults = students.flatMap(practiceResults), classCorrect = allResults.filter(item => item.correct).length;
     const classAccuracy = allResults.length ? Math.round(classCorrect / allResults.length * 100) : 0;
     const needsAttention = students.filter(student => Object.keys(TOPICS).some(topic => getStats(student,topic).status === "weak")).length;
     let studentDetail = `<div class="empty-class"><span class="empty-class-icon">＋</span><h2>Klassen har ingen elever endnu</h2><p>Brug knappen “Tilføj elev” ovenfor for at oprette klassens første elev.</p></div>`;
+
+    if (unassigned) studentDetail = `<div class="empty-class"><h2>Ingen brugere uden klasse</h2><p>Nye selvoprettede brugere vises her med deres elevkort og statistik.</p></div>`;
 
     if (selected) {
       const current = getOverallStats(selected,20), progress = getProgress(selected), trend = getTrend(selected);
@@ -1989,7 +2005,7 @@
           </article>
         </section>`;
       studentDetail = `
-        <section class="student-profile-head"><div class="student-name"><span class="avatar large">${escapeHtml(selected.name.slice(0,1))}</span><div><span class="eyebrow">Elevprofil</span><h2>${escapeHtml(selected.name)}</h2><p>${summaryFor(selected)}</p></div></div><div class="student-profile-actions"><span class="progress-badge ${progress.direction}">${progress.direction==="up"?"↗":progress.direction==="down"?"↘":"→"} ${progressCopy}</span><label>Klasse<select data-student-class="${selected.id}">${classes.map(item => `<option value="${item.id}" ${item.id===selected.classId?"selected":""}>${escapeHtml(item.name)}</option>`).join("")}</select></label></div><form id="student-profile-form" class="student-profile-editor" data-student-id="${escapeHtml(selected.id)}"><input type="hidden" name="studentId" value="${escapeHtml(selected.id)}"><div class="field"><label for="profile-student-name">Elevens navn</label><input id="profile-student-name" name="studentName" maxlength="60" value="${escapeHtml(selected.name)}" autocomplete="off" required></div><div class="field"><label for="profile-student-username">Brugernavn</label><input id="profile-student-username" name="studentUsername" maxlength="40" value="${escapeHtml(selected.username)}" autocomplete="off" autocapitalize="none" required></div><div class="field"><label for="profile-student-password">Adgangskode</label><input id="profile-student-password" name="studentPassword" type="password" maxlength="60" autocomplete="new-password" placeholder="Lad stå tomt for at beholde den nuværende"></div><button class="btn" type="submit">Gem elev</button><p id="student-profile-message" class="student-profile-message ${state.studentProfileNotice ? "success" : ""}" role="status">${escapeHtml(state.studentProfileNotice)}</p></form></section>
+        <section class="student-profile-head"><div class="student-name"><span class="avatar large">${escapeHtml(selected.name.slice(0,1))}</span><div><span class="eyebrow">Elevprofil</span><h2>${escapeHtml(selected.name)}</h2><p>${summaryFor(selected)}</p></div></div><div class="student-profile-actions"><span class="progress-badge ${progress.direction}">${progress.direction==="up"?"↗":progress.direction==="down"?"↘":"→"} ${progressCopy}</span><label>Klasse<select data-student-class="${selected.id}">${selected.classId == null ? '<option value="" selected disabled>Uden klasse — vælg klasse</option>' : ""}${classes.map(item => `<option value="${item.id}" ${item.id===selected.classId?"selected":""}>${escapeHtml(item.name)}</option>`).join("")}</select></label></div><form id="student-profile-form" class="student-profile-editor" data-student-id="${escapeHtml(selected.id)}"><input type="hidden" name="studentId" value="${escapeHtml(selected.id)}"><div class="field"><label for="profile-student-name">Elevens navn</label><input id="profile-student-name" name="studentName" maxlength="60" value="${escapeHtml(selected.name)}" autocomplete="off" required></div><div class="field"><label for="profile-student-username">Brugernavn</label><input id="profile-student-username" name="studentUsername" maxlength="40" value="${escapeHtml(selected.username)}" autocomplete="off" autocapitalize="none" required></div><div class="field"><label for="profile-student-password">Adgangskode</label><input id="profile-student-password" name="studentPassword" type="password" maxlength="60" autocomplete="new-password" placeholder="Lad stå tomt for at beholde den nuværende"></div><button class="btn" type="submit">Gem elev</button><p id="student-profile-message" class="student-profile-message ${state.studentProfileNotice ? "success" : ""}" role="status">${escapeHtml(state.studentProfileNotice)}</p></form></section>
 
         ${studentInsights}
         ${state.teacherTopicDetail === "tableDrill" ? renderTableDrillHistory(selected) : ""}
@@ -2040,11 +2056,11 @@
       <section class="dashboard-head"><div><span class="eyebrow">Lærerportal</span><h1>${escapeHtml(activeClass.name)} lige nu</h1><p>Følg udvikling, opdag udfordringer og vælg næste fokus.</p></div>${usingCentralDatabase ? `<div id="teacher-live-status" class="teacher-live-status online" role="status"><i aria-hidden="true"></i><span>Live · opdaterer automatisk</span></div>` : `<button class="btn secondary" data-action="reset-demo">Nulstil demodata</button>`}</section>
       <section class="class-manager" aria-label="Klasser">
         <div class="class-manager-title"><div><span class="eyebrow">Dine klasser</span><strong>${classes.length} ${classes.length===1?"klasse":"klasser"}</strong></div><form id="class-form" class="class-form"><label class="sr-only" for="class-name">Navn på ny klasse</label><input id="class-name" name="className" maxlength="30" placeholder="fx 9.A" required><button class="btn" type="submit">Opret klasse</button></form></div>
-        <div class="class-tabs" role="tablist">${classes.map(item => { const count=db.users.filter(user=>user.role==="student"&&user.classId===item.id).length; return `<button role="tab" aria-selected="${item.id===activeClass.id}" class="class-tab ${item.id===activeClass.id?"active":""}" data-class="${item.id}"><strong>${escapeHtml(item.name)}</strong><small>${count} ${count===1?"elev":"elever"}</small></button>`; }).join("")}</div>
+        <div class="class-tabs" role="tablist">${classes.map(item => { const count=db.users.filter(user=>user.role==="student"&&user.classId===item.id).length; return `<button role="tab" aria-selected="${item.id===activeClass.id}" class="class-tab ${item.id===activeClass.id?"active":""}" data-class="${item.id}"><strong>${escapeHtml(item.name)}</strong><small>${count} ${count===1?"elev":"elever"}</small></button>`; }).join("")}${showUnassigned ? `<button role="tab" aria-selected="${unassigned}" class="class-tab ${unassigned ? "active" : ""}" data-class="${UNASSIGNED_CLASS_ID}"><strong>Uden klasse</strong><small>${unassignedStudents.length} ${unassignedStudents.length === 1 ? "elev" : "elever"}</small></button>` : ""}</div>
         <p id="class-error" class="class-error" role="alert"></p>
         <div class="student-manager-row">
-          <div><strong>Elever i ${escapeHtml(activeClass.name)}</strong><small>${selected ? `${escapeHtml(selected.name)} er valgt` : "Ingen elev er valgt"}</small></div>
-          <div class="student-manager-buttons"><button class="btn secondary" type="button" data-action="toggle-class-rename-form" aria-expanded="${state.classRenameFormOpen}">${state.classRenameFormOpen ? "Annuller" : "Omdøb klasse"}</button><button class="btn danger" type="button" data-action="delete-class" ${classes.length > 1 ? "" : "disabled"}>Slet klasse</button><button class="btn secondary" type="button" data-action="toggle-student-form" aria-expanded="${state.studentFormOpen}">${state.studentFormOpen ? "Annuller" : "+ Tilføj elev"}</button><button class="btn danger" type="button" data-action="remove-student" ${selected ? "" : "disabled"}>Fjern elev</button></div>
+          <div><strong>${unassigned ? "Elever uden klasse" : `Elever i ${escapeHtml(activeClass.name)}`}</strong><small>${selected ? `${escapeHtml(selected.name)} er valgt` : "Ingen elev er valgt"}</small></div>
+          <div class="student-manager-buttons"><button class="btn secondary" type="button" data-action="toggle-class-rename-form" ${unassigned ? "disabled" : ""} aria-expanded="${state.classRenameFormOpen}">${state.classRenameFormOpen ? "Annuller" : "Omdøb klasse"}</button><button class="btn danger" type="button" data-action="delete-class" ${!unassigned && classes.length > 1 ? "" : "disabled"}>Slet klasse</button><button class="btn secondary" type="button" data-action="toggle-student-form" ${unassigned ? "disabled" : ""} aria-expanded="${state.studentFormOpen}">${state.studentFormOpen ? "Annuller" : "+ Tilføj elev"}</button><button class="btn danger" type="button" data-action="remove-student" ${selected ? "" : "disabled"}>Fjern elev</button></div>
         </div>
         ${state.classRenameFormOpen ? `<form id="class-rename-form" class="class-rename-form"><label class="sr-only" for="class-rename">Nyt klassenavn</label><input id="class-rename" name="className" maxlength="30" value="${escapeHtml(activeClass.name)}" required><button class="btn" type="submit">Gem navn</button><p id="class-rename-error" class="student-error" role="alert"></p></form>` : ""}
         ${state.studentFormOpen ? `<form id="student-form" class="student-form"><div class="field"><label for="student-name">Elevens navn</label><input id="student-name" name="studentName" maxlength="60" autocomplete="off" placeholder="fx Emma" required></div><div class="field"><label for="student-username">Brugernavn</label><input id="student-username" name="studentUsername" maxlength="40" autocomplete="off" autocapitalize="none" placeholder="fx emma8" required></div><div class="field"><label for="student-password">Adgangskode</label><input id="student-password" name="studentPassword" type="password" maxlength="60" autocomplete="new-password" placeholder="Vælg adgangskode" required></div><button class="btn" type="submit">Opret elev</button><p id="student-error" class="student-error" role="alert"></p></form>` : ""}
@@ -2053,7 +2069,7 @@
       <section class="class-kpis">
         <article><span>Elever</span><strong>${students.length}</strong><small>aktive profiler</small></article>
         <article><span>Besvarelser</span><strong>${allResults.length}</strong><small>registreret i alt</small></article>
-        <article><span>Klassens sikkerhed</span><strong>${classAccuracy} %</strong><small>korrekte svar</small></article>
+        <article><span>${unassigned ? "Sikkerhed" : "Klassens sikkerhed"}</span><strong>${classAccuracy} %</strong><small>korrekte svar</small></article>
         <article class="${needsAttention ? "attention" : ""}"><span>Kræver blik</span><strong>${needsAttention}</strong><small>elever med udfordringer</small></article>
       </section>
 
@@ -2168,7 +2184,7 @@
       } catch (passwordError) { error.textContent="Adgangskoden kunne ikke ændres. Kontrollér den nuværende adgangskode."; console.error(passwordError); }
     } else if (event.target.id === "student-profile-form") {
       const data = new FormData(event.target);
-      const student = db.users.find(user => user.id === String(data.get("studentId") || "") && user.role === "student" && user.classId === state.activeClassId);
+      const student = db.users.find(user => user.id === String(data.get("studentId") || "") && user.role === "student" && inActiveClass(user));
       const name = String(data.get("studentName") || "").trim();
       const username = normalizeUsername(data.get("studentUsername"));
       const password = String(data.get("studentPassword") || "");
@@ -2254,6 +2270,33 @@
     if (!actionButton) return;
     const action=actionButton.dataset.action;
     if (["show-signup", "show-login"].includes(action) && !state.user && !signupBusy) { state.view = action === "show-signup" ? "signup" : "login"; renderLogin(); return; }
+    if (action === "open-registration-profile") {
+      if (!state.user?.canManageRegistrations || registrations.loading) return;
+      const teacherId = state.user.id;
+      registrations.loading = true;
+      try {
+        await remoteSaveQueue;
+        const loaded = await backend.loadDatabase();
+        if (state.user?.id !== teacherId) return;
+        db = normalizeDatabase(loaded.database, false);
+        state.user = db.users.find(user => user.id === loaded.currentUserId);
+        const student = db.users.find(user => user.id === actionButton.dataset.registrationStudent && user.role === "student");
+        if (!student) throw new Error("Eleven blev ikke fundet.");
+        state.activeClassId = student.classId ?? UNASSIGNED_CLASS_ID;
+        state.expandedStudent = student.id; state.teacherTopicDetail = null;
+        state.studentFormOpen = false; state.classRenameFormOpen = false; state.studentProfileNotice = "";
+        registrations.error = "";
+      } catch {
+        registrations.error = "Elevkortet kunne ikke hentes. Prøv igen.";
+      } finally {
+        registrations.loading = false;
+        if (state.user?.id === teacherId) {
+          renderTeacher();
+          if (!registrations.error) document.querySelector(".teacher-layout")?.scrollIntoView({ behavior:"smooth", block:"start" });
+        }
+      }
+      return;
+    }
     if (["toggle-registrations", "refresh-registrations", "previous-registrations", "next-registrations"].includes(action)) {
       if (!state.user?.canManageRegistrations || registrations.loading) return;
       if (action === "toggle-registrations") registrations.open = !registrations.open;
@@ -2335,7 +2378,7 @@
     }
     if (action==="toggle-student-form") { state.studentFormOpen=!state.studentFormOpen; state.classRenameFormOpen=false; renderTeacher(); if (state.studentFormOpen) document.getElementById("student-name")?.focus(); }
     if (action==="remove-student") {
-      const student=db.users.find(user=>user.id===state.expandedStudent && user.role==="student" && user.classId===state.activeClassId);
+      const student=db.users.find(user=>user.id===state.expandedStudent && user.role==="student" && inActiveClass(user));
       if (student && confirm(`Vil du fjerne ${student.name} fra klassen? Elevens resultater bliver også slettet.`)) {
         try {
           if (usingCentralDatabase) await backend.manageStudent("delete", { studentId:student.id });
@@ -2406,7 +2449,7 @@
     const student = db.users.find(user => user.id === studentId && user.role === "student");
     const targetClass = db.classes.find(item => item.id === event.target.value);
     if (!student || !targetClass) return;
-    student.classId=targetClass.id; state.expandedStudent=null; state.teacherTopicDetail=null; save(); renderTeacher();
+    student.classId=targetClass.id; state.activeClassId=targetClass.id; state.expandedStudent=student.id; state.teacherTopicDetail=null; save(); renderTeacher();
   });
   document.addEventListener("keydown", event => {
     const luigi=event.target.closest?.("[data-luigi-audio]");
