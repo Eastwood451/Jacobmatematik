@@ -15,7 +15,7 @@
     return `${alias}@unicode.users.jacobmatematik.invalid`;
   }
   const withoutSecrets = user => {
-    const { password, ...safeUser } = user;
+    const { password, canManageRegistrations, ...safeUser } = user;
     return safeUser;
   };
   const throwIfError = ({ error }) => { if (error) throw error; };
@@ -45,6 +45,36 @@
     return loadDatabase();
   }
 
+  async function signUp(username, password) {
+    username = normalizeUsername(username);
+    if (!/^[a-zæøå0-9._-]{1,40}$/.test(username)) throw new Error("Brug 1–40 tegn: a–z, æ, ø, å, tal, punktum, bindestreg eller understregning.");
+    if (password.length < 6) throw new Error("Adgangskoden skal have mindst 6 tegn.");
+    const enabled = await client.rpc("self_registration_enabled");
+    if (enabled.error || enabled.data !== true) throw new Error("Oprettelse af brugere er ikke aktiveret endnu. Prøv igen senere.");
+    const response = await client.auth.signUp({
+      email:await emailForUsername(username), password,
+      options:{ data:{ username, registration_source:"self" } },
+    });
+    if (response.error) {
+      if (["user_already_exists", "email_exists"].includes(response.error.code)) throw new Error("Brugernavnet er allerede i brug. Vælg et andet.");
+      if (response.error.status === 429) throw new Error("Der er for mange oprettelser lige nu. Vent lidt og prøv igen.");
+      if (response.error.code === "weak_password") throw new Error("Vælg en stærkere adgangskode med mindst 6 tegn.");
+      throw new Error("Brugeren kunne ikke oprettes. Prøv et andet brugernavn eller prøv igen senere.");
+    }
+    if (!response.data?.session) throw new Error("Kontoen afventer aktivering. Kontakt Jacob, før du prøver at oprette den igen.");
+  }
+
+  async function listSelfRegistered(search = "", offset = 0) {
+    const response = await client.rpc("list_self_registered", { p_search:search, p_offset:offset });
+    throwIfError(response);
+    return response.data || [];
+  }
+
+  async function assignSelfRegistered(studentId, classId) {
+    const response = await client.rpc("assign_self_registered", { target_student:studentId, target_class:classId });
+    throwIfError(response);
+  }
+
   async function signOut() {
     if (client) await client.auth.signOut();
   }
@@ -65,6 +95,14 @@
     const users = (school.users || []).map(item => ({ ...item, results:[] }));
     const current = users.find(item => item.id === profile.id);
     if (!current) users.push({ ...profile, classId:null, results:[] });
+    const ownUser = users.find(item => item.id === profile.id);
+    // Always use the server profile for authorization, never a school JSON flag.
+    ownUser.role = profile.role;
+    ownUser.canManageRegistrations = false;
+    if (profile.role === "teacher") {
+      const permission = await client.rpc("can_manage_self_registered");
+      ownUser.canManageRegistrations = !permission.error && permission.data === true;
+    }
     resultRows.forEach(row => {
       const student = users.find(item => item.id === row.student_id);
       if (student) student.results.push({ ...row.data, remoteId:row.id });
@@ -130,6 +168,9 @@
     // Share the existing authenticated client with ephemeral game rooms.
     realtimeClient:client,
     signIn,
+    signUp,
+    listSelfRegistered,
+    assignSelfRegistered,
     signOut,
     loadDatabase,
     loadResults,

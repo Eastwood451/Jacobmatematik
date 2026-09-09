@@ -49,3 +49,46 @@ Der kræves ingen SQL-migration og ingen ændringer af eksisterende elevkonti.
 Frontend kontrollerer serverens `capabilities` før oprettelse/ændring til et dansk
 brugernavn, så en gammel server ikke opretter en konto med forkert loginadresse.
 Kør `node scripts/test-danish-usernames.cjs` før deploy.
+
+## Selvoprettede brugere
+
+Kør `supabase/migrations/202609090001_self_registration.sql` efter grundskemaet.
+Migrationen bevarer eksisterende profiler og resultater. `schema.sql` beskriver
+grundinstallationen; nye installationer skal også køre migrations i rækkefølge.
+
+Oprettelse bruger Supabase Auth `signUp` og den eksisterende interne loginadresse.
+Brugeren indtaster kun brugernavn og adgangskode (mindst seks tegn). Auth står for
+hashing og rate limits. En databasetrigger opretter samtidig elevprofilen uden
+lærer eller klasse. Brugerens metadata kan aldrig tildele lærerrolle eller klasse.
+Se https://supabase.com/docs/reference/javascript/auth-signup og
+https://supabase.com/docs/guides/auth/managing-user-data.
+
+### Aktivering
+
+1. Kør migrationen i produktion. Oprettelse er stadig slået fra.
+2. Kontrollér, at `registration_administrators` indeholder Jacobs lærer-ID.
+   Migrationen tilføjer kun den eksisterende lærer med brugernavnet `Jacob`.
+   Ingen andre lærere får automatisk adgang til uplacerede brugere.
+3. Under Authentication → Sign In / Providers: tillad nye tilmeldinger og slå
+   **Confirm email** fra, da de interne brugernavnsadresser ikke er postkasser.
+   Undlad at ændre eksisterende konti, adgangskoder eller deres sessioner.
+4. Kør `update public.registration_settings set enabled = true where id;`.
+5. Udgiv frontendfilerne og prøv ny konto, genlogin, gemt resultat, oversigt og
+   klasseplacering. Der er ingen ny Edge Function at udgive.
+
+`can_manage_self_registered` kontrollerer den beskyttede administratortabel.
+Oversigten læses via `list_self_registered` med 50 rækker pr. side plus én til at
+afgøre, om der er en næste side. Den viser uplacerede brugere samt administratorens
+egne selvoprettede elever. Adgangskoder og andre brugeres resultater udleveres ikke.
+`assign_self_registered` validerer administrator, elev og den valgte klasses ejer
+og opdaterer lærerrelation og klasseliste i én transaktion. Resultater røres ikke.
+En ældre åben lærerfane kan ikke fjerne den nye elev ved at gemme en gammel liste.
+
+Før aktivering eller ved manglende migration viser oprettelsesformularen en
+tydelig besked. Eksisterende login virker fortsat. Hvis en konto oprettes, men
+efterfølgende indlæsning fejler, får brugeren besked om at logge ind igen.
+
+Kontrol: `node scripts/test-self-registration.cjs` og
+`node scripts/test-danish-usernames.cjs`. SQL-integrationskontrollen
+`supabase/tests/self_registration.sql` køres i en testdatabase efter migrationen;
+den bruger syntetiske konti og ruller hele kontrollen tilbage.

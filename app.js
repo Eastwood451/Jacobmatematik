@@ -360,7 +360,7 @@
       : [{id:`c-${Date.now().toString(36)}`,name:"Min klasse"}];
     const validIds = new Set(database.classes.map(item => item.id));
     (database.users || []).filter(user => user.role === "student").forEach(user => {
-      if (!validIds.has(user.classId)) user.classId = ["s3","s4"].includes(user.id) && validIds.has("c2") ? "c2" : database.classes[0].id;
+      if (!validIds.has(user.classId) && !(user.classId == null && !includeLocalSchoolData)) user.classId = ["s3","s4"].includes(user.id) && validIds.has("c2") ? "c2" : database.classes[0].id;
       if (!Array.isArray(user.assignedTables) || !user.assignedTables.length) user.assignedTables = [...SMALL_TABLES];
       user.assignedTables = [...new Set(user.assignedTables.map(Number).filter(number => SMALL_TABLES.includes(number)))].sort((a,b)=>a-b);
       if (!Array.isArray(user.assignedNumbers) || !user.assignedNumbers.length) user.assignedNumbers = [...SMALL_TABLES];
@@ -389,6 +389,8 @@
     assignedLetters:[...LETTER_KEYS],
   });
   let remoteSaveQueue = Promise.resolve();
+  let signupBusy = false;
+  const registrations = { open:false, rows:[], search:"", offset:0, more:false, loading:false, error:"", notice:"", request:0 };
   let matrixDrillTimerId = null;
   let teacherLiveTimerId = null;
   let teacherLiveRefreshInFlight = false;
@@ -429,7 +431,7 @@
       if (nextSignature !== teacherResultsSignature) {
         // Lad læreren skrive elevoplysninger færdig, selv når nye resultater
         // strømmer ind og normalt ville genopbygge hele lærerportalen.
-        if (document.activeElement?.closest?.("#student-profile-form")) return;
+        if (document.activeElement?.closest?.("#student-profile-form, #self-registered-panel") || registrations.loading) return;
         teacherResultsSignature=nextSignature;
         const scrollTop=window.scrollY;
         renderTeacher();
@@ -487,7 +489,7 @@
   function header() {
     const userLabel = state.user.role === "teacher" ? "Lærer" : isGuest() ? "Gæst" : `${escapeHtml(state.user.name)} · Elev`;
     const passwordButton = state.user.role === "student" ? `<button class="btn ghost" data-action="change-password">Skift adgangskode</button>` : "";
-    return `<header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions"><span class="user-pill">${userLabel}</span>${passwordButton}<button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
+    return `<a class="fps-launch" href="fps.html"><span>NYT SPIL</span>✎ Erling FPS</a><header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions"><span class="user-pill">${userLabel}</span>${passwordButton}<button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
   }
   function stopErlingAudio() {
     if (activeErlingAudio) {
@@ -562,6 +564,7 @@
     audio.play().catch(finish);
   }
   function renderLogin() {
+    const signup = state.view === "signup";
     app.innerHTML = `
       <div class="login-wrap">
         <section class="login-intro">
@@ -591,17 +594,17 @@
           </div>
         </section>
         <section class="login-panel">
-          <form class="login-card" id="login-form">
+          <form class="login-card" id="${signup ? "signup-form" : "login-form"}">
             <div class="login-brand"><span class="brand-mark" aria-hidden="true">∑</span><span>jacobmatematik</span></div>
-            <h2>Godt at se dig</h2>
-            <p>Log ind som elev eller lærer for at fortsætte.</p>
-            <div class="field"><label for="username">Brugernavn</label><input id="username" name="username" autocomplete="username" autocapitalize="none" placeholder="fx alma7" required></div>
-            <div class="field"><label for="password">Adgangskode</label><input id="password" name="password" type="password" autocomplete="current-password" placeholder="Din adgangskode" required></div>
+            <h2>${signup ? "Opret bruger" : "Godt at se dig"}</h2>
+            <p>${signup ? "Vælg et brugernavn og en adgangskode. Dine fremskridt bliver gemt." : "Log ind som elev eller lærer for at fortsætte."}</p>
+            <div class="field"><label for="username">Brugernavn</label><input id="username" name="username" maxlength="40" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="fx alma7" required></div>
+            <div class="field"><label for="password">Adgangskode</label><input id="password" name="password" type="password" ${signup ? 'minlength="6" maxlength="72"' : ""} autocomplete="${signup ? "new-password" : "current-password"}" placeholder="${signup ? "Mindst 6 tegn" : "Din adgangskode"}" required></div>
+            ${signup ? '<small>Husk dit brugernavn og din adgangskode. Din lærer kan senere placere dig i en klasse.</small>' : ""}
             <p id="login-error" class="error" role="alert"></p>
-            <button class="btn full" type="submit">Log ind</button>
+            <button class="btn full" type="submit">${signup ? "Opret bruger" : "Log ind"}</button>
             <div class="login-divider"><span>eller</span></div>
-            <button class="btn secondary full guest-login" type="button" data-action="guest-login">Gæst</button>
-            <small class="guest-note">Prøv Minusstykker, Tabel-drill, Division-drill, Divisions-slikkepinde og Lille tabel uden bruger. Fremskridt gemmes ikke.</small>
+            <button class="btn secondary full" type="button" data-action="${signup ? "show-login" : "show-signup"}">${signup ? "Tilbage til login" : "Opret bruger"}</button>
           </form>
         </section>
       </div>`;
@@ -1917,6 +1920,49 @@
     return `<section class="pair-detail table-drill-history" aria-labelledby="division-drill-history-title"><div class="pair-detail-head"><div><span class="eyebrow">Sessionshistorik</span><h3 id="division-drill-history-title">Alle Division-heatmaps</h3><p>Alle sessioner bevares. Farverne viser elevens svartid og fejl for hvert divisionsstykke.</p></div><button class="btn secondary" data-action="close-topic-detail">Luk</button></div>${cards ? `<div class="table-drill-history-list">${cards}</div>` : `<p class="empty">Ingen gemte Division-drill-sessioner endnu. Nye drills vises her, så snart eleven har besvaret den første opgave.</p>`}</section>`;
   }
 
+  function renderRegistrations() {
+    if (!state.user?.canManageRegistrations) return "";
+    const disabled = registrations.loading ? "disabled" : "";
+    const rows = registrations.rows.map(user => `<form class="registration-row" data-registration-form="${escapeHtml(user.id)}">
+      <div class="registration-identity"><strong>${escapeHtml(user.username)}</strong><small>${escapeHtml(user.name)} · Oprettet ${new Intl.DateTimeFormat("da-DK").format(new Date(user.created_at))}</small></div>
+      <span class="registration-status">${user.assigned ? escapeHtml(user.class_name || "Tilknyttet dig") : "Uden klasse"}</span>
+      <label class="sr-only" for="registration-class-${escapeHtml(user.id)}">Klasse til ${escapeHtml(user.username)}</label>
+      <select id="registration-class-${escapeHtml(user.id)}" name="classId" required ${disabled}>
+        <option value="">Vælg klasse</option>
+        ${db.classes.map(item => `<option value="${escapeHtml(item.id)}" ${item.id === user.class_id ? "selected" : ""}>${escapeHtml(item.name)}</option>`).join("")}
+      </select><button class="btn" type="submit" ${disabled}>${user.assigned ? "Flyt til klasse" : "Placér i klasse"}</button>
+    </form>`).join("");
+    return `<section id="self-registered-panel" class="class-manager registrations-panel" aria-label="Selvoprettede brugere">
+      <div class="class-manager-title"><div><span class="eyebrow">Brugeroversigt</span><h2>Selvoprettede brugere</h2></div><button class="btn secondary" type="button" data-action="toggle-registrations" aria-expanded="${registrations.open}" ${disabled}>${registrations.open ? "Luk oversigt" : "Åbn oversigt"}</button></div>
+      ${registrations.open ? `<p>Vælg en af dine klasser. Brugerens tidligere resultater følger med.</p>
+        <form id="registration-search-form" class="registration-search"><label class="sr-only" for="registration-search">Søg efter brugernavn eller navn</label><input id="registration-search" name="search" type="search" maxlength="40" placeholder="Søg efter brugernavn eller navn" value="${escapeHtml(registrations.search)}" ${disabled}><button class="btn secondary" type="submit" ${disabled}>Søg</button><button class="btn secondary" type="button" data-action="refresh-registrations" ${disabled}>Opdatér</button></form>
+        <p role="status">${registrations.loading ? "Henter brugere…" : escapeHtml(registrations.notice)}</p><p class="error" role="alert">${escapeHtml(registrations.error)}</p>
+        ${rows || (!registrations.loading && !registrations.error ? '<p class="empty">Ingen selvoprettede brugere fundet.</p>' : "")}
+        <div class="registration-pages"><button class="btn secondary" type="button" data-action="previous-registrations" ${registrations.offset === 0 ? "disabled" : disabled}>Forrige</button><span>Side ${Math.floor(registrations.offset / 50) + 1}</span><button class="btn secondary" type="button" data-action="next-registrations" ${!registrations.more ? "disabled" : disabled}>Næste</button></div>` : ""}
+    </section>`;
+  }
+
+  async function refreshRegistrations() {
+    if (!state.user?.canManageRegistrations || registrations.loading) return;
+    const request = ++registrations.request;
+    registrations.loading = true; registrations.error = "";
+    renderTeacher();
+    try {
+      const rows = await backend.listSelfRegistered(registrations.search, registrations.offset);
+      if (request !== registrations.request || state.user?.role !== "teacher") return;
+      registrations.more = rows.length > 50;
+      registrations.rows = rows.slice(0, 50);
+    } catch {
+      if (request !== registrations.request) return;
+      registrations.error = "Oversigten kunne ikke hentes. Tryk på Opdatér for at prøve igen.";
+    } finally {
+      if (request === registrations.request) {
+        registrations.loading = false;
+        if (state.user?.role === "teacher" && state.view === "teacher") renderTeacher();
+      }
+    }
+  }
+
   function renderTeacher() {
     const classes = db.classes || [];
     const activeClass = classes.find(item => item.id === state.activeClassId) || classes[0];
@@ -2003,6 +2049,7 @@
         ${state.classRenameFormOpen ? `<form id="class-rename-form" class="class-rename-form"><label class="sr-only" for="class-rename">Nyt klassenavn</label><input id="class-rename" name="className" maxlength="30" value="${escapeHtml(activeClass.name)}" required><button class="btn" type="submit">Gem navn</button><p id="class-rename-error" class="student-error" role="alert"></p></form>` : ""}
         ${state.studentFormOpen ? `<form id="student-form" class="student-form"><div class="field"><label for="student-name">Elevens navn</label><input id="student-name" name="studentName" maxlength="60" autocomplete="off" placeholder="fx Emma" required></div><div class="field"><label for="student-username">Brugernavn</label><input id="student-username" name="studentUsername" maxlength="40" autocomplete="off" autocapitalize="none" placeholder="fx emma8" required></div><div class="field"><label for="student-password">Adgangskode</label><input id="student-password" name="studentPassword" type="password" maxlength="60" autocomplete="new-password" placeholder="Vælg adgangskode" required></div><button class="btn" type="submit">Opret elev</button><p id="student-error" class="student-error" role="alert"></p></form>` : ""}
       </section>
+      ${renderRegistrations()}
       <section class="class-kpis">
         <article><span>Elever</span><strong>${students.length}</strong><small>aktive profiler</small></article>
         <article><span>Besvarelser</span><strong>${allResults.length}</strong><small>registreret i alt</small></article>
@@ -2023,7 +2070,71 @@
 
   document.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (event.target.id === "login-form") {
+    if (event.target.id === "signup-form") {
+      if (signupBusy || state.user) return;
+      const data = new FormData(event.target), username = normalizeUsername(data.get("username")), password = String(data.get("password") || "");
+      const error = document.getElementById("login-error");
+      if (!usingCentralDatabase) { error.textContent="Brugeroprettelse kræver forbindelse til databasen."; return; }
+      signupBusy = true;
+      const buttons = [...event.target.querySelectorAll("button")];
+      buttons.forEach(button => { button.disabled = true; });
+      error.textContent = "";
+      let created = false;
+      try {
+        await backend.signUp(username, password);
+        created = true;
+        // Clear the password as soon as Auth has accepted the account.
+        event.target.reset();
+        const loaded = await backend.loadDatabase();
+        db = normalizeDatabase(loaded.database, false);
+        state.user = db.users.find(user => user.id === loaded.currentUserId);
+        if (!state.user) throw new Error("Brugerprofilen mangler.");
+        stopErlingAudio(); stopKaptajnAudio(); stopLuigiAudio();
+        state.view = "student"; render();
+      } catch (signupError) {
+        if (created) {
+          state.user = null; state.view = "login"; renderLogin();
+          document.getElementById("login-error").textContent = "Din bruger er oprettet. Log ind for at fortsætte.";
+        } else error.textContent = signupError.message || "Brugeren kunne ikke oprettes. Prøv igen.";
+      } finally { signupBusy = false; buttons.forEach(button => { button.disabled = false; }); }
+    } else if (event.target.id === "registration-search-form") {
+      if (!state.user?.canManageRegistrations || registrations.loading) return;
+      registrations.search = String(new FormData(event.target).get("search") || "").trim();
+      registrations.offset = 0; registrations.rows = []; registrations.notice = "";
+      await refreshRegistrations();
+    } else if (event.target.dataset.registrationForm) {
+      if (!state.user?.canManageRegistrations || registrations.loading) return;
+      const studentId = event.target.dataset.registrationForm;
+      const classId = String(new FormData(event.target).get("classId") || "");
+      if (!db.classes.some(item => item.id === classId)) return;
+      registrations.loading = true; registrations.error = ""; registrations.notice = "";
+      const request = ++registrations.request;
+      renderTeacher();
+      let assigned = false;
+      try {
+        await remoteSaveQueue;
+        await backend.assignSelfRegistered(studentId, classId);
+        assigned = true;
+        const loaded = await backend.loadDatabase();
+        if (request !== registrations.request || state.user?.role !== "teacher") return;
+        db = normalizeDatabase(loaded.database, false);
+        state.user = db.users.find(user => user.id === loaded.currentUserId);
+        state.activeClassId = classId; state.expandedStudent = studentId; state.teacherTopicDetail = null;
+        registrations.notice = "Brugeren er placeret i klassen. Tidligere resultater er bevaret.";
+        registrations.offset = 0;
+      } catch {
+        if (request !== registrations.request) return;
+        registrations.error = assigned ? "Brugeren er placeret, men elevlisten kunne ikke genindlæses. Genindlæs siden." : "Brugeren kunne ikke placeres. Opdatér oversigten og prøv igen.";
+      } finally {
+        if (request === registrations.request) {
+          registrations.loading = false;
+          if (state.user?.role === "teacher") {
+            if (!registrations.error) await refreshRegistrations();
+            else renderTeacher();
+          }
+        }
+      }
+    } else if (event.target.id === "login-form") {
       const data = new FormData(event.target), username=normalizeUsername(data.get("username")), password=String(data.get("password"));
       const error = document.getElementById("login-error");
       try {
@@ -2142,7 +2253,17 @@
     if (reportTopicButton) { state.teacherTopicDetail=reportTopicButton.dataset.reportTopic; renderTeacher(); return; }
     if (!actionButton) return;
     const action=actionButton.dataset.action;
-    if (action==="guest-login") { stopErlingAudio(); stopKaptajnAudio(); stopLuigiAudio(); stopMatrixDrillTimer(); Object.assign(state,{user:createGuest(),view:"student",task:null,matrixDrill:null,questionNumber:1,sessionCorrect:0,sessionAnswers:[]}); renderStudentHome(); return; }
+    if (["show-signup", "show-login"].includes(action) && !state.user && !signupBusy) { state.view = action === "show-signup" ? "signup" : "login"; renderLogin(); return; }
+    if (["toggle-registrations", "refresh-registrations", "previous-registrations", "next-registrations"].includes(action)) {
+      if (!state.user?.canManageRegistrations || registrations.loading) return;
+      if (action === "toggle-registrations") registrations.open = !registrations.open;
+      if (action === "previous-registrations") registrations.offset = Math.max(0, registrations.offset - 50);
+      if (action === "next-registrations" && registrations.more) registrations.offset += 50;
+      registrations.notice = "";
+      if (registrations.open) await refreshRegistrations(); else renderTeacher();
+      return;
+    }
+    if (action === "logout") { registrations.request++; Object.assign(registrations, { open:false, rows:[], search:"", offset:0, more:false, loading:false, error:"", notice:"" }); }
     if (action==="logout") { clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,matrixDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
     if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
     if (action==="home") { clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); state.matrixDrill=null; state.task=null; state.view="student"; renderStudentHome(); }
@@ -2338,4 +2459,3 @@
   }
   start();
 })();
-
