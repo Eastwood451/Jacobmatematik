@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#121820">
   <title>Erling FPS · Jacob Matematik</title>
-  <link rel="stylesheet" href="fps.css?v=20260907-avatar1">
+  <link rel="stylesheet" href="fps.css?v=20260909-touch1">
   <script type="importmap">
   {
     "imports": {
@@ -46,6 +46,7 @@
         <span class="eyebrow">JACOB MATEMATIK · FPS</span>
         <h1>Erling er løs på skolen.</h1>
         <p>Løs gangestykket, tjen blyanter og hold Erling væk. Hver femte nedlagte Erling kalder Gunnar Gider-ik ind. Efter 50 nedlagte Erlings åbner døren til skolegården, hvor Eksamens-Else venter.</p>
+        <p class="touch-instructions">Vend mobilen på langs. Venstre tommelfinger bevæger dig, højre styrer blikket. Svar med talrækken nederst og tryk ✓. Hold LØB eller DUK, og tryk HOP eller SKYD.</p>
         <div class="controls-grid">
           <div><kbd>W A S D</kbd><span>bevæg dig</span></div>
           <div><kbd>Mus</kbd><span>se dig omkring</span></div>
@@ -108,13 +109,45 @@
       </div>
     </section>
 
+    <section id="touch-controls" aria-label="Mobilstyring" hidden>
+      <div id="look-pad" aria-label="Træk for at se dig omkring"><span>SE DIG OMKRING</span></div>
+      <div id="move-stick" aria-label="Træk for at bevæge dig"><span></span><small>BEVÆG</small></div>
+      <div class="touch-actions">
+        <button type="button" data-hold="sprint">LØB</button>
+        <button type="button" data-hold="crouch">DUK</button>
+        <button type="button" data-key="Space">HOP</button>
+        <button type="button" id="touch-fire">SKYD ✎</button>
+      </div>
+      <div class="touch-number-row" aria-label="Svar på regnestykket">
+        <button type="button" data-key="Digit0" aria-label="Tal 0">0</button>
+        <button type="button" data-key="Digit1" aria-label="Tal 1">1</button>
+        <button type="button" data-key="Digit2" aria-label="Tal 2">2</button>
+        <button type="button" data-key="Digit3" aria-label="Tal 3">3</button>
+        <button type="button" data-key="Digit4" aria-label="Tal 4">4</button>
+        <button type="button" data-key="Digit5" aria-label="Tal 5">5</button>
+        <button type="button" data-key="Digit6" aria-label="Tal 6">6</button>
+        <button type="button" data-key="Digit7" aria-label="Tal 7">7</button>
+        <button type="button" data-key="Digit8" aria-label="Tal 8">8</button>
+        <button type="button" data-key="Digit9" aria-label="Tal 9">9</button>
+        <button type="button" data-key="Backspace" aria-label="Slet sidste tal">⌫</button>
+        <button type="button" data-key="Enter" aria-label="Bekræft svar">✓</button>
+      </div>
+    </section>
+    <button type="button" id="touch-pause" aria-label="Pause" hidden>Ⅱ</button>
+    <section id="rotate-device" class="touch-message" hidden>
+      <div><span class="rotate-icon" aria-hidden="true">↻</span><h2>Vend mobilen på langs</h2><p>Så er der plads til spillet, tommelfingrene og tallene.</p><button type="button" id="touch-fullscreen">PRØV FULDSKÆRM</button></div>
+    </section>
+    <section id="touch-pause-overlay" class="touch-message" hidden>
+      <div><h2>Tag en puster</h2><p>I onlinekampe fortsætter de andre med at spille.</p><button type="button" id="touch-resume">FORTSÆT</button><a href="index.html">Tilbage til matematik</a></div>
+    </section>
+
     <div id="pointer-note" class="pointer-note">Klik i spillet for at fange musen</div>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=66d7f7d7"></script>
   <script src="supabase-backend.js?v=20260908-danish-usernames1"></script>
-  <script type="module" src="fps.js?v=20260909-examdrop2"></script>
+  <script type="module" src="fps.js?v=20260909-touch1"></script>
   <script src="fps-ammo-ui.js?v=20260905-ammo1" defer></script>
 </body>
 </html>

@@ -1,12 +1,18 @@
 import * as THREE from 'three';
+import { createTouchControls, touchInput, hasTouchControls } from './fps-touch.js?v=20260909-touch1';
+let touch = null;
+let gameTime = performance.now();
+const gameNow = () => gameTime;
+const inputReady = () => touch?.enabled ? touch.active : controls.isLocked;
+const enterControls = () => touch?.enabled ? void touch.enter() : controls.lock();
 import { createSchoolWindows } from './fps-windows.js?v=20260907-windows1';
 import { createGameVoicePlayer } from './fps-voice.js?v=20260907-danish1';
 const gameVoice = createGameVoicePlayer();
-import { createPlayerMovement } from './fps-movement.js?v=20260907-ducts1';
+import { createPlayerMovement } from './fps-movement.js?v=20260909-touch1';
 import { createDuctBuilder } from './fps-ducts.js?v=20260907-ducts1';
 import { createSchoolInteriorMaterials, applySchoolSurfaceUV } from './fps-interior.js?v=20260907-interior1';
 import { createElseAttacks, ELSE_THROW_INTERVAL } from './fps-else-attacks.js?v=20260909-examdrop2';
-import { createOnlineGame } from './fps-online.js?v=20260907-avatar1';
+import { createOnlineGame } from './fps-online.js?v=20260909-touch1';
 let multiplayer = null;
 import { createSchoolyard } from './fps-schoolyard.js?v=20260907-courtyard1';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
@@ -16,7 +22,7 @@ import { createElseRig, animateElse, disposeElseRig } from './fps-else.js?v=2026
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setPixelRatio(Math.min(devicePixelRatio, hasTouchControls() ? 1.5 : 2));
 renderer.setSize(innerWidth, innerHeight);
 renderer.shadowMap.enabled = true;
 renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -248,7 +254,7 @@ for(const x of [-17,17])for(const z of [-18,0,18])ceilingFixture(x,z);
 addSchoolWallArt(scene, renderer);
 
 const keys = {};
-const playerMovement = createPlayerMovement({camera,colliders,keys});
+const playerMovement = createPlayerMovement({camera,colliders,keys,input:touchInput});
 let last = performance.now();
 let lives = 5;
 let ammo = 0;
@@ -271,7 +277,7 @@ let musicGain = null;
 let musicTimer = null;
 let musicStep = 0;
 let campBoost = false;
-let lastPlayerMoveAt = performance.now();
+let lastPlayerMoveAt = gameNow();
 let campMovementStartedAt = 0;
 let magicCircle = null;
 let magicCircleTriggered = false;
@@ -335,7 +341,7 @@ function showVictory() {
       overlay.classList.remove('open');
       gameActive = true;
       resetGame();
-      controls.lock();
+      enterControls();
     });
   } else {
     overlay.classList.add('open');
@@ -427,7 +433,7 @@ function speakGunnar() {
   speakLine(lines[gunnarVoiceIndex++ % lines.length], { rate:.92, pitch:.76, volume:.98 });
 }
 function speakElse(force = false) {
-  const now = performance.now();
+  const now = gameNow();
   if (!force && now - lastElseVoiceAt < 6000) return;
   lastElseVoiceAt = now;
   speakLine('Tid til eksamen!', { rate:.68, pitch:.58, volume:1 });
@@ -510,7 +516,7 @@ function makePencil() {
 }
 function firePencil() {
   if (multiplayer?.active) { multiplayer.fire(); return; }
-  if (!gameActive || !controls.isLocked || ammo <= 0 || divisionChallenge?.active) return;
+  if (!gameActive || !inputReady() || ammo <= 0 || divisionChallenge?.active) return;
   ammo--;
   updateHUD();
   flash('shot-flash');
@@ -677,7 +683,7 @@ function finishDivisionChallenge(success) {
   answer = '';
   answerEl.textContent = '_';
   removeMagicCircle();
-  lastPlayerMoveAt = performance.now();
+  lastPlayerMoveAt = gameNow();
   if (success) {
     lives++;
     updateHUD();
@@ -848,7 +854,7 @@ function enterSchoolyard() {
   camera.rotation.set(0,Math.PI,0);
   campBoost = false;
   campMovementStartedAt = 0;
-  lastPlayerMoveAt = performance.now();
+  lastPlayerMoveAt = gameNow();
   newProblem();
   createElse();
   feedbackEl.textContent = 'Løs divisioner. Undvig Elses linealer og røde tuscher!';
@@ -927,7 +933,7 @@ function spawnStompWave(enemy) {
 
   feedbackEl.textContent = 'ELSE TRAMPER! HOP OVER CHOKBØLGEN!';
   feedbackEl.className = 'feedback bad';
-  stompShakeUntil = performance.now() + 320;
+  stompShakeUntil = gameNow() + 320;
   playStompSound();
 }
 
@@ -1003,7 +1009,7 @@ function flash(id) {
   el.classList.add('flash');
 }
 function hurt(enemy, projectileHit = false) {
-  const now = performance.now();
+  const now = gameNow();
   if (!gameActive || divisionChallenge?.active || (!projectileHit && now < invulnerableUntil)) return;
   invulnerableUntil = now + 1200;
   lives--;
@@ -1076,7 +1082,8 @@ function updateCamping(now, moved) {
   }
 }
 
-addEventListener('keydown', e => {
+function handleKeyDown(e) {
+  if (touch?.blocked) return;
   if (multiplayer?.active) {
     if (e.code === 'KeyM' && !e.repeat && !/INPUT|TEXTAREA/.test(e.target?.tagName)) toggleMusic();
     multiplayer.keydown(e);
@@ -1104,12 +1111,13 @@ addEventListener('keydown', e => {
     answerEl.textContent = answer || '_';
   }
   if (e.code === 'Enter' && gameActive) submitAnswer();
-});
+}
+addEventListener('keydown', handleKeyDown);
 addEventListener('keyup', e => keys[e.code] = false);
 function clearMovementKeys() { for (const key of Object.keys(keys)) delete keys[key]; }
 addEventListener('blur', clearMovementKeys);
-addEventListener('mousedown', e => { if (e.button === 0) firePencil(); });
-canvas.addEventListener('click', () => { if (gameActive && !controls.isLocked) controls.lock(); });
+addEventListener('mousedown', e => { if (e.button === 0 && !touch?.enabled) firePencil(); });
+canvas.addEventListener('click', () => { if (gameActive && !touch?.enabled && !controls.isLocked) enterControls(); });
 controls.addEventListener('lock', () => document.getElementById('pointer-note').classList.remove('show'));
 controls.addEventListener('unlock', () => { clearMovementKeys(); if (gameActive) document.getElementById('pointer-note').classList.add('show'); });
 
@@ -1126,7 +1134,7 @@ function resetGame(online = false) {
   erlingKills = 0;
   campBoost = false;
   campMovementStartedAt = 0;
-  lastPlayerMoveAt = performance.now();
+  lastPlayerMoveAt = gameNow();
   magicCircleTriggered = false;
   divisionChallenge = null;
   schoolyardDoorOpen = false;
@@ -1155,7 +1163,7 @@ startButton.addEventListener('click', () => {
   ensureMusic();
   audioCtx?.resume();
   resetGame();
-  controls.lock();
+  enterControls();
 });
 
 document.getElementById('restart-button').addEventListener('click', () => {
@@ -1164,12 +1172,12 @@ document.getElementById('restart-button').addEventListener('click', () => {
   ensureMusic();
   audioCtx?.resume();
   resetGame();
-  controls.lock();
+  enterControls();
 });
 
 function update(dt, time) {
   if (multiplayer?.active) { multiplayer.update(dt,time); return; }
-  if (!gameActive) return;
+  if (!gameActive || touch?.blocked) { lastPlayerMoveAt = time; return; }
   const moved = playerMovement.update(dt);
   updateCamping(time,moved);
   updateSchoolyardArrows(time);
@@ -1232,8 +1240,10 @@ function update(dt, time) {
 function loop(t) {
   const dt = Math.min((t - last) / 1000, .04);
   last = t;
+  touch?.sync();
   schoolWindows.update(t);
-  update(dt,t);
+  if (!touch?.blocked) gameTime += dt * 1000;
+  update(dt, multiplayer?.active ? t : gameTime);
   renderer.render(scene,camera);
   requestAnimationFrame(loop);
 }
@@ -1249,9 +1259,19 @@ createSchoolyardDoor();
 updateHUD();
 
 multiplayer = createOnlineGame({
-  scene, camera, controls, colliders, makePencil, flash,
+  scene, camera, controls, colliders, makePencil, flash, inputReady, touchInput,
+  touchEnabled: () => Boolean(touch?.enabled),
   prepare: () => { gameActive = false; resetGame(true); },
   ready: () => charactersReady && playerRulesReady,
   textures: () => ({ erling:erlingTexture, gunnar:gunnarTexture }),
   startAudio: () => { ensureMusic(); audioCtx?.resume(); },
+});
+
+
+touch = createTouchControls({
+  camera,
+  isPlaying: () => multiplayer?.active ? multiplayer.playing : gameActive,
+  keydown: handleKeyDown,
+  fire: firePencil,
+  clearKeys: () => { clearMovementKeys(); multiplayer?.clearKeys(); },
 });
