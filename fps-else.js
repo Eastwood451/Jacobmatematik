@@ -65,6 +65,7 @@ export function createElseRig(texture, phase = Math.random() * Math.PI * 2) {
   enemy.maxHp = 25;
   enemy.speed = .82;
   enemy.lastStompAt = 0;
+  enemy.stompCount = 0;
   return enemy;
 }
 
@@ -75,7 +76,9 @@ export function animateElse(enemy, dt, time, distanceMoved, onStomp) {
   const stompPhase = Math.sin(enemy.stride + enemy.phase);
   if (walking > .45 && stompPhase > .92 && time - enemy.lastStompAt > 520) {
     enemy.lastStompAt = time;
-    if (onStomp) onStomp();
+    // Keep her walking cadence, but emit only one of every four shockwaves.
+    enemy.stompCount++;
+    if (enemy.stompCount % 4 === 0 && onStomp) onStomp();
   }
 }
 

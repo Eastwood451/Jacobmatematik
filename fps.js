@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createTouchControls, touchInput, hasTouchControls } from './fps-touch.js?v=20260909-touch1';
+import { createTouchControls, touchInput, hasTouchControls } from './fps-touch.js?v=20260909-touch2';
 let touch = null;
 let gameTime = performance.now();
 const gameNow = () => gameTime;
@@ -8,17 +8,17 @@ const enterControls = () => touch?.enabled ? void touch.enter() : controls.lock(
 import { createSchoolWindows } from './fps-windows.js?v=20260907-windows1';
 import { createGameVoicePlayer } from './fps-voice.js?v=20260907-danish1';
 const gameVoice = createGameVoicePlayer();
-import { createPlayerMovement } from './fps-movement.js?v=20260909-touch1';
+import { createPlayerMovement } from './fps-movement.js?v=20260909-touch2';
 import { createDuctBuilder } from './fps-ducts.js?v=20260907-ducts1';
 import { createSchoolInteriorMaterials, applySchoolSurfaceUV } from './fps-interior.js?v=20260907-interior1';
 import { createElseAttacks, ELSE_THROW_INTERVAL } from './fps-else-attacks.js?v=20260909-examdrop2';
-import { createOnlineGame } from './fps-online.js?v=20260909-touch1';
+import { createOnlineGame } from './fps-online.js?v=20260909-touch2';
 let multiplayer = null;
 import { createSchoolyard } from './fps-schoolyard.js?v=20260907-courtyard1';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { createErlingRig, animateErling, disposeErlingRig, addSchoolWallArt } from './fps-visuals.js?v=20260907-no-smykker1';
 import { createGunnarRig, animateGunnar, disposeGunnarRig } from './fps-gunnar.js?v=20260907-sprites1';
-import { createElseRig, animateElse, disposeElseRig } from './fps-else.js?v=20260907-sprites1';
+import { createElseRig, animateElse, disposeElseRig } from './fps-else.js?v=20260909-shockwaves2';
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
@@ -313,6 +313,7 @@ function ensureBossHud() {
 
 function updateBossHud() {
   const hud = ensureBossHud();
+  document.documentElement.classList.toggle('boss-active', Boolean(elseBoss));
   if (!elseBoss) {
     hud.style.display = 'none';
     return;

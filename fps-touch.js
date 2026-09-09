@@ -12,6 +12,7 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
   const knob = stick.querySelector('span');
   const look = document.getElementById('look-pad');
   let paused = false, moveId = null, lookId = null, lookX = 0, lookY = 0;
+  let lookStart = null, previousTap = null;
   const held = new Map();
   let lastState = null;
   const landscape = () => innerWidth > innerHeight;
@@ -23,6 +24,7 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
     touchInput.x = touchInput.z = 0;
     touchInput.sprint = touchInput.crouch = false;
     moveId = lookId = null;
+    lookStart = previousTap = null;
     held.clear();
     knob.style.transform = '';
     panel.querySelectorAll('.pressed').forEach(el => el.classList.remove('pressed'));
@@ -76,9 +78,14 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
   look.addEventListener('pointerdown', e => {
     if (!available() || lookId !== null) return;
     lookId = e.pointerId; lookX = e.clientX; lookY = e.clientY; capture(look,e);
+    lookStart = {x:e.clientX, y:e.clientY, time:performance.now(), moved:false};
   });
   look.addEventListener('pointermove', e => {
     if (e.pointerId !== lookId || !available()) return;
+    if (Math.hypot(e.clientX-lookStart.x,e.clientY-lookStart.y) > 18) {
+      lookStart.moved = true;
+      previousTap = null;
+    }
     camera.rotation.order = 'YXZ';
     camera.rotation.y -= (e.clientX-lookX)*.004;
     camera.rotation.x = Math.max(-Math.PI/2+.05, Math.min(Math.PI/2-.05, camera.rotation.x-(e.clientY-lookY)*.004));
@@ -86,7 +93,20 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
     lookX = e.clientX; lookY = e.clientY;
   });
   for (const event of ['pointerup','pointercancel','lostpointercapture']) look.addEventListener(event,e => {
-    if (e.pointerId === lookId) lookId = null;
+    if (e.pointerId !== lookId) return;
+    const now = performance.now();
+    const isTap = event === 'pointerup' && available() && !lookStart.moved
+      && now-lookStart.time <= 220
+      && Math.hypot(e.clientX-lookStart.x,e.clientY-lookStart.y) <= 18;
+    if (isTap) {
+      if (previousTap && now-previousTap.time <= 320
+          && Math.hypot(e.clientX-previousTap.x,e.clientY-previousTap.y) <= 40) {
+        sendKey('Space');
+        previousTap = null;
+      } else previousTap = {x:e.clientX,y:e.clientY,time:now};
+    } else previousTap = null;
+    lookId = null;
+    lookStart = null;
   });
   for (const button of panel.querySelectorAll('button')) {
     button.addEventListener('pointerdown', e => {

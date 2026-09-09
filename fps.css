@@ -94,10 +94,12 @@ button:focus-visible,input:focus-visible{outline:3px solid #277d7d;outline-offse
 .touch-device #online-scores{margin:3px 0;padding-left:16px;font-size:9px}
 .touch-device #online-scores .player-avatar{display:none}
 .touch-device #exit-match{pointer-events:auto;padding:6px;font-size:10px}
-.touch-device #else-boss-hud{top:53px!important;width:min(360px,45vw)!important;padding:4px 8px!important;font-size:10px!important;border-width:2px!important}
+.touch-device #else-boss-hud{top:max(7px,env(safe-area-inset-top))!important;left:var(--left-edge)!important;right:calc(var(--right-edge) + 54px)!important;transform:none!important;width:auto!important;pointer-events:none;padding:4px 8px!important;font-size:10px!important;border-width:2px!important}
 @media (max-height:370px) and (orientation:landscape){
  .touch-device{--number-height:42px}
  .touch-device #move-stick{width:90px;bottom:calc(var(--number-height) + var(--bottom-edge) + 14px)}
  .touch-device .touch-actions{bottom:calc(var(--number-height) + var(--bottom-edge) + 10px)}
  .touch-device.touch-playing .math-panel{width:210px}
 }
+
+.touch-device.boss-active .hud-top{top:calc(max(7px,env(safe-area-inset-top)) + 52px)}

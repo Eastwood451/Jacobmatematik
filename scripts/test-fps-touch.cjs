@@ -99,6 +99,55 @@ test('desktop keeps touch UI hidden and pointer-lock input unblocked',t=>{
   assert.equal(s.w.document.documentElement.classList.contains('touch-device'),false);
 });
 
+test('right double tap jumps once while moving; dragging, slow taps and cancellation do not jump',t=>{
+  const s=setup(t);
+  let now=1000;
+  s.w.performance.now=()=>now;
+  const tap=(id,x=200,y=150)=>{
+    s.pointer('#look-pad','pointerdown',id,x,y);now+=50;
+    s.pointer('#look-pad','pointerup',id,x,y);
+  };
+  s.pointer('#move-stick','pointerdown',1,50,18);
+  tap(2);now+=100;tap(3);
+  assert.deepEqual(s.keys,['Space']);assert.equal(s.api.touchInput.z,-1);
+  tap(4);assert.equal(s.keys.length,1); // A third tap is a new pair.
+  s.pointer('#look-pad','pointerdown',5,200,150);
+  s.pointer('#look-pad','pointermove',5,260,150);
+  s.pointer('#look-pad','pointermove',5,200,150);
+  s.pointer('#look-pad','pointerup',5,200,150);
+  tap(6);assert.equal(s.keys.length,1); // A drag that returns to its origin isn't a tap.
+  now+=400;tap(7);assert.equal(s.keys.length,1);
+  s.pointer('#look-pad','pointerdown',8,200,150);
+  s.pointer('#look-pad','pointercancel',8,200,150);
+  tap(9);assert.equal(s.keys.length,1);
+  s.controls.reset();tap(10);assert.equal(s.keys.length,1);
+  tap(11,400,150);assert.equal(s.keys.length,1); // Separate places aren't a double tap.
+  s.controls.reset();
+  s.pointer('#look-pad','pointerdown',12,200,150);now+=500;
+  s.pointer('#look-pad','pointerup',12,200,150);
+  tap(13);assert.equal(s.keys.length,1); // Long presses aren't taps.
+  assert.equal(s.fired,0);
+});
+
+test('Else emits exactly one shockwave per four eligible stomps and a fresh boss resets the count',()=>{
+  const vm=require('node:vm');
+  const code=fs.readFileSync(path.join(root,'fps-else.js'),'utf8')
+    .replace(/^import .*;\n/m,'').replaceAll('export ','');
+  const api=vm.runInNewContext(`${code}\n({createElseRig,animateElse})`,{
+    createSpriteRig:()=>({stride:Math.PI/2,phase:0}),animateErling(){},disposeErlingRig(){},
+  });
+  const enemy=api.createElseRig(null);let waves=0;
+  for(let i=1;i<=16;i++) {
+    api.animateElse(enemy,.1,i*600,0,()=>waves++); // Idle must not count.
+    api.animateElse(enemy,.1,i*600,.1,()=>waves++);
+    api.animateElse(enemy,.1,i*600+20,.1,()=>waves++); // Cooldown still applies.
+    assert.equal(waves,Math.floor(i/4));
+  }
+  const fresh=api.createElseRig(null);
+  api.animateElse(fresh,.1,12000,.1,()=>waves++);
+  assert.equal(waves,4);assert.equal(fresh.stompCount,1);
+});
+
 test('real shared movement supports analog input, sprint, crouch, jump and collisions',t=>{
   const s=setup(t);s.w.THREE=THREE;
   const movementSource=fs.readFileSync(path.join(root,'fps-movement.js'),'utf8').replace("import * as THREE from 'three';",'').replaceAll('export ','');
