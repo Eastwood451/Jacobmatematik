@@ -678,3 +678,19 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
 @media(max-width:760px) { .student-home-layout { grid-template-columns:minmax(0,1fr); width:calc(100% - 24px); gap:28px; padding-top:20px; } .math-tower { width:min(310px,100%); margin:auto; } .math-tower-level { height:76px; } }
 @media(max-width:560px) { .student-home-content .topic-grid,.student-home-content .recent-strip { grid-template-columns:minmax(0,1fr); } }
 @media(prefers-reduced-motion:reduce) { .tower-frame .math-tower-floor-art { animation:none; } }
+.registrations-panel { margin: 20px 0; }
+.registrations-panel h2 { margin: 4px 0 0; font-size: 22px; }
+.registration-search { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+.registration-search input { flex: 1; min-width: 180px; }
+.registration-row { display: grid; grid-template-columns: minmax(140px, 1fr) minmax(110px, .6fr) minmax(140px, .8fr) auto; gap: 12px; align-items: center; padding: 16px 0; border-bottom: 1px solid #e4dfd4; }
+.registration-identity { min-width: 0; overflow-wrap: anywhere; }
+.registration-identity strong, .registration-identity small { display: block; }
+.registration-identity small { margin-top: 5px; color: #63685e; }
+.registration-status { font-size: 14px; overflow-wrap: anywhere; }
+.registration-row select { width: 100%; min-width: 0; }
+.registration-pages { display: flex; justify-content: center; align-items: center; gap: 16px; margin-top: 18px; }
+@media (max-width: 720px) {
+  .registration-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .registration-status { text-align: right; }
+  .registration-row .btn { width: 100%; }
+}
