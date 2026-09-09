@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { createTouchControls, touchInput, hasTouchControls } from './fps-touch.js?v=20260909-touch2';
+import { createTouchControls, touchInput, hasTouchControls } from './fps-touch.js?v=20260909-touch3';
 let touch = null;
 let gameTime = performance.now();
 const gameNow = () => gameTime;
@@ -179,7 +179,7 @@ async function loadPlayerRules() {
     console.info('Spillerprofil kunne ikke hentes. Standardregler bruges.', error);
   }
   currentUsername = String(username || '').trim();
-  schoolyardKillTarget = currentUsername.toLowerCase() === 'jacobe' ? 3 : 50;
+  schoolyardKillTarget = currentUsername.toLowerCase() === 'jacobe' ? 0 : 50;
   playerRulesReady = true;
   refreshStartButton();
 }
@@ -813,7 +813,7 @@ function openSchoolyardDoor() {
   const door = createSchoolyardDoor();
   door.visible = true;
   createSchoolyardArrows();
-  mathKickerEl.textContent = `${schoolyardKillTarget} ERLINGER!`;
+  mathKickerEl.textContent = schoolyardKillTarget === 0 ? 'FRI ADGANG TIL SKOLEGÅRDEN' : `${schoolyardKillTarget} ERLINGER!`;
   problemEl.textContent = 'DØREN ER ÅBEN';
   feedbackEl.textContent = 'Følg pilene på gulvet til skolegården!';
   feedbackEl.className = 'feedback good';
@@ -1150,7 +1150,10 @@ function resetGame(online = false) {
   updateHUD();
   clearEnemies();
   newProblem();
-  if (!online) spawnWave(1,true);
+  if (!online) {
+    if (schoolyardKillTarget === 0) openSchoolyardDoor();
+    else spawnWave(1,true);
+  }
 }
 
 startButton.addEventListener('click', () => {

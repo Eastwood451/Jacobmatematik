@@ -13,6 +13,7 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
   const look = document.getElementById('look-pad');
   let paused = false, moveId = null, lookId = null, lookX = 0, lookY = 0;
   let lookStart = null, previousTap = null;
+  let tapTimer = null, crouchLatched = false;
   const held = new Map();
   let lastState = null;
   const landscape = () => innerWidth > innerHeight;
@@ -20,14 +21,28 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
   const sendKey = code => keydown({code, repeat:false, preventDefault(){}});
   root.classList.toggle('touch-device', enabled);
 
+  function cancelTap() {
+    clearTimeout(tapTimer);
+    tapTimer = previousTap = null;
+  }
+  function refreshCrouch() {
+    touchInput.crouch = crouchLatched || [...held.values()].some(v => v.action === 'crouch');
+    const button = panel.querySelector('[data-hold="crouch"]');
+    button.classList.toggle('pressed', touchInput.crouch);
+    button.setAttribute('aria-pressed', String(touchInput.crouch));
+  }
+
   function reset() {
     touchInput.x = touchInput.z = 0;
     touchInput.sprint = touchInput.crouch = false;
     moveId = lookId = null;
     lookStart = previousTap = null;
+    cancelTap();
+    crouchLatched = false;
     held.clear();
     knob.style.transform = '';
     panel.querySelectorAll('.pressed').forEach(el => el.classList.remove('pressed'));
+    refreshCrouch();
     clearKeys();
   }
   function sync() {
@@ -84,7 +99,7 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
     if (e.pointerId !== lookId || !available()) return;
     if (Math.hypot(e.clientX-lookStart.x,e.clientY-lookStart.y) > 18) {
       lookStart.moved = true;
-      previousTap = null;
+      cancelTap();
     }
     camera.rotation.order = 'YXZ';
     camera.rotation.y -= (e.clientX-lookX)*.004;
@@ -99,12 +114,21 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
       && now-lookStart.time <= 220
       && Math.hypot(e.clientX-lookStart.x,e.clientY-lookStart.y) <= 18;
     if (isTap) {
-      if (previousTap && now-previousTap.time <= 320
+      if (previousTap && now-previousTap.time <= 280
           && Math.hypot(e.clientX-previousTap.x,e.clientY-previousTap.y) <= 40) {
-        sendKey('Space');
-        previousTap = null;
-      } else previousTap = {x:e.clientX,y:e.clientY,time:now};
-    } else previousTap = null;
+        cancelTap();
+        crouchLatched = !crouchLatched;
+        refreshCrouch();
+      } else {
+        cancelTap();
+        previousTap = {x:e.clientX,y:e.clientY,time:now};
+        // Briefly distinguish a single tap from crouch: a double tap must not jump first.
+        tapTimer = setTimeout(() => {
+          tapTimer = previousTap = null;
+          if (available()) sendKey('Space');
+        },280);
+      }
+    } else cancelTap();
     lookId = null;
     lookStart = null;
   });
@@ -114,7 +138,8 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
       capture(button,e); button.classList.add('pressed');
       const action = button.dataset.hold;
       held.set(e.pointerId,{button,action});
-      if (action) touchInput[action] = true;
+      if (action === 'crouch') refreshCrouch();
+      else if (action) touchInput[action] = true;
       else if (button.dataset.key) sendKey(button.dataset.key);
       else if (button.id === 'touch-fire') fire();
     });
@@ -122,8 +147,11 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
       const entry = held.get(e.pointerId);
       if (!entry || entry.button !== button) return;
       held.delete(e.pointerId);
-      if (entry.action) touchInput[entry.action] = [...held.values()].some(v => v.action === entry.action);
-      if (![...held.values()].some(v => v.button === button)) button.classList.remove('pressed');
+      if (entry.action === 'crouch') refreshCrouch();
+      else {
+        if (entry.action) touchInput[entry.action] = [...held.values()].some(v => v.action === entry.action);
+        if (![...held.values()].some(v => v.button === button)) button.classList.remove('pressed');
+      }
     };
     for (const event of ['pointerup','pointercancel','lostpointercapture']) button.addEventListener(event,release);
     // Suppress compatibility clicks so tapping digits never fires a pencil.
