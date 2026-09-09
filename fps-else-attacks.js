@@ -46,6 +46,19 @@ function makeExamTexture() {
   return texture;
 }
 
+function speakDumpedFallback() {
+  if (!('speechSynthesis' in window)) return;
+  const utterance = new SpeechSynthesisUtterance('DUMPET!');
+  utterance.lang = 'da-DK';
+  utterance.rate = .72;
+  utterance.pitch = .55;
+  utterance.volume = 1;
+  const voices = speechSynthesis.getVoices();
+  const danish = voices.find(v => /^da(-|_)/i.test(v.lang)) || voices.find(v => /danish/i.test(v.name));
+  if (danish) utterance.voice = danish;
+  speechSynthesis.speak(utterance);
+}
+
 export function createElseAttacks({ scene, colliders, onPlayerHit, onDumped }) {
   const shots = [];
   const examDrops = [];
@@ -93,6 +106,8 @@ export function createElseAttacks({ scene, colliders, onPlayerHit, onDumped }) {
   }
   function removeExam(drop) {
     scene.remove(drop.marker,drop.paper);
+    drop.fill.material.dispose();
+    drop.ring.material.dispose();
     const index=examDrops.indexOf(drop);
     if(index!==-1)examDrops.splice(index,1);
   }
@@ -102,10 +117,13 @@ export function createElseAttacks({ scene, colliders, onPlayerHit, onDumped }) {
   }
 
   function throwAt(enemy, target) {
+    // Every second normal throw also launches an exam paper into the air.
+    enemy.examThrowCounter=(enemy.examThrowCounter||0)+1;
+    if(enemy.examThrowCounter%2===0) dropExamAt(enemy,target);
+
     const ruler=enemy.nextThrowIsRuler !== false;
     enemy.nextThrowIsRuler=!ruler;
     const mesh=ruler ? makeRuler() : makeMarker();
-    // Her artwork is 13.2 units high: launch from the raised tool hand.
     const start=new THREE.Vector3(ruler ? -3.1 : 3.1,8.1,.45)
       .applyQuaternion(enemy.group.quaternion).add(enemy.group.position);
     const aim=target.clone().add(new THREE.Vector3(0,-.55,0));
@@ -139,11 +157,11 @@ export function createElseAttacks({ scene, colliders, onPlayerHit, onDumped }) {
 
     scene.add(marker,paper);
     examDrops.push({marker,fill,ring,paper,start,impact,age:0,duration:EXAM_DURATION,hit:false});
-    if(onDumped)onDumped();
+    if(onDumped) onDumped();
+    else speakDumpedFallback();
   }
 
   function update(dt, playerPosition, bodyBounds = null) {
-    // The body follows the camera while jumping; ground-level tools can be jumped over.
     const playerBox=bodyBounds || new THREE.Box3(
       new THREE.Vector3(playerPosition.x-.48,playerPosition.y-1.7,playerPosition.z-.48),
       new THREE.Vector3(playerPosition.x+.48,playerPosition.y+.12,playerPosition.z+.48)
@@ -159,7 +177,6 @@ export function createElseAttacks({ scene, colliders, onPlayerHit, onDumped }) {
       if(wallDistance<=playerDistance && wallDistance!==Infinity) {remove(shot);continue;}
       if(playerDistance!==Infinity) {
         remove(shot);
-        // Stop immediately on game over, including other shots in this frame.
         if(onPlayerHit()===false) {clear();return;}
         continue;
       }
@@ -176,7 +193,6 @@ export function createElseAttacks({ scene, colliders, onPlayerHit, onDumped }) {
       drop.fill.material.opacity = .12 + t*.20;
       drop.ring.material.opacity = .55 + .4*(.5+.5*Math.sin(drop.age*14));
 
-      // First the paper is hurled upward, then it dives into the marked spot.
       let horizontalT,y;
       if(t<.34){
         const u=t/.34;
