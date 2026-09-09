@@ -320,6 +320,7 @@ function updateBossHud() {
 function showVictory() {
   gameVoice.stop();
   elseAttacks.clear();
+  clearStompWaves();
   gameActive = false;
   controls.unlock();
   updateBossHud();
@@ -854,32 +855,131 @@ function enterSchoolyard() {
   feedbackEl.className = 'feedback bad';
 }
 
+function clearStompWaves() {
+  for (const wave of stompWaves) {
+    scene.remove(wave.group);
+    wave.group.traverse(object => {
+      if (object.geometry) object.geometry.dispose();
+      if (object.material) object.material.dispose();
+    });
+  }
+  stompWaves.length = 0;
+  canvas.style.transform = '';
+}
+
 function spawnStompWave(enemy) {
-  const matWave = new THREE.MeshBasicMaterial({ color:0xffd26f, transparent:true, opacity:.72, side:THREE.DoubleSide, depthWrite:false, blending:THREE.AdditiveBlending });
-  const mesh = new THREE.Mesh(new THREE.RingGeometry(1.3,1.7,48), matWave);
-  mesh.rotation.x = -Math.PI / 2;
-  mesh.position.set(enemy.group.position.x,.05,enemy.group.position.z);
-  scene.add(mesh);
-  stompWaves.push({ mesh, age:0 });
-  stompShakeUntil = performance.now() + 260;
+  const group = new THREE.Group();
+  group.position.set(enemy.group.position.x, 0, enemy.group.position.z);
+
+  const glowMaterial = new THREE.MeshBasicMaterial({
+    color:0xffd26f,
+    transparent:true,
+    opacity:.48,
+    side:THREE.DoubleSide,
+    depthWrite:false,
+    blending:THREE.AdditiveBlending,
+  });
+  const coreMaterial = new THREE.MeshBasicMaterial({
+    color:0xfff0a3,
+    transparent:true,
+    opacity:.96,
+    side:THREE.DoubleSide,
+    depthWrite:false,
+    blending:THREE.AdditiveBlending,
+  });
+  const wallMaterial = new THREE.MeshBasicMaterial({
+    color:0xffb94f,
+    transparent:true,
+    opacity:.22,
+    side:THREE.DoubleSide,
+    depthWrite:false,
+    blending:THREE.AdditiveBlending,
+  });
+
+  const glow = new THREE.Mesh(new THREE.RingGeometry(.68, 1.32, 96), glowMaterial);
+  glow.rotation.x = -Math.PI / 2;
+  glow.position.y = .025;
+  group.add(glow);
+
+  const core = new THREE.Mesh(new THREE.RingGeometry(.90, 1.10, 96), coreMaterial);
+  core.rotation.x = -Math.PI / 2;
+  core.position.y = .055;
+  group.add(core);
+
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, .48, 96, 1, true), wallMaterial);
+  wall.position.y = .25;
+  group.add(wall);
+
+  const radius = 1.4;
+  glow.scale.set(radius, radius, 1);
+  core.scale.set(radius, radius, 1);
+  wall.scale.set(radius, 1, radius);
+  scene.add(group);
+
+  stompWaves.push({
+    group, glow, core, wall,
+    radius,
+    speed:14,
+    maxRadius:50,
+    halfWidth:.9,
+    hitPlayer:false,
+  });
+
+  feedbackEl.textContent = 'ELSE TRAMPER! HOP OVER CHOKBØLGEN!';
+  feedbackEl.className = 'feedback bad';
+  stompShakeUntil = performance.now() + 320;
   playStompSound();
 }
+
 function updateStompWaves(dt, time) {
   for (const wave of [...stompWaves]) {
-    wave.age += dt;
-    const s = 1 + wave.age * 7;
-    wave.mesh.scale.setScalar(s);
-    wave.mesh.material.opacity = Math.max(0,.72 - wave.age * 1.8);
-    if (wave.age > .42) {
-      scene.remove(wave.mesh);
-      wave.mesh.geometry.dispose();
-      wave.mesh.material.dispose();
-      stompWaves.splice(stompWaves.indexOf(wave),1);
+    const previousRadius = wave.radius;
+    wave.radius = Math.min(wave.maxRadius, wave.radius + wave.speed * dt);
+    const radius = wave.radius;
+    const progress = radius / wave.maxRadius;
+
+    wave.glow.scale.set(radius, radius, 1);
+    wave.core.scale.set(radius, radius, 1);
+    wave.wall.scale.set(radius, 1, radius);
+    wave.glow.material.opacity = .48 * (1 - progress * .72);
+    wave.core.material.opacity = .96 * (1 - progress * .70);
+    wave.wall.material.opacity = .22 * (1 - progress * .78);
+
+    if (!wave.hitPlayer && gameActive && schoolyardEntered) {
+      const playerDistance = Math.hypot(
+        camera.position.x - wave.group.position.x,
+        camera.position.z - wave.group.position.z,
+      );
+      // Sweep the whole distance travelled this frame so the fast ring cannot tunnel through the player.
+      const reachedPlayer = playerDistance >= previousRadius - wave.halfWidth
+        && playerDistance <= radius + wave.halfWidth;
+      if (reachedPlayer) {
+        wave.hitPlayer = true;
+        const feetY = Math.max(0, playerMovement.bounds.min.y - .025);
+        if (feetY < .48) {
+          feedbackEl.textContent = 'CHOKBØLGEN RAMTE! Hop med SPACE næste gang.';
+          feedbackEl.className = 'feedback bad';
+          hurt(null, true);
+        } else {
+          feedbackEl.textContent = 'HOPPET! Du kom over Elses chokbølge.';
+          feedbackEl.className = 'feedback good';
+        }
+      }
+    }
+
+    if (radius >= wave.maxRadius) {
+      scene.remove(wave.group);
+      wave.group.traverse(object => {
+        if (object.geometry) object.geometry.dispose();
+        if (object.material) object.material.dispose();
+      });
+      stompWaves.splice(stompWaves.indexOf(wave), 1);
     }
   }
+
   if (time < stompShakeUntil) {
-    const amount = 4;
-    canvas.style.transform = `translate(${(Math.random()-.5)*amount}px,${(Math.random()-.5)*amount}px)`;
+    const amount = 5;
+    canvas.style.transform = `translate(${(Math.random() - .5) * amount}px,${(Math.random() - .5) * amount}px)`;
   } else {
     canvas.style.transform = '';
   }
@@ -1016,6 +1116,7 @@ controls.addEventListener('unlock', () => { clearMovementKeys(); if (gameActive)
 function resetGame(online = false) {
   gameVoice.stop();
   elseAttacks.clear();
+  clearStompWaves();
   [...projectiles].forEach(removeProjectile);
   invulnerableUntil = 0;
   setSchoolyardLighting(false);
