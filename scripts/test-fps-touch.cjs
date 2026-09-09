@@ -99,34 +99,78 @@ test('desktop keeps touch UI hidden and pointer-lock input unblocked',t=>{
   assert.equal(s.w.document.documentElement.classList.contains('touch-device'),false);
 });
 
-test('right double tap jumps once while moving; dragging, slow taps and cancellation do not jump',t=>{
-  const s=setup(t);
-  let now=1000;
+function tapClock(s) {
+  let now=1000,serial=0;
+  const timers=new Map();
   s.w.performance.now=()=>now;
+  s.w.setTimeout=(fn,delay)=>{const id=++serial;timers.set(id,{fn,at:now+delay});return id;};
+  s.w.clearTimeout=id=>timers.delete(id);
+  const advance=ms=>{
+    now+=ms;
+    for(const [id,timer] of [...timers]) if(timer.at<=now) {timers.delete(id);timer.fn();}
+  };
   const tap=(id,x=200,y=150)=>{
-    s.pointer('#look-pad','pointerdown',id,x,y);now+=50;
+    s.pointer('#look-pad','pointerdown',id,x,y);advance(40);
     s.pointer('#look-pad','pointerup',id,x,y);
   };
+  return {advance,tap};
+}
+
+test('single right tap jumps; double tap toggles persistent crouch without jumping',t=>{
+  const s=setup(t),{tap,advance}=tapClock(s);
   s.pointer('#move-stick','pointerdown',1,50,18);
-  tap(2);now+=100;tap(3);
+  tap(2);assert.equal(s.keys.length,0);advance(281);
   assert.deepEqual(s.keys,['Space']);assert.equal(s.api.touchInput.z,-1);
-  tap(4);assert.equal(s.keys.length,1); // A third tap is a new pair.
-  s.pointer('#look-pad','pointerdown',5,200,150);
-  s.pointer('#look-pad','pointermove',5,260,150);
-  s.pointer('#look-pad','pointermove',5,200,150);
-  s.pointer('#look-pad','pointerup',5,200,150);
-  tap(6);assert.equal(s.keys.length,1); // A drag that returns to its origin isn't a tap.
-  now+=400;tap(7);assert.equal(s.keys.length,1);
-  s.pointer('#look-pad','pointerdown',8,200,150);
-  s.pointer('#look-pad','pointercancel',8,200,150);
-  tap(9);assert.equal(s.keys.length,1);
-  s.controls.reset();tap(10);assert.equal(s.keys.length,1);
-  tap(11,400,150);assert.equal(s.keys.length,1); // Separate places aren't a double tap.
-  s.controls.reset();
-  s.pointer('#look-pad','pointerdown',12,200,150);now+=500;
-  s.pointer('#look-pad','pointerup',12,200,150);
-  tap(13);assert.equal(s.keys.length,1); // Long presses aren't taps.
+  tap(3);advance(80);tap(4);advance(300);
+  assert.equal(s.api.touchInput.crouch,true);assert.deepEqual(s.keys,['Space']);
+  assert.equal(s.get('[data-hold="crouch"]').getAttribute('aria-pressed'),'true');
+  s.pointer('[data-hold="crouch"]','pointerdown',5);
+  s.pointer('[data-hold="crouch"]','pointerup',5);
+  assert.equal(s.api.touchInput.crouch,true); // Releasing the hold button preserves the toggle.
+  tap(6);advance(80);tap(7);advance(300);
+  assert.equal(s.api.touchInput.crouch,false);assert.deepEqual(s.keys,['Space']);
+  tap(8);advance(80);tap(9);assert.equal(s.api.touchInput.crouch,true);
+  s.controls.reset();assert.equal(s.api.touchInput.crouch,false);
   assert.equal(s.fired,0);
+});
+
+test('drag, long press, cancelled touch and pause cannot leave a delayed jump',t=>{
+  const s=setup(t),{tap,advance}=tapClock(s);
+  tap(1);
+  s.pointer('#look-pad','pointerdown',2,200,150);
+  s.pointer('#look-pad','pointermove',2,260,150);
+  s.pointer('#look-pad','pointermove',2,200,150);
+  s.pointer('#look-pad','pointerup',2,200,150);advance(400);
+  assert.equal(s.keys.length,0);
+  s.pointer('#look-pad','pointerdown',3,200,150);advance(500);
+  s.pointer('#look-pad','pointerup',3,200,150);advance(400);
+  assert.equal(s.keys.length,0);
+  tap(4);
+  s.pointer('#look-pad','pointerdown',5,200,150);
+  s.pointer('#look-pad','pointercancel',5,200,150);advance(400);
+  assert.equal(s.keys.length,0);
+  tap(6);s.get('#touch-pause').click();advance(400);
+  assert.equal(s.keys.length,0);assert.equal(s.api.touchInput.crouch,false);
+});
+
+test('JacobE gets the courtyard on every solo reset; other users and online keep their rules',async()=>{
+  const vm=require('node:vm'),code=fs.readFileSync(path.join(root,'fps.js'),'utf8');
+  const load=code.slice(code.indexOf('async function loadPlayerRules()'),code.indexOf('\nloadCharacters();',code.indexOf('async function loadPlayerRules()')));
+  const reset=code.slice(code.indexOf('function resetGame('),code.indexOf("\nstartButton.addEventListener",code.indexOf('function resetGame(')));
+  for(const username of ['JacobE',' jacobe ','Elev7']) {
+    let opens=0,spawns=0;
+    const context={URLSearchParams,location:{search:''},console,setTimeout(){},
+      window:{JacobBackend:{configured:true,loadDatabase:async()=>({currentUserId:'player',database:{users:[{id:'player',username}]}})}},
+      gameVoice:{stop(){}},elseAttacks:{clear(){}},projectiles:[],schoolyardDoor:null,
+      playerMovement:{reset(){}},camera:{rotation:{set(){}}},gameNow:()=>0,
+      openSchoolyardDoor:()=>opens++,spawnWave:()=>spawns++,
+    };
+    for(const name of ['refreshStartButton','clearStompWaves','removeProjectile','setSchoolyardLighting','removeMagicCircle','removeSchoolyardArrows','updateHUD','clearEnemies','newProblem'])context[name]=()=>{};
+    const api=vm.runInNewContext(`${load}\n${reset}\n({loadPlayerRules,resetGame})`,context);
+    await api.loadPlayerRules();api.resetGame();api.resetGame();api.resetGame(true);
+    assert.equal(opens,username.trim().toLowerCase()==='jacobe'?2:0);
+    assert.equal(spawns,username.trim().toLowerCase()==='jacobe'?0:2);
+  }
 });
 
 test('Else emits exactly one shockwave per four eligible stomps and a fresh boss resets the count',()=>{
