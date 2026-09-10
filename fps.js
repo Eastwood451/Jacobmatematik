@@ -260,6 +260,7 @@ let lives = 5;
 let ammo = 0;
 let score = 0;
 let erlingKills = 0;
+let schoolyardPoints = 0;
 let answer = '';
 let gameActive = false;
 let problem = null;
@@ -548,13 +549,14 @@ function onEnemyDefeated(enemy) {
     showVictory();
     return;
   }
+  if (type === 'erling') erlingKills++;
+  schoolyardPoints += type === 'erling' ? 1 : type === 'gunnar' ? 5 : 0;
+  if (schoolyardPoints >= schoolyardKillTarget && !schoolyardDoorOpen) {
+    openSchoolyardDoor();
+    updateHUD();
+    return;
+  }
   if (type === 'erling') {
-    erlingKills++;
-    if (erlingKills >= schoolyardKillTarget && !schoolyardDoorOpen) {
-      openSchoolyardDoor();
-      updateHUD();
-      return;
-    }
     spawnWave(2, true);
     if (erlingKills % 5 === 0) createGunnar();
     if (erlingKills >= 50 && !magicCircleTriggered) {
@@ -1133,6 +1135,7 @@ function resetGame(online = false) {
   ammo = 0;
   score = 0;
   erlingKills = 0;
+  schoolyardPoints = 0;
   campBoost = false;
   campMovementStartedAt = 0;
   lastPlayerMoveAt = gameNow();
