@@ -20,7 +20,7 @@ button, input { font: inherit; } button { -webkit-tap-highlight-color: transpare
 .top-actions { display:flex; align-items:center; gap:14px; } .user-pill { font-size:14px; color:var(--muted); }
 .page { width:min(1180px,calc(100% - 32px)); margin:0 auto; padding:48px 0 72px; }
 .login-wrap { min-height:100vh; min-height:100svh; display:grid; grid-template-columns:minmax(0,1.4fr) minmax(440px,.8fr); overflow:hidden; background:var(--cream); }
-.login-intro { position:relative; isolation:isolate; min-width:0; min-height:0; padding:clamp(22px,2.8vw,42px) clamp(24px,4vw,64px) clamp(24px,3vw,46px); display:grid; grid-template-rows:auto minmax(0,1fr) auto; justify-items:center; align-items:center; gap:clamp(10px,1.8vh,20px); overflow:hidden; background:#f6f1e6; }
+.login-intro { position:relative; isolation:isolate; min-width:0; min-height:0; padding:clamp(22px,2.8vw,42px) clamp(24px,4vw,64px) clamp(24px,3vw,46px); display:grid; grid-template-rows:auto minmax(0,1fr) auto auto; justify-items:center; align-items:center; gap:clamp(10px,1.8vh,20px); overflow:hidden; background:#f6f1e6; }
 .login-copy { position:relative; z-index:2; width:100%; max-width:820px; text-align:center; }
 .eyebrow { color:var(--purple); font-weight:800; letter-spacing:.14em; text-transform:uppercase; font-size:12px; }
 h1,h2,h3,p { margin-top:0; }
@@ -698,3 +698,37 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
 .registration-profile { border:0; background:transparent; color:inherit; text-align:left; padding:0; cursor:pointer; font:inherit; }
 .registration-profile span { display:block; color:#5c43cb; margin-top:4px; font-size:13px; text-decoration:underline; }
 .registration-profile:focus-visible { outline:2px solid #5c43cb; outline-offset:4px; border-radius:3px; }
+
+/* Øbbe keeps his own row so the keyboard and matrix remain unobstructed. */
+.obbe-coach { display:flex; align-items:center; gap:16px; min-width:0; color:var(--ink); }
+.obbe-drill { margin:0 0 18px; padding:10px 18px; border:2px solid var(--ink); border-radius:18px; background:#f1ecd9; }
+.obbe-portrait { flex:0 0 105px; align-self:stretch; padding:0; overflow:hidden; border:2px solid var(--ink); border-radius:14px; background:white; cursor:pointer; touch-action:manipulation; }
+.obbe-portrait img { display:block; width:100%; height:100%; max-height:130px; object-fit:contain; }
+.obbe-portrait:focus-visible,.obbe-mute:focus-visible { outline:3px solid var(--purple); outline-offset:4px; }
+.obbe-message { min-width:0; flex:1; }
+.obbe-message>strong { font-size:16px; font-weight:900; }
+.obbe-bubble { position:relative; margin:7px 0; padding:10px 14px; border:2px solid var(--ink); border-radius:14px 14px 14px 3px; background:white; font-size:clamp(15px,1.6vw,21px); font-weight:800; line-height:1.3; overflow-wrap:anywhere; }
+.obbe-mute { padding:6px 10px; min-height:36px; border:1px solid #747861; border-radius:8px; background:#fff9; color:var(--ink); font:inherit; font-size:12px; font-weight:700; cursor:pointer; touch-action:manipulation; }
+.obbe-coach.is-speaking .obbe-portrait { box-shadow:0 0 0 3px #d9ae44; }
+.login-drill-team { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,2.4fr) minmax(0,1fr); align-items:center; width:100%; max-width:660px; gap:20px; padding:8px 8px 20px; }
+.login-drill-team .character-frame { aspect-ratio:3/4; background:white; }
+.login-drill-team .character-frame img { object-fit:contain; }
+.character-card.else { --tag:#edb5bd; --tilt:-2deg; }
+.character-card.gunnar { --tag:#c9d8a5; --tilt:2deg; }
+.obbe-login { flex-direction:column; gap:6px; text-align:center; }
+.obbe-login .obbe-portrait { flex:auto; align-self:center; width:150px; max-width:100%; }
+.obbe-login .obbe-message { width:100%; }
+.obbe-login .obbe-bubble { font-size:15px; }
+.login-drill-team figcaption { white-space:normal; }
+@media (max-width:900px) {
+  .login-intro { grid-template-rows:auto auto auto auto; }
+}
+@media (max-width:560px) {
+  .login-drill-team { gap:10px; padding-inline:0; }
+  .login-drill-team figcaption { font-size:11px; }
+  .obbe-login .obbe-portrait { width:120px; }
+  .obbe-login .obbe-bubble { padding:8px; font-size:13px; }
+  .obbe-drill { gap:10px; padding:8px 10px; margin:0 10px 12px; }
+  .obbe-drill .obbe-portrait { flex-basis:70px; align-self:center; height:90px; }
+  .obbe-drill .obbe-bubble { padding:7px 9px; margin:4px 0; }
+}
