@@ -603,6 +603,17 @@
               <figcaption>Erling Ærgerlig</figcaption>
             </figure>
           </div>
+          <div class="login-drill-team">
+            <figure class="character-card else">
+              <div class="character-frame"><img src="assets/figurer/eksamens-else.webp" alt="Eksamens-Else" decoding="async"></div>
+              <figcaption>Eksamens-Else</figcaption>
+            </figure>
+            ${window.ObbeCoach?.render(true) || ""}
+            <figure class="character-card gunnar">
+              <div class="character-frame"><img src="assets/figurer/gunnar-gider-ik.webp" alt="Gunnar Giderik" decoding="async"></div>
+              <figcaption>Gunnar Giderik</figcaption>
+            </figure>
+          </div>
         </section>
         <section class="login-panel">
           <form class="login-card" id="${signup ? "signup-form" : "login-form"}">
@@ -791,6 +802,7 @@
   }
   function startMatrixDrill(topic, options = {}) {
     if (!MATRIX_DRILL_TOPICS.has(topic)) return;
+    stopErlingAudio(); stopKaptajnAudio(); stopLuigiAudio();
     const previousMode=state.matrixDrill?.confirmationMode || "enter";
     stopMatrixDrillTimer();
     const layout = topic === "divisionDrill" ? (options.layout || createDivisionDrillLayout()) : null;
@@ -1484,7 +1496,8 @@
     const timerStatus = state.showExerciseTimer
       ? `<span>Tid: <strong id="matrix-drill-time">${formatMatrixDrillTime(elapsed)}</strong></span>`
       : `<span class="table-drill-time-hidden">Tid skjult</span>`;
-    app.innerHTML = `${header()}<div class="page table-drill-page"><div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${drill.previousTroubleRound ? `${drillName} · tidligere drillere` : drill.troubleRound ? `${drillName} · drillere` : drillName}</span></div><section class="table-drill-card"><div class="table-drill-status">${timerStatus}<button class="table-drill-timer-toggle" type="button" data-action="toggle-exercise-timer" aria-pressed="${state.showExerciseTimer}">${state.showExerciseTimer ? "Skjul tid" : "Vis tid"}</button>${previousTroubleButton}<span>Fejl: <strong>${drill.errors}</strong></span><span>${progressLabel}: <strong>${completedInRound}/${drill.pairs.length}</strong></span></div><div class="table-drill-layout"><div class="table-drill-board">${grid}</div>${answerPanel}</div></section></div>`;
+    app.innerHTML = `${header()}<div class="page table-drill-page"><div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${drill.previousTroubleRound ? `${drillName} · tidligere drillere` : drill.troubleRound ? `${drillName} · drillere` : drillName}</span></div>${window.ObbeCoach?.render() || ""}<section class="table-drill-card"><div class="table-drill-status">${timerStatus}<button class="table-drill-timer-toggle" type="button" data-action="toggle-exercise-timer" aria-pressed="${state.showExerciseTimer}">${state.showExerciseTimer ? "Skjul tid" : "Vis tid"}</button>${previousTroubleButton}<span>Fejl: <strong>${drill.errors}</strong></span><span>${progressLabel}: <strong>${completedInRound}/${drill.pairs.length}</strong></span></div><div class="table-drill-layout"><div class="table-drill-board">${grid}</div>${answerPanel}</div></section></div>`;
+    window.ObbeCoach?.onDrill(drill);
   }
   function renderCountingHand(activeFingers, mirrored = false) {
     // Fingrene vises i rækkefølgen tommel, pege-, lange-, ring- og lillefinger.
@@ -2232,6 +2245,10 @@
     else if (event.target.id === "answer-form") await submitAnswer(event.target);
   });
   document.addEventListener("click", async (event) => {
+    if (event.target.closest("[data-obbe-shout]")) {
+      stopErlingAudio(); stopKaptajnAudio(); stopLuigiAudio();
+      return;
+    }
     const subtractionKeyButton=event.target.closest("[data-subtraction-key]"), borrowTenButton=event.target.closest("[data-borrow-ten]"), lollipopKeyButton=event.target.closest("[data-lollipop-key]"), pullDigitButton=event.target.closest("[data-pull-digit]"), keyButton=event.target.closest("[data-key]"), luigiButton=event.target.closest("[data-luigi-surprise]"), luigiAudioButton=event.target.closest("[data-luigi-audio]"), erlingButton=event.target.closest("[data-erling-audio]"), kaptajnButton=event.target.closest("[data-kaptajn-audio]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
     if (subtractionKeyButton) { await handleBorrowingSubtractionKey(subtractionKeyButton.dataset.subtractionKey); return; }
     if (borrowTenButton && event.detail === 0) { completeBorrowingSubtractionBorrow(); return; }
@@ -2452,6 +2469,7 @@
     student.classId=targetClass.id; state.activeClassId=targetClass.id; state.expandedStudent=student.id; state.teacherTopicDetail=null; save(); renderTeacher();
   });
   document.addEventListener("keydown", event => {
+    if (event.target.closest?.("[data-obbe-shout], [data-obbe-mute]") && (event.key === "Enter" || event.key === " ")) return;
     const luigi=event.target.closest?.("[data-luigi-audio]");
     if (luigi && (event.key==="Enter"||event.key===" ")) { event.preventDefault(); luigi.click(); return; }
     const kaptajn=event.target.closest?.("[data-kaptajn-audio]");
