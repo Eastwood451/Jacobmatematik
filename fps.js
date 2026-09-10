@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createGunnarSlime } from './fps-slime.js?v=20260910-slime1';
 import { createTouchControls, touchInput, hasTouchControls } from './fps-touch.js?v=20260909-touch3';
 let touch = null;
 let gameTime = performance.now();
@@ -12,12 +13,12 @@ import { createPlayerMovement } from './fps-movement.js?v=20260909-touch2';
 import { createDuctBuilder } from './fps-ducts.js?v=20260907-ducts1';
 import { createSchoolInteriorMaterials, applySchoolSurfaceUV } from './fps-interior.js?v=20260907-interior1';
 import { createElseAttacks, ELSE_THROW_INTERVAL } from './fps-else-attacks.js?v=20260909-examdrop2';
-import { createOnlineGame } from './fps-online.js?v=20260909-touch2';
+import { createOnlineGame } from './fps-online.js?v=20260910-slime1';
 let multiplayer = null;
 import { createSchoolyard } from './fps-schoolyard.js?v=20260907-courtyard1';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 import { createErlingRig, animateErling, disposeErlingRig, addSchoolWallArt } from './fps-visuals.js?v=20260907-no-smykker1';
-import { createGunnarRig, animateGunnar, disposeGunnarRig } from './fps-gunnar.js?v=20260907-sprites1';
+import { createGunnarRig, animateGunnar, disposeGunnarRig } from './fps-gunnar.js?v=20260910-slime1';
 import { createElseRig, animateElse, disposeElseRig } from './fps-else.js?v=20260909-shockwaves2';
 
 const canvas = document.getElementById('game');
@@ -31,6 +32,7 @@ renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.05;
 
 const scene = new THREE.Scene();
+const gunnarSlime = createGunnarSlime(scene);
 scene.background = new THREE.Color(0x8eb5c4);
 scene.fog = new THREE.Fog(0xc8c6b7, 36, 96);
 
@@ -307,7 +309,7 @@ function ensureBossHud() {
   hud = document.createElement('div');
   hud.id = 'else-boss-hud';
   hud.style.cssText = 'position:fixed;z-index:15;top:86px;left:50%;transform:translateX(-50%);width:min(560px,calc(100vw - 36px));display:none;background:#171c22;color:#fff1d1;border:4px solid #171c22;border-radius:13px;box-shadow:6px 6px 0 #8f3d7a;padding:8px 12px;font:900 12px Inter,system-ui,sans-serif;letter-spacing:.08em';
-  hud.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"><strong>EKSAMENS-ELSE</strong><span id="else-hp-text">25 / 25 blyanter</span></div><div style="height:14px;background:#f3e8ce;border:2px solid #080b0f;border-radius:7px;overflow:hidden"><div id="else-hp-fill" style="height:100%;width:100%;background:#c84b7f"></div></div>';
+  hud.innerHTML = '<div class="else-hp-row"><strong>EKSAMENS-ELSE</strong><div class="else-hp-track"><div id="else-hp-fill"></div></div><span id="else-hp-text">25 / 25</span></div>';
   document.body.appendChild(hud);
   return hud;
 }
@@ -321,7 +323,7 @@ function updateBossHud() {
   }
   hud.style.display = 'block';
   const hp = Math.max(0, elseBoss.hp);
-  document.getElementById('else-hp-text').textContent = `${hp} / 25 blyanter`;
+  document.getElementById('else-hp-text').textContent = `${hp} / 25`;
   document.getElementById('else-hp-fill').style.width = `${hp / 25 * 100}%`;
 }
 
@@ -542,6 +544,11 @@ function removeProjectile(p) {
 }
 function onEnemyDefeated(enemy) {
   const type = enemy.type;
+  if (type === 'gunnar') {
+    gunnarSlime.burst(enemy.group.position);
+    feedbackEl.textContent = 'SPLAT! Grønt snask over det hele!';
+    feedbackEl.className = 'feedback good';
+  }
   removeEnemy(enemy);
   score++;
   if (type === 'else') {
@@ -567,13 +574,14 @@ function onEnemyDefeated(enemy) {
   updateHUD();
 }
 function hitEnemy(enemy) {
+  if (enemy.hp <= 0) return;
   enemy.hp--;
   if (enemy.hp <= 0) {
     onEnemyDefeated(enemy);
     return;
   }
   if (enemy.type === 'gunnar') {
-    feedbackEl.textContent = `GUNNAR GIDER-IK: ${enemy.hp} af 3 træffere tilbage!`;
+    feedbackEl.textContent = `GUNNAR GIDER-IK: ${enemy.hp} af ${enemy.maxHp} træffere tilbage!`;
     feedbackEl.className = 'feedback bad';
     enemy.body.material.color.set(0xff9d8f);
     setTimeout(() => { if (enemies.includes(enemy)) enemy.body.material.color.set(0xffffff); }, 120);
@@ -1125,6 +1133,7 @@ controls.addEventListener('lock', () => document.getElementById('pointer-note').
 controls.addEventListener('unlock', () => { clearMovementKeys(); if (gameActive) document.getElementById('pointer-note').classList.add('show'); });
 
 function resetGame(online = false) {
+  gunnarSlime.clear();
   gameVoice.stop();
   elseAttacks.clear();
   clearStompWaves();
@@ -1251,6 +1260,7 @@ function loop(t) {
   schoolWindows.update(t);
   if (!touch?.blocked) gameTime += dt * 1000;
   update(dt, multiplayer?.active ? t : gameTime);
+  if (!touch?.blocked) gunnarSlime.update(dt);
   renderer.render(scene,camera);
   requestAnimationFrame(loop);
 }
@@ -1266,7 +1276,7 @@ createSchoolyardDoor();
 updateHUD();
 
 multiplayer = createOnlineGame({
-  scene, camera, controls, colliders, makePencil, flash, inputReady, touchInput,
+  scene, camera, controls, colliders, makePencil, flash, inputReady, touchInput, gunnarSlime,
   touchEnabled: () => Boolean(touch?.enabled),
   prepare: () => { gameActive = false; resetGame(true); },
   ready: () => charactersReady && playerRulesReady,

@@ -1,4 +1,4 @@
-import { Match, MAX_PLAYERS, validCode, cleanName } from './fps-match.js?v=20260907-avatar1';
+import { Match, MAX_PLAYERS, validCode, cleanName } from './fps-match.js?v=20260910-slime1';
 import { normalizeAvatar } from './fps-avatars.js?v=20260907-avatar1';
 
 const alphabet='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';

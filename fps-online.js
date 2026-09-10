@@ -1,18 +1,19 @@
 import * as THREE from 'three';
 import { createPlayerMovement } from './fps-movement.js?v=20260909-touch1';
-import { GameRoom, roomCode } from './fps-room.js?v=20260907-avatar1';
+import { GameRoom, roomCode } from './fps-room.js?v=20260910-slime1';
 import { AVATARS, avatarFor, normalizeAvatar } from './fps-avatars.js?v=20260907-avatar1';
 import { createErlingRig, animateErling, disposeErlingRig } from './fps-visuals.js?v=20260907-sprites1';
-import { createGunnarRig } from './fps-gunnar.js?v=20260907-sprites1';
+import { createGunnarRig } from './fps-gunnar.js?v=20260910-slime1';
 
 const $=id=>document.getElementById(id);
 const colours=[0x43cbb7,0xf6b94d,0xa3a0ff,0xfc8c93];
 const text=(el,value)=>{if(el.textContent!==String(value)) el.textContent=String(value);};
 
-export function createOnlineGame({scene,camera,controls,colliders,makePencil,prepare,ready,textures,startAudio,flash,inputReady,touchInput,touchEnabled}) {
+export function createOnlineGame({scene,camera,controls,colliders,makePencil,prepare,ready,textures,startAudio,flash,inputReady,touchInput,touchEnabled,gunnarSlime}) {
   let room=null, state=null, me=null, epoch=-1, answer='';
   let busy=false, lastPhase='', previousHp=5, problemId=null, syncing=false;
   const keys={}, objects=new Map();
+  const seenSplats=new Set();
   const avatarTextures=new Map();
   let selectedAvatar='dennis';
   try {selectedAvatar=normalizeAvatar(localStorage.getItem('erling-avatar'));} catch {}
@@ -39,6 +40,7 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
   const blocked=(x,z,r=.48,y=0,height=1.95)=>colliders.some(c=>x+r>c.min.x && x-r<c.max.x && z+r>c.min.z && z-r<c.max.z && c.max.y>y+.025 && c.min.y<y+height);
 
   function clearObjects() {
+    gunnarSlime.clear();seenSplats.clear();
     for(const object of objects.values()) dispose(object);
     objects.clear();
   }
@@ -105,6 +107,12 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
       text($('lobby-instructions'),room.host?(next.players.length<2?'Venter på mindst én klassekammerat…':'Alle er med. Start kampen, når I er klar.'):'Venter på at værten starter kampen.');
       text($('online-status'),'');
     }
+    for(const splat of next.splats||[]) if(!seenSplats.has(splat.id)) {
+      seenSplats.add(splat.id);
+      if(next.clock-splat.at<2.8) gunnarSlime.burst(splat);
+    }
+    const activeSplats=new Set((next.splats||[]).map(s=>s.id));
+    for(const id of seenSplats) if(!activeSplats.has(id)) seenSplats.delete(id);
     const rows=next.players.map(p=>`${p.name}${p.id===room.id?' (dig)':''}${p.id===room.hostId?' · vært':''} — ${p.score} point · ${p.hp} ♥`);
     for(const id of ['lobby-players','online-scores']) {
       const list=$(id), joined=rows.join('\n')+next.players.map(p=>normalizeAvatar(p.avatar)).join(',');

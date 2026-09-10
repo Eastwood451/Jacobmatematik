@@ -18,6 +18,7 @@ export class Match {
     this.players = new Map();
     this.enemies = [];
     this.shots = [];
+    this.splats = [];
     this.phase = 'lobby';
     this.wave = 0;
     this.kills = 0;
@@ -60,7 +61,7 @@ export class Match {
   start() {
     if (this.players.size < 2 || this.phase === 'playing') return false;
     this.phase = 'playing'; this.wave = 0; this.kills = 0; this.result = '';
-    this.enemies = []; this.shots = [];
+    this.enemies = []; this.shots = []; this.splats = [];
     for (const p of this.players.values()) { p.score = 0; p.deaths = 0; this.spawn(p); }
     if (this.mode === 'coop') this.nextWave();
     return true;
@@ -75,7 +76,7 @@ export class Match {
     for (let i=0;i<count;i++) {
       const pos = starts[i % starts.length];
       const type = this.wave >= 2 && i === count-1 ? 'gunnar' : 'erling';
-      this.enemies.push({id:`e${++this.serial}`,type,x:pos[0],z:pos[1],hp:type==='gunnar'?3:1});
+      this.enemies.push({id:`e${++this.serial}`,type,x:pos[0],z:pos[1],hp:type==='gunnar'?5:1});
     }
   }
   finish(message) { this.phase = 'finished'; this.result = message; this.shots = []; }
@@ -129,6 +130,7 @@ export class Match {
   }
   tick(dt) {
     this.clock+=dt;
+    this.splats=this.splats.filter(s=>this.clock-s.at<3);
     if (this.phase!=='playing') return;
     for (const p of this.players.values()) if (p.respawnAt && this.clock>=p.respawnAt) this.spawn(p);
     // Small substeps prevent fast pencils from passing through walls or targets.
@@ -144,7 +146,10 @@ export class Match {
           }
         } else {
           for (const e of this.enemies) if (e.hp>0 && distance(s,e)<.85 && s.y<3.3) {
-            if (--e.hp===0) { this.kills++; const owner=this.players.get(s.owner); if(owner) owner.score++; }
+            if (--e.hp===0) {
+              this.kills++; const owner=this.players.get(s.owner); if(owner) owner.score++;
+              if(e.type==='gunnar') this.splats.push({id:`splat:${e.id}`,x:e.x,y:0,z:e.z,at:this.clock});
+            }
             s.life=0; break;
           }
         }
@@ -169,6 +174,6 @@ export class Match {
   }
   snapshot() {
     return {mode:this.mode,phase:this.phase,wave:this.wave,kills:this.kills,clock:this.clock,result:this.result,
-      players:[...this.players.values()].map(p=>({...p})),enemies:this.enemies.map(e=>({...e})),shots:this.shots.map(s=>({...s}))};
+      splats:this.splats.map(s=>({...s})),players:[...this.players.values()].map(p=>({...p})),enemies:this.enemies.map(e=>({...e})),shots:this.shots.map(s=>({...s}))};
   }
 }

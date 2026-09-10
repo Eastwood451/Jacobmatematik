@@ -58,6 +58,24 @@ test('projectiles cannot penetrate walls',()=>{
   Object.assign(a,{x:0,z:0,ammo:1});Object.assign(b,{x:0,z:-2,hp:1,safeUntil:0});
   action(m,'a',{type:'shoot',dir:{x:0,y:0,z:-1}});m.tick(.2);assert.equal(b.hp,1);
 });
+test('co-op Gunnar takes five pencils and broadcasts exactly one expiring green splat',()=>{
+  const m=game('coop'),a=m.players.get('a');
+  m.enemies=[];m.tick(.05);
+  const gunnar=m.enemies.find(e=>e.type==='gunnar');
+  assert.equal(gunnar.hp,5);
+  m.enemies=[gunnar,{id:'other',type:'erling',x:20,z:20,hp:1}];
+  Object.assign(a,{x:0,y:1.7,z:0,ammo:5});
+  for(let i=1;i<=5;i++) {
+    Object.assign(gunnar,{x:0,z:-2});
+    action(m,'a',{type:'shoot',dir:{x:0,y:0,z:-1}});m.tick(.3);
+    assert.equal(gunnar.hp,5-i);
+    assert.equal(m.snapshot().splats.length,i===5?1:0);
+  }
+  assert.equal(m.kills,1);assert.equal(a.score,1);assert.equal(a.ammo,0);
+  const splat=m.snapshot().splats[0];assert.equal(splat.id,`splat:${gunnar.id}`);
+  m.tick(.3);assert.equal(m.snapshot().splats[0].id,splat.id);
+  m.tick(3);assert.equal(m.snapshot().splats.length,0);
+});
 test('co-op disables friendly fire and synchronizes enemy kills',()=>{
   const m=game('coop'),a=m.players.get('a'),b=m.players.get('b');
   Object.assign(a,{x:0,z:0,ammo:1});Object.assign(b,{x:0,z:-1,hp:1,safeUntil:0});

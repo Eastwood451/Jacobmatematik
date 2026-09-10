@@ -51,8 +51,8 @@ export function createGunnarRig(texture) {
     },
   });
   gunnar.type = 'gunnar';
-  gunnar.hp = 3;
-  gunnar.maxHp = 3;
+  gunnar.hp = 5;
+  gunnar.maxHp = 5;
   gunnar.speed = 2.7;
   return gunnar;
 }
