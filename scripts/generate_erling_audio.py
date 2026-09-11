@@ -33,8 +33,10 @@ LINES = [
 
 async def create(stem: str, text: str) -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    raw = OUTPUT / f".{stem}-raw.mp3"
     final = OUTPUT / f"erling-{stem}.mp3"
+    if final.exists():
+        return
+    raw = OUTPUT / f".{stem}-raw.mp3"
     await edge_tts.Communicate(
         text,
         VOICE,
