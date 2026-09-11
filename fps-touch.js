@@ -1,13 +1,31 @@
 // Touch input is shared by solo and online play; it never pretends to lock a mouse.
 export const touchInput = { x:0, z:0, sprint:false, crouch:false };
-export const hasTouchControls = () => matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+const TOUCH_PREF_KEY = 'jacobmatematik.fpsOnScreenControls';
+const detectsTouchHardware = () => matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+
+function readTouchPreference() {
+  try {
+    const stored = localStorage.getItem(TOUCH_PREF_KEY);
+    if (stored === 'on') return true;
+    if (stored === 'off') return false;
+  } catch {}
+  return null;
+}
+
+function writeTouchPreference(enabled) {
+  try { localStorage.setItem(TOUCH_PREF_KEY, enabled ? 'on' : 'off'); } catch {}
+}
+
+export const hasTouchControls = () => readTouchPreference() ?? detectsTouchHardware();
 
 export function createTouchControls({ camera, isPlaying, keydown, fire, clearKeys }) {
-  const enabled = hasTouchControls();
+  let enabled = hasTouchControls();
   const root = document.documentElement;
   const panel = document.getElementById('touch-controls');
   const rotate = document.getElementById('rotate-device');
   const pause = document.getElementById('touch-pause-overlay');
+  const toggle = document.getElementById('touch-controls-toggle');
+  const touchPauseButton = document.getElementById('touch-pause');
   const stick = document.getElementById('move-stick');
   const knob = stick.querySelector('span');
   const look = document.getElementById('look-pad');
@@ -19,7 +37,13 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
   const landscape = () => innerWidth > innerHeight;
   const available = () => enabled && isPlaying() && landscape() && !paused && !document.hidden;
   const sendKey = code => keydown({code, repeat:false, preventDefault(){}});
-  root.classList.toggle('touch-device', enabled);
+
+  function updateToggle() {
+    if (!toggle) return;
+    toggle.textContent = `ON-SCREEN CONTROLS: ${enabled ? 'ON' : 'OFF'}`;
+    toggle.setAttribute('aria-pressed', String(enabled));
+    toggle.setAttribute('aria-label', `On-screen controls ${enabled ? 'on' : 'off'}. Tryk for at slå ${enabled ? 'fra' : 'til'}.`);
+  }
 
   function cancelTap() {
     clearTimeout(tapTimer);
@@ -46,18 +70,43 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
     clearKeys();
   }
   function sync() {
-    if (!enabled) return;
+    root.classList.toggle('touch-device', enabled);
+    updateToggle();
+    if (!enabled) {
+      panel.hidden = true;
+      touchPauseButton.hidden = true;
+      rotate.hidden = true;
+      pause.hidden = true;
+      root.classList.remove('touch-playing');
+      lastState = 'disabled';
+      return;
+    }
     const playing = isPlaying();
     if (!playing) paused = false;
     const state = `${playing}:${landscape()}:${paused}:${document.hidden}`;
     if (state === lastState) return;
     lastState = state;
     panel.hidden = !available();
-    document.getElementById('touch-pause').hidden = !available();
+    touchPauseButton.hidden = !available();
     rotate.hidden = !playing || landscape();
     pause.hidden = !playing || !paused || !landscape();
     root.classList.toggle('touch-playing', playing);
     if (!available()) reset();
+  }
+  function setEnabled(next, { persist = true } = {}) {
+    const nextEnabled = Boolean(next);
+    if (nextEnabled === enabled) {
+      if (persist) writeTouchPreference(enabled);
+      sync();
+      return enabled;
+    }
+    reset();
+    enabled = nextEnabled;
+    paused = false;
+    lastState = null;
+    if (persist) writeTouchPreference(enabled);
+    sync();
+    return enabled;
   }
   async function enter() {
     if (!enabled) return;
@@ -157,7 +206,8 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
     // Suppress compatibility clicks so tapping digits never fires a pencil.
     button.addEventListener('click', e => e.preventDefault());
   }
-  document.getElementById('touch-pause').addEventListener('click', () => { paused = true; reset(); sync(); });
+  toggle?.addEventListener('click', () => setEnabled(!enabled));
+  touchPauseButton.addEventListener('click', () => { paused = true; reset(); sync(); });
   document.getElementById('touch-resume').addEventListener('click', () => { void enter(); });
   document.getElementById('touch-fullscreen').addEventListener('click', () => { void enter(); });
   document.getElementById('begin-match').addEventListener('click', () => { void enter(); });
@@ -172,5 +222,10 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
   addEventListener('resize', () => { reset(); sync(); });
   panel.addEventListener('contextmenu', e => e.preventDefault());
   sync();
-  return { enabled, enter, reset, sync, get active(){return available();}, get blocked(){return enabled && !available();} };
+  return {
+    enter, reset, sync, setEnabled,
+    get enabled(){return enabled;},
+    get active(){return available();},
+    get blocked(){return enabled && !available();}
+  };
 }
