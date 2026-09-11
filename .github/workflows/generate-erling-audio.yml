@@ -30,33 +30,42 @@ jobs:
           python -m pip install --upgrade pip
           pip install edge-tts certifi
 
-      - name: Generate Erling recordings
+      - name: Generate missing Erling recordings
         run: python scripts/generate_erling_audio.py
 
-      - name: Keep existing Erling recordings unchanged
+      - name: Add new Erling clips to main page
         run: |
-          git checkout -- \
-            assets/figurer/audio/erling-hvad-skal-jeg-bruge-det-til.mp3 \
-            assets/figurer/audio/erling-det-er-kedeligt.mp3 \
-            assets/figurer/audio/erling-det-er-kun-skyer-der-regner.mp3 \
-            assets/figurer/audio/erling-tal-er-for-tumper.mp3 \
-            assets/figurer/audio/erling-kloge-mennesker-er-dumme.mp3 \
-            assets/figurer/audio/erling-jeg-kan-godt-jeg-gider-bare-ikke.mp3
+          python - <<'PY'
+          from pathlib import Path
 
-      - name: Commit new recordings
+          path = Path('app.js')
+          text = path.read_text(encoding='utf-8')
+          marker = '  const ERLING_AUDIO_CLIPS = ['
+          start = text.index(marker)
+          end = text.index('  ];', start)
+          block = text[start:end]
+          clips = [
+              'assets/figurer/audio/erling-det-er-dumt-at-oeve-sig.mp3',
+              'assets/figurer/audio/erling-jo-mindre-du-ved.mp3',
+              'assets/figurer/audio/erling-jeg-hader-dem-der-kan.mp3',
+              'assets/figurer/audio/erling-hold-op-med-at-oeve-dig.mp3',
+              'assets/figurer/audio/erling-giv-nu-bare-op.mp3',
+              'assets/figurer/audio/erling-kom-og-vaer-sur.mp3',
+          ]
+          for clip in clips:
+              if clip not in block:
+                  block += f'    "{clip}",\n'
+          path.write_text(text[:start] + block + text[end:], encoding='utf-8')
+          PY
+
+      - name: Commit generated audio and wiring
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add \
-            assets/figurer/audio/erling-det-er-dumt-at-oeve-sig.mp3 \
-            assets/figurer/audio/erling-jo-mindre-du-ved.mp3 \
-            assets/figurer/audio/erling-jeg-hader-dem-der-kan.mp3 \
-            assets/figurer/audio/erling-hold-op-med-at-oeve-dig.mp3 \
-            assets/figurer/audio/erling-giv-nu-bare-op.mp3 \
-            assets/figurer/audio/erling-kom-og-vaer-sur.mp3
+          git add app.js assets/figurer/audio/erling-*.mp3
           if git diff --cached --quiet; then
-            echo 'No new audio changes.'
+            echo 'No Erling changes.'
           else
-            git commit -m 'Add recorded Erling voice lines'
+            git commit -m 'Wire new recorded Erling voice lines'
             git push origin HEAD:main
           fi
