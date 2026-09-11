@@ -1,0 +1,62 @@
+name: Generate Erling audio
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/generate-erling-audio.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install audio tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade pip
+          pip install edge-tts certifi
+
+      - name: Generate Erling recordings
+        run: python scripts/generate_erling_audio.py
+
+      - name: Keep existing Erling recordings unchanged
+        run: |
+          git checkout -- \
+            assets/figurer/audio/erling-hvad-skal-jeg-bruge-det-til.mp3 \
+            assets/figurer/audio/erling-det-er-kedeligt.mp3 \
+            assets/figurer/audio/erling-det-er-kun-skyer-der-regner.mp3 \
+            assets/figurer/audio/erling-tal-er-for-tumper.mp3 \
+            assets/figurer/audio/erling-kloge-mennesker-er-dumme.mp3 \
+            assets/figurer/audio/erling-jeg-kan-godt-jeg-gider-bare-ikke.mp3
+
+      - name: Commit new recordings
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add \
+            assets/figurer/audio/erling-det-er-dumt-at-oeve-sig.mp3 \
+            assets/figurer/audio/erling-jo-mindre-du-ved.mp3 \
+            assets/figurer/audio/erling-jeg-hader-dem-der-kan.mp3 \
+            assets/figurer/audio/erling-hold-op-med-at-oeve-dig.mp3 \
+            assets/figurer/audio/erling-giv-nu-bare-op.mp3 \
+            assets/figurer/audio/erling-kom-og-vaer-sur.mp3
+          if git diff --cached --quiet; then
+            echo 'No new audio changes.'
+          else
+            git commit -m 'Add recorded Erling voice lines'
+            git push origin HEAD:main
+          fi
