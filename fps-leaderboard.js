@@ -20,6 +20,8 @@
   let panelOpen = false;
   let initialized = false;
 
+  const soloScoreEligible = () => document.getElementById("online-hud")?.hidden !== false;
+
   function injectStyle() {
     if (document.getElementById("fps-leaderboard-style")) return;
     const style = document.createElement("style");
@@ -120,10 +122,11 @@
     const lock = document.getElementById("fps-leaderboard-lock");
     if (!value || !pill || !self || !list || !lock) return;
 
-    const visibleBest = authenticated ? Math.max(persistedBest, currentScore) : 0;
+    const eligibleCurrent = soloScoreEligible() ? currentScore : 0;
+    const visibleBest = authenticated ? Math.max(persistedBest, eligibleCurrent) : 0;
     value.textContent = authenticated ? String(visibleBest) : "—";
     self.textContent = authenticated ? String(visibleBest) : "—";
-    pill.classList.toggle("is-record", authenticated && currentScore > persistedBest);
+    pill.classList.toggle("is-record", authenticated && eligibleCurrent > persistedBest);
     list.replaceChildren();
 
     if (!authenticated) {
@@ -135,7 +138,7 @@
       return;
     }
 
-    lock.textContent = "Bedste score gemmes automatisk. Ved pointlighed vinder den, der nåede scoren først.";
+    lock.textContent = "Kun solo-spil tæller. Ved pointlighed vinder den, der nåede scoren først.";
     if (!leaderboard.length) {
       const empty = document.createElement("div");
       empty.className = "fps-leaderboard-empty";
@@ -226,6 +229,7 @@
 
   async function submit(score, { force = false } = {}) {
     const candidate = Math.max(0, Math.floor(Number(score) || 0));
+    if (!soloScoreEligible()) return null;
     currentScore = candidate;
     render();
     const activeClient = await resolveClient();
@@ -260,9 +264,10 @@
   function setCurrentScore(score) {
     currentScore = Math.max(0, Math.floor(Number(score) || 0));
     render();
-    if (!authenticated || currentScore <= persistedBest) return;
+    if (!soloScoreEligible() || !authenticated || currentScore <= persistedBest) return;
+    const candidate = currentScore;
     clearTimeout(submitTimer);
-    submitTimer = setTimeout(() => { submitTimer = null; void submit(currentScore); }, 900);
+    submitTimer = setTimeout(() => { submitTimer = null; void submit(candidate); }, 900);
   }
 
   function observeScore() {
