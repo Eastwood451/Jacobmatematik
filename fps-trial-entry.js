@@ -9,7 +9,8 @@
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
-      .fps-trial-entry{position:relative;display:block;isolation:isolate;overflow:hidden;margin:22px 0 0;min-height:186px;border:4px solid #171c22;border-radius:18px;background:linear-gradient(135deg,#1b2730 0%,#243b43 52%,#ba4937 100%);box-shadow:8px 8px 0 #171c22;color:#fff5dd;text-decoration:none;transform:rotate(-.35deg);transition:transform .16s ease,box-shadow .16s ease}
+      .login-intro.has-fps-trial-entry{grid-template-rows:auto minmax(0,1fr) auto auto auto;overflow:auto;align-content:start}
+      .fps-trial-entry{position:relative;display:block;isolation:isolate;overflow:hidden;width:100%;max-width:660px;margin:4px 0 12px;min-height:176px;border:4px solid #171c22;border-radius:18px;background:linear-gradient(135deg,#1b2730 0%,#243b43 52%,#ba4937 100%);box-shadow:8px 8px 0 #171c22;color:#fff5dd;text-decoration:none;transform:rotate(-.35deg);transition:transform .16s ease,box-shadow .16s ease}
       .fps-trial-entry:hover,.fps-trial-entry:focus-visible{transform:translate(2px,2px) rotate(0);box-shadow:5px 5px 0 #171c22;outline:none}
       .fps-trial-entry::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 70% 18%,#ffe6912b,transparent 26%),repeating-linear-gradient(115deg,transparent 0 28px,#ffffff08 29px 31px);z-index:-1}
       .fps-trial-entry-copy{position:relative;z-index:5;width:58%;padding:18px 14px 18px 20px;text-shadow:0 2px 0 #101317}
@@ -23,7 +24,7 @@
       .fps-trial-entry-gunnar{z-index:2;left:-7%;height:78%;transform:rotate(-7deg)}
       .fps-trial-entry-else{z-index:1;right:-12%;height:88%;transform:rotate(7deg)}
       .fps-trial-entry-burst{position:absolute;z-index:4;right:10px;top:10px;padding:7px 8px;border:3px solid #171c22;background:#f1c653;color:#171c22;clip-path:polygon(50% 0,60% 18%,78% 7%,82% 29%,100% 29%,88% 48%,100% 63%,79% 69%,77% 92%,58% 80%,45% 100%,36% 78%,13% 90%,18% 66%,0 57%,18% 43%,5% 24%,29% 24%,31% 4%);font:900 10px/1.05 system-ui,sans-serif;text-align:center;transform:rotate(7deg)}
-      @media(max-width:700px){.fps-trial-entry{min-height:168px}.fps-trial-entry-copy{width:64%;padding:15px 10px 15px 15px}.fps-trial-entry h3{font-size:29px}.fps-trial-entry-scene{width:48%}.fps-trial-entry-erling{right:14%;height:110%}.fps-trial-entry-gunnar{display:none}.fps-trial-entry-else{right:-22%;height:80%}.fps-trial-entry-burst{right:5px;top:5px;font-size:8px}.fps-trial-entry p{font-size:11px}}
+      @media(max-width:700px){.fps-trial-entry{min-height:164px}.fps-trial-entry-copy{width:64%;padding:15px 10px 15px 15px}.fps-trial-entry h3{font-size:29px}.fps-trial-entry-scene{width:48%}.fps-trial-entry-erling{right:14%;height:110%}.fps-trial-entry-gunnar{display:none}.fps-trial-entry-else{right:-22%;height:80%}.fps-trial-entry-burst{right:5px;top:5px;font-size:8px}.fps-trial-entry p{font-size:11px}}
     `;
     document.head.appendChild(style);
   }
@@ -33,6 +34,7 @@
     const intro = document.querySelector(".login-intro");
     if (!loginForm || !intro || document.getElementById(CARD_ID)) return;
     ensureStyle();
+    intro.classList.add("has-fps-trial-entry");
     const card = document.createElement("a");
     card.id = CARD_ID;
     card.className = "fps-trial-entry";
