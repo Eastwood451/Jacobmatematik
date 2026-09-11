@@ -1,6 +1,6 @@
-// Bundled recordings are preferred. New lines can use browser speech until a bundled clip exists.
+// Bundled recordings only: playback never depends on browser/OS voices.
 export function createGameVoicePlayer() {
-  const voiceData = fetch(new URL('./fps-voice-lines.json?v=20260911-erling2', import.meta.url))
+  const voiceData = fetch(new URL('./fps-voice-lines.json?v=20260911-erling3', import.meta.url))
     .then(response => {
       if (!response.ok) throw new Error(`Voice manifest: HTTP ${response.status}`);
       return response.json();
@@ -8,7 +8,7 @@ export function createGameVoicePlayer() {
     .then(manifest => {
       const lines = manifest.lines.map(line => ({
         ...line,
-        src: line.synth ? null : new URL(`./assets/figurer/audio/${line.id}.mp3`, import.meta.url).href,
+        src:new URL(`./assets/figurer/audio/${line.id}.mp3`, import.meta.url).href,
       }));
       const byText = new Map(lines.map(line => [line.text, line]));
       const byCharacter = new Map();
@@ -24,7 +24,6 @@ export function createGameVoicePlayer() {
     });
 
   let active = null;
-  let activeUtterance = null;
   let pending = false;
   let generation = 0;
   let lastErlingText = '';
@@ -37,43 +36,11 @@ export function createGameVoicePlayer() {
       active.currentTime = 0;
       active = null;
     }
-    if (activeUtterance) {
-      if ('speechSynthesis' in window) window.speechSynthesis.cancel();
-      activeUtterance = null;
-    }
-  }
-
-  function playSynth(entry, volume) {
-    if (!('speechSynthesis' in window) || typeof SpeechSynthesisUtterance === 'undefined') return false;
-    const utterance = new SpeechSynthesisUtterance(entry.text);
-    utterance.lang = 'da-DK';
-    utterance.rate = .84;
-    utterance.pitch = .62;
-    utterance.volume = Math.max(0, Math.min(1, volume));
-    const voices = window.speechSynthesis.getVoices();
-    utterance.voice = voices.find(voice => /^da(?:-|_)/i.test(voice.lang) && /jeppe|male|mand/i.test(voice.name))
-      || voices.find(voice => /^da(?:-|_)/i.test(voice.lang))
-      || null;
-    activeUtterance = utterance;
-    pending = false;
-    const release = () => {
-      if (activeUtterance === utterance) activeUtterance = null;
-    };
-    utterance.addEventListener('end', release, { once:true });
-    utterance.addEventListener('error', release, { once:true });
-    try {
-      window.speechSynthesis.speak(utterance);
-      return true;
-    } catch (error) {
-      release();
-      console.info('Den syntetiske replik kunne ikke afspilles.', error);
-      return false;
-    }
   }
 
   async function play(requestedText, { volume = .92 } = {}) {
     // Do not queue taunts: an old line should not play long after its event.
-    if (pending || active || activeUtterance) return false;
+    if (pending || active) return false;
     const ticket = generation;
     pending = true;
     const data = await voiceData;
@@ -85,7 +52,7 @@ export function createGameVoicePlayer() {
       return false;
     }
 
-    // Every Erling trigger may choose from his full pool, including the newer taunts.
+    // Every Erling trigger may choose from his full pool.
     // Never use the same Erling line twice in a row.
     if (entry.character === 'erling') {
       const pool = data.byCharacter.get('erling') || [entry];
@@ -94,8 +61,6 @@ export function createGameVoicePlayer() {
       entry = candidates[Math.floor(Math.random() * candidates.length)] || entry;
       lastErlingText = entry.text;
     }
-
-    if (entry.synth) return playSynth(entry, volume);
 
     const audio = new Audio(entry.src);
     audio.volume = Math.max(0, Math.min(1, volume));
@@ -126,6 +91,6 @@ export function createGameVoicePlayer() {
   return {
     play,
     stop,
-    get speaking() { return pending || active !== null || activeUtterance !== null; },
+    get speaking() { return pending || active !== null; },
   };
 }
