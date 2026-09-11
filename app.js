@@ -95,6 +95,12 @@
     "assets/figurer/audio/erling-tal-er-for-tumper.mp3",
     "assets/figurer/audio/erling-kloge-mennesker-er-dumme.mp3",
     "assets/figurer/audio/erling-jeg-kan-godt-jeg-gider-bare-ikke.mp3",
+    "assets/figurer/audio/erling-det-er-dumt-at-oeve-sig.mp3",
+    "assets/figurer/audio/erling-jo-mindre-du-ved.mp3",
+    "assets/figurer/audio/erling-jeg-hader-dem-der-kan.mp3",
+    "assets/figurer/audio/erling-hold-op-med-at-oeve-dig.mp3",
+    "assets/figurer/audio/erling-giv-nu-bare-op.mp3",
+    "assets/figurer/audio/erling-kom-og-vaer-sur.mp3",
   ];
   let activeErlingAudio = null;
   let lastErlingAudioIndex = -1;
