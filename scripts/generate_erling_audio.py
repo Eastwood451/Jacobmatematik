@@ -22,6 +22,12 @@ LINES = [
     ("tal-er-for-tumper", "Tal er for TUMPER!"),
     ("kloge-mennesker-er-dumme", "Kloge mennesker er DUMME!"),
     ("jeg-kan-godt-jeg-gider-bare-ikke", "Jeg kan godt. Jeg gider bare ikke."),
+    ("det-er-dumt-at-oeve-sig", "Det er dumt at øve sig på noget!"),
+    ("jo-mindre-du-ved", "Jo mindre du ved, jo bedre!"),
+    ("jeg-hader-dem-der-kan", "Jeg hader dem, der kan finde ud af noget!"),
+    ("hold-op-med-at-oeve-dig", "Hold op med at øve dig!"),
+    ("giv-nu-bare-op", "Giv nu bare op!"),
+    ("kom-og-vaer-sur", "Kom og vær sur sammen med mig!"),
 ]
 
 
