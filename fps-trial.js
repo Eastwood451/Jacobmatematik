@@ -66,7 +66,7 @@
       .fps-trial-small{display:block;margin-top:5px;font-size:10px;font-weight:700;opacity:.65}
       .fps-trial-back{display:block;margin-top:15px;color:#111820;text-align:center;font-size:11px;font-weight:900}
       .fps-trial-mode #online-button{display:none!important}
-      .fps-trial-mode .touch-device #fps-trial-badge{top:54px}
+      .fps-trial-mode.touch-device #fps-trial-badge{top:54px}
       @media(max-width:600px){#fps-trial-badge{top:7px;font-size:8px;padding:5px 7px}.fps-trial-card{padding:21px 18px}.fps-trial-card::before{right:10px;top:10px}.fps-trial-card h2{font-size:31px}}
     `;
     document.head.appendChild(style);
@@ -190,7 +190,10 @@
       gate.classList.remove("open");
       badge?.remove();
       document.documentElement.classList.remove("fps-trial-mode");
+      document.getElementById("online-button")?.removeAttribute("hidden");
       await setPaused(false);
+      const touchPause = document.getElementById("touch-pause-overlay");
+      if (touchPause && !touchPause.hidden) document.getElementById("touch-resume")?.click();
     } catch (authError) {
       const message = String(authError?.message || "");
       if (!signup && /invalid login credentials/i.test(message)) error.textContent = "Forkert brugernavn eller adgangskode.";
