@@ -1,3 +1,4 @@
+import { createEnemyNavigator } from './fps-navigation.js?v=20260911-path1';
 import { normalizeAvatar } from './fps-avatars.js?v=20260907-avatar1';
 // Host-owned rules, independent of Three.js and the transport.
 export const MAX_PLAYERS = 4;
@@ -16,6 +17,7 @@ export class Match {
     this.blocked = blocked;
     this.random = random;
     this.players = new Map();
+    this.navigator=null;
     this.enemies = [];
     this.shots = [];
     this.splats = [];
@@ -66,6 +68,10 @@ export class Match {
     if (this.mode === 'coop') this.nextWave();
     return true;
   }
+  getNavigator() {
+    if(!this.navigator)this.navigator=createEnemyNavigator({blocked:(x,z)=>this.blocked(x,z,.5,0,1.8)});
+    return this.navigator;
+  }
   nextWave() {
     if (++this.wave > TOTAL_WAVES) { this.finish('I vandt! Alle fem bølger er besejret.'); return; }
     for (const p of this.players.values()) {
@@ -76,7 +82,9 @@ export class Match {
     for (let i=0;i<count;i++) {
       const pos = starts[i % starts.length];
       const type = this.wave >= 2 && i === count-1 ? 'gunnar' : 'erling';
-      this.enemies.push({id:`e${++this.serial}`,type,x:pos[0],z:pos[1],hp:type==='gunnar'?5:1});
+      const target=[...this.players.values()].find(p=>p.hp>0);
+      const safe=this.getNavigator().spawnNear({x:pos[0],z:pos[1]},target);
+      if(safe)this.enemies.push({id:`e${++this.serial}`,type,x:safe.x,z:safe.z,hp:type==='gunnar'?5:1});
     }
   }
   finish(message) { this.phase = 'finished'; this.result = message; this.shots = []; }
@@ -165,9 +173,7 @@ export class Match {
       const p=alive.reduce((a,b)=>distance(e,a)<distance(e,b)?a:b);
       const d=distance(e,p), speed=e.type==='gunnar'?1.7:1.35;
       if (d>.01) {
-        const dx=(p.x-e.x)/d*speed*dt, dz=(p.z-e.z)/d*speed*dt;
-        if (!this.blocked(e.x+dx,e.z,.45)) e.x+=dx;
-        if (!this.blocked(e.x,e.z+dz,.45)) e.z+=dz;
+        this.getNavigator().move(e,p,speed*dt);
       }
       if (d<1.15) this.damage(p);
     }

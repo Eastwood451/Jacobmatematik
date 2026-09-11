@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { createEnemyNavigator } from './fps-navigation.js?v=20260911-path1';
 import { createGunnarSlime } from './fps-slime.js?v=20260910-slime1';
 import { createTouchControls, touchInput, hasTouchControls } from './fps-touch.js?v=20260909-touch3';
 let touch = null;
@@ -11,9 +12,9 @@ import { createGameVoicePlayer } from './fps-voice.js?v=20260907-danish1';
 const gameVoice = createGameVoicePlayer();
 import { createPlayerMovement } from './fps-movement.js?v=20260909-touch2';
 import { createDuctBuilder } from './fps-ducts.js?v=20260907-ducts1';
-import { createSchoolInteriorMaterials, applySchoolSurfaceUV } from './fps-interior.js?v=20260907-interior1';
+import { createSchoolInteriorMaterials, applySchoolSurfaceUV } from './fps-interior.js?v=20260911-pastel1';
 import { createElseAttacks, ELSE_THROW_INTERVAL } from './fps-else-attacks.js?v=20260909-examdrop2';
-import { createOnlineGame } from './fps-online.js?v=20260910-slime1';
+import { createOnlineGame } from './fps-online.js?v=20260911-path1';
 let multiplayer = null;
 import { createSchoolyard } from './fps-schoolyard.js?v=20260907-courtyard1';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
@@ -200,6 +201,7 @@ const deskMat = mat(0x9a633e);
 const lockerMat = mat(0x66838a);
 
 function box(x, y, z, w, h, d, material = wallMat, solid = true) {
+  if (material === wallMat) material = interiorMaterials.wallFor(x,z);
   const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), material);
   mesh.position.set(x, y, z);
   applySchoolSurfaceUV(mesh.geometry, material, mesh.position);
@@ -372,12 +374,25 @@ function newProblem() {
   feedbackEl.className = 'feedback';
 }
 
+let indoorNavigator = null;
+function getIndoorNavigator() {
+  if (!indoorNavigator) indoorNavigator = createEnemyNavigator({
+    blocked:(x,z)=>colliders.some(c=>c.min.y<1.8&&c.max.y>.05&&x+.5>=c.min.x&&x-.5<=c.max.x&&z+.5>=c.min.z&&z-.5<=c.max.z),
+  });
+  return indoorNavigator;
+}
 function pickSpawnPosition() {
   const candidates = [[-21,-22],[20,-22],[-20,22],[20,22],[0,-23],[0,23],[-23,0],[23,0],[-7,-22],[8,22]];
   const valid = candidates.filter(p => new THREE.Vector2(p[0] - camera.position.x, p[1] - camera.position.z).length() > 11);
   const pool = valid.length ? valid : candidates;
-  const p = pool[Math.floor(Math.random() * pool.length)];
-  return new THREE.Vector3(p[0] + (Math.random() - .5) * 2.4, 0, p[1] + (Math.random() - .5) * 2.4);
+  const navigator = getIndoorNavigator();
+  for (let attempt=0;attempt<40;attempt++) {
+    const p=pool[Math.floor(Math.random()*pool.length)];
+    const candidate={x:p[0]+(Math.random()-.5)*2.4,z:p[1]+(Math.random()-.5)*2.4};
+    if(navigator.reachable(candidate,camera.position))return new THREE.Vector3(candidate.x,0,candidate.z);
+  }
+  const p=navigator.spawnNear({x:pool[0][0],z:pool[0][1]},camera.position);
+  return new THREE.Vector3(p?.x??0,0,p?.z??18);
 }
 function createErling() {
   const enemy = createErlingRig(erlingTexture);
@@ -1223,11 +1238,14 @@ function update(dt, time) {
         toPlayer.normalize();
         let enemySpeed = enemy.speed || 1.35;
         if (enemy.type === 'erling' && campBoost) enemySpeed *= 3;
-        const step = toPlayer.multiplyScalar(enemySpeed * dt);
-        const nx = ep.clone().add(new THREE.Vector3(step.x,0,0));
-        const nz = ep.clone().add(new THREE.Vector3(0,0,step.z));
-        if (!enemyBlocked(nx)) ep.x = nx.x;
-        if (!enemyBlocked(nz)) ep.z = nz.z;
+        if (!schoolyardEntered) getIndoorNavigator().move(ep,camera.position,enemySpeed*dt);
+        else {
+          const step = toPlayer.multiplyScalar(enemySpeed * dt);
+          const nx = ep.clone().add(new THREE.Vector3(step.x,0,0));
+          const nz = ep.clone().add(new THREE.Vector3(0,0,step.z));
+          if (!enemyBlocked(nx)) ep.x = nx.x;
+          if (!enemyBlocked(nz)) ep.z = nz.z;
+        }
       }
       const distanceMoved = Math.hypot(ep.x - previousX, ep.z - previousZ);
       if (enemy.type === 'gunnar') animateGunnar(enemy,dt,time,distanceMoved);

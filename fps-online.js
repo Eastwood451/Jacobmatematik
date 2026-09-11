@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createPlayerMovement } from './fps-movement.js?v=20260909-touch1';
-import { GameRoom, roomCode } from './fps-room.js?v=20260910-slime1';
+import { GameRoom, roomCode } from './fps-room.js?v=20260911-path1';
 import { AVATARS, avatarFor, normalizeAvatar } from './fps-avatars.js?v=20260907-avatar1';
 import { createErlingRig, animateErling, disposeErlingRig } from './fps-visuals.js?v=20260907-sprites1';
 import { createGunnarRig } from './fps-gunnar.js?v=20260910-slime1';

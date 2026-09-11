@@ -32,6 +32,16 @@ export function createSchoolInteriorMaterials(renderer) {
       }
     }
   });
+  // Preserve every brick, joint and grain while neutralising the old ochre colour.
+  const paintedBricks=texture(512,256,(ctx,w,h)=>{
+    ctx.drawImage(bricks.image,0,0);
+    const pixels=ctx.getImageData(0,0,w,h);
+    for(let i=0;i<pixels.data.length;i+=4){
+      const grey=110+.55*(.2126*pixels.data[i]+.7152*pixels.data[i+1]+.0722*pixels.data[i+2]);
+      pixels.data[i]=pixels.data[i+1]=pixels.data[i+2]=grey;
+    }
+    ctx.putImageData(pixels,0,0);
+  });
   const linoleum=texture(768,768,(ctx,w,h)=>{
     ctx.fillStyle='#7d887c';ctx.fillRect(0,0,w,h);
     // Pigment flecks and fine, stretched marbling, rather than floor tiles.
@@ -68,13 +78,16 @@ export function createSchoolInteriorMaterials(renderer) {
       ctx.fillStyle='#ece9db';ctx.fillRect(x+3,y+3,253,3);ctx.fillRect(x+3,y+3,3,253);
     }
   });
-  const wall=new THREE.MeshStandardMaterial({map:bricks,bumpMap:bump(bricks),bumpScale:.028,roughness:.94});
+  const wall=new THREE.MeshStandardMaterial({map:paintedBricks,bumpMap:bump(bricks),bumpScale:.028,roughness:.94});
   const floor=new THREE.MeshStandardMaterial({map:linoleum,bumpMap:bump(linoleum),bumpScale:.006,roughness:.66});
   const ceiling=new THREE.MeshStandardMaterial({map:acoustic,bumpMap:bump(acoustic),bumpScale:.012,roughness:.95,emissive:0x8b897c,emissiveIntensity:.12});
   wall.userData.tileSize=[1.2,.6];
   floor.userData.tileSize=[3,3];
   ceiling.userData.tileSize=[1.2,1.2];
-  return {wall,floor,ceiling};
+  const wallColours=[0xf4dbc7,0xd9ebfa,0xddefcc,0xf4e9b5,0xe6dcf4,0xd5eeee];
+  const paintedWalls=wallColours.map(colour=>{const material=wall.clone();material.color.setHex(colour);return material;});
+  const wallFor=(x,z)=>paintedWalls[(x < -8 ? 0 : x > 8 ? 2 : 1)+(z>0?3:0)];
+  return {wall,floor,ceiling,wallFor};
 }
 
 // Map each box face in metres. A short partition and a long corridor wall
