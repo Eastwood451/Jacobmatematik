@@ -6,11 +6,20 @@
   <meta name="theme-color" content="#121820">
   <title>Erling FPS · Jacob Matematik</title>
   <link rel="stylesheet" href="fps.css?v=20260910-compact1">
+  <style>
+    #touch-controls-toggle{position:fixed;z-index:40;left:18px;bottom:18px;border:2px solid #101317;border-radius:9px;background:#f3e8ce;color:#121820;box-shadow:3px 3px 0 #101317;padding:7px 10px;font:900 10px/1.1 Inter,system-ui,sans-serif;letter-spacing:.04em;cursor:pointer;-webkit-tap-highlight-color:transparent}
+    #touch-controls-toggle[aria-pressed="true"]{background:#d2e6da}
+    #touch-controls-toggle:hover{transform:translate(1px,1px);box-shadow:2px 2px 0 #101317}
+    .touch-device #touch-controls-toggle{left:auto;right:var(--right-edge);top:52px;bottom:auto;z-index:22;padding:5px 8px;font-size:9px}
+    .fps-copyright{position:fixed;z-index:6;right:10px;bottom:8px;margin:0;color:#f8f1df;font:600 9px/1.2 Inter,system-ui,sans-serif;letter-spacing:.04em;opacity:.32;pointer-events:none;user-select:none}
+    .touch-device .fps-copyright{right:auto;left:50%;top:6px;bottom:auto;transform:translateX(-50%);z-index:9;white-space:nowrap}
+  </style>
   <script type="importmap">
   {
     "imports": {
       "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
-      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/",
+      "./fps-touch.js?v=20260909-touch3": "./fps-touch.js?v=20260911-toggle1"
     }
   }
   </script>
@@ -25,6 +34,8 @@
       <div class="hud-pill"><span>Blyanter</span><strong id="ammo">0</strong></div>
       <div class="hud-pill"><span>Ramt</span><strong id="score">0</strong></div>
     </header>
+
+    <button type="button" id="touch-controls-toggle" aria-pressed="false">ON-SCREEN CONTROLS: OFF</button>
 
     <div id="crosshair" aria-hidden="true"><span></span><span></span></div>
 
@@ -142,12 +153,13 @@
     </section>
 
     <div id="pointer-note" class="pointer-note">Klik i spillet for at fange musen</div>
+    <p class="fps-copyright">© Jacob Elgaard 2026</p>
   </main>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="supabase-config.js?v=66d7f7d7"></script>
   <script src="supabase-backend.js?v=20260908-danish-usernames1"></script>
-  <script type="module" src="fps.js?v=20260910-compact1"></script>
+  <script type="module" src="fps.js?v=20260911-controls1"></script>
   <script src="fps-ammo-ui.js?v=20260905-ammo1" defer></script>
 </body>
 </html>
