@@ -1,6 +1,7 @@
 import * as THREE from 'three';
+import { createGunnarProjectiles } from './fps-gunnar-projectiles.js?v=20260912-goo1';
 import { createEnemyNavigator } from './fps-navigation.js?v=20260911-path1';
-import { createGunnarSlime } from './fps-slime.js?v=20260910-slime1';
+import { createGunnarSlime } from './fps-slime.js?v=20260912-goo1';
 import { createTouchControls, touchInput, hasTouchControls } from './fps-touch.js?v=20260909-touch3';
 let touch = null;
 let gameTime = performance.now();
@@ -14,7 +15,7 @@ import { createPlayerMovement } from './fps-movement.js?v=20260909-touch2';
 import { createDuctBuilder } from './fps-ducts.js?v=20260907-ducts1';
 import { createSchoolInteriorMaterials, applySchoolSurfaceUV } from './fps-interior.js?v=20260911-pastel1';
 import { createElseAttacks, ELSE_THROW_INTERVAL } from './fps-else-attacks.js?v=20260909-examdrop2';
-import { createOnlineGame } from './fps-online.js?v=20260911-path1';
+import { createOnlineGame } from './fps-online.js?v=20260912-goo1';
 let multiplayer = null;
 import { createSchoolyard } from './fps-schoolyard.js?v=20260907-courtyard1';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
@@ -34,6 +35,7 @@ renderer.toneMappingExposure = 1.05;
 
 const scene = new THREE.Scene();
 const gunnarSlime = createGunnarSlime(scene);
+const gunnarProjectiles = createGunnarProjectiles();
 scene.background = new THREE.Color(0x8eb5c4);
 scene.fog = new THREE.Fog(0xc8c6b7, 36, 96);
 
@@ -264,6 +266,7 @@ let lives = 5;
 let ammo = 0;
 let score = 0;
 let erlingKills = 0;
+let erlingSpawnElapsed = 0;
 let schoolyardPoints = 0;
 let answer = '';
 let gameActive = false;
@@ -395,6 +398,7 @@ function pickSpawnPosition() {
   return new THREE.Vector3(p?.x??0,0,p?.z??18);
 }
 function createErling() {
+  if(enemies.filter(e=>e.type==='erling').length>=25)return null;
   const enemy = createErlingRig(erlingTexture);
   enemy.type = 'erling';
   enemy.hp = 1;
@@ -471,6 +475,14 @@ function spawnWave(count = 1, announce = true) {
   if (schoolyardDoorOpen || schoolyardEntered) return;
   for (let i = 0; i < count; i++) createErling();
   if (announce) speakSpawn();
+}
+function updateErlingSpawns(dt) {
+  if(schoolyardDoorOpen||schoolyardEntered||divisionChallenge?.active)return;
+  erlingSpawnElapsed+=dt;
+  if(erlingSpawnElapsed>=10){
+    erlingSpawnElapsed%=10;
+    if(enemies.filter(e=>e.type==='erling').length<25)spawnWave(1,true);
+  }
 }
 
 function ensureMusic() {
@@ -561,17 +573,19 @@ function onEnemyDefeated(enemy) {
   const type = enemy.type;
   if (type === 'gunnar') {
     gunnarSlime.burst(enemy.group.position);
+    gunnarProjectiles.burst(enemy.group.position,camera.position);
     feedbackEl.textContent = 'SPLAT! Grønt snask over det hele!';
     feedbackEl.className = 'feedback good';
   }
   removeEnemy(enemy);
-  score++;
+  const points=type==='gunnar'?5:1;
+  score+=points;
   if (type === 'else') {
     updateHUD();
     showVictory();
     return;
   }
-  if (type === 'erling') erlingKills++;
+  if (type === 'erling' || type === 'gunnar') erlingKills+=points;
   schoolyardPoints += type === 'erling' ? 1 : type === 'gunnar' ? 5 : 0;
   if (schoolyardPoints >= schoolyardKillTarget && !schoolyardDoorOpen) {
     openSchoolyardDoor();
@@ -579,7 +593,6 @@ function onEnemyDefeated(enemy) {
     return;
   }
   if (type === 'erling') {
-    spawnWave(2, true);
     if (erlingKills % 5 === 0) createGunnar();
     if (erlingKills >= 50 && !magicCircleTriggered) {
       magicCircleTriggered = true;
@@ -867,6 +880,8 @@ function setSchoolyardLighting(active) {
 
 function enterSchoolyard() {
   if (schoolyardEntered) return;
+  gunnarProjectiles.clear();
+  gunnarSlime.clear();
   schoolyardEntered = true;
   schoolyardDoorOpen = false;
   removeSchoolyardArrows();
@@ -1053,7 +1068,6 @@ function hurt(enemy, projectileHit = false) {
     elseAttacks.clear();
     return;
   }
-  if (!schoolyardEntered && enemies.length === 0 && !schoolyardDoorOpen) spawnWave(1,true);
 }
 function submitAnswer() {
   if (!gameActive || !problem || problem.resolved || !answer) return;
@@ -1148,6 +1162,8 @@ controls.addEventListener('lock', () => document.getElementById('pointer-note').
 controls.addEventListener('unlock', () => { clearMovementKeys(); if (gameActive) document.getElementById('pointer-note').classList.add('show'); });
 
 function resetGame(online = false) {
+  gunnarProjectiles.clear();
+  erlingSpawnElapsed=0;
   gunnarSlime.clear();
   gameVoice.stop();
   elseAttacks.clear();
@@ -1211,6 +1227,7 @@ function update(dt, time) {
   if (!gameActive || touch?.blocked) { lastPlayerMoveAt = time; return; }
   const moved = playerMovement.update(dt);
   updateCamping(time,moved);
+  updateErlingSpawns(dt);
   updateSchoolyardArrows(time);
 
   if (schoolyardDoorOpen && !schoolyardEntered && Math.abs(camera.position.x) < 1.9 && camera.position.z > 24.45) enterSchoolyard();
@@ -1267,6 +1284,16 @@ function update(dt, time) {
 
   if (!gameActive) return;
   updateProjectiles(dt);
+  if(gameActive&&!divisionChallenge?.active){
+    gunnarProjectiles.update(dt,{
+      blocked:s=>{
+        const sphere=new THREE.Sphere(new THREE.Vector3(s.x,s.y,s.z),s.radius);
+        return colliders.some(c=>c.intersectsSphere(sphere));
+      },
+      players:[{hp:lives,bounds:playerMovement.bounds}],onHit:()=>hurt(null,true),
+    });
+    gunnarSlime.syncProjectiles(gunnarProjectiles.shots);
+  }
   if (gameActive && schoolyardEntered) elseAttacks.update(dt,camera.position,playerMovement.bounds);
   updateStompWaves(dt,time);
 }

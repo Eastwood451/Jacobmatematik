@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { createPlayerMovement } from './fps-movement.js?v=20260909-touch1';
-import { GameRoom, roomCode } from './fps-room.js?v=20260911-path1';
+import { GameRoom, roomCode } from './fps-room.js?v=20260912-goo1';
 import { AVATARS, avatarFor, normalizeAvatar } from './fps-avatars.js?v=20260907-avatar1';
 import { createErlingRig, animateErling, disposeErlingRig } from './fps-visuals.js?v=20260907-sprites1';
 import { createGunnarRig } from './fps-gunnar.js?v=20260910-slime1';
@@ -107,6 +107,7 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
       text($('lobby-instructions'),room.host?(next.players.length<2?'Venter på mindst én klassekammerat…':'Alle er med. Start kampen, når I er klar.'):'Venter på at værten starter kampen.');
       text($('online-status'),'');
     }
+    gunnarSlime.syncProjectiles(next.goo||[]);
     for(const splat of next.splats||[]) if(!seenSplats.has(splat.id)) {
       seenSplats.add(splat.id);
       if(next.clock-splat.at<2.8) gunnarSlime.burst(splat);

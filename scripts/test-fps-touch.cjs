@@ -161,7 +161,7 @@ test('JacobE gets the courtyard on every solo reset; other users and online keep
     let opens=0,spawns=0;
     const context={URLSearchParams,location:{search:''},console,setTimeout(){},
       window:{JacobBackend:{configured:true,loadDatabase:async()=>({currentUserId:'player',database:{users:[{id:'player',username}]}})}},
-      gameVoice:{stop(){}},elseAttacks:{clear(){}},gunnarSlime:{clear(){}},projectiles:[],schoolyardDoor:null,
+      gameVoice:{stop(){}},elseAttacks:{clear(){}},gunnarSlime:{clear(){}},gunnarProjectiles:{clear(){}},projectiles:[],schoolyardDoor:null,
       playerMovement:{reset(){}},camera:{rotation:{set(){}}},gameNow:()=>0,
       openSchoolyardDoor:()=>opens++,spawnWave:()=>spawns++,
     };

@@ -1,4 +1,5 @@
 import { createEnemyNavigator } from './fps-navigation.js?v=20260911-path1';
+import { createGunnarProjectiles } from './fps-gunnar-projectiles.js?v=20260912-goo1';
 import { normalizeAvatar } from './fps-avatars.js?v=20260907-avatar1';
 // Host-owned rules, independent of Three.js and the transport.
 export const MAX_PLAYERS = 4;
@@ -21,6 +22,7 @@ export class Match {
     this.enemies = [];
     this.shots = [];
     this.splats = [];
+    this.goo=createGunnarProjectiles();
     this.phase = 'lobby';
     this.wave = 0;
     this.kills = 0;
@@ -64,6 +66,7 @@ export class Match {
     if (this.players.size < 2 || this.phase === 'playing') return false;
     this.phase = 'playing'; this.wave = 0; this.kills = 0; this.result = '';
     this.enemies = []; this.shots = []; this.splats = [];
+    this.goo.clear();
     for (const p of this.players.values()) { p.score = 0; p.deaths = 0; this.spawn(p); }
     if (this.mode === 'coop') this.nextWave();
     return true;
@@ -87,7 +90,7 @@ export class Match {
       if(safe)this.enemies.push({id:`e${++this.serial}`,type,x:safe.x,z:safe.z,hp:type==='gunnar'?5:1});
     }
   }
-  finish(message) { this.phase = 'finished'; this.result = message; this.shots = []; }
+  finish(message) { this.phase = 'finished'; this.result = message; this.shots = []; this.goo.clear(); }
   input(id, data) {
     const p = this.players.get(id);
     if (!p || this.phase !== 'playing' || !data || data.epoch !== p.epoch) return;
@@ -122,8 +125,8 @@ export class Match {
       }
     }
   }
-  damage(p, attacker) {
-    if (p.hp<=0 || this.clock<p.safeUntil) return;
+  damage(p, attacker, projectileHit=false) {
+    if (p.hp<=0 || (!projectileHit&&this.clock<p.safeUntil)) return;
     p.hp--; p.safeUntil=this.clock+1.2;
     if (p.hp===0) {
       p.deaths++;
@@ -155,8 +158,13 @@ export class Match {
         } else {
           for (const e of this.enemies) if (e.hp>0 && distance(s,e)<.85 && s.y<3.3) {
             if (--e.hp===0) {
-              this.kills++; const owner=this.players.get(s.owner); if(owner) owner.score++;
-              if(e.type==='gunnar') this.splats.push({id:`splat:${e.id}`,x:e.x,y:0,z:e.z,at:this.clock});
+              const points=e.type==='gunnar'?5:1;
+              this.kills+=points; const owner=this.players.get(s.owner); if(owner) owner.score+=points;
+              if(e.type==='gunnar'){
+                this.splats.push({id:`splat:${e.id}`,x:e.x,y:0,z:e.z,at:this.clock});
+                const target=owner||[...this.players.values()].find(p=>p.hp>0);
+                if(target)this.goo.burst(e,target);
+              }
             }
             s.life=0; break;
           }
@@ -165,6 +173,14 @@ export class Match {
     }
     this.shots=this.shots.filter(s=>s.life>0);
     if (this.phase!=='playing' || this.mode!=='coop') return;
+    this.goo.update(dt,{
+      blocked:s=>this.blocked(s.x,s.z,s.radius,s.y-s.radius,s.radius*2),
+      players:[...this.players.values()].map(p=>{
+        const feet=p.y-(p.crouching?.78:1.7),height=p.crouching?1.05:1.95;
+        return {hp:p.hp,player:p,bounds:{min:{x:p.x-.48,y:feet+.025,z:p.z-.48},max:{x:p.x+.48,y:feet+height,z:p.z+.48}}};
+      }),
+      onHit:({player})=>this.damage(player,null,true),
+    });
     const alive=[...this.players.values()].filter(p=>p.hp>0);
     if (!alive.length) { this.finish('Holdet blev overmandet. Prøv igen sammen!'); return; }
     this.enemies=this.enemies.filter(e=>e.hp>0);
@@ -180,6 +196,6 @@ export class Match {
   }
   snapshot() {
     return {mode:this.mode,phase:this.phase,wave:this.wave,kills:this.kills,clock:this.clock,result:this.result,
-      splats:this.splats.map(s=>({...s})),players:[...this.players.values()].map(p=>({...p})),enemies:this.enemies.map(e=>({...e})),shots:this.shots.map(s=>({...s}))};
+      goo:this.goo.shots.map(s=>({...s})),splats:this.splats.map(s=>({...s})),players:[...this.players.values()].map(p=>({...p})),enemies:this.enemies.map(e=>({...e})),shots:this.shots.map(s=>({...s}))};
   }
 }

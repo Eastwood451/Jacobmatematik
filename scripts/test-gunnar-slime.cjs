@@ -7,6 +7,7 @@ const vm=require('node:vm');
 const THREE=require('three');
 const root=path.resolve(__dirname,'..');
 const source=name=>fs.readFileSync(path.join(root,name),'utf8');
+const {createGunnarProjectiles}=vm.runInNewContext(source('fps-gunnar-projectiles.js').replaceAll('export ','')+'\n({createGunnarProjectiles})');
 const {createGunnarSlime}=vm.runInNewContext(source('fps-slime.js')
   .replace("import * as THREE from 'three';",'').replaceAll('export ','')+'\n({createGunnarSlime})',{THREE});
 
@@ -18,6 +19,7 @@ test('Gunnar survives four hits, splats on hit five and retains his five courtya
   const enemy=rigApi.createGunnarRig(null),scene=new THREE.Scene();
   const code=source('fps.js');let removed=0;
   const context={enemy,enemies:[enemy],score:0,erlingKills:0,schoolyardPoints:0,
+    camera:{position:new THREE.Vector3(0,1.7,5)},gunnarProjectiles:createGunnarProjectiles(),
     schoolyardKillTarget:50,schoolyardDoorOpen:false,gunnarSlime:createGunnarSlime(scene,()=>.5),
     feedbackEl:{},removeEnemy:()=>removed++,updateHUD(){},setTimeout(){},
   };
@@ -28,8 +30,9 @@ test('Gunnar survives four hits, splats on hit five and retains his five courtya
     assert.equal(removed,0);assert.equal(scene.children.length,0);
   }
   api.hitEnemy(enemy);assert.equal(removed,1);assert.equal(scene.children.length,1);
-  assert.equal(context.score,1);assert.equal(context.schoolyardPoints,5);
-  assert.equal(context.erlingKills,0);
+  assert.equal(context.score,5);assert.equal(context.schoolyardPoints,5);
+  assert.equal(context.erlingKills,5);
+  assert.equal(context.gunnarProjectiles.shots.length,5);
   api.hitEnemy(enemy);assert.equal(removed,1);assert.equal(scene.children.length,1);
   context.gunnarSlime.clear();
 });
@@ -56,4 +59,19 @@ test('rapid splats stay bounded and reset removes all effects',()=>{
   slime.clear();assert.equal(scene.children.length,0);
   slime.burst(new THREE.Vector3());assert.equal(scene.children.length,1);
   slime.clear();
+});
+
+test('all five dangerous drops render green at their hitbox positions and are removed on reset',()=>{
+  const scene=new THREE.Scene(),slime=createGunnarSlime(scene),goo=createGunnarProjectiles();
+  goo.burst({x:0,z:0},{x:5,y:1.7,z:0});
+  slime.syncProjectiles(goo.shots);assert.equal(scene.children.length,5);
+  let disposed=0;
+  for(const mesh of scene.children){
+    assert.equal(mesh.name,'gunnar-flying-goo');assert.equal(mesh.position.y,1.7);
+    assert.ok(mesh.material.color.g>mesh.material.color.r);
+    mesh.geometry.addEventListener('dispose',()=>disposed++);
+    mesh.material.addEventListener('dispose',()=>disposed++);
+  }
+  slime.syncProjectiles(goo.shots);assert.equal(scene.children.length,5);
+  slime.clear();assert.equal(scene.children.length,0);assert.equal(disposed,10);
 });

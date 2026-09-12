@@ -71,7 +71,8 @@ test('co-op Gunnar takes five pencils and broadcasts exactly one expiring green 
     assert.equal(gunnar.hp,5-i);
     assert.equal(m.snapshot().splats.length,i===5?1:0);
   }
-  assert.equal(m.kills,1);assert.equal(a.score,1);assert.equal(a.ammo,0);
+  assert.equal(m.kills,5);assert.equal(a.score,5);assert.equal(a.ammo,0);
+  assert.equal(a.hp,4);assert.equal(m.snapshot().goo.length,4);
   const splat=m.snapshot().splats[0];assert.equal(splat.id,`splat:${gunnar.id}`);
   m.tick(.3);assert.equal(m.snapshot().splats[0].id,splat.id);
   m.tick(3);assert.equal(m.snapshot().splats.length,0);
