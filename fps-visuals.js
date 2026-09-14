@@ -111,6 +111,10 @@ export function animateErling(enemy, dt, time, distanceMoved) {
   enemy.head.rotation.z = idle * (motion.headTilt ?? .075) + step * (motion.headStep ?? .025);
   enemy.head.rotation.y = Math.sin(time * (motion.headTurnRate ?? .0013) + enemy.phase) * (motion.headTurn ?? .12);
   enemy.body.position.y = enemy.bodyBaseY + Math.abs(step) * (motion.bodyBob ?? .025);
+  const swipe=enemy.swipe||0;
+  enemy.rightArm.rotation.z+=swipe*.85;
+  enemy.rightArm.rotation.x=-swipe*1.05;
+  enemy.rightArm.position.z=swipe*.8;
 }
 
 export function disposeErlingRig(enemy) {

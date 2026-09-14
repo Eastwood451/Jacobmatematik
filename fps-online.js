@@ -1,20 +1,21 @@
 import * as THREE from 'three';
 import { createPlayerMovement } from './fps-movement.js?v=20260909-touch1';
-import { GameRoom, roomCode } from './fps-room.js?v=20260912-goo1';
+import { GameRoom, roomCode } from './fps-room.js?v=20260914-gun1';
 import { AVATARS, avatarFor, normalizeAvatar } from './fps-avatars.js?v=20260907-avatar1';
-import { createErlingRig, animateErling, disposeErlingRig } from './fps-visuals.js?v=20260907-sprites1';
+import { createErlingRig, animateErling, disposeErlingRig } from './fps-visuals.js?v=20260914-gun1';
 import { createGunnarRig } from './fps-gunnar.js?v=20260910-slime1';
 
 const $=id=>document.getElementById(id);
 const colours=[0x43cbb7,0xf6b94d,0xa3a0ff,0xfc8c93];
 const text=(el,value)=>{if(el.textContent!==String(value)) el.textContent=String(value);};
 
-export function createOnlineGame({scene,camera,controls,colliders,makePencil,prepare,ready,textures,startAudio,flash,inputReady,touchInput,touchEnabled,gunnarSlime}) {
+export function createOnlineGame({scene,camera,controls,colliders,makePencil,prepare,ready,textures,startAudio,flash,inputReady,touchInput,touchEnabled,gunnarSlime,minigunView,minigunSound}) {
   let room=null, state=null, me=null, epoch=-1, answer='';
   let busy=false, lastPhase='', previousHp=5, problemId=null, syncing=false;
   const keys={}, objects=new Map();
   const seenSplats=new Set();
   const avatarTextures=new Map();
+  let lastMinigunShot=0;
   let selectedAvatar='dennis';
   try {selectedAvatar=normalizeAvatar(localStorage.getItem('erling-avatar'));} catch {}
   for(const avatar of AVATARS) {
@@ -40,7 +41,7 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
   const blocked=(x,z,r=.48,y=0,height=1.95)=>colliders.some(c=>x+r>c.min.x && x-r<c.max.x && z+r>c.min.z && z-r<c.max.z && c.max.y>y+.025 && c.min.y<y+height);
 
   function clearObjects() {
-    gunnarSlime.clear();seenSplats.clear();
+    gunnarSlime.clear();seenSplats.clear();minigunView.hide();minigunSound.stop();lastMinigunShot=0;
     for(const object of objects.values()) dispose(object);
     objects.clear();
   }
@@ -107,6 +108,12 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
       text($('lobby-instructions'),room.host?(next.players.length<2?'Venter på mindst én klassekammerat…':'Alle er med. Start kampen, når I er klar.'):'Venter på at værten starter kampen.');
       text($('online-status'),'');
     }
+    const gun=player.minigun;
+    minigunView.sync(next.phase==='playing'&&player.hp>0?gun:null,next.phase==='playing'&&next.pickupAvailable);
+    const fired=gun?.shotsFired||0;
+    if(next.phase==='playing'&&player.hp>0&&inputReady())for(let i=lastMinigunShot;i<Math.min(fired,lastMinigunShot+3);i++){minigunSound.shot();minigunView.flash();flash('shot-flash');}
+    lastMinigunShot=fired;
+    if(next.phase!=='playing'||player.hp<=0)minigunSound.stop();
     gunnarSlime.syncProjectiles(next.goo||[]);
     for(const splat of next.splats||[]) if(!seenSplats.has(splat.id)) {
       seenSplats.add(splat.id);
@@ -140,8 +147,8 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
     if(player.note==='Forkert. Prøv igen.') syncing=false;
     text($('lives'),'♥ '.repeat(Math.max(0,player.hp)).trim()||'0');
     text($('ammo'),player.ammo);text($('score'),player.score);
-    text($('problem'),`${player.problem.a} × ${player.problem.b}`);text($('answer'),answer||'_');
-    text(document.querySelector('.math-kicker'),next.mode==='coop'?'HOLDETS BLYANTER · GANGESTYKKER':'DEATHMATCH · GANGESTYKKER');
+    text($('problem'),`${player.problem.a} ${player.problem.kind==='subtract'?'−':'×'} ${player.problem.b}`);text($('answer'),answer||'_');
+    text(document.querySelector('.math-kicker'),player.problem.kind==='subtract'?'MINIGUN · LØS 5 MINUSSTYKKER':next.mode==='coop'?'HOLDETS BLYANTER · GANGESTYKKER':'DEATHMATCH · GANGESTYKKER');
     text($('feedback'),player.hp<=0?(next.mode==='coop'?'Du genoplives ved næste bølge. Hep på holdet!':'Du genopstår om et øjeblik…'):(player.note||'Svar rigtigt for at få en blyant.'));
     text($('online-match-label'),`${next.mode==='coop'?'CO-OP':'DEATHMATCH'} · ${room.code}`);
     const ownAvatar=avatarFor(player.avatar);
@@ -192,6 +199,7 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
       }
       else {
         object.group.lookAt(camera.position.x,0,camera.position.z);
+        object.rig.swipe=item.swipe||0;
         animateErling(object.rig,dt,time,object.group.position.distanceTo(old));
       }
     }
@@ -202,7 +210,9 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
     if(me?.hp>0 && inputReady()) {
       movement.update(dt);
     }
-    room.pose={x:camera.position.x,y:camera.position.y,z:camera.position.z,yaw:camera.rotation.y,crouching:movement.crouching,sprinting:Boolean(keys.ShiftLeft||keys.ShiftRight||touchInput.sprint)};
+    const aim=new THREE.Vector3();camera.getWorldDirection(aim);
+    room.pose={aim:{x:aim.x,y:aim.y,z:aim.z},x:camera.position.x,y:camera.position.y,z:camera.position.z,yaw:camera.rotation.y,crouching:movement.crouching,sprinting:Boolean(keys.ShiftLeft||keys.ShiftRight||touchInput.sprint)};
+    minigunView.sync(me?.hp>0?me.minigun:null,state.pickupAvailable,dt);
     renderObjects(dt,time);
   }
   function keydown(e) {
@@ -221,7 +231,7 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
     }
   }
   function fire() {
-    if(!room || state?.phase!=='playing' || !inputReady() || !me || me.hp<=0 || me.ammo<=0) return;
+    if(!room || state?.phase!=='playing' || !inputReady() || !me || me.hp<=0 || me.ammo<=0 || me.minigun?.phase==='active') return;
     const dir=new THREE.Vector3();camera.getWorldDirection(dir);
     room.action({type:'shoot',dir:{x:dir.x,y:dir.y,z:dir.z}});flash('shot-flash');
   }

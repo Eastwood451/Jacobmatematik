@@ -1,4 +1,6 @@
 import * as THREE from 'three';
+import { createMinigunPowerup, MINIGUN_PICKUP, clearReach, updateErlingSwipe } from './fps-powerup-rules.js?v=20260914-gun1';
+import { createMinigunView, createMinigunSound } from './fps-minigun.js?v=20260914-gun1';
 import { buildClassrooms } from './fps-classrooms.js?v=20260914-rooms1';
 import { createGunnarProjectiles } from './fps-gunnar-projectiles.js?v=20260912-goo1';
 import { createEnemyNavigator } from './fps-navigation.js?v=20260911-path1';
@@ -16,11 +18,11 @@ import { createPlayerMovement } from './fps-movement.js?v=20260909-touch2';
 import { createDuctBuilder } from './fps-ducts.js?v=20260907-ducts1';
 import { createSchoolInteriorMaterials, applySchoolSurfaceUV } from './fps-interior.js?v=20260911-pastel1';
 import { createElseAttacks, ELSE_THROW_INTERVAL } from './fps-else-attacks.js?v=20260909-examdrop2';
-import { createOnlineGame } from './fps-online.js?v=20260912-goo1';
+import { createOnlineGame } from './fps-online.js?v=20260914-gun1';
 let multiplayer = null;
 import { createSchoolyard } from './fps-schoolyard.js?v=20260907-courtyard1';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { createErlingRig, animateErling, disposeErlingRig, addSchoolWallArt } from './fps-visuals.js?v=20260914-rooms1';
+import { createErlingRig, animateErling, disposeErlingRig, addSchoolWallArt } from './fps-visuals.js?v=20260914-gun1';
 import { createGunnarRig, animateGunnar, disposeGunnarRig } from './fps-gunnar.js?v=20260910-slime1';
 import { createElseRig, animateElse, disposeElseRig } from './fps-else.js?v=20260909-shockwaves2';
 
@@ -44,6 +46,9 @@ const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, .08, 13
 camera.position.set(0, 1.7, 18);
 const controls = new PointerLockControls(camera, document.body);
 scene.add(camera);
+const minigun=createMinigunPowerup();
+const minigunView=createMinigunView(scene,camera);
+const minigunSound=createMinigunSound(()=>audioCtx);
 
 const hemisphere = new THREE.HemisphereLight(0xf4f1dc, 0xa4a29a, 2.2);
 scene.add(hemisphere);
@@ -354,13 +359,13 @@ function divisionProblem() {
 }
 function newProblem() {
   if (divisionChallenge?.active) return;
-  problem = schoolyardEntered ? divisionProblem() : normalProblem();
+  problem = minigun.phase==='challenge' ? {...minigun.question} : schoolyardEntered ? divisionProblem() : normalProblem();
   if (schoolyardEntered) problem.expression = problem.expression.replace(' ÷ ', ' : ');
-  mathKickerEl.textContent = schoolyardEntered ? 'EKSAMENS AMMUNITION · DIVISION' : 'ERLINGS GANGESTYKKE';
+  mathKickerEl.textContent = minigun.phase==='challenge' ? 'MINIGUN · LØS 5 MINUSSTYKKER' : schoolyardEntered ? 'EKSAMENS AMMUNITION · DIVISION' : 'ERLINGS GANGESTYKKE';
   problemEl.textContent = problem.expression;
   answer = '';
   answerEl.textContent = '_';
-  feedbackEl.textContent = 'Svar rigtigt for at få en blyant. · M = musik';
+  feedbackEl.textContent = minigun.phase==='challenge' ? `${minigun.snapshot().correct}/5 rigtige · Vind 10 sekunders autofire!` : 'Svar rigtigt for at få en blyant. · M = musik';
   feedbackEl.className = 'feedback';
 }
 
@@ -532,10 +537,11 @@ function makePencil() {
   group.scale.setScalar(1.35);
   return group;
 }
-function firePencil() {
+function firePencil(powered = false) {
   if (multiplayer?.active) { multiplayer.fire(); return; }
-  if (!gameActive || !inputReady() || ammo <= 0 || divisionChallenge?.active) return;
-  ammo--;
+  if (!gameActive || !inputReady() || divisionChallenge?.active || (!powered && (ammo <= 0 || minigun.phase==='active'))) return;
+  if(!powered)ammo--;
+  else {minigunView.flash();minigunSound.shot();}
   updateHUD();
   flash('shot-flash');
   const dir = new THREE.Vector3();
@@ -1062,6 +1068,16 @@ function submitAnswer() {
     submitDivisionAnswer();
     return;
   }
+  if(minigun.phase==='challenge'){
+    const solvedProblem=problem;
+    if(minigun.submit(problem.id,answer)){
+      solvedProblem.resolved=true;answer='';answerEl.textContent='_';
+      feedbackEl.textContent=minigun.phase==='active'?'BLYANT-MINIGUN! Sigt — den skyder automatisk!':`${minigun.snapshot().correct}/5 rigtige!`;
+      feedbackEl.className='feedback good';
+      setTimeout(()=>{if(gameActive&&problem===solvedProblem)newProblem();},300);
+    }else{answer='';answerEl.textContent='_';feedbackEl.textContent='Forkert. Prøv igen.';feedbackEl.className='feedback bad';}
+    return;
+  }
   if (Number(answer) === problem.answer) {
     // Consume this problem before granting ammo, including repeated/synthetic Enter events.
     const solvedProblem = problem;
@@ -1080,6 +1096,20 @@ function submitAnswer() {
     answer = '';
     answerEl.textContent = '_';
   }
+}
+function reachBlocked(x,y,z){
+  return colliders.some(c=>x>=c.min.x&&x<=c.max.x&&y>=c.min.y&&y<=c.max.y&&z>=c.min.z&&z<=c.max.z);
+}
+function updateMinigun(dt){
+  if(!divisionChallenge?.active){
+    if(!schoolyardEntered&&minigun.phase==='pickup'&&Math.hypot(camera.position.x-MINIGUN_PICKUP.x,camera.position.z-MINIGUN_PICKUP.z)<=1.55&&
+      clearReach(camera.position,MINIGUN_PICKUP,reachBlocked)&&minigun.collect(camera.position))newProblem();
+    if(inputReady()){
+      const shots=minigun.advance(dt);
+      for(let i=0;i<shots&&gameActive;i++)firePencil(true);
+    }
+  }
+  minigunView.sync(minigun.snapshot(),!schoolyardEntered&&minigun.phase==='pickup',dt);
 }
 function updateCamping(now, moved) {
   if (divisionChallenge?.active || schoolyardEntered || schoolyardDoorOpen) {
@@ -1149,6 +1179,7 @@ controls.addEventListener('lock', () => document.getElementById('pointer-note').
 controls.addEventListener('unlock', () => { clearMovementKeys(); if (gameActive) document.getElementById('pointer-note').classList.add('show'); });
 
 function resetGame(online = false) {
+  minigun.reset();minigunView.hide();minigunSound.stop();
   gunnarProjectiles.clear();
   erlingSpawnElapsed=0;
   gunnarSlime.clear();
@@ -1211,9 +1242,10 @@ document.getElementById('restart-button').addEventListener('click', () => {
 
 function update(dt, time) {
   if (multiplayer?.active) { multiplayer.update(dt,time); return; }
-  if (!gameActive || touch?.blocked) { lastPlayerMoveAt = time; return; }
+  if (!gameActive || touch?.blocked) { lastPlayerMoveAt = time; minigunView.hide();minigunSound.stop();return; }
   const moved = playerMovement.update(dt);
   updateCamping(time,moved);
+  updateMinigun(dt);
   updateErlingSpawns(dt);
   updateSchoolyardArrows(time);
 
@@ -1223,7 +1255,7 @@ function update(dt, time) {
     magicCircle.group.rotation.y += dt * .75;
     magicCircle.inner.rotation.z -= dt * 1.4;
     magicCircle.light.intensity = 2.7 + Math.sin(time * .006) * .7;
-    if (!divisionChallenge?.active && new THREE.Vector2(camera.position.x - magicCircle.group.position.x, camera.position.z - magicCircle.group.position.z).length() < 2.05) startDivisionChallenge(time);
+    if (minigun.phase!=='challenge' && !divisionChallenge?.active && new THREE.Vector2(camera.position.x - magicCircle.group.position.x, camera.position.z - magicCircle.group.position.z).length() < 2.05) startDivisionChallenge(time);
   }
 
   if (divisionChallenge?.active) {
@@ -1254,7 +1286,11 @@ function update(dt, time) {
       const distanceMoved = Math.hypot(ep.x - previousX, ep.z - previousZ);
       if (enemy.type === 'gunnar') animateGunnar(enemy,dt,time,distanceMoved);
       else if (enemy.type === 'else') animateElse(enemy,dt,time,distanceMoved,() => spawnStompWave(enemy));
-      else animateErling(enemy,dt,time,distanceMoved);
+      else {
+        updateErlingSwipe(enemy,{x:camera.position.x,z:camera.position.z,feet:playerMovement.bounds.min.y-.025},dt,
+          reachBlocked,()=>hurt(null));
+        animateErling(enemy,dt,time,distanceMoved);
+      }
       enemy.group.lookAt(camera.position.x,0,camera.position.z);
       if (enemy.type === 'else' && schoolyardEntered && gameActive) {
         enemy.throwCooldown -= dt;
@@ -1264,7 +1300,7 @@ function update(dt, time) {
         }
       }
       const hitDistance = enemy.type === 'else' ? 3.25 : 1.15;
-      if (dist < hitDistance) hurt(enemy);
+      if (dist < hitDistance && (enemy.type!=='erling'||playerMovement.bounds.min.y-.025<.45)) hurt(enemy);
     }
     maybeSpeakWhileMoving(time);
   }
@@ -1308,7 +1344,7 @@ createSchoolyardDoor();
 updateHUD();
 
 multiplayer = createOnlineGame({
-  scene, camera, controls, colliders, makePencil, flash, inputReady, touchInput, gunnarSlime,
+  scene, camera, controls, colliders, makePencil, flash, inputReady, touchInput, gunnarSlime, minigunView, minigunSound,
   touchEnabled: () => Boolean(touch?.enabled),
   prepare: () => { gameActive = false; resetGame(true); },
   ready: () => charactersReady && playerRulesReady,

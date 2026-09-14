@@ -1,5 +1,6 @@
 import { createEnemyNavigator } from './fps-navigation.js?v=20260911-path1';
 import { createGunnarProjectiles } from './fps-gunnar-projectiles.js?v=20260912-goo1';
+import { createMinigunPowerup, MINIGUN_PICKUP, clearReach, updateErlingSwipe } from './fps-powerup-rules.js?v=20260914-gun1';
 import { normalizeAvatar } from './fps-avatars.js?v=20260907-avatar1';
 // Host-owned rules, independent of Three.js and the transport.
 export const MAX_PLAYERS = 4;
@@ -18,6 +19,7 @@ export class Match {
     this.blocked = blocked;
     this.random = random;
     this.players = new Map();
+    this.powerups=new Map();this.pickupAvailable=true;
     this.navigator=null;
     this.enemies = [];
     this.shots = [];
@@ -31,6 +33,8 @@ export class Match {
     this.result = '';
   }
   problem(p) {
+    const power=this.powerups.get(p.id);
+    if(power?.phase==='challenge'){p.problem={...power.question};return;}
     p.problem = { id:++this.serial, a:1 + Math.floor(this.random()*9), b:1 + Math.floor(this.random()*9) };
   }
   spawn(p) {
@@ -42,6 +46,8 @@ export class Match {
     });
     [p.x,p.z] = choices[0] || [0,18];
     p.y = 1.7; p.yaw = p.z < 0 ? Math.PI : 0; p.crouching=false;
+    p.aim={x:-Math.sin(p.yaw),y:0,z:-Math.cos(p.yaw)};
+    this.powerups.get(p.id)?.reset();
     p.hp = 5; p.ammo = 0; p.epoch++;
     p.safeUntil = this.clock + 3;
     p.poseAt = this.clock;
@@ -53,11 +59,13 @@ export class Match {
     if (this.phase !== 'lobby' || this.players.size >= MAX_PLAYERS) return false;
     const p = { id, name:cleanName(name), avatar:normalizeAvatar(avatar), score:0, deaths:0, epoch:0, ack:0, shotAt:-1, note:'' };
     this.players.set(id,p);
+    this.powerups.set(id,createMinigunPowerup(this.random));
     this.spawn(p);
     return true;
   }
   leave(id) {
     this.players.delete(id);
+    this.powerups.delete(id);
     if (this.phase === 'playing' && this.mode === 'deathmatch' && this.players.size < 2) {
       this.finish('Kampen sluttede: der er ikke længere to spillere.');
     }
@@ -66,6 +74,7 @@ export class Match {
     if (this.players.size < 2 || this.phase === 'playing') return false;
     this.phase = 'playing'; this.wave = 0; this.kills = 0; this.result = '';
     this.enemies = []; this.shots = []; this.splats = [];
+    this.pickupAvailable=true;
     this.goo.clear();
     for (const p of this.players.values()) { p.score = 0; p.deaths = 0; this.spawn(p); }
     if (this.mode === 'coop') this.nextWave();
@@ -105,7 +114,13 @@ export class Match {
       const steps = Math.max(1,Math.ceil(length/.15));
       let clear = length <= allowance;
       for (let i=1;clear && i<=steps;i++) clear = !this.blocked(p.x+(v.x-p.x)*i/steps,p.z+(v.z-p.z)*i/steps,.48,v.y-eye,height);
-      if (clear) { p.x=v.x; p.y=v.y; p.z=v.z; p.yaw=v.yaw; p.crouching=Boolean(v.crouching); p.poseAt=this.clock; }
+      if (clear) {
+        p.x=v.x; p.y=v.y; p.z=v.z; p.yaw=v.yaw; p.crouching=Boolean(v.crouching); p.poseAt=this.clock;
+        if(v.aim&&finite(v.aim.x,v.aim.y,v.aim.z)){
+          const n=Math.hypot(v.aim.x,v.aim.y,v.aim.z);
+          if(n>=.9&&n<=1.1)p.aim={x:v.aim.x/n,y:v.aim.y/n,z:v.aim.z/n};
+        }
+      }
     }
     if (!Array.isArray(data.actions)) return;
     for (const a of data.actions.slice(0,12)) {
@@ -113,11 +128,17 @@ export class Match {
       p.ack = a.seq;
       if (p.hp<=0) continue;
       if (a.type === 'answer' && a.problem === p.problem.id && /^\d{1,3}$/.test(a.value)) {
-        if (Number(a.value) === p.problem.a*p.problem.b) {
+        const power=this.powerups.get(id);
+        if(power.phase==='challenge'){
+          if(power.submit(a.problem,a.value)){
+            p.note=power.phase==='active'?'BLYANT-MINIGUN! Sigt — den skyder automatisk!':`${power.snapshot().correct}/5 rigtige!`;
+            this.problem(p);
+          }else p.note='Forkert. Prøv igen.';
+        }else if (Number(a.value) === p.problem.a*p.problem.b) {
           p.ammo = Math.min(30,p.ammo+1); p.note = 'Korrekt! +1 blyant'; this.problem(p);
         } else p.note = 'Forkert. Prøv igen.';
       }
-      if (a.type === 'shoot' && p.ammo>0 && this.clock-p.shotAt>=.25 && a.dir && finite(a.dir.x,a.dir.y,a.dir.z)) {
+      if (a.type === 'shoot' && this.powerups.get(id).phase!=='active' && p.ammo>0 && this.clock-p.shotAt>=.25 && a.dir && finite(a.dir.x,a.dir.y,a.dir.z)) {
         const len = Math.hypot(a.dir.x,a.dir.y,a.dir.z);
         if (len<.9 || len>1.1) continue;
         p.ammo--; p.shotAt=this.clock;
@@ -144,6 +165,15 @@ export class Match {
     this.splats=this.splats.filter(s=>this.clock-s.at<3);
     if (this.phase!=='playing') return;
     for (const p of this.players.values()) if (p.respawnAt && this.clock>=p.respawnAt) this.spawn(p);
+    for(const p of this.players.values())if(p.hp>0){
+      const power=this.powerups.get(p.id);
+      const blocked=(x,y,z)=>this.blocked(x,z,.025,y-.025,.05);
+      if(this.pickupAvailable&&distance(p,MINIGUN_PICKUP)<=1.55&&clearReach(p,MINIGUN_PICKUP,blocked)&&power.collect(p)){
+        this.pickupAvailable=false;this.problem(p);p.note='Løs fem minusstykker og vind en blyant-minigun!';
+      }
+      const count=power.advance(dt),dir=p.aim;
+      for(let i=0;i<count;i++)this.shots.push({id:`s${++this.serial}`,owner:p.id,x:p.x,y:p.y-.12,z:p.z,dx:dir.x,dy:dir.y,dz:dir.z,life:2.6,minigun:true});
+    }
     // Small substeps prevent fast pencils from passing through walls or targets.
     for (const s of this.shots) {
       const steps=Math.ceil(dt/.01);
@@ -191,11 +221,13 @@ export class Match {
       if (d>.01) {
         this.getNavigator().move(e,p,speed*dt);
       }
-      if (d<1.15) this.damage(p);
+      if (d<1.15&&(e.type!=='erling'||p.y-(p.crouching?.78:1.7)<.45)) this.damage(p);
+      if(e.type==='erling')updateErlingSwipe(e,{x:p.x,z:p.z,feet:p.y-(p.crouching?.78:1.7)},dt,
+        (x,y,z)=>this.blocked(x,z,.025,y-.025,.05),()=>this.damage(p));
     }
   }
   snapshot() {
     return {mode:this.mode,phase:this.phase,wave:this.wave,kills:this.kills,clock:this.clock,result:this.result,
-      goo:this.goo.shots.map(s=>({...s})),splats:this.splats.map(s=>({...s})),players:[...this.players.values()].map(p=>({...p})),enemies:this.enemies.map(e=>({...e})),shots:this.shots.map(s=>({...s}))};
+      pickupAvailable:this.pickupAvailable,goo:this.goo.shots.map(s=>({...s})),splats:this.splats.map(s=>({...s})),players:[...this.players.values()].map(p=>({...p,minigun:this.powerups.get(p.id).snapshot()})),enemies:this.enemies.map(e=>({...e})),shots:this.shots.map(s=>({...s}))};
   }
 }
