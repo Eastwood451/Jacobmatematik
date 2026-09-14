@@ -6,6 +6,7 @@ const vm=require('node:vm');
 const THREE=require('three');
 const root=path.resolve(__dirname,'..');
 const read=name=>fs.readFileSync(path.join(root,name),'utf8');
+const {classroomObstacles}=vm.runInNewContext(read('fps-classrooms.js').replace("import * as THREE from 'three';",'').replaceAll('export ','')+'\n({classroomObstacles})');
 const {createEnemyNavigator}=vm.runInNewContext(read('fps-navigation.js').replaceAll('export ','')+'\n({createEnemyNavigator})');
 
 // Execute the production room/desk/locker definitions and window/duct masonry.
@@ -22,7 +23,7 @@ function school() {
   const createSchoolWindows=vm.runInNewContext(windowMasonry,{THREE});
   const code=read('fps.js');
   vm.runInNewContext(code.slice(code.indexOf('box(0, -.12'),code.indexOf('const fixtureMat')),
-    {box,WORLD:54,WALL_H:4.2,scene:{},renderer:{},floorMat:{},wallMat:{},trimMat:{},deskMat:{},lockerMat:{},interiorMaterials:{ceiling:{}},mat:()=>({}),createSchoolWindows,...ducts});
+    {buildClassrooms:()=>boxes.push(...classroomObstacles()),colliders:[],box,WORLD:54,WALL_H:4.2,scene:{},renderer:{},floorMat:{},wallMat:{},trimMat:{},deskMat:{},lockerMat:{},interiorMaterials:{ceiling:{}},mat:()=>({}),createSchoolWindows,...ducts});
   const blocked=(x,z)=>boxes.some(c=>c.min.y<1.8&&c.max.y>.05&&x+.5>=c.min.x&&x-.5<=c.max.x&&z+.5>=c.min.z&&z-.5<=c.max.z);
   return {boxes,blocked,navigator:createEnemyNavigator({blocked})};
 }
@@ -39,6 +40,20 @@ test('route leaves a U-shaped dead end and cannot cut through corners',()=>{
   const blocked=(x,z)=>(x>=-4&&x<=4&&z>=-4&&z<=-3)||(Math.abs(x)>=3&&Math.abs(x)<=4&&z>=-4&&z<=4);
   const nav=createEnemyNavigator({blocked,min:-8,max:8});
   travel(nav,blocked,{x:0,z:0},{x:0,z:-7});
+});
+
+test('classroom furniture clears masonry and every free navigation cell stays connected',()=>{
+  const {boxes,blocked,navigator}=school(),center={x:0,z:18};
+  const furniture=boxes.filter(b=>b.kind),walls=boxes.filter(b=>!b.kind);
+  for(const b of furniture)for(const w of walls){
+    const overlap=b.min.x<w.max.x&&b.max.x>w.min.x&&b.min.z<w.max.z&&b.max.z>w.min.z&&b.min.y<w.max.y&&b.max.y>w.min.y;
+    assert.equal(overlap,false,`${b.kind} overlaps masonry at ${JSON.stringify(b.min)}`);
+  }
+  let count=0;
+  for(let z=-26;z<=26;z+=.5)for(let x=-26;x<=26;x+=.5)if(!blocked(x,z)){
+    assert.equal(navigator.reachable({x,z},center),true,`Furniture traps an enemy at ${x},${z}`);count++;
+  }
+  console.log(`Checked ${count} navigation cells with the furnished classrooms.`);
 });
 
 test('school rooms, wall corners and all spawn regions connect to the central corridor',()=>{
@@ -61,7 +76,7 @@ test('Erling navigates between classrooms, around desks and lockers, and follows
   const {blocked,navigator}=school();
   const rooms=[[-23,-24],[23,-24],[-23,24],[23,24],[-23,0],[23,0],[-7,-22],[8,22],[0,-23],[0,23]];
   for(let i=0;i<rooms.length;i++){
-    const target={x:rooms[(i+3)%rooms.length][0],z:rooms[(i+3)%rooms.length][1]};
+    const target=navigator.spawnNear({x:rooms[(i+3)%rooms.length][0],z:rooms[(i+3)%rooms.length][1]},{x:0,z:18});
     const start=navigator.spawnNear({x:rooms[i][0],z:rooms[i][1]},target);
     assert.equal(blocked(target.x,target.z),false);
     travel(navigator,blocked,start,target);

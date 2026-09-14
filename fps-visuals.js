@@ -162,7 +162,7 @@ export function addSchoolWallArt(scene, renderer) {
   [
     [0, 2.65, -26.74, 0], [0, 2.65, 26.74, Math.PI],
     [-4.79, 2.65, -10, Math.PI / 2], [9.79, 2.65, -10, -Math.PI / 2],
-    [-13, 2.75, 1.21, 0], [13, 2.75, 12.79, Math.PI],
+    [-19.1, 2.75, 1.21, 0], [8, 2.75, 12.79, Math.PI],
   ].forEach(([x, y, z, yaw]) => mount(brand.texture, 'jacobmatematik.dk', x, y, z, 5.2, 1.3, yaw));
 
   const heroes = [

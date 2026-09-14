@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { buildClassrooms } from './fps-classrooms.js?v=20260914-rooms1';
 import { createGunnarProjectiles } from './fps-gunnar-projectiles.js?v=20260912-goo1';
 import { createEnemyNavigator } from './fps-navigation.js?v=20260911-path1';
 import { createGunnarSlime } from './fps-slime.js?v=20260912-goo1';
@@ -19,7 +20,7 @@ import { createOnlineGame } from './fps-online.js?v=20260912-goo1';
 let multiplayer = null;
 import { createSchoolyard } from './fps-schoolyard.js?v=20260907-courtyard1';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
-import { createErlingRig, animateErling, disposeErlingRig, addSchoolWallArt } from './fps-visuals.js?v=20260907-no-smykker1';
+import { createErlingRig, animateErling, disposeErlingRig, addSchoolWallArt } from './fps-visuals.js?v=20260914-rooms1';
 import { createGunnarRig, animateGunnar, disposeGunnarRig } from './fps-gunnar.js?v=20260910-slime1';
 import { createElseRig, animateElse, disposeElseRig } from './fps-else.js?v=20260909-shockwaves2';
 
@@ -199,8 +200,6 @@ const interiorMaterials = createSchoolInteriorMaterials(renderer);
 const floorMat = interiorMaterials.floor;
 const wallMat = interiorMaterials.wall;
 const trimMat = mat(0x375d67);
-const deskMat = mat(0x9a633e);
-const lockerMat = mat(0x66838a);
 
 function box(x, y, z, w, h, d, material = wallMat, solid = true) {
   if (material === wallMat) material = interiorMaterials.wallFor(x,z);
@@ -230,19 +229,7 @@ const schoolPartition = createDuctBuilder({ box, wallMaterial:wallMat, wallHeigh
 ].forEach(([x,z,w,d,hasDuct]) => schoolPartition(x,z,w,d,hasDuct));
 box(-26, 1.15, -2, .08, 1.25, 8, trimMat, false);
 box(26, 1.15, 7, .08, 1.25, 4, trimMat, false);
-box(-19, 1.65, -26.7, 8, 1.55, .08, mat(0x29483e), false);
-box(19, 1.65, 26.7, 8, 1.55, .08, mat(0x29483e), false);
-[
-  [-20,-19],[-16,-19],[-20,-15],[-16,-15],
-  [18,-18],[22,-18],[18,-14],[22,-14],
-  [-20,18],[-16,18],[-20,22],[-16,22],
-  [18,17],[22,17],[18,21],[22,21],
-].forEach(([x,z]) => {
-  box(x, .55, z, 2.3, .12, 1.25, deskMat, true);
-  box(x - .85, .27, z, .12, .55, 1, deskMat, true);
-  box(x + .85, .27, z, .12, .55, 1, deskMat, true);
-});
-for (let z = -20; z <= 20; z += 2.2) box(-25.4, 1, z, .8, 2, 1.7, lockerMat, true);
+buildClassrooms({scene,colliders,renderer});
 const fixtureMat = mat(0xbabeb5);
 const tubeMat = new THREE.MeshStandardMaterial({ color:0xfff4d5, emissive:0xffedc2, emissiveIntensity:1.2, roughness:.45 });
 function ceilingFixture(x,z) {
