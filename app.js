@@ -503,10 +503,22 @@
     return pool[0].topic;
   }
 
+  let disposeFoodtruck = null;
+  function leaveFoodtruck() {
+    disposeFoodtruck?.(); disposeFoodtruck = null;
+    document.body.classList.remove("foodtruck-active");
+  }
+  function renderFoodtruck() {
+    leaveFoodtruck();
+    if (!state.user || isGuest()) return renderLogin();
+    document.body.classList.add("foodtruck-active");
+    app.innerHTML = `${header()}<div id="foodtruck-root"></div>`;
+    disposeFoodtruck = window.LuigiFoodtruck.mount(document.getElementById("foodtruck-root"));
+  }
   function header() {
     const userLabel = state.user.role === "teacher" ? "Lærer" : isGuest() ? "Gæst" : `${escapeHtml(state.user.name)} · Elev`;
     const passwordButton = state.user.role === "student" ? `<button class="btn ghost" data-action="change-password">Skift adgangskode</button>` : "";
-    return `<a class="fps-launch" href="fps.html"><span>NYT SPIL</span>✎ Erling FPS</a><header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions"><span class="user-pill">${userLabel}</span>${passwordButton}<button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
+    return `<a class="fps-launch" href="fps.html"><span>NYT SPIL</span>✎ Erling FPS</a><header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions">${state.user.role === "teacher" && state.view !== "foodtruck" ? `<a class="foodtruck-link" href="#foodtruck" data-action="foodtruck">🍔 Foodtruck</a>` : ""}<span class="user-pill">${userLabel}</span>${passwordButton}<button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
   }
   function stopErlingAudio() {
     if (activeErlingAudio) {
@@ -581,6 +593,7 @@
     audio.play().catch(finish);
   }
   function renderLogin() {
+    leaveFoodtruck();
     const signup = state.view === "signup";
     app.innerHTML = `
       <div class="login-wrap">
@@ -715,7 +728,7 @@
     const stats = availableTopics.map(topic => ({ topic, ...getStats(state.user, topic) }));
     const total = practiceResults(state.user).length;
     const guestCopy = isGuest() ? `<p class="guest-session-note">Din træning er midlertidig og slettes, når du forlader siden.</p>` : "";
-    app.innerHTML = `${header()}<div class="page student-home-layout">${renderMathTower(availableTopics)}<div class="student-home-content"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section><h2 class="section-label">Vælg et område</h2><section class="topic-grid">${availableTopics.map(key => { const t=TOPICS[key]; return `<button class="topic-card" data-topic="${key}"><span class="topic-icon">${t.icon}</span><strong>${t.name}</strong><small>${t.description}</small></button>`; }).join("")}${isGuest() ? "" : `<button class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`}</section><h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div></div>`;
+    app.innerHTML = `${header()}<div class="page student-home-layout">${renderMathTower(availableTopics)}<div class="student-home-content"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section>${isGuest() ? "" : `<a class="foodtruck-card" href="#foodtruck" data-action="foodtruck"><img src="assets/figurer/luigi-laekkermat-cutout.webp" alt="" width="78" height="94"><span><strong>Luigis Foodtruck</strong><small>Del råvarerne med brøker, og byg din egen burger.</small></span><span aria-hidden="true">→</span></a>`}<h2 class="section-label">Vælg et område</h2><section class="topic-grid">${availableTopics.map(key => { const t=TOPICS[key]; return `<button class="topic-card" data-topic="${key}"><span class="topic-icon">${t.icon}</span><strong>${t.name}</strong><small>${t.description}</small></button>`; }).join("")}${isGuest() ? "" : `<button class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`}</section><h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div></div>`;
   }
   function renderStudentPassword() {
     app.innerHTML = `${header()}<div class="page"><section class="class-manager"><div class="class-manager-title"><div><span class="eyebrow">Min profil</span><h1>Skift adgangskode</h1><p>Vælg en ny adgangskode til din bruger.</p></div></div><form id="student-password-form" class="student-form"><div class="field"><label for="current-password">Nuværende adgangskode</label><input id="current-password" name="currentPassword" type="password" autocomplete="current-password" required></div><div class="field"><label for="new-password">Ny adgangskode</label><input id="new-password" name="newPassword" type="password" autocomplete="new-password" required></div><div class="field"><label for="confirm-password">Gentag ny adgangskode</label><input id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" required></div><p id="password-error" class="student-error" role="alert"></p><div class="student-manager-buttons"><button class="btn" type="submit">Gem adgangskode</button><button class="btn secondary" type="button" data-action="home">Annuller</button></div></form></section></div>`;
@@ -2101,7 +2114,7 @@
     </div>`;
     startTeacherLiveUpdates();
   }
-  function render() { if (!state.user) renderLogin(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
+  function render() { if (!state.user) renderLogin(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
 
   document.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -2292,6 +2305,19 @@
     if (reportTopicButton) { state.teacherTopicDetail=reportTopicButton.dataset.reportTopic; renderTeacher(); return; }
     if (!actionButton) return;
     const action=actionButton.dataset.action;
+    if (action === "foodtruck") {
+      event.preventDefault();
+      if (!state.user || isGuest() || state.view === "foodtruck") return;
+      if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned");
+      stopMatrixDrillTimer(); clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag();
+      state.matrixDrill=null; state.task=null; state.view="foodtruck";
+      renderFoodtruck(); window.scrollTo(0,0); return;
+    }
+    if (action === "foodtruck-home") {
+      leaveFoodtruck(); state.view=state.user?.role === "teacher" ? "teacher" : "student";
+      render(); window.scrollTo(0,0); return;
+    }
+    if (["logout", "home", "change-password"].includes(action)) leaveFoodtruck();
     if (["show-signup", "show-login"].includes(action) && !state.user && !signupBusy) { state.view = action === "show-signup" ? "signup" : "login"; renderLogin(); return; }
     if (action === "open-registration-profile") {
       if (!state.user?.canManageRegistrations || registrations.loading) return;

@@ -82,7 +82,7 @@ const source = file => fs.readFileSync(path.join(root, file), 'utf8');
   const ui = { console, Intl, Date, Math, Set, Map,
     localStorage:{ getItem:() => null }, sessionStorage:{ getItem:() => null },
     FormData:class { constructor(form) { this.data=form.values; } get(key) { return this.data[key]; } },
-    document:{ hidden:true, getElementById:element, querySelector:() => null, addEventListener:(name, callback) => { listeners[name]=callback; } },
+    document:{ hidden:true, body:{classList:{remove(){}}}, getElementById:element, querySelector:() => null, addEventListener:(name, callback) => { listeners[name]=callback; } },
     window:{ JacobBackend:uiBackend, matchMedia:() => ({ matches:false }), addEventListener() {}, setInterval:() => 1, clearInterval() {} },
   };
   vm.createContext(ui);
