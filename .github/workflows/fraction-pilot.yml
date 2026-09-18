@@ -1,0 +1,56 @@
+name: Fraction pilot checks
+
+on:
+  push:
+    branches: ['feature/jacob-fraction-lesson-20260918']
+    paths:
+      - 'fraction-lesson.*'
+      - 'scripts/*fraction-pilot*'
+      - '.github/workflows/fraction-pilot.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Integrate the pilot into normal application source
+        run: python scripts/install-fraction-pilot.py
+      - name: Check JavaScript syntax
+        run: |
+          node --check app.js
+          node --check fraction-lesson.js
+          node --check scripts/test-fraction-pilot.cjs
+      - name: Install isolated browser test dependencies
+        run: |
+          npm install --no-save --package-lock=false playwright@1.57.0
+          npx playwright install --with-deps chromium
+      - name: Run browser tests without real accounts or database writes
+        run: node scripts/test-fraction-pilot.cjs
+      - name: Save screenshots and the tested integration
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fraction-pilot-review
+          path: |
+            test-results/fraction-pilot/
+            app.js
+            index.html
+            styles.css
+          retention-days: 7
+      - name: Commit only the tested application integration on the feature branch
+        if: success() && github.ref == 'refs/heads/feature/jacob-fraction-lesson-20260918'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app.js index.html
+          if ! git diff --cached --quiet; then
+            git commit -m 'Wire Jacob-only fraction pilot and safe teacher preview switch'
+            git push origin HEAD:feature/jacob-fraction-lesson-20260918
+          fi
