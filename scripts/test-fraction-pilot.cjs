@@ -21,7 +21,7 @@ assert.deepEqual(JSON.parse(JSON.stringify(lesson.createProblem(0))),{a:1,b:2,c:
 assert.equal(lesson.expressionHTML(lesson.createProblem(0)).includes('fl-compound'),true);
 const app=fs.readFileSync('app.js','utf8');
 assert.match(app,/Jacob fraction pilot: view state is not an authorization role/);
-const css=fs.readFileSync('styles.css','utf8')+'\n'+fs.readFileSync('fraction-lesson.css','utf8');
+const css=['styles.css','fraction-lesson.css','fraction-multiply.css'].map(f=>fs.readFileSync(f,'utf8')).join('\n');
 const out='test-results/fraction-pilot';
 fs.mkdirSync(out,{recursive:true});
 const summary=[];
@@ -102,13 +102,25 @@ pass('Only the verified Jacob teacher profile is enabled; 2,000 valid problems a
    assert.equal(await page.locator('.fl-count').innerText(),'0 gennemført');
    await page.locator('[data-fl-token="c"]').click();
    await page.locator('[data-fl-slot="denominator"]').click();
-   assert.equal(await page.locator('.fl-count').innerText(),'1 gennemført');
+   assert.equal(await page.locator('.fl-count').innerText(),'0 gennemført');
    assert.equal(await page.locator('[data-fl-slot="numerator"]').innerText(),'4');
    assert.equal(await page.locator('[data-fl-slot="denominator"]').innerText(),'3');
+   assert.equal(await page.locator('#fl-question').innerText(),'Hvordan ganger du en brøk med en brøk?');
+   assert.equal(await page.locator('[data-fl-next]').isDisabled(),true);
+   for(const rule of ['add','reciprocal']) {
+     await page.locator(`[data-fl-rule="${rule}"]`).click();
+     assert.equal(await page.locator('[data-fl-answer]').count(),0);
+   }
+   await page.locator('[data-fl-rule="multiply"]').click();
+   assert.equal(await page.locator('[data-fl-answer]').count(),2);
+   await page.locator('[data-fl-answer="numerator"]').fill('4');
+   await page.locator('[data-fl-answer="denominator"]').fill('6');
+   await page.locator('[data-fl-check-answer]').evaluate(el=>{for(let i=0;i<25;i++)el.click()});
+   assert.equal(await page.locator('.fl-count').innerText(),'1 gennemført');
    await page.waitForTimeout(650);
    await page.locator('[data-fl-next]').click();
    assert.equal(await page.locator('.fl-expression .fl-operator').innerText(),':');
-   pass('Both notations, operation choices, rule cards, pupil-built reciprocal, wrong-placement feedback and double-click protection.');
+   pass('All five stages, both rule questions, numerator/denominator entry, wrong feedback and double-click protection.');
    await page.locator('[data-fl-operation=":"]').click();
    await page.locator('[data-action="toggle-jacob-view"]').click();
    await page.waitForTimeout(1100);
@@ -143,9 +155,20 @@ pass('Only the verified Jacob teacher profile is enabled; 2,000 valid problems a
      assert.ok(await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
      await mobile.mouse.move(0,0);
      await mobile.screenshot({path:path.join(out,`rules-${width}.png`),fullPage:true});
+     await mobile.locator('[data-fl-rule="reciprocal"]').click();
+     for(const [token,slot] of [['d','numerator'],['c','denominator']]) {
+       await mobile.locator(`[data-fl-token="${token}"]`).click();
+       await mobile.locator(`[data-fl-slot="${slot}"]`).click();
+     }
+     await mobile.locator('[data-fl-rule="multiply"]').click();
+     assert.ok(await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+     await mobile.screenshot({path:path.join(out,`answer-${width}.png`),fullPage:true});
+     // Switching away during answer entry must dispose the new input handler too.
+     await mobile.locator('[data-action="toggle-jacob-view"]').click();
+     assert.equal(await mobile.locator('.fl-page').count(),0);
      await mobile.close();
    }
-   pass('No horizontal overflow at 320px, 390px and 768px; mobile and tablet screenshots captured.');
+   pass('No overflow at 320px, 390px and 768px; answer fields and switching out of multiplication verified.');
    for(const kind of ['student','other','guest','out']) {
      const p=await mountAs(kind);
      assert.equal(await p.locator('[data-action="learn-fractions"]').count(),0);

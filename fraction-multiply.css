@@ -1,0 +1,12 @@
+/* The final two fraction-lesson steps; no changes to other exercises. */
+.fl-answer-fraction{display:inline-grid;justify-items:center;align-items:center;gap:7px;flex-shrink:0}
+.fl-page .fl-answer-input{box-sizing:border-box;display:block;width:76px;min-width:0;height:60px;margin:0;padding:5px;border:2px solid #6b977e;border-radius:9px;background:#fffefb;color:#243e33;text-align:center;font:400 32px/1.1 Georgia,"Times New Roman",serif}
+.fl-page .fl-answer-input:focus{outline:3px solid #327868;outline-offset:2px}
+.fl-page .fl-answer-input.correct{border-color:#448b66;background:#e0efdf}
+.fl-page .fl-answer-input.incorrect{border-color:#ad4c40;background:#fff0ec}
+.fl-answer-fraction .fl-target-line{width:84px}
+.fl-multiplication-equation>span{gap:14px}
+.fl-multiplication-equation .fl-operator,.fl-multiplication-equation .fl-target-fraction{flex-shrink:0}
+.fl-result{color:#205d4c;background:#e0efdf;border-radius:9px;padding:6px 9px}
+@media(max-width:900px){.fl-multiplication-equation{padding:14px;font-size:29px}.fl-multiplication-equation>span{gap:10px}.fl-multiplication-equation .fl-target-line{width:66px}.fl-multiplication-equation .fl-slot{min-width:56px;min-height:54px;font-size:30px}.fl-page .fl-answer-input{width:62px;height:54px;font-size:29px}}
+@media(max-width:600px){.fl-multiplication-equation{padding:12px 9px;font-size:26px}.fl-multiplication-equation>span{gap:7px}.fl-multiplication-equation .fl-target-line{width:56px}.fl-multiplication-equation .fl-slot{min-width:48px;min-height:48px;padding:3px 5px;font-size:27px}.fl-page .fl-answer-input{width:54px;height:48px;padding:3px;font-size:26px}.fl-result{padding:5px}}
