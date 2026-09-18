@@ -5,6 +5,7 @@ En responsiv matematikapp til elever og lærere, bygget i ren HTML, CSS og JavaS
 ## Funktioner
 
 - Elev- og lærerlogin
+- Opt-in leaderboard pr. klasse med top 10 efter antal korrekte opgaver
 - Tallene, Plusstykker, Lille tabel, Tabel-drill, Division-drill, basisregler, regnehierarki, negative tal og distributiv lov
 - Adaptiv opgavefordeling baseret på rigtighed og svartid
 - Skærmtastatur til iPad og browser
