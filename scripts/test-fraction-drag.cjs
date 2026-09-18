@@ -4,9 +4,10 @@ const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
+const {completeFinish}=require('./fraction-finish-support.cjs');
 const root=path.resolve(__dirname,'..');
-const source=fs.readFileSync(path.join(root,'fraction-lesson.js'),'utf8');
-const css=['fraction-lesson.css','fraction-multiply.css'].map(f=>fs.readFileSync(path.join(root,f),'utf8')).join('\n');
+const source=['fraction-simplify.js','fraction-lesson.js'].map(f=>fs.readFileSync(path.join(root,f),'utf8')).join('\n');
+const css=['fraction-lesson.css','fraction-multiply.css','fraction-simplify.css'].map(f=>fs.readFileSync(path.join(root,f),'utf8')).join('\n');
 const out=path.join(root,'test-results/fraction-drag');
 fs.mkdirSync(out,{recursive:true});
 const JACOB='c8b8e1c4-3264-40e9-a43d-0eb6214a0183';
@@ -87,7 +88,6 @@ function pass(text){reports.push(text);console.log('PASS',text);}
     assert.equal(await top.getAttribute('inputmode'),'numeric');
     assert.equal(await top.evaluate(el=>el===document.activeElement),true);
     assert.equal(await count(page),before);
-    // Check both overall overflow and clipping inside the equation's card.
     assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
     assert.ok(await page.locator('[data-fl-answer]').evaluateAll(els=>els.every(el=>{const a=el.getBoundingClientRect(),p=el.closest('.fl-solution-equation').getBoundingClientRect();return a.left>=p.left&&a.right<=p.right;})));
     if(review) {
@@ -105,7 +105,6 @@ function pass(text){reports.push(text);console.log('PASS',text);}
       await top.fill(String(n));await bottom.fill(String(den));
       await page.locator('[data-fl-notation]').click();
       assert.equal(await top.inputValue(),String(n));assert.equal(await bottom.inputValue(),String(den));
-      // Values are escaped on re-render, not silently sanitized into correct answers.
       await top.evaluate(el=>{el.value='"><img src=x onerror="window.injected=1">';el.dispatchEvent(new Event('input',{bubbles:true}))});
       await page.locator('[data-fl-notation]').click();
       assert.equal(await page.locator('.fl-page img').count(),0);
@@ -115,11 +114,14 @@ function pass(text){reports.push(text);console.log('PASS',text);}
     assert.equal(await bottom.evaluate(el=>el===document.activeElement),true);
     await bottom.fill(String(den));
     await page.locator('[data-fl-check-answer]').evaluate(el=>{for(let i=0;i<30;i++)el.click()});
+    assert.equal(await phase(page),'finish');
+    assert.equal(await count(page),before);
+    const final=await completeFinish(page);
     assert.equal(await phase(page),'done');
     assert.equal(await count(page),`${parseInt(before,10)+1} gennemført`);
-    assert.equal(await page.locator('.fl-result .fl-numerator').innerText(),String(n));
-    assert.equal(await page.locator('.fl-result .fl-denominator').innerText(),String(den));
-    assert.equal(await page.locator('.fl-steps .complete').count(),5);
+    assert.equal(await page.locator('.ff-equation .fl-numerator').innerText(),String(final.n));
+    assert.equal(await page.locator('.ff-equation .fl-denominator').innerText(),String(final.d));
+    assert.equal(await page.locator('.fl-steps .complete').count(),6);
     await page.waitForFunction(()=>!document.querySelector('[data-fl-next]').disabled, null, {polling:50,timeout:5000});
   }
   try {
@@ -158,7 +160,6 @@ function pass(text){reports.push(text);console.log('PASS',text);}
     await page.locator('[data-fl-slot="numerator"]').focus();await page.keyboard.press('Enter');
     await finishMultiplication(page);
     assert.equal(await count(page),'2 gennemført');
-    // Exercise generated pairs, including multi-digit products, not just 1/2 : 3/4.
     for(let i=0;i<2;i++) {
       await page.locator('[data-fl-next]').click();await arrange(page);
       await place(page,'d','numerator');await place(page,'c','denominator');
@@ -178,7 +179,8 @@ function pass(text){reports.push(text);console.log('PASS',text);}
     await page.evaluate(()=>window.remount());await arrange(page);await place(page,'c','denominator');await place(page,'d','numerator');
     await page.locator('[data-fl-rule="multiply"]').click();await page.locator('[data-fl-answer="numerator"]').fill('4');
     await page.locator('[data-fl-answer="denominator"]').fill('6');await page.locator('[data-fl-answer="denominator"]').press('Enter');
-    assert.equal(await phase(page),'done');
+    assert.equal(await phase(page),'finish');
+    await completeFinish(page);
     await page.locator('[data-fl-exit]').click();await page.waitForTimeout(700);assert.equal(await page.locator('#app').innerText(),'Afsluttet');
     pass('Enter submits denominator; Escape, mid-drag disposal and exit during both timers remove stale UI.');
     await page.close();
@@ -189,7 +191,7 @@ function pass(text){reports.push(text);console.log('PASS',text);}
       assert.ok(await touch.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
       await touch.screenshot({path:path.join(out,`touch-${width}.png`),fullPage:true});await touch.close();
     }
-    pass('Touch taps and full five-step flow at 320px, 390px and 768px; inputs stay inside the equation without overflow.');
+    pass('Touch taps and full flow through simplification at 320px, 390px and 768px; inputs stay inside the equation without overflow.');
     const touch=await mount({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
     await arrange(touch);
     const cdp=await touch.context().newCDPSession(touch);
@@ -208,10 +210,11 @@ function pass(text){reports.push(text);console.log('PASS',text);}
     await touch.evaluate(()=>window.remount());await arrange(touch);await touch.locator('[data-fl-token="c"]').scrollIntoViewIfNeeded();
     const from=await center(touch,'[data-fl-token="c"]');
     await send('touchStart',from.x,from.y);await send('touchMove',from.x+30,from.y+20);await send('touchCancel');
-    assert.equal(await touch.locator('.fl-drag-ghost').count(),0);assert.equal(await pageCountFilled(touch),0);
-    pass('Real touch drag with phone auto-scroll, multiplication after touch drag, and cancellation.');
-    await touch.close();assert.deepEqual(errors,[]);pass('No uncaught browser errors.');
+    assert.equal(await touch.locator('.fl-drag-ghost').count(),0);
+    assert.equal(await touch.locator('.fl-slot.is-filled').count(),0);
+    pass('Real touch drag, viewport auto-scroll and touch cancellation remain intact.');
+    await touch.close();
+    assert.deepEqual(errors,[]);pass('No uncaught browser errors.');
     fs.writeFileSync(path.join(out,'summary.txt'),reports.join('\n')+'\n');
   } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1});
-async function pageCountFilled(page){return page.locator('.fl-slot.is-filled').count();}

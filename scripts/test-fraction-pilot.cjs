@@ -4,7 +4,8 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 const {chromium} = require('playwright');
-const source = fs.readFileSync('fraction-lesson.js','utf8');
+const {completeFinish} = require('./fraction-finish-support.cjs');
+const source = ['fraction-simplify.js','fraction-lesson.js'].map(f=>fs.readFileSync(f,'utf8')).join('\n');
 const sandbox = {window:{}};
 vm.runInNewContext(source,sandbox);
 const lesson=sandbox.window.JacobFractionLesson;
@@ -21,14 +22,14 @@ assert.deepEqual(JSON.parse(JSON.stringify(lesson.createProblem(0))),{a:1,b:2,c:
 assert.equal(lesson.expressionHTML(lesson.createProblem(0)).includes('fl-compound'),true);
 const app=fs.readFileSync('app.js','utf8');
 assert.match(app,/Jacob fraction pilot: view state is not an authorization role/);
-const css=['styles.css','fraction-lesson.css','fraction-multiply.css'].map(f=>fs.readFileSync(f,'utf8')).join('\n');
+const css=['styles.css','fraction-lesson.css','fraction-multiply.css','fraction-simplify.css'].map(f=>fs.readFileSync(f,'utf8')).join('\n');
 const out='test-results/fraction-pilot';
 fs.mkdirSync(out,{recursive:true});
 const summary=[];
 function pass(label) { summary.push(label); console.log('PASS',label); }
 pass('Only the verified Jacob teacher profile is enabled; 2,000 valid problems alternate notation.');
 (async()=>{
- const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+ const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH || undefined,args:['--no-sandbox']});
  const errors=[];
  async function mountAs(kind='jacob',width=1280) {
    const page=await browser.newPage({viewport:{width,height:900}});
@@ -116,11 +117,13 @@ pass('Only the verified Jacob teacher profile is enabled; 2,000 valid problems a
    await page.locator('[data-fl-answer="numerator"]').fill('4');
    await page.locator('[data-fl-answer="denominator"]').fill('6');
    await page.locator('[data-fl-check-answer]').evaluate(el=>{for(let i=0;i<25;i++)el.click()});
+   assert.equal(await page.locator('.fl-count').innerText(),'0 gennemført');
+   await completeFinish(page);
    assert.equal(await page.locator('.fl-count').innerText(),'1 gennemført');
    await page.waitForTimeout(650);
    await page.locator('[data-fl-next]').click();
    assert.equal(await page.locator('.fl-expression .fl-operator').innerText(),':');
-   pass('All five stages, both rule questions, numerator/denominator entry, wrong feedback and double-click protection.');
+   pass('All stages, both rule questions, numerator/denominator entry, simplification, final submission and double-click protection.');
    await page.locator('[data-fl-operation=":"]').click();
    await page.locator('[data-action="toggle-jacob-view"]').click();
    await page.waitForTimeout(1100);
@@ -134,7 +137,6 @@ pass('Only the verified Jacob teacher profile is enabled; 2,000 valid problems a
    await page.locator('[data-action="learn-fractions"]').click();
    await page.locator('[data-fl-exit]').click();
    await page.waitForSelector('.student-home-layout');
-   // An ordinary exercise also returns safely to the backend in preview mode.
    await page.locator('.topic-card[data-topic="addition"]').click();
    await page.locator('[data-action="toggle-jacob-view"]').click();
    await page.waitForSelector('.teacher-layout');
@@ -163,12 +165,19 @@ pass('Only the verified Jacob teacher profile is enabled; 2,000 valid problems a
      await mobile.locator('[data-fl-rule="multiply"]').click();
      assert.ok(await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
      await mobile.screenshot({path:path.join(out,`answer-${width}.png`),fullPage:true});
-     // Switching away during answer entry must dispose the new input handler too.
+     await mobile.locator('[data-fl-answer="numerator"]').fill('4');
+     await mobile.locator('[data-fl-answer="denominator"]').fill('6');
+     await mobile.locator('[data-fl-check-answer]').click();
+     await mobile.locator('[data-ff-choice="reduce"]').click();
+     await mobile.locator('[data-ff-choice="divideBoth"]').click();
+     await mobile.locator('[data-ff-divisor="2"]').click();
+     await mobile.locator('[data-ff-answer="numerator"]').fill('2');
      await mobile.locator('[data-action="toggle-jacob-view"]').click();
      assert.equal(await mobile.locator('.fl-page').count(),0);
+     assert.equal(await mobile.evaluate(()=>window.__authProfile.role),'teacher');
      await mobile.close();
    }
-   pass('No overflow at 320px, 390px and 768px; answer fields and switching out of multiplication verified.');
+   pass('No overflow at 320px, 390px and 768px; switching out of simplification preserves teacher permissions.');
    for(const kind of ['student','other','guest','out']) {
      const p=await mountAs(kind);
      assert.equal(await p.locator('[data-action="learn-fractions"]').count(),0);
