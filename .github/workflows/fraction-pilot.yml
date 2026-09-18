@@ -2,7 +2,7 @@ name: Fraction pilot checks
 
 on:
   push:
-    branches: [main, 'feature/jacob-fraction-lesson-20260918', 'feature/fraction-multiply-20260918', 'feature/fraction-simplify-20260918']
+    branches: [main, 'feature/jacob-fraction-lesson-20260918', 'feature/fraction-multiply-20260918', 'feature/fraction-simplify-20260918', 'feature/fraction-add-subtract-20260918']
     paths:
       - 'app.js'
       - 'index.html'
@@ -10,6 +10,7 @@ on:
       - 'fraction-lesson.*'
       - 'fraction-multiply.css'
       - 'fraction-simplify.*'
+      - 'fraction-add-subtract.*'
       - 'scripts/test-fraction-*.cjs'
       - 'scripts/fraction-finish-support.cjs'
       - '.github/workflows/fraction-pilot.yml'
@@ -21,6 +22,7 @@ on:
       - 'fraction-lesson.*'
       - 'fraction-multiply.css'
       - 'fraction-simplify.*'
+      - 'fraction-add-subtract.*'
       - 'scripts/test-fraction-*.cjs'
       - 'scripts/fraction-finish-support.cjs'
       - '.github/workflows/fraction-pilot.yml'
@@ -44,9 +46,11 @@ jobs:
           node --check app.js
           node --check fraction-lesson.js
           node --check fraction-simplify.js
+          node --check fraction-add-subtract.js
           node --check scripts/test-fraction-pilot.cjs
           node --check scripts/test-fraction-drag.cjs
           node --check scripts/test-fraction-simplify.cjs
+          node --check scripts/test-fraction-add-subtract.cjs
           node --check scripts/fraction-finish-support.cjs
       - name: Install isolated browser test dependencies
         run: |
@@ -57,6 +61,7 @@ jobs:
           node scripts/test-fraction-pilot.cjs
           node scripts/test-fraction-drag.cjs
           node scripts/test-fraction-simplify.cjs
+          node scripts/test-fraction-add-subtract.cjs
       - name: Save test screenshots and summary
         if: always()
         uses: actions/upload-artifact@v4
@@ -66,4 +71,5 @@ jobs:
             test-results/fraction-pilot/
             test-results/fraction-drag/
             test-results/fraction-simplify/
+            test-results/fraction-add-subtract/
           retention-days: 7
