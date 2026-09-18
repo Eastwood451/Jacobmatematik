@@ -2,13 +2,14 @@ name: Fraction pilot checks
 
 on:
   push:
-    branches: [main, 'feature/jacob-fraction-lesson-20260918', 'feature/fraction-multiply-20260918']
+    branches: [main, 'feature/jacob-fraction-lesson-20260918', 'feature/fraction-multiply-20260918', 'feature/fraction-reduce-20260918']
     paths:
       - 'app.js'
       - 'index.html'
       - 'styles.css'
       - 'fraction-lesson.*'
       - 'fraction-multiply.css'
+      - 'fraction-reduce.css'
       - 'scripts/test-fraction-*.cjs'
       - '.github/workflows/fraction-pilot.yml'
   pull_request:
@@ -18,6 +19,7 @@ on:
       - 'styles.css'
       - 'fraction-lesson.*'
       - 'fraction-multiply.css'
+      - 'fraction-reduce.css'
       - 'scripts/test-fraction-*.cjs'
       - '.github/workflows/fraction-pilot.yml'
 
@@ -41,6 +43,7 @@ jobs:
           node --check fraction-lesson.js
           node --check scripts/test-fraction-pilot.cjs
           node --check scripts/test-fraction-drag.cjs
+          node --check scripts/test-fraction-reduce.cjs
       - name: Install isolated browser test dependencies
         run: |
           npm install --no-save --package-lock=false playwright@1.57.0
@@ -49,6 +52,7 @@ jobs:
         run: |
           node scripts/test-fraction-pilot.cjs
           node scripts/test-fraction-drag.cjs
+          node scripts/test-fraction-reduce.cjs
       - name: Save test screenshots and summary
         if: always()
         uses: actions/upload-artifact@v4
@@ -57,4 +61,5 @@ jobs:
           path: |
             test-results/fraction-pilot/
             test-results/fraction-drag/
+            test-results/fraction-reduce/
           retention-days: 7

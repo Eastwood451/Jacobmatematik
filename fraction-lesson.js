@@ -8,7 +8,13 @@
     { id:"multiply", text:"Tæller gange tæller og nævner gange nævner", caption:"Gang brøkerne direkte", symbol:"·" },
     { id:"reciprocal", text:"Gange med den omvendte", caption:"Vend den anden brøk", symbol:"↕" },
   ];
-  const STEPS = ["Find regnearten", "Vælg regnereglen", "Vend brøken", "Vælg gangereglen", "Skriv resultatet"];
+  const STEPS = ["Find regnearten", "Vælg regnereglen", "Vend brøken", "Vælg gangereglen", "Skriv resultatet", "Vurder brøken", "Forkort brøken", "Aflever brøken"];
+  const SUBMISSION_OPTIONS = [["submit","Ja - den er fin!"],["extend","Nej - den skal først forlænges!"],["reduce","Nej - den skal først forkortes!"]];
+  const REDUCE_RULES = [["subtractNumerator","Man trækker fra i tælleren"],["subtractBoth","Man trækker fra i tæller og nævner"],["divideBoth","Man dividerer med samme tal i tæller og nævner"]];
+  function gcd(a,b) {
+    while (b) [a,b]=[b,a%b];
+    return a;
+  }
   const isEnabled = user => Boolean(user && user.id === TESTER_ID && user.role === "teacher");
   const fractionHTML = (n,d) => `<span class="fl-fraction"><span class="fl-numerator">${n}</span><span class="fl-denominator">${d}</span></span>`;
   const escapeHTML = value => String(value).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[ch]);
@@ -36,6 +42,9 @@
     let locked=false, disposed=false, completed=0, nextReady=false;
     let placements={numerator:null,denominator:null}, activeToken="", wrongSlot="", drag=null, ignoreClickUntil=0;
     let answers={numerator:"",denominator:""}, answerStatus={};
+    // The current fraction changes only after the pupil supplies both quotients.
+    let reduction=null, finalReply="yes";
+    const answeringNow=() => ["multiplyAnswer","simplifyAnswer"].includes(phase);
     const doc=root.ownerDocument, view=doc.defaultView, timers=new Set();
     const used = token => Object.values(placements).includes(token);
     const tokenValue = token => problem[token];
@@ -55,7 +64,37 @@
       const name=slot === "numerator" ? "tæller" : "nævner";
       return `<input type="text" class="fl-answer-input ${answerStatus[slot] || ""}" data-fl-answer="${slot}" inputmode="numeric" enterkeyhint="${slot === "numerator" ? "next" : "done"}" autocomplete="off" spellcheck="false" maxlength="4" aria-label="Resultatets ${name}" aria-describedby="fl-answer-help fl-feedback" aria-invalid="${answerStatus[slot] === "incorrect"}" value="${escapeHTML(answers[slot])}">`;
     }
+    function choiceCards(items, attribute) {
+      return `<div class="fl-choice-cards">${items.map(([id,text]) => `<button type="button" class="fl-choice-card ${selected===id ? feedbackKind : ""}" data-${attribute}="${id}">${text}</button>`).join("")}</div>`;
+    }
+    function divisorOptions() {
+      // Include distractors and every valid common divisor, not only the greatest one.
+      const values=new Set([1,2,3,4,5,6,7,8,9,10]);
+      const common=gcd(reduction.n,reduction.d);
+      for (let value=11;value<=common;value++) if (common%value===0) values.add(value);
+      return [...values].sort((a,b)=>a-b);
+    }
+    function reductionChoicesHTML() {
+      if (phase==="submitCheck") return choiceCards(SUBMISSION_OPTIONS,"fl-submit-check");
+      if (phase==="simplifyRule") return choiceCards(REDUCE_RULES,"fl-reduce-rule");
+      if (phase==="simplifyDivisor") return `<div class="fl-divisor-row" aria-label="Vælg et tal at dividere med">${divisorOptions().map(n => `<button type="button" class="fl-divisor-button ${selected===String(n) ? feedbackKind : ""}" data-fl-divisor="${n}">${n}</button>`).join("")}</div>`;
+      if (phase==="readyToSubmit") return choiceCards([["yes","Ja"],["no","Nej"]],"fl-ready");
+      return "";
+    }
+    function reductionSolutionHTML() {
+      const answering=phase==="simplifyAnswer", done=phase==="done";
+      const {n,d,divisor}=reduction;
+      const help=answering ? "Divider tæller og nævner med det valgte tal. Skriv de to resultater i felterne."
+        : phase==="simplifyDivisor" ? "Vælg et tal større end 1, som går op i både tælleren og nævneren."
+        : phase==="simplifyRule" ? "Vælg reglen for at forkorte en brøk."
+        : phase==="submitCheck" ? "Se på brøken, før du afleverer den." : "Brøken kan ikke forkortes yderligere.";
+      const row=value => `<span class="fl-division-number">${value}<span class="fl-inline-divisor">÷ ${divisor}</span></span>`;
+      const current=answering ? fractionHTML(row(n),row(d)) : `<span class="fl-result" role="math" aria-label="${n} over ${d}">${fractionHTML(n,d)}</span>`;
+      const result=answering ? `<span class="fl-operator" aria-label="er lig med">=</span><span class="fl-answer-fraction">${answerHTML("numerator")}<span class="fl-target-line" aria-hidden="true"></span>${answerHTML("denominator")}</span>` : "";
+      return `<div class="fl-solution"><p id="fl-answer-help">${help}</p><div class="fl-solution-equation fl-reduction-equation" role="group" aria-label="${answering ? `${n} divideret med ${divisor} over ${d} divideret med ${divisor}. Skriv resultatet` : `Brøken ${n} over ${d}`}"><span>${current}${result}</span></div>${answering ? '<button type="button" class="fl-primary" data-fl-check-answer>Tjek svar</button>' : `<button type="button" class="fl-primary" data-fl-next ${done && nextReady ? "" : "disabled"}>Næste opgave →</button>`}</div>`;
+    }
     function solutionHTML() {
+      if (reduction) return reductionSolutionHTML();
       const done=phase === "done", answering=phase === "multiplyAnswer";
       const reciprocal=`<span class="fl-target-fraction">${slotHTML("numerator")}<span class="fl-target-line" aria-hidden="true"></span>${slotHTML("denominator")}</span>`;
       const result=answering ? `<span class="fl-answer-fraction">${answerHTML("numerator")}<span class="fl-target-line" aria-hidden="true"></span>${answerHTML("denominator")}</span>`
@@ -68,14 +107,17 @@
     function render(focusSelector) {
       if (disposed) return;
       const done=phase === "done", applying=!["operation","rule"].includes(phase);
-      const step=({operation:1,rule:2,arrange:3,multiplyRule:4,multiplyAnswer:5,done:5})[phase];
-      const title=({operation:"Hvilken type regnestykke er dette?",rule:"Hvilken regneregel skal vi så bruge?",arrange:"Ja! Gange med den omvendte.",multiplyRule:"Hvordan ganger du en brøk med en brøk?",multiplyAnswer:"Skriv resultatet af gangestykket.",done:"Ja! Du har regnet stykket."})[phase];
+      const step=({operation:1,rule:2,arrange:3,multiplyRule:4,multiplyAnswer:5,submitCheck:6,simplifyRule:7,simplifyDivisor:7,simplifyAnswer:7,readyToSubmit:8,done:8})[phase];
+      const title=({operation:"Hvilken type regnestykke er dette?",rule:"Hvilken regneregel skal vi så bruge?",arrange:"Ja! Gange med den omvendte.",multiplyRule:"Hvordan ganger du en brøk med en brøk?",multiplyAnswer:"Skriv resultatet af gangestykket.",submitCheck:"Vil du aflevere brøken sådan her?",simplifyRule:"Hvordan forkorter man en brøk?",simplifyDivisor:"Hvilket tal vil du dividere med?",simplifyAnswer:"Skriv den forkortede brøk.",readyToSubmit:"Er du klar til at aflevere?",done:finalReply==="yes" ? "FLOT! Du cooker de brøker!" : "JO, champ! Brøken kan ikke forkortes yderligere! Du har gjort det godt!"})[phase];
       const operations = [["+","+","Plus"],["-","−","Minus"],["*","*","Gange"],[":",":","Division"]];
       const choices=phase === "operation"
         ? `<div class="fl-operations" aria-label="Vælg regneart">${operations.map(([id,symbol,name]) => `<button type="button" data-fl-operation="${id}" class="fl-operation ${selected===id ? feedbackKind : ""}" aria-label="${name} (${symbol})" ${locked ? "disabled" : ""}>${symbol}</button>`).join("")}</div>`
-        : ["rule","multiplyRule"].includes(phase) ? `<div class="fl-rules" aria-label="Vælg regneregel">${RULES.map(rule => `<button type="button" data-fl-rule="${rule.id}" class="fl-rule ${selected===rule.id ? feedbackKind : ""}" ${locked ? "disabled" : ""}><span class="fl-rule-symbol" aria-hidden="true">${rule.symbol}</span><strong>${rule.text}</strong><small>${rule.caption}</small></button>`).join("")}</div>` : "";
-      const steps=STEPS.map((label,i) => `<span class="${done || i+1<step ? "complete" : i+1===step ? "current" : ""}"><b>${done || i+1<step ? "✓" : i+1}</b> ${label}</span>`).join("");
-      root.innerHTML=`<section class="fl-page" data-fl-phase="${phase}" aria-labelledby="fl-title"><div class="fl-heading"><button type="button" class="fl-back" data-fl-exit>← Til øvelser</button><span class="fl-pilot">Test · kun Jacob</span></div><div class="fl-title-row"><div><p class="fl-eyebrow">Forstå regnestykket før du regner</p><h1 id="fl-title">Lær brøkregning</h1></div><span class="fl-count">${completed} gennemført</span></div><div class="fl-steps" aria-label="${done ? "Alle fem trin gennemført" : `Trin ${step} af 5`}">${steps}</div><div class="fl-workspace"><div class="fl-problem-panel"><span class="fl-problem-label">Regnestykket</span>${expressionHTML(problem,applying ? sourceHTML() : "")}<button type="button" class="fl-notation" data-fl-notation ${locked && !done ? "disabled" : ""}>Vis ${problem.notation === "stacked" ? "med kolon" : "som brøk over brøk"}</button>${phase !== "operation" ? `<span class="fl-identified">✓ Division</span>` : ""}</div><div class="fl-question-panel"><p class="fl-eyebrow">${done ? "Opgaven er løst" : `Trin ${step} af 5`}</p><h2 id="fl-question" tabindex="-1">${title}</h2>${choices}<div id="fl-feedback" class="fl-feedback ${feedbackKind}" role="status" aria-live="polite" aria-atomic="true">${feedback}</div>${applying ? solutionHTML() : ""}</div></div></section>`;
+        : ["rule","multiplyRule"].includes(phase) ? `<div class="fl-rules" aria-label="Vælg regneregel">${RULES.map(rule => `<button type="button" data-fl-rule="${rule.id}" class="fl-rule ${selected===rule.id ? feedbackKind : ""}" ${locked ? "disabled" : ""}><span class="fl-rule-symbol" aria-hidden="true">${rule.symbol}</span><strong>${rule.text}</strong><small>${rule.caption}</small></button>`).join("")}</div>` : reductionChoicesHTML();
+      const steps=STEPS.map((label,i) => {
+        const skipped=i===6 && step===8 && reduction?.rounds===0;
+        return `<span class="${skipped ? "skipped" : done || i+1<step ? "complete" : i+1===step ? "current" : ""}"><b>${skipped ? "·" : done || i+1<step ? "✓" : i+1}</b> ${label}${skipped ? " (ikke nødvendig)" : ""}</span>`;
+      }).join("");
+      root.innerHTML=`<section class="fl-page" data-fl-phase="${phase}" aria-labelledby="fl-title"><div class="fl-heading"><button type="button" class="fl-back" data-fl-exit>← Til øvelser</button><span class="fl-pilot">Test · kun Jacob</span></div><div class="fl-title-row"><div><p class="fl-eyebrow">Forstå regnestykket før du regner</p><h1 id="fl-title">Lær brøkregning</h1></div><span class="fl-count">${completed} gennemført</span></div><div class="fl-steps" aria-label="${done ? "Opgaven er gennemført" : `Trin ${step} af ${STEPS.length}`}">${steps}</div><div class="fl-workspace"><div class="fl-problem-panel"><span class="fl-problem-label">Regnestykket</span>${expressionHTML(problem,applying ? sourceHTML() : "")}<button type="button" class="fl-notation" data-fl-notation ${locked && !done ? "disabled" : ""}>Vis ${problem.notation === "stacked" ? "med kolon" : "som brøk over brøk"}</button>${phase !== "operation" ? `<span class="fl-identified">✓ Division</span>` : ""}</div><div class="fl-question-panel"><p class="fl-eyebrow">${done ? "Opgaven er løst" : `Trin ${step} af ${STEPS.length}`}</p><h2 id="fl-question" tabindex="-1">${title}</h2>${choices}<div id="fl-feedback" class="fl-feedback ${feedbackKind}" role="status" aria-live="polite" aria-atomic="true">${feedback}</div>${applying ? solutionHTML() : ""}</div></div></section>`;
       if (focusSelector) root.querySelector(focusSelector)?.focus({preventScroll:true});
     }
     function chooseOperation(value) {
@@ -132,35 +174,93 @@
       }
     }
     function checkAnswer() {
-      if (disposed || locked || phase!=="multiplyAnswer") return;
+      if (disposed || locked || !answeringNow()) return;
       // Read the actual fields as well as input events (autofill and assistive input).
       for (const slot of ["numerator","denominator"]) answers[slot]=root.querySelector(`[data-fl-answer="${slot}"]`).value;
       const parse=value => /^\d{1,4}$/.test(value.trim()) ? Number(value.trim()) : NaN;
       const n=parse(answers.numerator), d=parse(answers.denominator);
-      const expectedN=problem.a*problem.d, expectedD=problem.b*problem.c;
+      const simplifying=phase==="simplifyAnswer";
+      const expectedN=simplifying ? reduction.n/reduction.divisor : problem.a*problem.d;
+      const expectedD=simplifying ? reduction.d/reduction.divisor : problem.b*problem.c;
       const topOK=n===expectedN, bottomOK=d===expectedD;
       answerStatus={numerator:topOK ? "correct" : "incorrect",denominator:bottomOK ? "correct" : "incorrect"};
       if (!topOK || !bottomOK) {
         feedbackKind="incorrect";
         if (!answers.numerator.trim() || !answers.denominator.trim()) feedback="Skriv både tælleren og nævneren, før du tjekker svaret.";
         else if (!Number.isFinite(n) || !Number.isFinite(d)) feedback="Skriv et helt tal i hvert felt.";
-        else if (d===0) feedback="Nævneren kan ikke være 0. Gang de to nævnere sammen.";
+        else if (d===0) feedback="Nævneren kan ikke være 0. Prøv igen.";
         else if (n*expectedD===d*expectedN) {
           // Equivalent fractions are mathematically right; this step practices the two products.
           feedbackKind=""; answerStatus={};
-          feedback="Din brøk har den rigtige værdi. I dette trin skal du skrive de to gange-resultater uden at forkorte.";
-        } else feedback=`Ikke helt endnu. Gang ${problem.a} med ${problem.d} i tælleren og ${problem.b} med ${problem.c} i nævneren.`;
+          feedback=simplifying ? "Din brøk har den rigtige værdi. Skriv resultaterne af de to viste divisioner." : "Din brøk har den rigtige værdi. I dette trin skal du skrive de to gange-resultater uden at forkorte.";
+        } else feedback=simplifying ? `Prøv igen: ${reduction.n} ÷ ${reduction.divisor} i tælleren og ${reduction.d} ÷ ${reduction.divisor} i nævneren.` : `Ikke helt endnu. Gang ${problem.a} med ${problem.d} i tælleren og ${problem.b} med ${problem.c} i nævneren.`;
         render(`[data-fl-answer="${topOK ? "denominator" : "numerator"}"]`); return;
       }
-      // Only the final answer counts. State guards prevent duplicate submits and repeated Enter.
-      phase="done"; locked=true; completed++; nextReady=false; feedbackKind="correct";
-      feedback=`Ja! ${problem.a} · ${problem.d} = ${expectedN} og ${problem.b} · ${problem.c} = ${expectedD}.`;
+      // Arithmetic alone does not score. First assess, simplify and confirm submission.
+      feedbackKind="correct"; selected=""; answers={numerator:"",denominator:""}; answerStatus={};
+      if (simplifying) {
+        feedback=`Ja! ${reduction.n} ÷ ${reduction.divisor} = ${expectedN} og ${reduction.d} ÷ ${reduction.divisor} = ${expectedD}.`;
+        reduction={n:expectedN,d:expectedD,divisor:0,rounds:reduction.rounds+1};
+        phase=gcd(expectedN,expectedD)>1 ? "submitCheck" : "readyToSubmit";
+      } else {
+        reduction={n:expectedN,d:expectedD,divisor:0,rounds:0}; phase="submitCheck";
+        feedback=`Ja! ${problem.a} · ${problem.d} = ${expectedN} og ${problem.b} · ${problem.c} = ${expectedD}.`;
+      }
+      render("#fl-question");
+    }
+    function chooseSubmissionCheck(value) {
+      if (disposed || locked || phase!=="submitCheck" || !SUBMISSION_OPTIONS.some(([id])=>id===value)) return;
+      const reducible=gcd(reduction.n,reduction.d)>1;
+      selected=value;
+      if (value===(reducible ? "reduce" : "submit")) {
+        phase=reducible ? "simplifyRule" : "readyToSubmit"; selected=""; feedbackKind="correct";
+        feedback=reducible ? "Ja! Brøken skal først forkortes." : "Ja! Brøken kan ikke forkortes yderligere.";
+        render("#fl-question"); return;
+      }
+      feedbackKind="incorrect";
+      feedback=value==="extend" ? "Nej. Brøken skal ikke forlænges. Prøv igen."
+        : reducible ? "Ikke endnu. Tæller og nævner kan divideres med samme tal større end 1."
+        : "Brøken kan ikke forkortes yderligere. Prøv igen.";
+      render(`[data-fl-submit-check="${value}"]`);
+    }
+    function chooseReduceRule(value) {
+      if (disposed || locked || phase!=="simplifyRule" || !REDUCE_RULES.some(([id])=>id===value)) return;
+      selected=value;
+      if (value!=="divideBoth") {
+        feedbackKind="incorrect"; feedback="Nej. Man forkorter ikke ved at trække fra. Prøv igen.";
+        render(`[data-fl-reduce-rule="${value}"]`); return;
+      }
+      phase="simplifyDivisor"; selected=""; feedbackKind="correct";
+      feedback="Ja! Man dividerer med samme tal i tæller og nævner.";
+      render("#fl-question");
+    }
+    function chooseDivisor(value) {
+      if (disposed || locked || phase!=="simplifyDivisor" || !/^\d+$/.test(value)) return;
+      const divisor=Number(value);
+      if (!divisorOptions().includes(divisor)) return;
+      selected=value;
+      if (divisor<=1 || reduction.n%divisor!==0 || reduction.d%divisor!==0) {
+        feedbackKind="incorrect";
+        feedback=divisor===1 ? "Division med 1 ændrer ikke brøken. Vælg et større tal."
+          : `Tallet skal gå op i både ${reduction.n} og ${reduction.d}. Prøv igen.`;
+        render(`[data-fl-divisor="${value}"]`); return;
+      }
+      // Any common divisor is valid; smaller choices lead to another reduction round.
+      reduction.divisor=divisor; phase="simplifyAnswer"; selected=""; feedbackKind="correct";
+      feedback=`Ja! Divider både tæller og nævner med ${divisor}.`;
+      answers={numerator:"",denominator:""}; answerStatus={};
+      render('[data-fl-answer="numerator"]');
+    }
+    function chooseReady(value) {
+      if (disposed || locked || phase!=="readyToSubmit" || !["yes","no"].includes(value) || gcd(reduction.n,reduction.d)!==1) return;
+      finalReply=value; phase="done"; locked=true; completed++; nextReady=false;
+      feedback=""; feedbackKind="correct"; selected="";
       render("#fl-question");
       later(() => { nextReady=true; root.querySelector("[data-fl-next]")?.removeAttribute("disabled"); },600);
     }
     function input(event) {
       const field=event.target.closest("[data-fl-answer]");
-      if (!field || !root.contains(field) || disposed || locked || phase!=="multiplyAnswer" || !["numerator","denominator"].includes(field.dataset.flAnswer)) return;
+      if (!field || !root.contains(field) || disposed || locked || !answeringNow() || !["numerator","denominator"].includes(field.dataset.flAnswer)) return;
       answers[field.dataset.flAnswer]=field.value;
       delete answerStatus[field.dataset.flAnswer];
       field.classList.remove("incorrect","correct"); field.setAttribute("aria-invalid","false");
@@ -175,7 +275,7 @@
         if (phase !== "done" || !nextReady) return;
         problem=createProblem(++index); phase="operation"; locked=false; nextReady=false;
         placements={numerator:null,denominator:null}; activeToken=""; wrongSlot=""; ignoreClickUntil=0;
-        answers={numerator:"",denominator:""}; answerStatus={};
+        answers={numerator:"",denominator:""}; answerStatus={}; reduction=null; finalReply="yes";
         feedback=""; feedbackKind=""; selected=""; render("#fl-question"); return;
       }
       if (button.hasAttribute("data-fl-notation")) {
@@ -197,6 +297,10 @@
       }
       if (button.dataset.flOperation) chooseOperation(button.dataset.flOperation);
       if (button.dataset.flRule) chooseRule(button.dataset.flRule);
+      if (button.dataset.flSubmitCheck) chooseSubmissionCheck(button.dataset.flSubmitCheck);
+      if (button.dataset.flReduceRule) chooseReduceRule(button.dataset.flReduceRule);
+      if (button.dataset.flDivisor) chooseDivisor(button.dataset.flDivisor);
+      if (button.dataset.flReady) chooseReady(button.dataset.flReady);
     }
     function targetAt(x,y) {
       const target=doc.elementFromPoint(x,y)?.closest("[data-fl-slot]");
@@ -270,7 +374,7 @@
         render("#fl-question"); return;
       }
       const field=event.target.closest("[data-fl-answer]");
-      if (field && phase==="multiplyAnswer" && event.key==="Enter") {
+      if (field && answeringNow() && event.key==="Enter") {
         event.preventDefault(); event.stopPropagation();
         if (event.repeat || locked) return;
         answers[field.dataset.flAnswer]=field.value;

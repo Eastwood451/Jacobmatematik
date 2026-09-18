@@ -4,6 +4,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 const {chromium} = require('playwright');
+const {completeReduction} = require('./test-fraction-reduce.cjs');
 const source = fs.readFileSync('fraction-lesson.js','utf8');
 const sandbox = {window:{}};
 vm.runInNewContext(source,sandbox);
@@ -21,14 +22,14 @@ assert.deepEqual(JSON.parse(JSON.stringify(lesson.createProblem(0))),{a:1,b:2,c:
 assert.equal(lesson.expressionHTML(lesson.createProblem(0)).includes('fl-compound'),true);
 const app=fs.readFileSync('app.js','utf8');
 assert.match(app,/Jacob fraction pilot: view state is not an authorization role/);
-const css=['styles.css','fraction-lesson.css','fraction-multiply.css'].map(f=>fs.readFileSync(f,'utf8')).join('\n');
+const css=['styles.css','fraction-lesson.css','fraction-multiply.css','fraction-reduce.css'].map(f=>fs.readFileSync(f,'utf8')).join('\n');
 const out='test-results/fraction-pilot';
 fs.mkdirSync(out,{recursive:true});
 const summary=[];
 function pass(label) { summary.push(label); console.log('PASS',label); }
 pass('Only the verified Jacob teacher profile is enabled; 2,000 valid problems alternate notation.');
 (async()=>{
- const browser=await chromium.launch({headless:true,args:['--no-sandbox']});
+ const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH || undefined,args:['--no-sandbox']});
  const errors=[];
  async function mountAs(kind='jacob',width=1280) {
    const page=await browser.newPage({viewport:{width,height:900}});
@@ -116,11 +117,13 @@ pass('Only the verified Jacob teacher profile is enabled; 2,000 valid problems a
    await page.locator('[data-fl-answer="numerator"]').fill('4');
    await page.locator('[data-fl-answer="denominator"]').fill('6');
    await page.locator('[data-fl-check-answer]').evaluate(el=>{for(let i=0;i<25;i++)el.click()});
+   assert.equal(await page.locator('.fl-count').innerText(),'0 gennemført');
+   await completeReduction(page,4,6);
    assert.equal(await page.locator('.fl-count').innerText(),'1 gennemført');
    await page.waitForTimeout(650);
    await page.locator('[data-fl-next]').click();
    assert.equal(await page.locator('.fl-expression .fl-operator').innerText(),':');
-   pass('All five stages, both rule questions, numerator/denominator entry, wrong feedback and double-click protection.');
+   pass('Complete division, multiplication, reduction and submission flow; wrong feedback and double-click protection.');
    await page.locator('[data-fl-operation=":"]').click();
    await page.locator('[data-action="toggle-jacob-view"]').click();
    await page.waitForTimeout(1100);
@@ -169,6 +172,24 @@ pass('Only the verified Jacob teacher profile is enabled; 2,000 valid problems a
      await mobile.close();
    }
    pass('No overflow at 320px, 390px and 768px; answer fields and switching out of multiplication verified.');
+   const reducing=await mountAs();
+   await reducing.locator('[data-action="learn-fractions"]').click();
+   await reducing.locator('[data-fl-operation=":"]').click();
+   await reducing.locator('[data-fl-rule="reciprocal"]').click();
+   for(const [token,slot] of [['d','numerator'],['c','denominator']]) {
+     await reducing.locator(`[data-fl-token="${token}"]`).click();await reducing.locator(`[data-fl-slot="${slot}"]`).click();
+   }
+   await reducing.locator('[data-fl-rule="multiply"]').click();
+   await reducing.locator('[data-fl-answer="numerator"]').fill('4');await reducing.locator('[data-fl-answer="denominator"]').fill('6');
+   await reducing.locator('[data-fl-check-answer]').click();await reducing.locator('[data-fl-submit-check="reduce"]').click();
+   await reducing.locator('[data-fl-reduce-rule="divideBoth"]').click();await reducing.locator('[data-fl-divisor="2"]').click();
+   await reducing.locator('[data-fl-answer="numerator"]').fill('2');
+   await reducing.locator('[data-action="toggle-jacob-view"]').click();
+   assert.equal(await reducing.locator('.fl-page').count(),0);assert.equal(await reducing.locator('.teacher-layout').count(),1);
+   assert.equal(await reducing.evaluate(()=>window.__authProfile.role),'teacher');
+   assert.equal(await reducing.evaluate(()=>window.__resultWrites.length),0);await reducing.close();
+   pass('Switching to backend during reduction preserves teacher permissions and writes no results.');
+
    for(const kind of ['student','other','guest','out']) {
      const p=await mountAs(kind);
      assert.equal(await p.locator('[data-action="learn-fractions"]').count(),0);

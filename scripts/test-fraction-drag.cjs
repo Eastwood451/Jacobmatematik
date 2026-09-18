@@ -3,10 +3,11 @@
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const path=require('node:path');
+const {completeReduction}=require('./test-fraction-reduce.cjs');
 const {chromium}=require(process.env.PLAYWRIGHT_MODULE || 'playwright');
 const root=path.resolve(__dirname,'..');
 const source=fs.readFileSync(path.join(root,'fraction-lesson.js'),'utf8');
-const css=['fraction-lesson.css','fraction-multiply.css'].map(f=>fs.readFileSync(path.join(root,f),'utf8')).join('\n');
+const css=['fraction-lesson.css','fraction-multiply.css','fraction-reduce.css'].map(f=>fs.readFileSync(path.join(root,f),'utf8')).join('\n');
 const out=path.join(root,'test-results/fraction-drag');
 fs.mkdirSync(out,{recursive:true});
 const JACOB='c8b8e1c4-3264-40e9-a43d-0eb6214a0183';
@@ -115,11 +116,14 @@ function pass(text){reports.push(text);console.log('PASS',text);}
     assert.equal(await bottom.evaluate(el=>el===document.activeElement),true);
     await bottom.fill(String(den));
     await page.locator('[data-fl-check-answer]').evaluate(el=>{for(let i=0;i<30;i++)el.click()});
+    assert.equal(await phase(page),'submitCheck');
+    assert.equal(await count(page),before);
+    const reduced=await completeReduction(page,n,den);
     assert.equal(await phase(page),'done');
     assert.equal(await count(page),`${parseInt(before,10)+1} gennemført`);
-    assert.equal(await page.locator('.fl-result .fl-numerator').innerText(),String(n));
-    assert.equal(await page.locator('.fl-result .fl-denominator').innerText(),String(den));
-    assert.equal(await page.locator('.fl-steps .complete').count(),5);
+    assert.equal(await page.locator('.fl-result .fl-numerator').innerText(),String(reduced.n));
+    assert.equal(await page.locator('.fl-result .fl-denominator').innerText(),String(reduced.d));
+    assert.equal(await page.locator('.fl-steps .complete').count(),reduced.skipped ? 7 : 8);
     await page.waitForFunction(()=>!document.querySelector('[data-fl-next]').disabled, null, {polling:50,timeout:5000});
   }
   try {
@@ -178,6 +182,8 @@ function pass(text){reports.push(text);console.log('PASS',text);}
     await page.evaluate(()=>window.remount());await arrange(page);await place(page,'c','denominator');await place(page,'d','numerator');
     await page.locator('[data-fl-rule="multiply"]').click();await page.locator('[data-fl-answer="numerator"]').fill('4');
     await page.locator('[data-fl-answer="denominator"]').fill('6');await page.locator('[data-fl-answer="denominator"]').press('Enter');
+    assert.equal(await phase(page),'submitCheck');
+    await completeReduction(page,4,6);
     assert.equal(await phase(page),'done');
     await page.locator('[data-fl-exit]').click();await page.waitForTimeout(700);assert.equal(await page.locator('#app').innerText(),'Afsluttet');
     pass('Enter submits denominator; Escape, mid-drag disposal and exit during both timers remove stale UI.');
@@ -189,7 +195,7 @@ function pass(text){reports.push(text);console.log('PASS',text);}
       assert.ok(await touch.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
       await touch.screenshot({path:path.join(out,`touch-${width}.png`),fullPage:true});await touch.close();
     }
-    pass('Touch taps and full five-step flow at 320px, 390px and 768px; inputs stay inside the equation without overflow.');
+    pass('Touch taps and full flow including reduction and submission at 320px, 390px and 768px; inputs stay inside the equation without overflow.');
     const touch=await mount({viewport:{width:390,height:844},hasTouch:true,isMobile:true});
     await arrange(touch);
     const cdp=await touch.context().newCDPSession(touch);
