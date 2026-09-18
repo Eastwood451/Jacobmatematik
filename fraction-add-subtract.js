@@ -221,18 +221,18 @@
     root.addEventListener("click",click);root.addEventListener("input",input);root.addEventListener("keydown",keydown);render();
     return ()=>{disposed=true;timers.forEach(clearTimeout);timers.clear();root.removeEventListener("click",click);root.removeEventListener("input",input);root.removeEventListener("keydown",keydown);};
   }
-  // A shell delegates to the original division mount without changing its logic or auth role.
+  // The shell shares one multiplication/division engine and keeps the same authorization role.
   function mountPractice(root,options={}) {
     if(!root || !division.isEnabled(options.user)) return ()=>{};
-    root.innerHTML='<div class="fa-mode-nav" role="group" aria-label="Vælg øvelse"><span>Øv regneart</span><button type="button" data-fa-mode="division" aria-pressed="true">: Division</button><button type="button" data-fa-mode="plus" aria-pressed="false">+ Plus</button><button type="button" data-fa-mode="minus" aria-pressed="false">− Minus</button></div><div data-fa-lesson></div>';
+    root.innerHTML='<div class="fa-mode-nav" role="group" aria-label="Vælg øvelse"><span>Øv regneart</span><button type="button" data-fa-mode="division" aria-pressed="true">: Division</button><button type="button" data-fa-mode="plus" aria-pressed="false">+ Plus</button><button type="button" data-fa-mode="minus" aria-pressed="false">− Minus</button><button type="button" data-fa-mode="multiply" aria-pressed="false">· Gange</button></div><div data-fa-lesson></div>';
     const nav=root.querySelector(".fa-mode-nav"),content=root.querySelector("[data-fa-lesson]");
     let mode="division",disposed=false,cleanup=division.mount(content,options);
     function change(event) {
       const button=event.target.closest("[data-fa-mode]");
-      if(disposed || !button || !nav.contains(button) || !["division","plus","minus"].includes(button.dataset.faMode) || button.dataset.faMode===mode) return;
+      if(disposed || !button || !nav.contains(button) || !["division","plus","minus","multiply"].includes(button.dataset.faMode) || button.dataset.faMode===mode) return;
       cleanup();content.innerHTML="";mode=button.dataset.faMode;
       nav.querySelectorAll("[data-fa-mode]").forEach(el=>el.setAttribute("aria-pressed",String(el.dataset.faMode===mode)));
-      cleanup=mode==="division" ? division.mount(content,options) : mount(content,{...options,op:mode==="plus" ? "+":"-"});
+      cleanup=["division","multiply"].includes(mode) ? division.mount(content,{...options,operation:mode}) : mount(content,{...options,op:mode==="plus" ? "+":"-"});
     }
     nav.addEventListener("click",change);
     return ()=>{if(disposed)return;disposed=true;cleanup();nav.removeEventListener("click",change);};

@@ -10,3 +10,7 @@
 .fl-result{color:#205d4c;background:#e0efdf;border-radius:9px;padding:6px 9px}
 @media(max-width:900px){.fl-multiplication-equation{padding:14px;font-size:29px}.fl-multiplication-equation>span{gap:10px}.fl-multiplication-equation .fl-target-line{width:66px}.fl-multiplication-equation .fl-slot{min-width:56px;min-height:54px;font-size:30px}.fl-page .fl-answer-input{width:62px;height:54px;font-size:29px}}
 @media(max-width:600px){.fl-multiplication-equation{padding:12px 9px;font-size:26px}.fl-multiplication-equation>span{gap:7px}.fl-multiplication-equation .fl-target-line{width:56px}.fl-multiplication-equation .fl-slot{min-width:48px;min-height:48px;padding:3px 5px;font-size:27px}.fl-page .fl-answer-input{width:54px;height:48px;padding:3px;font-size:26px}.fl-result{padding:5px}}
+/* Direct multiplication has a longer title, but needs no tall stacked-division space. */
+.fl-page[data-fl-mode="multiply"] .fl-title-row{flex-wrap:wrap}
+.fl-page[data-fl-mode="multiply"] .fl-expression{min-height:120px}
+.fl-page[data-fl-mode="multiply"] .fl-expression-drawing{min-height:0}

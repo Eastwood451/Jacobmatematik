@@ -2,7 +2,7 @@ name: Fraction pilot checks
 
 on:
   push:
-    branches: [main, 'feature/jacob-fraction-lesson-20260918', 'feature/fraction-multiply-20260918', 'feature/fraction-simplify-20260918', 'feature/fraction-add-subtract-20260918']
+    branches: [main, 'feature/jacob-fraction-lesson-20260918', 'feature/fraction-multiply-20260918', 'feature/fraction-simplify-20260918', 'feature/fraction-add-subtract-20260918', 'feature/fraction-times-20260918']
     paths:
       - 'app.js'
       - 'index.html'
@@ -51,6 +51,7 @@ jobs:
           node --check scripts/test-fraction-drag.cjs
           node --check scripts/test-fraction-simplify.cjs
           node --check scripts/test-fraction-add-subtract.cjs
+          node --check scripts/test-fraction-multiply.cjs
           node --check scripts/fraction-finish-support.cjs
       - name: Install isolated browser test dependencies
         run: |
@@ -62,6 +63,7 @@ jobs:
           node scripts/test-fraction-drag.cjs
           node scripts/test-fraction-simplify.cjs
           node scripts/test-fraction-add-subtract.cjs
+          node scripts/test-fraction-multiply.cjs
       - name: Save test screenshots and summary
         if: always()
         uses: actions/upload-artifact@v4
@@ -72,4 +74,5 @@ jobs:
             test-results/fraction-drag/
             test-results/fraction-simplify/
             test-results/fraction-add-subtract/
+            test-results/fraction-multiply/
           retention-days: 7

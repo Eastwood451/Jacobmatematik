@@ -1,4 +1,4 @@
-/* Guided fraction division pilot. The teacher keeps the same authenticated role. */
+/* Guided fraction division/multiplication pilot. Both reuse the same product and finish stages. */
 (() => {
   "use strict";
   const TESTER_ID = "c8b8e1c4-3264-40e9-a43d-0eb6214a0183";
@@ -21,17 +21,19 @@
     const [c,d] = FRACTIONS[(first+offset)%FRACTIONS.length];
     return { a,b,c,d,notation };
   }
-  function expressionHTML(p, sourceHTML = "") {
+  function expressionHTML(p, sourceHTML = "", operation = "division") {
     const first = fractionHTML(p.a,p.b), second = sourceHTML || fractionHTML(p.c,p.d);
-    const drawing = p.notation === "stacked"
+    const drawing = operation === "multiply" ? `${first}<span class="fl-operator">·</span>${second}` : p.notation === "stacked"
       ? `<span class="fl-compound"><span>${first}</span><span>${second}</span></span>`
       : `${first}<span class="fl-operator">:</span>${second}`;
     // Interactive numbers must not be hidden from keyboard/screen-reader users.
-    return `<div class="fl-expression" role="${sourceHTML ? "group" : "math"}" aria-label="${p.a} over ${p.b} divideret med ${p.c} over ${p.d}"><span class="fl-expression-drawing" ${sourceHTML ? "" : 'aria-hidden="true"'}>${drawing}</span></div>`;
+    return `<div class="fl-expression" role="${sourceHTML ? "group" : "math"}" aria-label="${p.a} over ${p.b} ${operation === "multiply" ? "gange" : "divideret med"} ${p.c} over ${p.d}"><span class="fl-expression-drawing" ${sourceHTML ? "" : 'aria-hidden="true"'}>${drawing}</span></div>`;
   }
-  function mount(root, { user, onExit = () => {} } = {}) {
+  function mount(root, { user, onExit = () => {}, operation = "division" } = {}) {
     // Pilot gating, not a replacement for Supabase authorization.
-    if (!root || !isEnabled(user)) return () => {};
+    if (!root || !isEnabled(user) || !["division","multiply"].includes(operation)) return () => {};
+    const multiplying=operation === "multiply";
+    const lessonSteps=multiplying ? ["Find regnearten", "Vælg gangereglen", "Skriv resultatet", "Forkort og aflever"] : STEPS;
     let index=0, problem=createProblem(0), phase="operation", feedback="", feedbackKind="", selected="";
     let locked=false, disposed=false, completed=0, nextReady=false;
     let placements={numerator:null,denominator:null}, activeToken="", wrongSlot="", drag=null, ignoreClickUntil=0;
@@ -39,6 +41,9 @@
     const doc=root.ownerDocument, view=doc.defaultView, timers=new Set();
     const used = token => Object.values(placements).includes(token);
     const tokenValue = token => problem[token];
+    // Division uses the reciprocal; direct multiplication keeps the original second fraction.
+    const secondNumerator = () => multiplying ? problem.c : problem.d;
+    const secondDenominator = () => multiplying ? problem.d : problem.c;
     function later(callback, milliseconds) {
       const id=setTimeout(() => { timers.delete(id); if (!disposed) callback(); },milliseconds);
       timers.add(id);
@@ -57,24 +62,24 @@
     }
     function solutionHTML() {
       const answering=phase === "multiplyAnswer";
-      const reciprocal=`<span class="fl-target-fraction">${slotHTML("numerator")}<span class="fl-target-line" aria-hidden="true"></span>${slotHTML("denominator")}</span>`;
+      const reciprocal=multiplying ? fractionHTML(problem.c,problem.d) : `<span class="fl-target-fraction">${slotHTML("numerator")}<span class="fl-target-line" aria-hidden="true"></span>${slotHTML("denominator")}</span>`;
       const result=answering ? `<span class="fl-answer-fraction">${answerHTML("numerator")}<span class="fl-target-line" aria-hidden="true"></span>${answerHTML("denominator")}</span>` : "";
       const help=phase === "arrange" ? "Træk tallene fra den anden brøk over i de tomme felter, så brøken bliver vendt."
-        : phase === "multiplyRule" ? "Brøken er vendt. Nu skal du vælge reglen til dette gangestykke." : "Skriv gange-resultaterne i tælleren og nævneren uden at forkorte.";
-      return `<div class="fl-solution"><p id="${answering ? "fl-answer-help" : "fl-drag-help"}">${help}</p><div class="fl-solution-equation ${answering ? "fl-multiplication-equation" : ""}" role="group" aria-label="${problem.a} over ${problem.b} gange den omvendte brøk${answering ? ". Skriv resultatet i de to felter" : ""}"><span><span role="math" aria-label="${problem.a} over ${problem.b}">${fractionHTML(problem.a,problem.b)}</span><span class="fl-operator" aria-label="gange">·</span>${reciprocal}${result ? `<span class="fl-operator" aria-label="er lig med">=</span>${result}` : ""}</span></div>${phase === "arrange" ? '<p class="fl-drag-hint">Du kan også trykke på et tal og derefter på et felt.</p>' : ""}${answering ? '<button type="button" class="fl-primary" data-fl-check-answer>Tjek svar</button>' : '<button type="button" class="fl-primary" data-fl-next disabled>Næste opgave →</button>'}</div>`;
+        : phase === "multiplyRule" ? (multiplying ? "Vælg reglen til at gange de to brøker." : "Brøken er vendt. Nu skal du vælge reglen til dette gangestykke.") : "Skriv gange-resultaterne i tælleren og nævneren uden at forkorte.";
+      return `<div class="fl-solution"><p id="${answering ? "fl-answer-help" : "fl-drag-help"}">${help}</p><div class="fl-solution-equation ${answering ? "fl-multiplication-equation" : ""}" role="group" aria-label="${problem.a} over ${problem.b} gange ${multiplying ? `${problem.c} over ${problem.d}` : "den omvendte brøk"}${answering ? ". Skriv resultatet i de to felter" : ""}"><span><span role="math" aria-label="${problem.a} over ${problem.b}">${fractionHTML(problem.a,problem.b)}</span><span class="fl-operator" aria-label="gange">·</span>${reciprocal}${result ? `<span class="fl-operator" aria-label="er lig med">=</span>${result}` : ""}</span></div>${phase === "arrange" ? '<p class="fl-drag-hint">Du kan også trykke på et tal og derefter på et felt.</p>' : ""}${answering ? '<button type="button" class="fl-primary" data-fl-check-answer>Tjek svar</button>' : '<button type="button" class="fl-primary" data-fl-next disabled>Næste opgave →</button>'}</div>`;
     }
     function render(focusSelector) {
       if (disposed) return;
       const done=phase === "done", applying=!["operation","rule"].includes(phase);
-      const step=({operation:1,rule:2,arrange:3,multiplyRule:4,multiplyAnswer:5,finish:6,done:6})[phase];
+      const step=(multiplying ? {operation:1,multiplyRule:2,multiplyAnswer:3,finish:4,done:4} : {operation:1,rule:2,arrange:3,multiplyRule:4,multiplyAnswer:5,finish:6,done:6})[phase];
       const title=({operation:"Hvilken type regnestykke er dette?",rule:"Hvilken regneregel skal vi så bruge?",arrange:"Ja! Gange med den omvendte.",multiplyRule:"Hvordan ganger du en brøk med en brøk?",multiplyAnswer:"Skriv resultatet af gangestykket."})[phase];
       const operations = [["+","+","Plus"],["-","−","Minus"],["*","*","Gange"],[":",":","Division"]];
       const choices=phase === "operation"
         ? `<div class="fl-operations" aria-label="Vælg regneart">${operations.map(([id,symbol,name]) => `<button type="button" data-fl-operation="${id}" class="fl-operation ${selected===id ? feedbackKind : ""}" aria-label="${name} (${symbol})" ${locked ? "disabled" : ""}>${symbol}</button>`).join("")}</div>`
         : ["rule","multiplyRule"].includes(phase) ? `<div class="fl-rules" aria-label="Vælg regneregel">${RULES.map(rule => `<button type="button" data-fl-rule="${rule.id}" class="fl-rule ${selected===rule.id ? feedbackKind : ""}" ${locked ? "disabled" : ""}><span class="fl-rule-symbol" aria-hidden="true">${rule.symbol}</span><strong>${rule.text}</strong><small>${rule.caption}</small></button>`).join("")}</div>` : "";
-      const steps=STEPS.map((label,i) => `<span class="${done || i+1<step ? "complete" : i+1===step ? "current" : ""}"><b>${done || i+1<step ? "✓" : i+1}</b> ${label}</span>`).join("");
-      const panel=finish ? `${finish.html()}${done ? `<button type="button" class="fl-primary" data-fl-next ${nextReady ? "" : "disabled"}>Næste opgave →</button>` : ""}` : `<p class="fl-eyebrow">Trin ${step} af ${STEPS.length}</p><h2 id="fl-question" tabindex="-1">${title}</h2>${choices}<div id="fl-feedback" class="fl-feedback ${feedbackKind}" role="status" aria-live="polite" aria-atomic="true">${feedback}</div>${applying ? solutionHTML() : ""}`;
-      root.innerHTML=`<section class="fl-page" data-fl-phase="${phase}" aria-labelledby="fl-title"><div class="fl-heading"><button type="button" class="fl-back" data-fl-exit>← Til øvelser</button><span class="fl-pilot">Test · kun Jacob</span></div><div class="fl-title-row"><div><p class="fl-eyebrow">Forstå regnestykket før du regner</p><h1 id="fl-title">Lær brøkregning</h1></div><span class="fl-count">${completed} gennemført</span></div><div class="fl-steps" aria-label="${done ? "Alle trin gennemført" : `Trin ${step} af ${STEPS.length}`}">${steps}</div><div class="fl-workspace"><div class="fl-problem-panel"><span class="fl-problem-label">Regnestykket</span>${expressionHTML(problem,applying ? sourceHTML() : "")}<button type="button" class="fl-notation" data-fl-notation ${locked && !done ? "disabled" : ""}>Vis ${problem.notation === "stacked" ? "med kolon" : "som brøk over brøk"}</button>${phase !== "operation" ? `<span class="fl-identified">✓ Division</span>` : ""}</div><div class="fl-question-panel">${panel}</div></div></section>`;
+      const steps=lessonSteps.map((label,i) => `<span class="${done || i+1<step ? "complete" : i+1===step ? "current" : ""}"><b>${done || i+1<step ? "✓" : i+1}</b> ${label}</span>`).join("");
+      const panel=finish ? `${finish.html()}${done ? `<button type="button" class="fl-primary" data-fl-next ${nextReady ? "" : "disabled"}>Næste opgave →</button>` : ""}` : `<p class="fl-eyebrow">Trin ${step} af ${lessonSteps.length}</p><h2 id="fl-question" tabindex="-1">${title}</h2>${choices}<div id="fl-feedback" class="fl-feedback ${feedbackKind}" role="status" aria-live="polite" aria-atomic="true">${feedback}</div>${applying ? solutionHTML() : ""}`;
+      root.innerHTML=`<section class="fl-page" data-fl-phase="${phase}" data-fl-mode="${operation}" aria-labelledby="fl-title"><div class="fl-heading"><button type="button" class="fl-back" data-fl-exit>← Til øvelser</button><span class="fl-pilot">Test · kun Jacob</span></div><div class="fl-title-row"><div><p class="fl-eyebrow">Forstå regnestykket før du regner</p><h1 id="fl-title">Lær brøkregning${multiplying ? " · gange" : ""}</h1></div><span class="fl-count">${completed} gennemført</span></div><div class="fl-steps" aria-label="${done ? "Alle trin gennemført" : `Trin ${step} af ${lessonSteps.length}`}">${steps}</div><div class="fl-workspace"><div class="fl-problem-panel"><span class="fl-problem-label">Regnestykket</span>${expressionHTML(problem,applying && !multiplying ? sourceHTML() : "",operation)}${multiplying ? "" : `<button type="button" class="fl-notation" data-fl-notation ${locked && !done ? "disabled" : ""}>Vis ${problem.notation === "stacked" ? "med kolon" : "som brøk over brøk"}</button>`}${phase !== "operation" ? `<span class="fl-identified">✓ ${multiplying ? "Gange" : "Division"}</span>` : ""}</div><div class="fl-question-panel">${panel}</div></div></section>`;
       if (focusSelector) root.querySelector(focusSelector)?.focus({preventScroll:true});
     }
     function finishChanged(focusSelector) {
@@ -87,16 +92,16 @@
       render(focusSelector);
     }
     function chooseOperation(value) {
-      if (disposed || locked || phase !== "operation") return;
+      if (disposed || locked || phase !== "operation" || !["+","-","*",":"].includes(value)) return;
       selected=value;
-      if (value !== ":") {
+      if (value !== (multiplying ? "*" : ":")) {
         feedbackKind="incorrect";
-        feedback=problem.notation === "stacked" ? "Nej. Den lange brøkstreg mellem de to brøker betyder division. Prøv igen." : "Nej. Kolonet mellem de to brøker betyder division. Prøv igen.";
+        feedback=multiplying ? "Nej. Prikken mellem de to brøker betyder gange. Prøv igen." : problem.notation === "stacked" ? "Nej. Den lange brøkstreg mellem de to brøker betyder division. Prøv igen." : "Nej. Kolonet mellem de to brøker betyder division. Prøv igen.";
         render(`[data-fl-operation="${value}"]`); return;
       }
-      locked=true; feedbackKind="correct"; feedback="Ja! Det er et divisionsstykke.";
+      locked=true; feedbackKind="correct"; feedback=multiplying ? "Ja! Det er et gangestykke." : "Ja! Det er et divisionsstykke.";
       render();
-      later(() => { phase="rule"; locked=false; feedback=""; feedbackKind=""; selected=""; render("#fl-question"); },850);
+      later(() => { phase=multiplying ? "multiplyRule" : "rule"; locked=false; feedback=""; feedbackKind=""; selected=""; render("#fl-question"); },850);
     }
     function chooseRule(value) {
       if (disposed || locked || !["rule","multiplyRule"].includes(phase) || !RULES.some(rule => rule.id===value)) return;
@@ -104,7 +109,7 @@
       if (phase === "multiplyRule") {
         if (value !== "multiply") {
           feedbackKind="incorrect";
-          feedback=value === "add" ? "Nej. Den regel bruges til plus med brøker. Nu skal vi gange. Prøv igen." : "Nej. Den regel brugte vi til division. Brøken er allerede vendt, og nu skal vi gange. Prøv igen.";
+          feedback=value === "add" ? "Nej. Den regel bruges til plus med brøker. Nu skal vi gange. Prøv igen." : multiplying ? "Nej. Man ganger med den omvendte, når man dividerer. Her skal du gange brøkerne uden at vende dem. Prøv igen." : "Nej. Den regel brugte vi til division. Brøken er allerede vendt, og nu skal vi gange. Prøv igen.";
           render(`[data-fl-rule="${value}"]`); return;
         }
         phase="multiplyAnswer"; selected=""; feedbackKind="correct";
@@ -145,7 +150,7 @@
       for (const slot of ["numerator","denominator"]) answers[slot]=root.querySelector(`[data-fl-answer="${slot}"]`).value;
       const parse=value => /^\d{1,4}$/.test(value.trim()) ? Number(value.trim()) : NaN;
       const n=parse(answers.numerator), d=parse(answers.denominator);
-      const expectedN=problem.a*problem.d, expectedD=problem.b*problem.c;
+      const expectedN=problem.a*secondNumerator(), expectedD=problem.b*secondDenominator();
       const topOK=n===expectedN, bottomOK=d===expectedD;
       answerStatus={numerator:topOK ? "correct" : "incorrect",denominator:bottomOK ? "correct" : "incorrect"};
       if (!topOK || !bottomOK) {
@@ -157,7 +162,7 @@
           // Equivalent fractions are mathematically right; this step practices the two products.
           feedbackKind=""; answerStatus={};
           feedback="Din brøk har den rigtige værdi. I dette trin skal du skrive de to gange-resultater uden at forkorte.";
-        } else feedback=`Ikke helt endnu. Gang ${problem.a} med ${problem.d} i tælleren og ${problem.b} med ${problem.c} i nævneren.`;
+        } else feedback=`Ikke helt endnu. Gang ${problem.a} med ${secondNumerator()} i tælleren og ${problem.b} med ${secondDenominator()} i nævneren.`;
         render(`[data-fl-answer="${topOK ? "denominator" : "numerator"}"]`); return;
       }
       // A correct product must still be checked, reduced if needed, and submitted by the pupil.
@@ -187,7 +192,7 @@
         feedback=""; feedbackKind=""; selected=""; render("#fl-question"); return;
       }
       if (button.hasAttribute("data-fl-notation")) {
-        if (locked && phase!=="done") return;
+        if (multiplying || (locked && phase!=="done")) return;
         problem.notation=problem.notation === "stacked" ? "colon" : "stacked";
         if (phase === "operation") { feedback=""; feedbackKind=""; selected=""; }
         render("[data-fl-notation]"); return;
@@ -289,7 +294,7 @@
         return;
       }
       if (event.repeat || event.altKey || event.ctrlKey || event.metaKey || locked || phase !== "operation") return;
-      const value=({"+":"+","-":"-","*":"*","x":"*","X":"*",":":":","/":":"})[event.key];
+      const value=({"+":"+","-":"-","*":"*","x":"*","X":"*","·":"*","×":"*",":":":","/":":"})[event.key];
       if (!value) return;
       event.preventDefault(); event.stopPropagation(); chooseOperation(value);
     }
