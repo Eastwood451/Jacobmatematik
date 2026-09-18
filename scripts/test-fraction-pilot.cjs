@@ -90,13 +90,25 @@ pass('Only the verified Jacob teacher profile is enabled; 2,000 valid problems a
      assert.match(await page.locator('.fl-feedback').innerText(),/Nej/);
    }
    await page.locator('[data-fl-rule="reciprocal"]').evaluate(el=>{for(let i=0;i<25;i++)el.click()});
+   assert.equal(await page.locator('.fl-count').innerText(),'0 gennemført');
+   assert.equal(await page.locator('.fl-flip-explanation').count(),0);
+   assert.equal(await page.locator('[data-fl-slot]').count(),2);
+   assert.equal(await page.locator('[data-fl-next]').isDisabled(),true);
+   await page.locator('[data-fl-token="c"]').click();
+   await page.locator('[data-fl-slot="numerator"]').click();
+   assert.equal(await page.locator('.fl-slot.is-filled').count(),0);
+   await page.locator('[data-fl-token="d"]').click();
+   await page.locator('[data-fl-slot="numerator"]').click();
+   assert.equal(await page.locator('.fl-count').innerText(),'0 gennemført');
+   await page.locator('[data-fl-token="c"]').click();
+   await page.locator('[data-fl-slot="denominator"]').click();
    assert.equal(await page.locator('.fl-count').innerText(),'1 gennemført');
-   assert.equal(await page.locator('.fl-flipped .fl-numerator').innerText(),'4');
-   assert.equal(await page.locator('.fl-flipped .fl-denominator').innerText(),'3');
+   assert.equal(await page.locator('[data-fl-slot="numerator"]').innerText(),'4');
+   assert.equal(await page.locator('[data-fl-slot="denominator"]').innerText(),'3');
    await page.waitForTimeout(650);
    await page.locator('[data-fl-next]').click();
    assert.equal(await page.locator('.fl-expression .fl-operator').innerText(),':');
-   pass('Both notations, all operation choices, all rule cards, reciprocal demonstration and double-click protection.');
+   pass('Both notations, operation choices, rule cards, pupil-built reciprocal, wrong-placement feedback and double-click protection.');
    await page.locator('[data-fl-operation=":"]').click();
    await page.locator('[data-action="toggle-jacob-view"]').click();
    await page.waitForTimeout(1100);
