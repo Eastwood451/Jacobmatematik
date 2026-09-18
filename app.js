@@ -385,6 +385,36 @@
   const app = document.getElementById("app");
   const backend = window.JacobBackend;
   const usingCentralDatabase = Boolean(backend?.configured);
+
+  // Jacob fraction pilot: view state is not an authorization role.
+  const isFractionTester = () => window.JacobFractionLesson?.isEnabled(state.user) === true;
+  let jacobFrontend = false;
+  let switchingJacobView = false;
+  let disposeFractionLesson = null;
+  const appendCurrentPracticeResult = result => isFractionTester()
+    ? Promise.resolve(null) // Teacher preview is session-only; never impersonate a student.
+    : backend.appendResult(state.user.id, result);
+  function leaveFractionLesson() {
+    disposeFractionLesson?.(); disposeFractionLesson = null;
+  }
+  function renderFractionLesson() {
+    leaveFractionLesson();
+    if (!isFractionTester()) { state.view = state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
+    jacobFrontend = true;
+    app.innerHTML = `${header()}<div id="fraction-lesson-root"></div>`;
+    disposeFractionLesson = window.JacobFractionLesson.mount(document.getElementById("fraction-lesson-root"), {
+      user: state.user,
+      onExit() { leaveFractionLesson(); state.view="student"; renderStudentHome(); window.scrollTo(0,0); },
+    });
+  }
+  function jacobViewButton() {
+    if (!isFractionTester()) return "";
+    return `<button type="button" class="jacob-view-switch" data-action="toggle-jacob-view" role="switch" aria-checked="${jacobFrontend}" aria-label="Front-end" title="Skift mellem front-end og back-end"><span class="${jacobFrontend ? "active" : ""}">Front-end</span><span class="${!jacobFrontend ? "active" : ""}">Back-end</span></button>${!jacobFrontend ? `<button type="button" class="btn secondary fraction-pilot-link" data-action="learn-fractions">Lær brøkregning · test</button>` : ""}`;
+  }
+  function fractionPilotCard() {
+    return isFractionTester() ? `<button type="button" class="topic-card fraction-pilot-card" data-action="learn-fractions"><em>Test · kun Jacob</em><span class="topic-icon">½ : ¾</span><strong>Lær brøkregning</strong><small>Find regnearten, og vælg den rigtige regneregel.</small></button>` : "";
+  }
+
   const GUEST_TOPICS = new Set(["multiplication", "tableDrill", "divisionDrill", "divisionLollipops", "subtractionBorrowing"]);
   const isGuest = () => state.user?.role === "guest";
   const createGuest = () => ({
@@ -516,9 +546,9 @@
     disposeFoodtruck = window.LuigiFoodtruck.mount(document.getElementById("foodtruck-root"));
   }
   function header() {
-    const userLabel = state.user.role === "teacher" ? "Lærer" : isGuest() ? "Gæst" : `${escapeHtml(state.user.name)} · Elev`;
+    const userLabel = isFractionTester() && jacobFrontend ? "Jacob · Front-end" : state.user.role === "teacher" ? "Lærer" : isGuest() ? "Gæst" : `${escapeHtml(state.user.name)} · Elev`;
     const passwordButton = state.user.role === "student" ? `<button class="btn ghost" data-action="change-password">Skift adgangskode</button>` : "";
-    return `<a class="fps-launch" href="fps.html"><span>NYT SPIL</span>✎ Erling FPS</a><header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions">${state.user.role === "teacher" && state.view !== "foodtruck" ? `<a class="foodtruck-link" href="#foodtruck" data-action="foodtruck">🍔 Foodtruck</a>` : ""}<span class="user-pill">${userLabel}</span>${passwordButton}<button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
+    return `<a class="fps-launch" href="fps.html"><span>NYT SPIL</span>✎ Erling FPS</a><header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions">${state.user.role === "teacher" && state.view !== "foodtruck" ? `<a class="foodtruck-link" href="#foodtruck" data-action="foodtruck">🍔 Foodtruck</a>` : ""}<span class="user-pill">${userLabel}</span>${passwordButton}${jacobViewButton()}<button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
   }
   function stopErlingAudio() {
     if (activeErlingAudio) {
@@ -593,6 +623,7 @@
     audio.play().catch(finish);
   }
   function renderLogin() {
+    leaveFractionLesson(); jacobFrontend=false;
     leaveFoodtruck();
     const signup = state.view === "signup";
     app.innerHTML = `
@@ -728,7 +759,7 @@
     const stats = availableTopics.map(topic => ({ topic, ...getStats(state.user, topic) }));
     const total = practiceResults(state.user).length;
     const guestCopy = isGuest() ? `<p class="guest-session-note">Din træning er midlertidig og slettes, når du forlader siden.</p>` : "";
-    app.innerHTML = `${header()}<div class="page student-home-layout">${renderMathTower(availableTopics)}<div class="student-home-content"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section>${isGuest() ? "" : `<a class="foodtruck-card" href="#foodtruck" data-action="foodtruck"><img src="assets/figurer/luigi-laekkermat-cutout.webp" alt="" width="78" height="94"><span><strong>Luigis Foodtruck</strong><small>Del råvarerne med brøker, og byg din egen burger.</small></span><span aria-hidden="true">→</span></a>`}<h2 class="section-label">Vælg et område</h2><section class="topic-grid">${availableTopics.map(key => { const t=TOPICS[key]; return `<button class="topic-card" data-topic="${key}"><span class="topic-icon">${t.icon}</span><strong>${t.name}</strong><small>${t.description}</small></button>`; }).join("")}${isGuest() ? "" : `<button class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`}</section><h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div></div>`;
+    app.innerHTML = `${header()}<div class="page student-home-layout">${renderMathTower(availableTopics)}<div class="student-home-content"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section>${isGuest() ? "" : `<a class="foodtruck-card" href="#foodtruck" data-action="foodtruck"><img src="assets/figurer/luigi-laekkermat-cutout.webp" alt="" width="78" height="94"><span><strong>Luigis Foodtruck</strong><small>Del råvarerne med brøker, og byg din egen burger.</small></span><span aria-hidden="true">→</span></a>`}<h2 class="section-label">Vælg et område</h2><section class="topic-grid">${fractionPilotCard()}${availableTopics.map(key => { const t=TOPICS[key]; return `<button class="topic-card" data-topic="${key}"><span class="topic-icon">${t.icon}</span><strong>${t.name}</strong><small>${t.description}</small></button>`; }).join("")}${isGuest() ? "" : `<button class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`}</section><h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div></div>`;
   }
   function renderStudentPassword() {
     app.innerHTML = `${header()}<div class="page"><section class="class-manager"><div class="class-manager-title"><div><span class="eyebrow">Min profil</span><h1>Skift adgangskode</h1><p>Vælg en ny adgangskode til din bruger.</p></div></div><form id="student-password-form" class="student-form"><div class="field"><label for="current-password">Nuværende adgangskode</label><input id="current-password" name="currentPassword" type="password" autocomplete="current-password" required></div><div class="field"><label for="new-password">Ny adgangskode</label><input id="new-password" name="newPassword" type="password" autocomplete="new-password" required></div><div class="field"><label for="confirm-password">Gentag ny adgangskode</label><input id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" required></div><p id="password-error" class="student-error" role="alert"></p><div class="student-manager-buttons"><button class="btn" type="submit">Gem adgangskode</button><button class="btn secondary" type="button" data-action="home">Annuller</button></div></form></section></div>`;
@@ -806,7 +837,7 @@
     const marker={topic:sessionTopic,recordType:sessionTopic,problem:`${TOPICS[drill.topic].name} session`,correct:true,responseTime:0,timestamp:new Date(endedAt).toISOString(),drillSessionId:drill.sessionId,drillStartedAt:new Date(drill.startedAt).toISOString(),drillEndedAt:new Date(endedAt).toISOString(),drillStatus:status,drillExpectedCells:drill.pairs.length,drillTroubleRound:drill.troubleRound,drillType:drill.topic};
     if (drill.topic === "divisionDrill") marker.divisionDrillLayout=divisionDrillLayoutData(drill.layout);
     try {
-      if (usingCentralDatabase) marker.remoteId=await backend.appendResult(state.user.id,marker);
+      if (usingCentralDatabase) marker.remoteId=await appendCurrentPracticeResult(marker);
       else { state.user.results.push(marker); await save(); }
     } catch (error) {
       drill.finalizedAt=null;
@@ -850,6 +881,7 @@
     newTask();
   }
   function newTask() {
+    if (!state.user || state.view !== "exercise") return;
     const topic = state.selectedTopic === "mixed" ? chooseWeightedTopic(state.user) : state.selectedTopic;
     if (MATRIX_DRILL_TOPICS.has(topic)) {
       const drill = state.matrixDrill;
@@ -1166,7 +1198,7 @@
     if (correct) state.sessionCorrect++;
     state.user.results.push(result);
     try {
-      if (usingCentralDatabase && !isGuest()) result.remoteId=await backend.appendResult(state.user.id,result);
+      if (usingCentralDatabase && !isGuest()) result.remoteId=await appendCurrentPracticeResult(result);
       else await save();
     } catch (error) {
       state.user.results.pop();
@@ -1276,7 +1308,7 @@
     if (correct) state.sessionCorrect++;
     state.user.results.push(result);
     try {
-      if (usingCentralDatabase && !isGuest()) result.remoteId=await backend.appendResult(state.user.id,result);
+      if (usingCentralDatabase && !isGuest()) result.remoteId=await appendCurrentPracticeResult(result);
       else await save();
     } catch (error) {
       state.user.results.pop();
@@ -1406,7 +1438,7 @@
       return;
     }
     // Gem i baggrunden, så en langsom netværksanmodning aldrig låser næste opgave.
-    backend.appendResult(state.user.id, result)
+    appendCurrentPracticeResult( result)
       .then(remoteId => { result.remoteId=remoteId; })
       .catch(error => console.error("Bogstavsvaret kunne ikke gemmes", error));
   }
@@ -1556,7 +1588,7 @@
     }
     state.user.results.push(result);
     try {
-      if (usingCentralDatabase && !isGuest()) result.remoteId = await backend.appendResult(state.user.id, result);
+      if (usingCentralDatabase && !isGuest()) result.remoteId = await appendCurrentPracticeResult( result);
       else await save();
     } catch (error) {
       state.user.results.pop(); state.sessionAnswers.pop(); if (correct) state.sessionCorrect--; state.answered=false;
@@ -2114,7 +2146,7 @@
     </div>`;
     startTeacherLiveUpdates();
   }
-  function render() { if (!state.user) renderLogin(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
+  function render() { if (state.view !== "learn-fractions") leaveFractionLesson(); if (!state.user) renderLogin(); else if (state.view==="learn-fractions") renderFractionLesson(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
 
   document.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -2287,6 +2319,7 @@
       return;
     }
     if (topicButton) {
+      leaveFractionLesson();
       if (isGuest() && !GUEST_TOPICS.has(topicButton.dataset.topic)) return;
       clearDivisionLollipopDrag();
       clearBorrowingSubtractionDrag();
@@ -2305,6 +2338,27 @@
     if (reportTopicButton) { state.teacherTopicDetail=reportTopicButton.dataset.reportTopic; renderTeacher(); return; }
     if (!actionButton) return;
     const action=actionButton.dataset.action;
+
+    if (["toggle-jacob-view", "learn-fractions"].includes(action)) {
+      event.preventDefault();
+      if (!isFractionTester() || switchingJacobView) return;
+      switchingJacobView=true;
+      const userId=state.user.id;
+      try {
+        if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned");
+        if (state.user?.id !== userId || !isFractionTester()) return;
+        leaveFractionLesson(); leaveFoodtruck(); stopMatrixDrillTimer(); stopTeacherLiveUpdates();
+        stopErlingAudio(); stopKaptajnAudio(); stopLuigiAudio(); stopLetterLearningAudio();
+        clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag();
+        state.task=null; state.matrixDrill=null;
+        jacobFrontend=action === "learn-fractions" ? true : !jacobFrontend;
+        state.view=action === "learn-fractions" ? "learn-fractions" : jacobFrontend ? "student" : "teacher";
+        render(); window.scrollTo(0,0);
+      } finally { switchingJacobView=false; }
+      return;
+    }
+    if (["logout", "home", "change-password", "foodtruck", "foodtruck-home"].includes(action)) leaveFractionLesson();
+    if (action === "logout") jacobFrontend=false;
     if (action === "foodtruck") {
       event.preventDefault();
       if (!state.user || isGuest() || state.view === "foodtruck") return;
@@ -2314,7 +2368,7 @@
       renderFoodtruck(); window.scrollTo(0,0); return;
     }
     if (action === "foodtruck-home") {
-      leaveFoodtruck(); state.view=state.user?.role === "teacher" ? "teacher" : "student";
+      leaveFoodtruck(); state.view=state.user?.role === "teacher" && !jacobFrontend ? "teacher" : "student";
       render(); window.scrollTo(0,0); return;
     }
     if (["logout", "home", "change-password"].includes(action)) leaveFoodtruck();
@@ -2529,6 +2583,7 @@
     if (event.key === "Enter") handleKeypad("enter");
   });
   window.addEventListener("pagehide", () => {
+    leaveFractionLesson();
     stopErlingAudio();
     stopKaptajnAudio();
     stopLuigiAudio();
