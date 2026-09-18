@@ -391,9 +391,14 @@
   let jacobFrontend = false;
   let switchingJacobView = false;
   let disposeFractionLesson = null;
-  const appendCurrentPracticeResult = result => isFractionTester()
-    ? Promise.resolve(null) // Teacher preview is session-only; never impersonate a student.
-    : backend.appendResult(state.user.id, result);
+  const appendCurrentPracticeResult = async result => {
+    if (isFractionTester()) return null; // Teacher preview is session-only; never impersonate a student.
+    const remoteId=await backend.appendResult(state.user.id, result);
+    if (result?.correct === true && TOPICS[result?.topic]) {
+      window.setTimeout(() => refreshPracticeLeaderboard({ prompt:true }), 0);
+    }
+    return remoteId;
+  };
   function leaveFractionLesson() {
     disposeFractionLesson?.(); disposeFractionLesson = null;
   }
@@ -429,6 +434,7 @@
   let remoteSaveQueue = Promise.resolve();
   let signupBusy = false;
   const registrations = { open:false, rows:[], search:"", offset:0, more:false, loading:false, error:"", notice:"", request:0 };
+  const practiceLeaderboard = { rows:[], status:null, loading:false, promptOpen:false, request:0 };
   let matrixDrillTimerId = null;
   let teacherLiveTimerId = null;
   let teacherLiveRefreshInFlight = false;
@@ -754,12 +760,69 @@
       <details class="math-tower-help"><summary>Hvordan bygges tårnet?</summary><p>Vælg en etage for at øve. Materialet følger din score: andelen af rigtige blandt dine seneste 20 svar i hvert tilknyttet modul. Har etagen flere moduler, bruges gennemsnittet; moduler uden svar tæller som 0 %. Scoren kan både stige og falde.</p><p>Gange: Lille tabel og Tabel-drill. Division: Divisions-slikkepinde og Division-drill. De øvrige etager følger hver deres øvelse.</p></details>
     </aside>`;
   }
+  function leaderboardMedal(rank) {
+    return rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `#${rank}`;
+  }
+  function renderPracticeLeaderboardCard() {
+    if (!usingCentralDatabase || isGuest() || state.user?.role !== "student") return "";
+    const status=practiceLeaderboard.status;
+    const rows=practiceLeaderboard.rows;
+    const statusCopy=!status
+      ? "Henter stillingen…"
+      : status.optedIn
+      ? `Du er med · ${status.score} rigtige opgaver`
+      : status.qualifies
+      ? `Du ville lige nu ligge nr. ${status.prospectiveRank} · ${status.score} rigtige`
+      : `${status.score} rigtige opgaver · fortsæt træningen for at nå top 10`;
+    return `<section class="practice-leaderboard" id="practice-leaderboard" aria-labelledby="practice-leaderboard-title">
+      <div class="practice-leaderboard-head"><div><span class="eyebrow">Klassen</span><h2 id="practice-leaderboard-title">Leaderboard</h2><p>Flest korrekte opgaver. Kun elever, der selv har sagt ja, vises med navn.</p></div><strong class="leaderboard-my-status">${escapeHtml(statusCopy)}</strong></div>
+      <ol class="leaderboard-list">${practiceLeaderboard.loading && !rows.length ? `<li class="leaderboard-empty">Henter…</li>` : rows.length ? rows.map(row => `<li class="${row.isMe ? "is-me" : ""}"><span class="leaderboard-rank">${leaderboardMedal(row.rank)}</span><strong>${escapeHtml(row.name)}</strong><span>${row.score} rigtige</span></li>`).join("") : `<li class="leaderboard-empty">Ingen har skrevet sig på endnu.</li>`}</ol>
+      ${status?.optedIn ? `<button type="button" class="leaderboard-leave" data-action="leaderboard-leave">Fjern mig fra leaderboardet</button>` : ""}
+    </section>`;
+  }
+  function closePracticeLeaderboardPrompt() {
+    document.getElementById("practice-leaderboard-dialog")?.remove();
+    practiceLeaderboard.promptOpen=false;
+  }
+  function showPracticeLeaderboardPrompt(status) {
+    if (practiceLeaderboard.promptOpen || !status?.shouldPrompt || state.user?.role !== "student") return;
+    practiceLeaderboard.promptOpen=true;
+    const rank=Math.max(1,Number(status.prospectiveRank) || 1);
+    document.body.insertAdjacentHTML("beforeend", `<div class="leaderboard-dialog-backdrop" id="practice-leaderboard-dialog"><section class="leaderboard-dialog" role="dialog" aria-modal="true" aria-labelledby="leaderboard-dialog-title"><div class="leaderboard-dialog-medal">${leaderboardMedal(rank)}</div><h2 id="leaderboard-dialog-title">Flot arbejde!</h2><p>Du har kvalificeret dig til en <strong>${rank}. plads</strong> på leaderboardet!</p><p>Skal jeg skrive dig på?</p><div class="leaderboard-dialog-actions"><button type="button" class="btn" data-action="leaderboard-join" data-rank="${rank}">Ja, skriv mig på</button><button type="button" class="btn secondary" data-action="leaderboard-decline" data-rank="${rank}">Nej tak</button></div><small>Dit navn bliver kun vist for din egen klasse, hvis du siger ja.</small></section></div>`);
+    document.querySelector('[data-action="leaderboard-join"]')?.focus();
+  }
+  async function refreshPracticeLeaderboard({ prompt=false } = {}) {
+    if (!usingCentralDatabase || isGuest() || state.user?.role !== "student" || !backend?.getPracticeLeaderboard) return;
+    const userId=state.user.id;
+    const request=++practiceLeaderboard.request;
+    practiceLeaderboard.loading=true;
+    try {
+      const [rows,status]=await Promise.all([
+        backend.getPracticeLeaderboard(),
+        backend.getMyPracticeLeaderboardStatus(),
+      ]);
+      if (request !== practiceLeaderboard.request || state.user?.id !== userId) return;
+      practiceLeaderboard.rows=rows;
+      practiceLeaderboard.status=status;
+      const card=document.getElementById("practice-leaderboard");
+      if (card) card.outerHTML=renderPracticeLeaderboardCard();
+      if (prompt && status?.shouldPrompt) showPracticeLeaderboardPrompt(status);
+    } catch (error) {
+      console.error("Leaderboard kunne ikke hentes",error);
+      const card=document.getElementById("practice-leaderboard");
+      if (card) card.querySelector(".leaderboard-my-status").textContent="Leaderboardet kunne ikke hentes lige nu.";
+    } finally {
+      if (request === practiceLeaderboard.request) practiceLeaderboard.loading=false;
+    }
+  }
+
   function renderStudentHome() {
     const availableTopics = isGuest() ? Object.keys(TOPICS).filter(topic => GUEST_TOPICS.has(topic)) : Object.keys(TOPICS);
     const stats = availableTopics.map(topic => ({ topic, ...getStats(state.user, topic) }));
     const total = practiceResults(state.user).length;
     const guestCopy = isGuest() ? `<p class="guest-session-note">Din træning er midlertidig og slettes, når du forlader siden.</p>` : "";
-    app.innerHTML = `${header()}<div class="page student-home-layout">${renderMathTower(availableTopics)}<div class="student-home-content"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section>${isGuest() ? "" : `<a class="foodtruck-card" href="#foodtruck" data-action="foodtruck"><img src="assets/figurer/luigi-laekkermat-cutout.webp" alt="" width="78" height="94"><span><strong>Luigis Foodtruck</strong><small>Del råvarerne med brøker, og byg din egen burger.</small></span><span aria-hidden="true">→</span></a>`}<h2 class="section-label">Vælg et område</h2><section class="topic-grid">${fractionPilotCard()}${availableTopics.map(key => { const t=TOPICS[key]; return `<button class="topic-card" data-topic="${key}"><span class="topic-icon">${t.icon}</span><strong>${t.name}</strong><small>${t.description}</small></button>`; }).join("")}${isGuest() ? "" : `<button class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`}</section><h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div></div>`;
+    app.innerHTML = `${header()}<div class="page student-home-layout">${renderMathTower(availableTopics)}<div class="student-home-content"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section>${renderPracticeLeaderboardCard()}${isGuest() ? "" : `<a class="foodtruck-card" href="#foodtruck" data-action="foodtruck"><img src="assets/figurer/luigi-laekkermat-cutout.webp" alt="" width="78" height="94"><span><strong>Luigis Foodtruck</strong><small>Del råvarerne med brøker, og byg din egen burger.</small></span><span aria-hidden="true">→</span></a>`}<h2 class="section-label">Vælg et område</h2><section class="topic-grid">${fractionPilotCard()}${availableTopics.map(key => { const t=TOPICS[key]; return `<button class="topic-card" data-topic="${key}"><span class="topic-icon">${t.icon}</span><strong>${t.name}</strong><small>${t.description}</small></button>`; }).join("")}${isGuest() ? "" : `<button class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`}</section><h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div></div>`;
+    if (usingCentralDatabase && !isGuest()) void refreshPracticeLeaderboard({ prompt:true });
   }
   function renderStudentPassword() {
     app.innerHTML = `${header()}<div class="page"><section class="class-manager"><div class="class-manager-title"><div><span class="eyebrow">Min profil</span><h1>Skift adgangskode</h1><p>Vælg en ny adgangskode til din bruger.</p></div></div><form id="student-password-form" class="student-form"><div class="field"><label for="current-password">Nuværende adgangskode</label><input id="current-password" name="currentPassword" type="password" autocomplete="current-password" required></div><div class="field"><label for="new-password">Ny adgangskode</label><input id="new-password" name="newPassword" type="password" autocomplete="new-password" required></div><div class="field"><label for="confirm-password">Gentag ny adgangskode</label><input id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" required></div><p id="password-error" class="student-error" role="alert"></p><div class="student-manager-buttons"><button class="btn" type="submit">Gem adgangskode</button><button class="btn secondary" type="button" data-action="home">Annuller</button></div></form></section></div>`;
@@ -2339,6 +2402,22 @@
     if (!actionButton) return;
     const action=actionButton.dataset.action;
 
+    if (["leaderboard-join","leaderboard-decline","leaderboard-leave"].includes(action)) {
+      if (!usingCentralDatabase || state.user?.role !== "student" || !backend?.setPracticeLeaderboardConsent) return;
+      const currentRank=Number(actionButton.dataset.rank || practiceLeaderboard.status?.prospectiveRank || 0) || null;
+      actionButton.disabled=true;
+      try {
+        if (action === "leaderboard-join") await backend.setPracticeLeaderboardConsent(true,currentRank);
+        else await backend.setPracticeLeaderboardConsent(false,currentRank);
+        closePracticeLeaderboardPrompt();
+        await refreshPracticeLeaderboard({ prompt:false });
+      } catch (error) {
+        actionButton.disabled=false;
+        console.error("Leaderboard-valget kunne ikke gemmes",error);
+      }
+      return;
+    }
+
     if (["toggle-jacob-view", "learn-fractions"].includes(action)) {
       event.preventDefault();
       if (!isFractionTester() || switchingJacobView) return;
@@ -2410,7 +2489,7 @@
       return;
     }
     if (action === "logout") { registrations.request++; Object.assign(registrations, { open:false, rows:[], search:"", offset:0, more:false, loading:false, error:"", notice:"" }); }
-    if (action==="logout") { clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,matrixDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
+    if (action==="logout") { closePracticeLeaderboardPrompt(); practiceLeaderboard.request++; Object.assign(practiceLeaderboard,{rows:[],status:null,loading:false,promptOpen:false}); clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,matrixDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
     if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
     if (action==="home") { clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); state.matrixDrill=null; state.task=null; state.view="student"; renderStudentHome(); }
     if (action==="subtraction-cannot" && state.task?.topic === "subtractionBorrowing") { startBorrowingSubtraction(); return; }
