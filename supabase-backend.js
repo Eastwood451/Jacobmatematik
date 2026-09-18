@@ -75,6 +75,38 @@
     throwIfError(response);
   }
 
+  async function getPracticeLeaderboard() {
+    const response = await client.rpc("get_practice_leaderboard");
+    throwIfError(response);
+    return (response.data || []).map(row => ({
+      rank:Number(row.rank),
+      name:row.name,
+      score:Number(row.score),
+      isMe:Boolean(row.is_me),
+    }));
+  }
+
+  async function getMyPracticeLeaderboardStatus() {
+    const response = await client.rpc("get_my_practice_leaderboard_status");
+    throwIfError(response);
+    const row=(response.data || [])[0];
+    return row ? {
+      score:Number(row.score),
+      prospectiveRank:Number(row.prospective_rank),
+      qualifies:Boolean(row.qualifies),
+      optedIn:Boolean(row.opted_in),
+      shouldPrompt:Boolean(row.should_prompt),
+    } : null;
+  }
+
+  async function setPracticeLeaderboardConsent(optedIn, promptedRank = null) {
+    const response = await client.rpc("set_practice_leaderboard_consent", {
+      p_opt_in:Boolean(optedIn),
+      p_prompted_rank:promptedRank == null ? null : Number(promptedRank),
+    });
+    throwIfError(response);
+  }
+
   async function signOut() {
     if (client) await client.auth.signOut();
   }
@@ -177,6 +209,9 @@
     signUp,
     listSelfRegistered,
     assignSelfRegistered,
+    getPracticeLeaderboard,
+    getMyPracticeLeaderboardStatus,
+    setPracticeLeaderboardConsent,
     signOut,
     loadDatabase,
     loadResults,
