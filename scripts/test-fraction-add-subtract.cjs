@@ -1,4 +1,5 @@
 /* Offline tests, fake profiles only. Run from the repository root with Playwright installed. */
+require('./test-fraction-beginner.cjs');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
 const vm=require('node:vm');
@@ -22,7 +23,7 @@ for(const [a,b] of pool)for(const [c,d] of pool)for(const op of ['+','-']) {
 for(const op of ['+','-'])for(let i=0;i<3000;i++) {
   const p=api.createProblem(op,i,()=>((i*733)%3000)/3000),q=api.plan(p);
   assert.equal(p.op,op);assert.notEqual(p.b,p.d);assert.equal(gcd(p.a,p.b),1);assert.equal(gcd(p.c,p.d),1);
-  assert.ok(q.factors.some(f=>f>1));assert.ok(q.factors.every(f=>f>=1 && f<=12));assert.ok(q.numerator>0);
+  assert.ok(q.factors.some(f=>f>1));assert.ok(q.factors.every(f=>f>=1 && f<=3));assert.ok(q.numerator>0 && q.numerator<=12);assert.ok(q.denominator<=12);
 }
 assert.equal(api.plan(api.createProblem('+')).numerator,4);assert.equal(api.plan(api.createProblem('+')).denominator,6);
 assert.equal(api.plan(api.createProblem('-')).numerator,2);assert.equal(api.plan(api.createProblem('-')).denominator,6);
@@ -145,7 +146,7 @@ function pass(text){reports.push(text);console.log('PASS',text);}
      await completeFinish(page,op==='+'?'yes':'no');
      assert.match(await page.locator('#fl-question').innerText(),op==='+'?/FLOT! Du cooker/:/JO, champ!/);
      assert.equal(await page.locator('.fl-count').innerText(),'1 gennemført');
-     for(const target of (op==='+'?[{a:1,b:4,c:1,d:3},{a:5,b:6,c:3,d:4}]:[{a:1,b:3,c:1,d:4}])) {
+     for(const target of (op==='+'?[{a:1,b:6,c:1,d:4},{a:3,b:4,c:1,d:6}]:[{a:1,b:4,c:1,d:6}])) {
        const nextIndex=Number((await page.locator('.fl-count').innerText()).split(' ')[0]);
        let r;
        for(let j=0;j<10000;j++){const candidate=(j+.5)/10000,x=api.createProblem(op,nextIndex,()=>candidate);if(['a','b','c','d'].every(k=>x[k]===target[k])){r=candidate;break;}}

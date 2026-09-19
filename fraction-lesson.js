@@ -2,7 +2,12 @@
 (() => {
   "use strict";
   const TESTER_ID = "c8b8e1c4-3264-40e9-a43d-0eb6214a0183";
-  const FRACTIONS = [[1,2],[1,3],[2,3],[1,4],[3,4],[2,5],[3,5],[4,5],[5,6],[3,8],[5,8],[7,10]];
+  const FRACTIONS = [[1,2],[1,3],[2,3],[1,4],[3,4],[1,6],[5,6]];
+  // Both modes share this pool. Keep products before simplification at most
+  // 12, including the reciprocal products used in division.
+  const PAIRS = FRACTIONS.flatMap(([a,b]) => FRACTIONS
+    .filter(([c,d]) => a*d!==c*b && Math.max(a*c,b*d,a*d,b*c)<=12)
+    .map(([c,d]) => [a,b,c,d]));
   const RULES = [
     { id:"add", text:"Gør ensbenævnte og læg tællerne sammen", caption:"Samme nævner først", symbol:"+" },
     { id:"multiply", text:"Tæller gange tæller og nævner gange nævner", caption:"Gang brøkerne direkte", symbol:"·" },
@@ -15,10 +20,9 @@
   function createProblem(index, random = Math.random) {
     const notation = index % 2 === 0 ? "stacked" : "colon";
     if (index === 0) return { a:1,b:2,c:3,d:4,notation };
-    const first = Math.min(FRACTIONS.length-1, Math.floor(random()*FRACTIONS.length));
-    const offset = 1 + Math.min(FRACTIONS.length-2, Math.floor(random()*(FRACTIONS.length-1)));
-    const [a,b] = FRACTIONS[first];
-    const [c,d] = FRACTIONS[(first+offset)%FRACTIONS.length];
+    const r=random();
+    if (!Number.isFinite(r) || r<0 || r>=1) throw new Error("Expected a random value in [0,1)");
+    const [a,b,c,d] = PAIRS[Math.floor(r*PAIRS.length)];
     return { a,b,c,d,notation };
   }
   function expressionHTML(p, sourceHTML = "", operation = "division") {

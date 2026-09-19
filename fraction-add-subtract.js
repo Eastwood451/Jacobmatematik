@@ -8,8 +8,15 @@
   const fraction = (n,d) => `<span class="fl-fraction"><span class="fl-numerator">${n}</span><span class="fl-denominator">${d}</span></span>`;
   const read = value => /^\d{1,4}$/.test(value.trim()) ? Number(value.trim()) : NaN;
   const POOL = [];
-  for (let d=2; d<=12; d++) for (let n=1; n<d; n++) if (gcd(n,d)===1) POOL.push([n,d]);
-  const PAIRS = POOL.flatMap(([a,b]) => POOL.filter(([c,d]) => b!==d && a*d>c*b).map(([c,d]) => [a,b,c,d]));
+  for (const d of [2,3,4,6,8,10,12]) for (let n=1; n<d && n<=5; n++) if (gcd(n,d)===1) POOL.push([n,d]);
+  // Bound the actual working, not just the input denominators: 10 and 11
+  // otherwise turn into 110. These limits apply to every subsequent problem.
+  const PAIRS = POOL.flatMap(([a,b]) => POOL.filter(([c,d]) => {
+    const common=b/gcd(b,d)*d;
+    return b!==d && a*d>c*b && common<=12
+      && common/b<=3 && common/d<=3
+      && a*(common/b)+c*(common/d)<=12;
+  }).map(([c,d]) => [a,b,c,d]));
   function plan(p) {
     if (!p || !["+","-"].includes(p.op) || ![p.a,p.b,p.c,p.d].every(n => Number.isSafeInteger(n) && n>0 && n<=144)) throw new Error("Invalid fraction problem");
     const denominator=p.b/gcd(p.b,p.d)*p.d;
@@ -88,7 +95,7 @@
           choices=cards([["reduce","Forkortes"],["extend","Forlænges"]],"method");
         } else if(phase==="factor") {
           title="Hvilket tal vil du forlænge med?";
-          choices=`<div class="fa-factors" aria-label="Vælg forlængelsestal">${Array.from({length:11},(_,i)=>i+2).map(k=>`<button type="button" class="fa-choice ${selected===String(k) ? kind : ""}" data-fa-factor="${k}">${k}</button>`).join("")}</div>`;
+          choices=`<div class="fa-factors" aria-label="Vælg forlængelsestal">${[2,3].map(k=>`<button type="button" class="fa-choice ${selected===String(k) ? kind : ""}" data-fa-factor="${k}">${k}</button>`).join("")}</div>`;
         } else if(phase==="extensionRule") {
           title="Hvordan forlænger man en brøk?";
           help+=` Du har valgt at forlænge med ${factor}.`;

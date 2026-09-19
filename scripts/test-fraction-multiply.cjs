@@ -113,7 +113,13 @@ const pass=s=>{reports.push(s);console.log('PASS',s);};
   assert.equal(await page.locator('.ff-equation .fl-numerator').innerText(),'3');assert.equal(await page.locator('.ff-equation .fl-denominator').innerText(),'8');
   await page.locator('[data-ff-choice="fine"]').click();await ready(page,'yes',1);
   await page.waitForTimeout(650);
-  await page.evaluate(()=>{let i=0;Math.random=()=>[2.1/12,1.1/11][i++%2];});
+  await page.evaluate(()=>{
+    for(let i=0;i<10000;i++) {
+      const r=(i+.5)/10000,p=window.__core.createProblem(1,()=>r);
+      if(p.a*p.c===6 && p.b*p.d===12) {Math.random=()=>r;return;}
+    }
+    throw new Error('Missing beginner problem with product 6/12');
+  });
   await page.locator('[data-fl-next]').click();assert.deepEqual(await toAnswer(page),{n:6,d:12});
   await product(page,6,12);
   await reduce(page,2,3,6);assert.equal(await page.locator('[data-ff-stage="assess"]').count(),1);
