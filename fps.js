@@ -3,6 +3,7 @@ import { createMinigunPowerup, MINIGUN_PICKUP, clearReach, updateErlingSwipe } f
 import { createMinigunView, createMinigunSound } from './fps-minigun.js?v=20260914-gun1';
 import { buildClassrooms } from './fps-classrooms.js?v=20260914-rooms1';
 import { createGunnarProjectiles } from './fps-gunnar-projectiles.js?v=20260912-goo1';
+import { createErlingFoodProjectiles } from './fps-erling-food.js?v=20260919-remoulade1';
 import { createEnemyNavigator } from './fps-navigation.js?v=20260911-path1';
 import { createGunnarSlime } from './fps-slime.js?v=20260912-goo1';
 import { createTouchControls, touchInput, hasTouchControls } from './fps-touch.js?v=20260909-touch3';
@@ -65,6 +66,15 @@ scene.add(sun);
 const WORLD = 54;
 const WALL_H = 4.2;
 const colliders = [];
+const erlingFood = createErlingFoodProjectiles({
+  scene,
+  colliders,
+  onPlayerHit: () => {
+    if (gameNow() < invulnerableUntil) return gameActive;
+    hurt(null, true);
+    return gameActive;
+  },
+});
 const elseAttacks = createElseAttacks({ scene, colliders, onPlayerHit: () => {
   hurt(null, true);
   return gameActive;
@@ -190,7 +200,7 @@ async function loadPlayerRules() {
     console.info('Spillerprofil kunne ikke hentes. Standardregler bruges.', error);
   }
   currentUsername = String(username || '').trim();
-  schoolyardKillTarget = currentUsername.toLowerCase() === 'jacobe' ? 0 : 50;
+  schoolyardKillTarget = ['jacob','jacobe'].includes(currentUsername.toLowerCase()) ? 3 : 50;
   playerRulesReady = true;
   refreshStartButton();
 }
@@ -396,6 +406,7 @@ function createErling() {
   enemy.hp = 1;
   enemy.maxHp = 1;
   enemy.speed = 1.35;
+  enemy.foodCooldown = 4.5 + Math.random() * 3.5;
   enemy.group.position.copy(pickSpawnPosition());
   scene.add(enemy.group);
   enemies.push(enemy);
@@ -836,6 +847,7 @@ function updateSchoolyardArrows(time) {
 }
 
 function openSchoolyardDoor() {
+  erlingFood.clear();
   schoolyardDoorOpen = true;
   campBoost = false;
   campMovementStartedAt = 0;
@@ -873,6 +885,7 @@ function setSchoolyardLighting(active) {
 
 function enterSchoolyard() {
   if (schoolyardEntered) return;
+  erlingFood.clear();
   gunnarProjectiles.clear();
   gunnarSlime.clear();
   schoolyardEntered = true;
@@ -1058,6 +1071,7 @@ function hurt(enemy, projectileHit = false) {
     controls.unlock();
     document.getElementById('final-score').textContent = score;
     document.getElementById('game-over').classList.add('open');
+    erlingFood.clear();
     elseAttacks.clear();
     return;
   }
@@ -1180,6 +1194,7 @@ controls.addEventListener('unlock', () => { clearMovementKeys(); if (gameActive)
 
 function resetGame(online = false) {
   minigun.reset();minigunView.hide();minigunSound.stop();
+  erlingFood.clear();
   gunnarProjectiles.clear();
   erlingSpawnElapsed=0;
   gunnarSlime.clear();
@@ -1289,6 +1304,13 @@ function update(dt, time) {
       else {
         updateErlingSwipe(enemy,{x:camera.position.x,z:camera.position.z,feet:playerMovement.bounds.min.y-.025},dt,
           reachBlocked,()=>hurt(null));
+        if (!schoolyardEntered && !divisionChallenge?.active) {
+          enemy.foodCooldown = (enemy.foodCooldown ?? 1) - dt;
+          if (enemy.foodCooldown <= 0) {
+            erlingFood.throwAt(enemy,camera.position);
+            enemy.foodCooldown = 4.5 + Math.random() * 3.5;
+          }
+        }
         animateErling(enemy,dt,time,distanceMoved);
       }
       enemy.group.lookAt(camera.position.x,0,camera.position.z);
@@ -1305,6 +1327,8 @@ function update(dt, time) {
     maybeSpeakWhileMoving(time);
   }
 
+  if (!gameActive) return;
+  if (!divisionChallenge?.active) erlingFood.update(dt,playerMovement.bounds);
   if (!gameActive) return;
   updateProjectiles(dt);
   if(gameActive&&!divisionChallenge?.active){
