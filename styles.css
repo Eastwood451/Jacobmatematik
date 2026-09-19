@@ -770,3 +770,19 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
 .leaderboard-card-actions:empty { display:none; }
 .leaderboard-card-actions .leaderboard-leave { margin-top:0; }
 @media(max-width:650px) { .leaderboard-card-actions .btn { width:100%; } }
+
+
+/* Per-exercise leaderboard links and dialog */
+.exercise-head .exercise-leaderboard-link { margin-left:8px; white-space:nowrap; }
+.exercise-leaderboard-dialog { position:relative; max-height:min(760px,calc(100vh - 36px)); overflow:auto; }
+.exercise-leaderboard-dialog .eyebrow { display:block; margin-bottom:5px; }
+.exercise-leaderboard-dialog h2 { margin-bottom:6px; }
+.exercise-leaderboard-intro { margin-top:0!important; font-size:15px!important; color:var(--muted); }
+.exercise-leaderboard-list { margin:18px 0; text-align:left; }
+.exercise-leaderboard-close { position:absolute; top:12px; right:14px; width:38px; height:38px; border:0; border-radius:50%; background:#eee8dc; color:var(--ink); font:900 28px/1 system-ui,sans-serif; cursor:pointer; }
+.exercise-leaderboard-close:hover { background:#ded5c4; }
+@media(max-width:650px) {
+  .exercise-head { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .exercise-head .exercise-leaderboard-link { margin-left:0; }
+  .exercise-head .topic-tag { width:100%; }
+}
