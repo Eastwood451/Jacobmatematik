@@ -1,0 +1,45 @@
+name: Fraction Obbe checks
+on:
+  push:
+    branches: [main, 'feature/fraction-obbe-20260919']
+    paths:
+      - 'fraction-*.js'
+      - 'fraction-*.css'
+      - 'index.html'
+      - 'assets/figurer/obbe*'
+      - 'scripts/test-fraction-*.cjs'
+      - '.github/workflows/fraction-obbe.yml'
+  pull_request:
+    paths:
+      - 'fraction-obbe.*'
+      - 'assets/figurer/obbe*'
+      - 'scripts/test-fraction-obbe.cjs'
+      - '.github/workflows/fraction-obbe.yml'
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and browser setup
+        run: |
+          node --check fraction-obbe.js
+          node --check scripts/test-fraction-obbe.cjs
+          npm install --no-save --package-lock=false playwright@1.57.0
+          npx playwright install --with-deps chromium
+      - name: Existing lessons and new coach, without real accounts
+        run: |
+          node scripts/test-fraction-beginner.cjs
+          node scripts/test-fraction-pilot.cjs
+          node scripts/test-fraction-drag.cjs
+          node scripts/test-fraction-simplify.cjs
+          node scripts/test-fraction-add-subtract.cjs
+          node scripts/test-fraction-multiply.cjs
+          node scripts/test-fraction-obbe.cjs
