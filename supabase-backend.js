@@ -86,6 +86,17 @@
     }));
   }
 
+  async function getPracticeTopicLeaderboard(topic) {
+    const response = await client.rpc("get_practice_topic_leaderboard", { p_topic:String(topic || "") });
+    throwIfError(response);
+    return (response.data || []).map(row => ({
+      rank:Number(row.rank),
+      name:row.name,
+      score:Number(row.score),
+      isMe:Boolean(row.is_me),
+    }));
+  }
+
   async function getMyPracticeLeaderboardStatus() {
     const response = await client.rpc("get_my_practice_leaderboard_status");
     throwIfError(response);
@@ -210,6 +221,7 @@
     listSelfRegistered,
     assignSelfRegistered,
     getPracticeLeaderboard,
+    getPracticeTopicLeaderboard,
     getMyPracticeLeaderboardStatus,
     setPracticeLeaderboardConsent,
     signOut,
