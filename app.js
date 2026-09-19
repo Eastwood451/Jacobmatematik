@@ -763,6 +763,31 @@
   function leaderboardMedal(rank) {
     return rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `#${rank}`;
   }
+  function exerciseLeaderboardLink(topic) {
+    if (!usingCentralDatabase || isGuest() || state.user?.role !== "student" || !TOPICS[topic]) return "";
+    return `<button type="button" class="btn secondary exercise-leaderboard-link" data-action="exercise-leaderboard" data-leaderboard-topic="${escapeHtml(topic)}">🏆 Leaderboard</button>`;
+  }
+  function closeExerciseLeaderboard() {
+    document.getElementById("exercise-leaderboard-dialog")?.remove();
+  }
+  async function openExerciseLeaderboard(topic) {
+    if (!usingCentralDatabase || state.user?.role !== "student" || !TOPICS[topic] || !backend?.getPracticeTopicLeaderboard) return;
+    closeExerciseLeaderboard();
+    const title=TOPICS[topic].name;
+    document.body.insertAdjacentHTML("beforeend", `<div class="leaderboard-dialog-backdrop" id="exercise-leaderboard-dialog"><section class="leaderboard-dialog exercise-leaderboard-dialog" role="dialog" aria-modal="true" aria-labelledby="exercise-leaderboard-title"><button type="button" class="exercise-leaderboard-close" data-action="close-exercise-leaderboard" aria-label="Luk leaderboard">×</button><div class="leaderboard-dialog-medal">🏆</div><span class="eyebrow">Klassen</span><h2 id="exercise-leaderboard-title">${escapeHtml(title)}</h2><p class="exercise-leaderboard-intro">Flest korrekte svar i denne øvelse.</p><ol class="leaderboard-list exercise-leaderboard-list"><li class="leaderboard-empty">Henter…</li></ol><small>Kun elever, der har sagt ja til leaderboardet, vises med navn.</small></section></div>`);
+    try {
+      const rows=await backend.getPracticeTopicLeaderboard(topic);
+      const list=document.querySelector("#exercise-leaderboard-dialog .exercise-leaderboard-list");
+      if (!list) return;
+      list.innerHTML=rows.length
+        ? rows.map(row => `<li class="${row.isMe ? "is-me" : ""}"><span class="leaderboard-rank">${leaderboardMedal(row.rank)}</span><strong>${escapeHtml(row.name)}</strong><span>${row.score} rigtige</span></li>`).join("")
+        : `<li class="leaderboard-empty">Ingen resultater på leaderboardet endnu.</li>`;
+    } catch (error) {
+      console.error("Øvelsens leaderboard kunne ikke hentes",error);
+      const list=document.querySelector("#exercise-leaderboard-dialog .exercise-leaderboard-list");
+      if (list) list.innerHTML=`<li class="leaderboard-empty">Leaderboardet kunne ikke hentes lige nu.</li>`;
+    }
+  }
   function renderPracticeLeaderboardCard() {
     if (!usingCentralDatabase || isGuest() || state.user?.role !== "student") return "";
     const status=practiceLeaderboard.status;
@@ -1055,7 +1080,7 @@
     </section>` : "";
 
     app.innerHTML = `${header()}<div class="page exercise-page">
-      <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${TOPICS[task.topic].name}</span></div>
+      <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button>${exerciseLeaderboardLink(task.topic)}<span class="topic-tag">${TOPICS[task.topic].name}</span></div>
       <section class="question-card">
         <div class="question-top"><span class="question-number">Opgave ${state.questionNumber}</span><div class="question-main ${attemptHistory ? "with-history" : ""}">${taskVisual}${attemptHistory}</div><p class="hint">${escapeHtml(task.hint || "Skriv dit svar nedenfor.")}</p></div>
         ${state.answered ? correctionSection : answerSection}
@@ -1151,7 +1176,7 @@
     const cycleStart = Math.floor((state.questionNumber - 1) / 10) * 10;
     const cycleAnswers = state.sessionAnswers.slice(cycleStart, cycleStart + 10);
     app.innerHTML = `${header()}<div class="page division-lollipop-page">
-      <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${TOPICS[task.topic].name}</span></div>
+      <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button>${exerciseLeaderboardLink(task.topic)}<span class="topic-tag">${TOPICS[task.topic].name}</span></div>
       <section class="division-lollipop-card">
         <div class="lollipop-card-head"><span class="question-number">Opgave ${state.questionNumber}</span><strong>${task.dividend} ÷ ${task.divisor}</strong></div>
         <div class="division-lollipop-layout">
@@ -1342,7 +1367,7 @@
     const cycleStart=Math.floor((state.questionNumber - 1) / 10) * 10;
     const cycleAnswers=state.sessionAnswers.slice(cycleStart, cycleStart + 10);
     app.innerHTML = `${header()}<div class="page subtraction-page">
-      <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${TOPICS[task.topic].name}</span></div>
+      <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button>${exerciseLeaderboardLink(task.topic)}<span class="topic-tag">${TOPICS[task.topic].name}</span></div>
       <section class="subtraction-card">
         <div class="subtraction-card-head"><span class="question-number">Opgave ${state.questionNumber}</span><strong>${task.minuend} − ${task.subtrahend}</strong></div>
         <div class="subtraction-layout">
@@ -1479,7 +1504,7 @@
     const images=`<div class="letter-prompt"><strong>${escapeHtml(task.target.letter)}</strong><p>Hvilket billede begynder med ${escapeHtml(task.target.letter)}?</p></div><div class="letter-choice-grid" role="group">${task.choices.map(item => `<button class="letter-picture-button" type="button" data-letter-answer="${item.letter}" aria-label="${escapeHtml(item.word)}"><img src="${item.image}" alt="${escapeHtml(item.word)}"></button>`).join("")}</div>`;
     const letters=`<div class="letter-prompt letter-image-prompt"><div><img src="${task.target.image}" alt="Billede til bogstavøvelsen"></div></div><div class="letter-choice-grid letter-key-grid" role="group" aria-label="Vælg det rigtige bogstav">${task.letterChoices.map(item => `<button class="letter-key-button" type="button" data-letter-answer="${item.letter}">${escapeHtml(item.letter)}</button>`).join("")}</div>`;
     app.innerHTML = `${header()}<div class="page exercise-page letter-learning-page">
-      <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">Bogstavlæring</span></div>
+      <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button>${exerciseLeaderboardLink("letters")}<span class="topic-tag">Bogstavlæring</span></div>
       <section class="letter-learning-card">
         <span class="question-number letter-step">Bogstav ${state.questionNumber} · trin ${phase === "learn" ? 1 : phase === "image-choice" ? 2 : 3} af 3</span>
         ${phase === "learn" ? learn : phase === "image-choice" ? images : letters}
@@ -1621,7 +1646,7 @@
     const timerStatus = state.showExerciseTimer
       ? `<span>Tid: <strong id="matrix-drill-time">${formatMatrixDrillTime(elapsed)}</strong></span>`
       : `<span class="table-drill-time-hidden">Tid skjult</span>`;
-    app.innerHTML = `${header()}<div class="page table-drill-page"><div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">${drill.previousTroubleRound ? `${drillName} · tidligere drillere` : drill.troubleRound ? `${drillName} · drillere` : drillName}</span></div>${window.ObbeCoach?.render() || ""}<section class="table-drill-card"><div class="table-drill-status">${timerStatus}<button class="table-drill-timer-toggle" type="button" data-action="toggle-exercise-timer" aria-pressed="${state.showExerciseTimer}">${state.showExerciseTimer ? "Skjul tid" : "Vis tid"}</button>${previousTroubleButton}<span>Fejl: <strong>${drill.errors}</strong></span><span>${progressLabel}: <strong>${completedInRound}/${drill.pairs.length}</strong></span></div><div class="table-drill-layout"><div class="table-drill-board">${grid}</div>${answerPanel}</div></section></div>`;
+    app.innerHTML = `${header()}<div class="page table-drill-page"><div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button>${exerciseLeaderboardLink(drill.topic)}<span class="topic-tag">${drill.previousTroubleRound ? `${drillName} · tidligere drillere` : drill.troubleRound ? `${drillName} · drillere` : drillName}</span></div>${window.ObbeCoach?.render() || ""}<section class="table-drill-card"><div class="table-drill-status">${timerStatus}<button class="table-drill-timer-toggle" type="button" data-action="toggle-exercise-timer" aria-pressed="${state.showExerciseTimer}">${state.showExerciseTimer ? "Skjul tid" : "Vis tid"}</button>${previousTroubleButton}<span>Fejl: <strong>${drill.errors}</strong></span><span>${progressLabel}: <strong>${completedInRound}/${drill.pairs.length}</strong></span></div><div class="table-drill-layout"><div class="table-drill-board">${grid}</div>${answerPanel}</div></section></div>`;
     window.ObbeCoach?.onDrill(drill);
   }
   function renderCountingHand(activeFingers, mirrored = false) {
@@ -2413,6 +2438,15 @@
     if (!actionButton) return;
     const action=actionButton.dataset.action;
 
+    if (action === "exercise-leaderboard") {
+      await openExerciseLeaderboard(actionButton.dataset.leaderboardTopic);
+      return;
+    }
+    if (action === "close-exercise-leaderboard") {
+      closeExerciseLeaderboard();
+      return;
+    }
+
     if (["leaderboard-join","leaderboard-decline","leaderboard-leave"].includes(action)) {
       if (!usingCentralDatabase || state.user?.role !== "student" || !backend?.setPracticeLeaderboardConsent) return;
       const currentRank=Number(actionButton.dataset.rank || practiceLeaderboard.status?.prospectiveRank || 0) || null;
@@ -2500,7 +2534,7 @@
       return;
     }
     if (action === "logout") { registrations.request++; Object.assign(registrations, { open:false, rows:[], search:"", offset:0, more:false, loading:false, error:"", notice:"" }); }
-    if (action==="logout") { closePracticeLeaderboardPrompt(); practiceLeaderboard.request++; Object.assign(practiceLeaderboard,{rows:[],status:null,loading:false,promptOpen:false}); clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,matrixDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
+    if (action==="logout") { closeExerciseLeaderboard(); closePracticeLeaderboardPrompt(); practiceLeaderboard.request++; Object.assign(practiceLeaderboard,{rows:[],status:null,loading:false,promptOpen:false}); clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,matrixDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
     if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
     if (action==="home") { clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); state.matrixDrill=null; state.task=null; state.view="student"; renderStudentHome(); }
     if (action==="subtraction-cannot" && state.task?.topic === "subtractionBorrowing") { startBorrowingSubtraction(); return; }
