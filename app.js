@@ -767,17 +767,27 @@
     if (!usingCentralDatabase || isGuest() || state.user?.role !== "student") return "";
     const status=practiceLeaderboard.status;
     const rows=practiceLeaderboard.rows;
+    const meRow=rows.find(row => row.isMe);
     const statusCopy=!status
-      ? "Henter stillingen…"
+      ? practiceLeaderboard.loading
+        ? "Henter stillingen…"
+        : "Leaderboardet aktiveres, når du er placeret i en klasse."
       : status.optedIn
-      ? `Du er med · ${status.score} rigtige opgaver`
+      ? meRow
+        ? `Du er nr. ${meRow.rank} · ${status.score} rigtige opgaver`
+        : `Du er tilmeldt · ${status.score} rigtige opgaver`
       : status.qualifies
       ? `Du ville lige nu ligge nr. ${status.prospectiveRank} · ${status.score} rigtige`
       : `${status.score} rigtige opgaver · fortsæt træningen for at nå top 10`;
+    const emptyCopy=!status && !practiceLeaderboard.loading
+      ? "Leaderboardet bliver synligt, når du er placeret i en klasse."
+      : "Ingen har skrevet sig på endnu.";
     return `<section class="practice-leaderboard" id="practice-leaderboard" aria-labelledby="practice-leaderboard-title">
       <div class="practice-leaderboard-head"><div><span class="eyebrow">Klassen</span><h2 id="practice-leaderboard-title">Leaderboard</h2><p>Flest korrekte opgaver. Kun elever, der selv har sagt ja, vises med navn.</p></div><strong class="leaderboard-my-status">${escapeHtml(statusCopy)}</strong></div>
-      <ol class="leaderboard-list">${practiceLeaderboard.loading && !rows.length ? `<li class="leaderboard-empty">Henter…</li>` : rows.length ? rows.map(row => `<li class="${row.isMe ? "is-me" : ""}"><span class="leaderboard-rank">${leaderboardMedal(row.rank)}</span><strong>${escapeHtml(row.name)}</strong><span>${row.score} rigtige</span></li>`).join("") : `<li class="leaderboard-empty">Ingen har skrevet sig på endnu.</li>`}</ol>
-      ${status?.optedIn ? `<button type="button" class="leaderboard-leave" data-action="leaderboard-leave">Fjern mig fra leaderboardet</button>` : ""}
+      <ol class="leaderboard-list">${practiceLeaderboard.loading && !status && !rows.length ? `<li class="leaderboard-empty">Henter…</li>` : rows.length ? rows.map(row => `<li class="${row.isMe ? "is-me" : ""}"><span class="leaderboard-rank">${leaderboardMedal(row.rank)}</span><strong>${escapeHtml(row.name)}</strong><span>${row.score} rigtige</span></li>`).join("") : `<li class="leaderboard-empty">${escapeHtml(emptyCopy)}</li>`}</ol>
+      <div class="leaderboard-card-actions">
+        ${status?.optedIn ? `<button type="button" class="leaderboard-leave" data-action="leaderboard-leave">Fjern mig fra leaderboardet</button>` : status?.qualifies ? `<button type="button" class="btn" data-action="leaderboard-join" data-rank="${status.prospectiveRank}">Skriv mig på leaderboardet</button>` : ""}
+      </div>
     </section>`;
   }
   function closePracticeLeaderboardPrompt() {
@@ -804,6 +814,7 @@
       if (request !== practiceLeaderboard.request || state.user?.id !== userId) return;
       practiceLeaderboard.rows=rows;
       practiceLeaderboard.status=status;
+      practiceLeaderboard.loading=false;
       const card=document.getElementById("practice-leaderboard");
       if (card) card.outerHTML=renderPracticeLeaderboardCard();
       if (prompt && status?.shouldPrompt) showPracticeLeaderboardPrompt(status);
