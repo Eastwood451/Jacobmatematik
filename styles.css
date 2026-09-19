@@ -765,3 +765,8 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
   .leaderboard-dialog-actions { flex-direction:column; }
   .leaderboard-dialog-actions .btn { width:100%; }
 }
+
+.leaderboard-card-actions { display:flex; align-items:center; gap:10px; margin-top:13px; }
+.leaderboard-card-actions:empty { display:none; }
+.leaderboard-card-actions .leaderboard-leave { margin-top:0; }
+@media(max-width:650px) { .leaderboard-card-actions .btn { width:100%; } }
