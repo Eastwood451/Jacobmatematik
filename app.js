@@ -764,7 +764,7 @@
     return rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `#${rank}`;
   }
   function exerciseLeaderboardLink(topic) {
-    const canShow=usingCentralDatabase && !isGuest() && TOPICS[topic] && (state.user?.role === "student" || (state.user?.role === "teacher" && jacobFrontend));
+    const canShow=!isGuest() && TOPICS[topic] && ["student","teacher"].includes(state.user?.role);
     if (!canShow) return "";
     return `<button type="button" class="btn secondary exercise-leaderboard-link" data-action="exercise-leaderboard" data-leaderboard-topic="${escapeHtml(topic)}">🏆 Leaderboard</button>`;
   }
@@ -772,7 +772,12 @@
     document.getElementById("exercise-leaderboard-dialog")?.remove();
   }
   async function openExerciseLeaderboard(topic) {
-    if (!usingCentralDatabase || !TOPICS[topic]) return;
+    if (!TOPICS[topic]) return;
+    if (!usingCentralDatabase) {
+      closeExerciseLeaderboard();
+      document.body.insertAdjacentHTML("beforeend", `<div class="leaderboard-dialog-backdrop" id="exercise-leaderboard-dialog"><section class="leaderboard-dialog exercise-leaderboard-dialog" role="dialog" aria-modal="true"><button type="button" class="exercise-leaderboard-close" data-action="close-exercise-leaderboard" aria-label="Luk leaderboard">×</button><div class="leaderboard-dialog-medal">🏆</div><h2>Leaderboard</h2><p>Leaderboardet kræver forbindelse til databasen.</p></section></div>`);
+      return;
+    }
     const teacherPreview=state.user?.role === "teacher" && jacobFrontend;
     const studentView=state.user?.role === "student";
     if (!teacherPreview && !studentView) return;
