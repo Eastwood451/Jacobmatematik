@@ -764,19 +764,28 @@
     return rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `#${rank}`;
   }
   function exerciseLeaderboardLink(topic) {
-    if (!usingCentralDatabase || isGuest() || state.user?.role !== "student" || !TOPICS[topic]) return "";
+    const canShow=usingCentralDatabase && !isGuest() && TOPICS[topic] && (state.user?.role === "student" || (state.user?.role === "teacher" && jacobFrontend));
+    if (!canShow) return "";
     return `<button type="button" class="btn secondary exercise-leaderboard-link" data-action="exercise-leaderboard" data-leaderboard-topic="${escapeHtml(topic)}">🏆 Leaderboard</button>`;
   }
   function closeExerciseLeaderboard() {
     document.getElementById("exercise-leaderboard-dialog")?.remove();
   }
   async function openExerciseLeaderboard(topic) {
-    if (!usingCentralDatabase || state.user?.role !== "student" || !TOPICS[topic] || !backend?.getPracticeTopicLeaderboard) return;
+    if (!usingCentralDatabase || !TOPICS[topic]) return;
+    const teacherPreview=state.user?.role === "teacher" && jacobFrontend;
+    const studentView=state.user?.role === "student";
+    if (!teacherPreview && !studentView) return;
     closeExerciseLeaderboard();
     const title=TOPICS[topic].name;
-    document.body.insertAdjacentHTML("beforeend", `<div class="leaderboard-dialog-backdrop" id="exercise-leaderboard-dialog"><section class="leaderboard-dialog exercise-leaderboard-dialog" role="dialog" aria-modal="true" aria-labelledby="exercise-leaderboard-title"><button type="button" class="exercise-leaderboard-close" data-action="close-exercise-leaderboard" aria-label="Luk leaderboard">×</button><div class="leaderboard-dialog-medal">🏆</div><span class="eyebrow">Klassen</span><h2 id="exercise-leaderboard-title">${escapeHtml(title)}</h2><p class="exercise-leaderboard-intro">Flest korrekte svar i denne øvelse.</p><ol class="leaderboard-list exercise-leaderboard-list"><li class="leaderboard-empty">Henter…</li></ol><small>Kun elever, der har sagt ja til leaderboardet, vises med navn.</small></section></div>`);
+    const previewClassId=teacherPreview ? (state.activeClassId && state.activeClassId !== UNASSIGNED_CLASS_ID ? state.activeClassId : db.classes?.[0]?.id) : null;
+    const previewClassName=teacherPreview ? db.classes?.find(item => item.id === previewClassId)?.name : "";
+    document.body.insertAdjacentHTML("beforeend", `<div class="leaderboard-dialog-backdrop" id="exercise-leaderboard-dialog"><section class="leaderboard-dialog exercise-leaderboard-dialog" role="dialog" aria-modal="true" aria-labelledby="exercise-leaderboard-title"><button type="button" class="exercise-leaderboard-close" data-action="close-exercise-leaderboard" aria-label="Luk leaderboard">×</button><div class="leaderboard-dialog-medal">🏆</div><span class="eyebrow">${teacherPreview && previewClassName ? escapeHtml(previewClassName) : "Klassen"}</span><h2 id="exercise-leaderboard-title">${escapeHtml(title)}</h2><p class="exercise-leaderboard-intro">Flest korrekte svar i denne øvelse.</p><ol class="leaderboard-list exercise-leaderboard-list"><li class="leaderboard-empty">Henter…</li></ol><small>Kun elever, der har sagt ja til leaderboardet, vises med navn.</small></section></div>`);
     try {
-      const rows=await backend.getPracticeTopicLeaderboard(topic);
+      if (teacherPreview && !previewClassId) throw new Error("Ingen klasse valgt.");
+      const rows=teacherPreview
+        ? await backend.getTeacherPracticeTopicLeaderboard(topic,previewClassId)
+        : await backend.getPracticeTopicLeaderboard(topic);
       const list=document.querySelector("#exercise-leaderboard-dialog .exercise-leaderboard-list");
       if (!list) return;
       list.innerHTML=rows.length
