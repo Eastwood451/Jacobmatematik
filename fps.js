@@ -13,7 +13,7 @@ const gameNow = () => gameTime;
 const inputReady = () => touch?.enabled ? touch.active : controls.isLocked;
 const enterControls = () => touch?.enabled ? void touch.enter() : controls.lock();
 import { createSchoolWindows } from './fps-windows.js?v=20260907-windows1';
-import { createGameVoicePlayer } from './fps-voice.js?v=20260920-erling-hit1';
+import { createGameVoicePlayer } from './fps-voice.js?v=20260920-captain1';
 const gameVoice = createGameVoicePlayer();
 import { createPlayerMovement } from './fps-movement.js?v=20260909-touch2';
 import { createDuctBuilder } from './fps-ducts.js?v=20260907-ducts1';
@@ -26,7 +26,7 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 import { createErlingRig, animateErling, disposeErlingRig, addSchoolWallArt } from './fps-visuals.js?v=20260914-gun1';
 import { createGunnarRig, animateGunnar, disposeGunnarRig } from './fps-gunnar.js?v=20260910-slime1';
 import { createElseRig, animateElse, disposeElseRig } from './fps-else.js?v=20260909-shockwaves2';
-import { createCaptainHologram } from './fps-captain-hologram.js?v=20260920-captain2';
+import { createCaptainHologram } from './fps-captain-hologram.js?v=20260920-captain3';
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
@@ -51,7 +51,7 @@ scene.add(camera);
 const minigun=createMinigunPowerup();
 const minigunView=createMinigunView(scene,camera);
 const minigunSound=createMinigunSound(()=>audioCtx);
-const captainHologram=createCaptainHologram({camera});
+const captainHologram=createCaptainHologram({\n  playVoice:text => { gameVoice.stop(); return gameVoice.play(text,{volume:1,exact:true}); },\n  stopVoice:() => gameVoice.stop(),\n});
 
 const hemisphere = new THREE.HemisphereLight(0xf4f1dc, 0xa4a29a, 2.2);
 scene.add(hemisphere);
