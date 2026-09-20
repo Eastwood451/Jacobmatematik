@@ -884,6 +884,7 @@
     ];
     const card = key => {
       const topic = TOPICS[key];
+      if (key === "numbers") return `<button type="button" class="topic-card numbers-banner" data-topic="numbers"><span class="numbers-banner-copy"><span class="topic-icon">${topic.icon}</span><strong>${topic.name}</strong><small>${topic.description}</small></span><span class="numbers-banner-art" aria-hidden="true"><img src="assets/figurer/tallene-talvenner.webp" width="2172" height="724" alt="" loading="lazy" decoding="async"></span></button>`;
       return `<button type="button" class="topic-card" data-topic="${key}"><span class="topic-icon">${topic.icon}</span><strong>${topic.name}</strong><small>${topic.description}</small></button>`;
     };
     const fractionCard = fractionPilotCard();
