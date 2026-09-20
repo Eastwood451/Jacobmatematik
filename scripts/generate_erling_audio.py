@@ -28,6 +28,10 @@ LINES = [
     ("hold-op-med-at-oeve-dig", "Hold op med at øve dig!"),
     ("giv-nu-bare-op", "Giv nu bare op!"),
     ("kom-og-vaer-sur", "Kom og vær sur sammen med mig!"),
+    ("din-matematik-er-staerk", "Din matematik er stærk - men min surhed er stærkere!"),
+    ("du-snyder", "Du SNYDER!"),
+    ("du-kiggede-efter", "Du KIGGEDE EFTER!"),
+    ("u-sejt", "U-sejt!"),
 ]
 
 
