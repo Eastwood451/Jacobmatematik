@@ -1,6 +1,6 @@
 // Bundled recordings only: playback never depends on browser/OS voices.
 export function createGameVoicePlayer() {
-  const voiceData = fetch(new URL('./fps-voice-lines.json?v=20260920-erling-hit1', import.meta.url))
+  const voiceData = fetch(new URL('./fps-voice-lines.json?v=20260920-captain1', import.meta.url))
     .then(response => {
       if (!response.ok) throw new Error(`Voice manifest: HTTP ${response.status}`);
       return response.json();
