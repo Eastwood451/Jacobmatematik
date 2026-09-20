@@ -38,7 +38,13 @@ async def main(force=False):
                         raise
                     await asyncio.sleep(1 + attempt)
             filtered = Path(temporary) / "normalized.mp3"
-            tone = "equalizer=f=180:t=q:w=1:g=3," if line["character"] == "erling" else ""
+            tone = (
+                "equalizer=f=180:t=q:w=1:g=3,"
+                if line["character"] == "erling"
+                else "equalizer=f=125:t=q:w=1:g=5,equalizer=f=250:t=q:w=1:g=2,"
+                if line["character"] == "captain"
+                else ""
+            )
             subprocess.run([
                 ffmpeg, "-y", "-loglevel", "error", "-i", str(raw),
                 "-af", "highpass=f=70,lowpass=f=6500," + tone
