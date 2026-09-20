@@ -637,41 +637,19 @@
     const signup = state.view === "signup";
     app.innerHTML = `
       <div class="login-wrap">
-        <section class="login-intro">
-          <div class="login-copy">
-            <h1>Matematik på solidt fundament</h1>
-          </div>
-          <div class="login-mastery-tower">
-            <img class="login-mastery-tower-image" src="assets/figurer/matematik-mestringstaarn.webp?v=20260907-no-smykker1" width="858" height="1832" alt="Matematik-mestringstårn med Erling Ærgerlig nederst, Luigi Lækkermat med sine pizzaer, Divisions-Dennis med slikkepinde og Kaptajn Kvadratrod øverst" fetchpriority="high" decoding="async">
-          </div>
-          <div class="character-stage" aria-label="Figurerne fra Jacob Matematik">
-            <figure class="character-card captain" data-kaptajn-audio role="button" tabindex="0" aria-label="Afspil Kaptajn Kvadratrods superheltereplik">
-              <div class="character-frame"><img src="assets/figurer/kaptajn-kvadratrod.webp" width="900" height="1350" alt="Kaptajn Kvadratrod med passer og lommeregner" decoding="async"></div>
-              <figcaption>Kaptajn Kvadratrod</figcaption>
-            </figure>
-            <figure class="character-card dennis">
-              <div class="character-frame"><img src="assets/figurer/divisions-dennis.webp" width="900" height="1350" alt="Divisions-Dennis med divisionsslikkepinde" decoding="async"></div>
-              <figcaption>Divisions-Dennis</figcaption>
-            </figure>
-            <figure class="character-card luigi" data-luigi-audio role="button" tabindex="0" aria-label="Afspil Luigi Lækkermats italienske replik">
-              <div class="character-frame"><img src="assets/figurer/luigi-laekkermat.webp?v=20260907-no-smykker1" width="900" height="1350" alt="Luigi Lækkermat med multiplikationspizzaer" decoding="async"></div>
-              <figcaption>Luigi Lækkermat</figcaption>
-            </figure>
-            <figure class="character-card erling" data-erling-audio role="button" tabindex="0" aria-label="Afspil en sur kommentar fra Erling Ærgerlig">
-              <div class="character-frame"><img src="assets/figurer/erling-aergerlig.webp" width="630" height="1080" alt="Erling Ærgerlig" decoding="async"></div>
-              <figcaption>Erling Ærgerlig</figcaption>
-            </figure>
-          </div>
-          <div class="login-drill-team">
-            <figure class="character-card else">
-              <div class="character-frame"><img src="assets/figurer/eksamens-else.webp" alt="Eksamens-Else" decoding="async"></div>
-              <figcaption>Eksamens-Else</figcaption>
-            </figure>
-            ${window.ObbeCoach?.render(true) || ""}
-            <figure class="character-card gunnar">
-              <div class="character-frame"><img src="assets/figurer/gunnar-gider-ik.webp" alt="Gunnar Giderik" decoding="async"></div>
-              <figcaption>Gunnar Giderik</figcaption>
-            </figure>
+        <section class="login-intro login-illustrated-intro" aria-label="Velkommen til Jacobmatematik">
+          <h1 class="sr-only">Jacobmatematik – Byg matematikfærdigheder på et stærkt fundament!</h1>
+          <div class="login-scene">
+            <img class="login-scene-image" src="assets/figurer/jacobmatematik-sunny-school-v1.webp" width="1254" height="1254" alt="Matematiktårnet på en grøn græsmark under blå himmel og sol. Kaptajn Kvadratrod, Divisions-Dennis, Luigi og Erling sidder på tårnet. Øbbe Øvdig laver armbøjninger, Gunnar Giderik dovner under et træ, og bag skolen lurer Eksamens-Else med sin røde kuglepen." fetchpriority="high" decoding="async">
+            <button type="button" class="login-scene-hotspot scene-captain" data-kaptajn-audio aria-label="Hør Kaptajn Kvadratrod" title="Hør Kaptajn Kvadratrod"></button>
+            <button type="button" class="login-scene-hotspot scene-dennis character-card dennis" aria-label="Hør Divisions-Dennis" title="Hør Divisions-Dennis"></button>
+            <button type="button" class="login-scene-hotspot scene-luigi" data-luigi-audio aria-label="Hør Luigi Lækkermat" title="Hør Luigi Lækkermat"></button>
+            <button type="button" class="login-scene-hotspot scene-erling" data-erling-audio aria-label="Hør Erling Ærgerlig" title="Hør Erling Ærgerlig"></button>
+            <div data-obbe-card>
+              <button type="button" class="login-scene-hotspot scene-obbe" data-obbe-shout aria-label="Hør et tilråb fra Øbbe Øvdig" title="Hør Øbbe Øvdig"></button>
+              <span class="sr-only" data-obbe-bubble role="status"></span>
+              <button type="button" data-obbe-mute hidden aria-label="Lyd fra Øbbe Øvdig"></button>
+            </div>
           </div>
         </section>
         <section class="login-panel">

@@ -823,3 +823,17 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
   .numbers-banner-copy .topic-icon { margin-bottom:6px; }
   .numbers-banner-art { aspect-ratio:4.2; }
 }
+
+/* One continuous illustrated scene replaces the separate login portraits. */
+.login-intro.login-illustrated-intro{display:flex;flex-direction:column;justify-content:flex-start;align-items:center;padding:0;gap:0;min-height:0;background:#729d3a;overflow:hidden}
+.login-scene{position:relative;width:100%;flex:none}
+.login-scene-image{display:block;width:100%;height:auto}
+.login-scene .login-scene-hotspot{position:absolute;z-index:2;margin:0;padding:0;border:0;border-radius:12px;background:transparent;box-shadow:none;cursor:pointer;transform:none;animation:none}
+.login-scene .login-scene-hotspot:hover{transform:none;filter:none}
+.login-scene-hotspot:focus-visible{outline:3px solid white;outline-offset:2px;box-shadow:0 0 0 5px #17243d}
+.login-scene .scene-captain{left:40%;top:13%;width:25%;height:13%}
+.login-scene .scene-dennis{left:40%;top:32%;width:18%;height:14%}
+.login-scene .scene-luigi{left:37%;top:47%;width:21%;height:15%}
+.login-scene .scene-erling{left:41%;top:64%;width:15%;height:19%}
+.login-scene .scene-obbe{left:1%;top:67%;width:38%;height:28%}
+.login-illustrated-intro>.fps-trial-entry{flex:none;width:calc(100% - 48px);margin:20px auto 28px}
