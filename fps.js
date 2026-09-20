@@ -26,7 +26,7 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 import { createErlingRig, animateErling, disposeErlingRig, addSchoolWallArt } from './fps-visuals.js?v=20260914-gun1';
 import { createGunnarRig, animateGunnar, disposeGunnarRig } from './fps-gunnar.js?v=20260910-slime1';
 import { createElseRig, animateElse, disposeElseRig } from './fps-else.js?v=20260909-shockwaves2';
-import { createCaptainHologram } from './fps-captain-hologram.js?v=20260920-captain1';
+import { createCaptainHologram } from './fps-captain-hologram.js?v=20260920-captain2';
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
