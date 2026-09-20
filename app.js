@@ -867,12 +867,43 @@
     }
   }
 
+  function renderTopicTower(availableTopics) {
+    // Visual order runs from advanced topics at the top down to the foundation.
+    const levels = [
+      ["distributive"],
+      ["basics"],
+      ["negatives"],
+      ["pemdas"],
+      ["divisionLollipops", "divisionDrill"],
+      ["multiplication", "tableDrill"],
+      ["subtractionBorrowing"],
+      ["addition"],
+      ["numbers"],
+    ];
+    const card = key => {
+      const topic = TOPICS[key];
+      return `<button type="button" class="topic-card" data-topic="${key}"><span class="topic-icon">${topic.icon}</span><strong>${topic.name}</strong><small>${topic.description}</small></button>`;
+    };
+    const fractionCard = fractionPilotCard();
+    const towerTopics = new Set(levels.flat());
+    const otherTopics = availableTopics.filter(key => !towerTopics.has(key));
+    const extraCards = otherTopics.map(card).join("") + (isGuest() ? "" : `<button type="button" class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`);
+    return `<section class="topic-tower" aria-label="Byg din matematik nedefra">
+      <p class="topic-tower-intro"><span aria-hidden="true">↑</span> Byg videre på det, du kan. Start med Tallene nederst.</p>
+      ${fractionCard ? `<div class="topic-tower-row">${fractionCard}</div>` : ""}
+      ${levels.map(level => {
+        const visible = level.filter(key => availableTopics.includes(key));
+        return visible.length ? `<div class="topic-tower-row${visible.length === 2 ? " topic-tower-pair" : ""}">${visible.map(card).join("")}</div>` : "";
+      }).join("")}
+      <p class="topic-tower-base"><span aria-hidden="true">▰</span> Grundforståelse · dit fundament</p>
+    </section>${extraCards ? `<h2 class="section-label">Andre genveje</h2><section class="topic-tower-extras" aria-label="Andre genveje">${extraCards}</section>` : ""}`;
+  }
   function renderStudentHome() {
     const availableTopics = isGuest() ? Object.keys(TOPICS).filter(topic => GUEST_TOPICS.has(topic)) : Object.keys(TOPICS);
     const stats = availableTopics.map(topic => ({ topic, ...getStats(state.user, topic) }));
     const total = practiceResults(state.user).length;
     const guestCopy = isGuest() ? `<p class="guest-session-note">Din træning er midlertidig og slettes, når du forlader siden.</p>` : "";
-    app.innerHTML = `${header()}<div class="page student-home-layout">${renderMathTower(availableTopics)}<div class="student-home-content"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section>${renderPracticeLeaderboardCard()}${isGuest() ? "" : `<a class="foodtruck-card" href="#foodtruck" data-action="foodtruck"><img src="assets/figurer/luigi-laekkermat-cutout.webp" alt="" width="78" height="94"><span><strong>Luigis Foodtruck</strong><small>Del råvarerne med brøker, og byg din egen burger.</small></span><span aria-hidden="true">→</span></a>`}<h2 class="section-label">Vælg et område</h2><section class="topic-grid">${fractionPilotCard()}${availableTopics.map(key => { const t=TOPICS[key]; return `<button class="topic-card" data-topic="${key}"><span class="topic-icon">${t.icon}</span><strong>${t.name}</strong><small>${t.description}</small></button>`; }).join("")}${isGuest() ? "" : `<button class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`}</section><h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div></div>`;
+    app.innerHTML = `${header()}<div class="page student-home-layout">${renderMathTower(availableTopics)}<div class="student-home-content"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section>${renderPracticeLeaderboardCard()}${isGuest() ? "" : `<a class="foodtruck-card" href="#foodtruck" data-action="foodtruck"><img src="assets/figurer/luigi-laekkermat-cutout.webp" alt="" width="78" height="94"><span><strong>Luigis Foodtruck</strong><small>Del råvarerne med brøker, og byg din egen burger.</small></span><span aria-hidden="true">→</span></a>`}<h2 class="section-label">Vælg et område</h2>${renderTopicTower(availableTopics)}<h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div></div>`;
     if (usingCentralDatabase && !isGuest()) void refreshPracticeLeaderboard({ prompt:true });
   }
   function renderStudentPassword() {
@@ -2746,3 +2777,4 @@
   }
   start();
 })();
+

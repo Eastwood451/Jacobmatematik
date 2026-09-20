@@ -786,3 +786,29 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
   .exercise-head .exercise-leaderboard-link { margin-left:0; }
   .exercise-head .topic-tag { width:100%; }
 }
+
+
+/* One continuous column of skill levels, built from the foundation upward. */
+.topic-tower { display:flex; flex-direction:column; gap:12px; width:100%; margin:0 0 30px; }
+.topic-tower-intro { display:flex; align-items:center; gap:10px; margin:0 0 4px; color:var(--muted); font-size:14px; line-height:1.5; }
+.topic-tower-intro>span { color:var(--purple); font-size:24px; font-weight:800; }
+.topic-tower-row { display:grid; grid-template-columns:minmax(0,1fr); gap:12px; }
+.topic-tower-row.topic-tower-pair { grid-template-columns:repeat(2,minmax(0,1fr)); }
+.topic-tower .topic-card { width:100%; min-width:0; min-height:116px; padding:18px 22px; border-radius:16px; box-shadow:0 4px 12px rgba(29,38,62,.045); }
+.topic-tower .topic-icon { margin-bottom:10px; }
+.topic-tower .topic-card strong { line-height:1.3; }
+.topic-tower .topic-card small { line-height:1.5; }
+.topic-tower .topic-card:focus-visible,.topic-tower-extras .topic-card:focus-visible { outline:3px solid var(--purple); outline-offset:3px; }
+.topic-tower-row:last-of-type .topic-card { border-color:#b8afee; background:linear-gradient(135deg,#fffefa,#f1edff); }
+.topic-tower-base { display:flex; align-items:center; justify-content:center; gap:8px; margin:-2px 0 0; padding:13px 16px; border-radius:5px 5px 14px 14px; background:#343b46; color:#fff3d7; font-size:12px; font-weight:800; letter-spacing:.025em; }
+.topic-tower-extras { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; margin-bottom:30px; }
+.topic-tower-extras .topic-card { min-width:0; }
+@media(max-width:560px) {
+  .topic-tower,.topic-tower-row { gap:9px; }
+  .topic-tower .topic-card { padding:15px 13px; min-height:115px; border-radius:13px; }
+  .topic-tower .topic-icon { font-size:24px; }
+  .topic-tower .topic-card strong { font-size:14px; overflow-wrap:anywhere; }
+  .topic-tower .topic-card small { font-size:12px; }
+  .topic-tower-intro { font-size:12px; }
+  .topic-tower-extras { grid-template-columns:minmax(0,1fr); }
+}
