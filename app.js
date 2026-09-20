@@ -653,6 +653,7 @@
           </div>
         </section>
         <section class="login-panel">
+          <div class="login-poster-note" aria-hidden="true">MATEMATIK<br>GØR DIG<br>STÆRKERE</div>
           <form class="login-card" id="${signup ? "signup-form" : "login-form"}">
             <div class="login-brand"><span class="brand-mark" aria-hidden="true">∑</span><span>jacobmatematik</span></div>
             <h2>${signup ? "Opret bruger" : "Godt at se dig"}</h2>
@@ -664,7 +665,10 @@
             <button class="btn full" type="submit">${signup ? "Opret bruger" : "Log ind"}</button>
             <div class="login-divider"><span>eller</span></div>
             <button class="btn secondary full" type="button" data-action="${signup ? "show-login" : "show-signup"}">${signup ? "Tilbage til login" : "Opret bruger"}</button>
+            <p class="login-card-quote">Små fremskridt hver dag<br><strong>skaber store resultater</strong></p>
           </form>
+          <div class="login-horizon" aria-hidden="true"><span></span><span></span><span></span></div>
+          <div class="login-poster-tagline" aria-hidden="true">BEDRE MATEMATIK<br>EN LYSERE FREMTID</div>
         </section>
       </div>`;
     if (window.matchMedia("(min-width: 901px) and (pointer: fine)").matches) document.getElementById("username").focus();
