@@ -6,6 +6,8 @@ on:
     paths:
       - '.github/workflows/generate-erling-audio.yml'
       - 'scripts/generate_erling_audio.py'
+      - 'scripts/generate_fps_audio.py'
+      - 'fps-voice-lines.json'
 
 permissions:
   contents: write
@@ -29,10 +31,13 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
           python -m pip install --upgrade pip
-          pip install edge-tts certifi
+          pip install edge-tts certifi imageio-ffmpeg
 
       - name: Generate missing Erling recordings
         run: python scripts/generate_erling_audio.py
+
+      - name: Generate missing FPS recordings
+        run: python scripts/generate_fps_audio.py
 
       - name: Add new Erling clips to main page
         run: |
