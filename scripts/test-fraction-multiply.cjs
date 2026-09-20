@@ -158,6 +158,7 @@ const pass=s=>{reports.push(s);console.log('PASS',s);};
    assert.equal(await p.locator('.login-wrap').count(),1);assert.equal(await p.locator('[data-fa-mode]').count(),0);await p.close();
    pass('Actual app teacher toggle and logout during multiplication keep authorization intact and leave no stale lesson or student writes.');
   }
+  await require('./test-fraction-mixed.cjs')(browser);
   assert.deepEqual(errors,[]);pass('No uncaught browser errors.');
   fs.writeFileSync(path.join(out,'summary.txt'),reports.join('\n')+'\n');
  } finally {await browser.close();}

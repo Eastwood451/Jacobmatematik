@@ -35,10 +35,10 @@
     if (op==="+" && index%2) [a,b,c,d]=[c,d,a,b];
     return {a,b,c,d,op};
   }
-  function mount(root,{user,op="+",onExit=()=>{}}={}) {
+  function mount(root,{user,op="+",onExit=()=>{},onNext=null,startIndex=0,initialCompleted=0,mixed=false}={}) {
     if (!root || !division.isEnabled(user)) return () => {};
     if (!window.JacobFractionFinish) throw new Error("Fraction finish component is not loaded");
-    let index=0,p=createProblem(op),q=plan(p),phase="operation",completed=0;
+    let index=startIndex,p=createProblem(op,startIndex),q=plan(p),phase="operation",completed=initialCompleted;
     let active=0,converted=[false,false],factor=0,selected="",feedback="",kind="",finish=null;
     let values={numerator:"",denominator:""},status={},disposed=false,locked=false,nextReady=false;
     const timers=new Set();
@@ -118,7 +118,7 @@
       const step=phase==="operation" ? 1 : phase==="rule" ? 2 : phase==="combine" ? 4 : finish ? 5 : 3;
       const progress=steps.map((label,i)=>`<span class="${done || i+1<step ? "complete" : i+1===step ? "current" : ""}"><b>${done || i+1<step ? "✓" : i+1}</b>${label}</span>`).join("");
       const rewritten=converted.some(Boolean) ? `<div class="fa-rewritten"><span>Brøkerne undervejs</span>${equation(expression(converted[0] ? q.numerators[0] : p.a,converted[0] ? q.denominator : p.b,converted[1] ? q.numerators[1] : p.c,converted[1] ? q.denominator : p.d),"Brøkerne undervejs")}</div>` : "";
-      root.innerHTML=`<section class="fl-page fa-page" data-fa-phase="${phase}" aria-labelledby="fl-title"><div class="fl-heading"><button type="button" class="fl-back" data-fa-exit>← Til øvelser</button><span class="fl-pilot">Test · kun Jacob</span></div><div class="fl-title-row"><div><p class="fl-eyebrow">Forstå regnestykket før du regner</p><h1 id="fl-title">Lær brøkregning · ${op==="+" ? "plus" : "minus"}</h1></div><span class="fl-count">${completed} gennemført</span></div><div class="fl-steps" aria-label="Trin ${step} af ${steps.length}">${progress}</div><div class="fl-workspace"><div class="fl-problem-panel"><span class="fl-problem-label">Oprindeligt regnestykke</span><div class="fl-expression" role="math" aria-label="${p.a} over ${p.b} ${op==="+" ? "plus" : "minus"} ${p.c} over ${p.d}"><span class="fl-expression-drawing" aria-hidden="true">${expression(p.a,p.b,p.c,p.d)}</span></div>${rewritten}</div><div class="fl-question-panel">${finish ? finish.html() : panel()}${done ? `<button type="button" class="fl-primary" data-fa-next ${nextReady ? "" : "disabled"}>Næste opgave →</button>` : ""}</div></div></section>`;
+      root.innerHTML=`<section class="fl-page fa-page" data-fa-phase="${phase}" aria-labelledby="fl-title"><div class="fl-heading"><button type="button" class="fl-back" data-fa-exit>← Til øvelser</button><span class="fl-pilot">Test · kun Jacob</span></div><div class="fl-title-row"><div><p class="fl-eyebrow">Forstå regnestykket før du regner</p><h1 id="fl-title">Lær brøkregning · ${mixed ? "blandede opgaver" : op==="+" ? "plus" : "minus"}</h1></div><span class="fl-count">${completed} gennemført</span></div><div class="fl-steps" aria-label="Trin ${step} af ${steps.length}">${progress}</div><div class="fl-workspace"><div class="fl-problem-panel"><span class="fl-problem-label">Oprindeligt regnestykke</span><div class="fl-expression" role="math" aria-label="${p.a} over ${p.b} ${op==="+" ? "plus" : "minus"} ${p.c} over ${p.d}"><span class="fl-expression-drawing" aria-hidden="true">${expression(p.a,p.b,p.c,p.d)}</span></div>${rewritten}</div><div class="fl-question-panel">${finish ? finish.html() : panel()}${done ? `<button type="button" class="fl-primary" data-fa-next ${nextReady ? "" : "disabled"}>Næste opgave →</button>` : ""}</div></div></section>`;
       if(focus) root.querySelector(focus)?.focus({preventScroll:true});
     }
     function wrong(message) { kind="incorrect";feedback=message;render("#fl-question"); }
@@ -179,6 +179,7 @@
       if(button.hasAttribute("data-fa-exit")) { onExit();return; }
       if(button.hasAttribute("data-fa-next")) {
         if(phase!=="done" || !nextReady) return;
+        if(onNext) { nextReady=false; onNext(completed); return; }
         p=createProblem(op,++index);q=plan(p);converted=[false,false];active=0;factor=0;finish=null;locked=false;nextReady=false;
         move("operation");render("#fl-question");return;
       }
@@ -231,16 +232,43 @@
   // The shell shares one multiplication/division engine and keeps the same authorization role.
   function mountPractice(root,options={}) {
     if(!root || !division.isEnabled(options.user)) return ()=>{};
-    root.innerHTML='<div class="fa-mode-nav" role="group" aria-label="Vælg øvelse"><span>Øv regneart</span><button type="button" data-fa-mode="division" aria-pressed="true">: Division</button><button type="button" data-fa-mode="plus" aria-pressed="false">+ Plus</button><button type="button" data-fa-mode="minus" aria-pressed="false">− Minus</button><button type="button" data-fa-mode="multiply" aria-pressed="false">· Gange</button></div><div data-fa-lesson></div>';
+    root.innerHTML='<div class="fa-mode-nav" role="group" aria-label="Vælg øvelse"><span>Øv regneart</span><button type="button" data-fa-mode="mixed" aria-pressed="false">Blandede opgaver</button><button type="button" data-fa-mode="division" aria-pressed="true">: Division</button><button type="button" data-fa-mode="plus" aria-pressed="false">+ Plus</button><button type="button" data-fa-mode="minus" aria-pressed="false">− Minus</button><button type="button" data-fa-mode="multiply" aria-pressed="false">· Gange</button></div><div data-fa-lesson></div>';
     const nav=root.querySelector(".fa-mode-nav"),content=root.querySelector("[data-fa-lesson]");
-    let mode="division",disposed=false,cleanup=division.mount(content,options);
+    const modes=["division","plus","minus","multiply"];
+    let mode="division",disposed=false,cleanup=()=>{},bag=[],lastMixed="",mixedCompleted=0;
+    function nextMixedMode() {
+      if(!bag.length) {
+        bag=[...modes];
+        for(let i=bag.length-1;i>0;i--) {
+          const j=Math.floor(Math.random()*(i+1));
+          [bag[i],bag[j]]=[bag[j],bag[i]];
+        }
+        if(bag[0]===lastMixed) [bag[0],bag[1]]=[bag[1],bag[0]];
+      }
+      return lastMixed=bag.shift();
+    }
+    function showLesson() {
+      cleanup();
+      content.innerHTML="";
+      const selected=mode==="mixed" ? nextMixedMode() : mode;
+      const config=mode==="mixed" ? {...options,mixed:true,startIndex:mixedCompleted+1,initialCompleted:mixedCompleted,
+        onNext(count) {
+          if(disposed || mode!=="mixed") return;
+          mixedCompleted=count;showLesson();
+          content.querySelector("#fl-question")?.focus({preventScroll:true});
+        }
+      } : options;
+      cleanup=["division","multiply"].includes(selected) ? division.mount(content,{...config,operation:selected}) : mount(content,{...config,op:selected==="plus" ? "+":"-"});
+    }
     function change(event) {
       const button=event.target.closest("[data-fa-mode]");
-      if(disposed || !button || !nav.contains(button) || !["division","plus","minus","multiply"].includes(button.dataset.faMode) || button.dataset.faMode===mode) return;
-      cleanup();content.innerHTML="";mode=button.dataset.faMode;
+      if(disposed || !button || !nav.contains(button) || ![...modes,"mixed"].includes(button.dataset.faMode) || button.dataset.faMode===mode) return;
+      mode=button.dataset.faMode;
+      bag=[];lastMixed="";mixedCompleted=0;
       nav.querySelectorAll("[data-fa-mode]").forEach(el=>el.setAttribute("aria-pressed",String(el.dataset.faMode===mode)));
-      cleanup=["division","multiply"].includes(mode) ? division.mount(content,{...options,operation:mode}) : mount(content,{...options,op:mode==="plus" ? "+":"-"});
+      showLesson();
     }
+    showLesson();
     nav.addEventListener("click",change);
     return ()=>{if(disposed)return;disposed=true;cleanup();nav.removeEventListener("click",change);};
   }
