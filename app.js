@@ -640,7 +640,7 @@
         <section class="login-intro login-illustrated-intro" aria-label="Velkommen til Jacobmatematik">
           <h1 class="sr-only">Jacobmatematik – Byg matematikfærdigheder på et stærkt fundament!</h1>
           <div class="login-scene">
-            <img class="login-scene-image" src="assets/figurer/jacobmatematik-sunny-school-v1.webp" width="1254" height="1254" alt="Matematiktårnet på en grøn græsmark under blå himmel og sol. Kaptajn Kvadratrod, Divisions-Dennis, Luigi og Erling sidder på tårnet. Øbbe Øvdig laver armbøjninger, Gunnar Giderik dovner under et træ, og bag skolen lurer Eksamens-Else med sin røde kuglepen." fetchpriority="high" decoding="async">
+            <img class="login-scene-image" src="assets/figurer/jacobmatematik-sunny-school-v2.webp" width="1254" height="1254" alt="Matematiktårnet på en grøn græsmark under blå himmel og sol. Kaptajn Kvadratrod, Divisions-Dennis, Luigi og Erling sidder på tårnet. Øbbe Øvdig laver armbøjninger, Gunnar Giderik dovner under et træ, og bag skolen lurer Eksamens-Else med sin røde kuglepen." fetchpriority="high" decoding="async">
             <button type="button" class="login-scene-hotspot scene-captain" data-kaptajn-audio aria-label="Hør Kaptajn Kvadratrod" title="Hør Kaptajn Kvadratrod"></button>
             <button type="button" class="login-scene-hotspot scene-dennis character-card dennis" aria-label="Hør Divisions-Dennis" title="Hør Divisions-Dennis"></button>
             <button type="button" class="login-scene-hotspot scene-luigi" data-luigi-audio aria-label="Hør Luigi Lækkermat" title="Hør Luigi Lækkermat"></button>
@@ -2759,4 +2759,3 @@
   }
   start();
 })();
-
