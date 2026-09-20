@@ -1090,7 +1090,7 @@
     const learnedNumberTask = task.topic === "numbers" && numberCoins.some(item => item.number === Number(task.answer));
     const keypadNumbers = task.topic === "numbers"
       ? (learnedNumberTask ? shuffle(SMALL_TABLES) : ORDERED_NUMBER_KEYS)
-      : shuffle(SINGLE_DIGITS);
+      : [...SINGLE_DIGITS.slice(1), 0];
     const signedKey = task.topic === "numbers"
       ? ""
       : `<button class="key utility" type="button" data-key="minus" aria-label="Minustegn">−</button>`;
