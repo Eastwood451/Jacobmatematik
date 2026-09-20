@@ -26,6 +26,7 @@ import { PointerLockControls } from 'three/addons/controls/PointerLockControls.j
 import { createErlingRig, animateErling, disposeErlingRig, addSchoolWallArt } from './fps-visuals.js?v=20260914-gun1';
 import { createGunnarRig, animateGunnar, disposeGunnarRig } from './fps-gunnar.js?v=20260910-slime1';
 import { createElseRig, animateElse, disposeElseRig } from './fps-else.js?v=20260909-shockwaves2';
+import { createCaptainHologram } from './fps-captain-hologram.js?v=20260920-captain1';
 
 const canvas = document.getElementById('game');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
@@ -50,6 +51,7 @@ scene.add(camera);
 const minigun=createMinigunPowerup();
 const minigunView=createMinigunView(scene,camera);
 const minigunSound=createMinigunSound(()=>audioCtx);
+const captainHologram=createCaptainHologram({camera});
 
 const hemisphere = new THREE.HemisphereLight(0xf4f1dc, 0xa4a29a, 2.2);
 scene.add(hemisphere);
@@ -268,6 +270,7 @@ let lives = 5;
 let ammo = 0;
 let score = 0;
 let erlingKills = 0;
+let erlingDefeats = 0;
 let erlingSpawnElapsed = 0;
 let schoolyardPoints = 0;
 let answer = '';
@@ -338,6 +341,7 @@ function updateBossHud() {
 
 function showVictory() {
   gameVoice.stop();
+  captainHologram.hide();
   elseAttacks.clear();
   clearStompWaves();
   gameActive = false;
@@ -612,6 +616,10 @@ function onEnemyDefeated(enemy) {
   }
   if (type === 'erling' || type === 'gunnar') erlingKills+=points;
   schoolyardPoints += type === 'erling' ? 1 : type === 'gunnar' ? 5 : 0;
+  if (type === 'erling') {
+    erlingDefeats++;
+    if (erlingDefeats % 10 === 0) void captainHologram.show(gameNow());
+  }
   if (schoolyardPoints >= schoolyardKillTarget && !schoolyardDoorOpen) {
     openSchoolyardDoor();
     updateHUD();
@@ -905,6 +913,7 @@ function setSchoolyardLighting(active) {
 
 function enterSchoolyard() {
   if (schoolyardEntered) return;
+  captainHologram.hide();
   erlingFood.clear();
   gunnarProjectiles.clear();
   gunnarSlime.clear();
@@ -1087,6 +1096,7 @@ function hurt(enemy, projectileHit = false) {
   else if (enemy) removeEnemy(enemy);
   if (lives <= 0) {
     gameVoice.stop();
+    captainHologram.hide();
     gameActive = false;
     controls.unlock();
     document.getElementById('final-score').textContent = score;
@@ -1228,7 +1238,9 @@ function resetGame(online = false) {
   ammo = 0;
   score = 0;
   erlingKills = 0;
+  erlingDefeats = 0;
   schoolyardPoints = 0;
+  captainHologram.hide();
   campBoost = false;
   campMovementStartedAt = 0;
   lastPlayerMoveAt = gameNow();
@@ -1283,6 +1295,7 @@ function update(dt, time) {
   updateMinigun(dt);
   updateErlingSpawns(dt);
   updateSchoolyardArrows(time);
+  captainHologram.update(time);
 
   if (schoolyardDoorOpen && !schoolyardEntered && Math.abs(camera.position.x) < 1.9 && camera.position.z > 24.45) enterSchoolyard();
 
