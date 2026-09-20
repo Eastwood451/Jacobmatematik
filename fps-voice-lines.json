@@ -14,6 +14,11 @@
       "voice": "da-DK-ChristelNeural",
       "rate": "-16%",
       "pitch": "-8Hz"
+    },
+    "captain": {
+      "voice": "da-DK-JeppeNeural",
+      "rate": "-18%",
+      "pitch": "-26Hz"
     }
   },
   "lines": [
@@ -137,6 +142,21 @@
       "character": "gunnar",
       "text": "Hvorfor er du kun efter MIG?!",
       "trigger": "defeat"
+    },
+    {
+      "id": "kaptajn-ved-den-hellige-lommeregner",
+      "character": "captain",
+      "text": "Ved den hellige lommeregner! Du er den udvalgte!"
+    },
+    {
+      "id": "kaptajn-besejrer-surheden",
+      "character": "captain",
+      "text": "Du besejrer surheden med klogheden!"
+    },
+    {
+      "id": "kaptajn-stolt-unge-graeshoppe",
+      "character": "captain",
+      "text": "Jeg er stolt af dig, unge græshoppe!"
     }
   ]
 }
