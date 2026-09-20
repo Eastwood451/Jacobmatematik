@@ -279,6 +279,7 @@ let projectiles = [];
 let spawnVoiceIndex = 0;
 let moveVoiceIndex = 0;
 let gunnarVoiceIndex = 0;
+let lastGunnarDefeatVoiceIndex = -1;
 let lastErlingHitVoiceIndex = -1;
 let lastMoveVoiceAt = 0;
 let lastElseVoiceAt = 0;
@@ -467,6 +468,14 @@ function speakGunnar() {
   const lines = ['Jeg er den seje!', 'Giv mig din madpakke!', 'Gunnar in the house!'];
   speakLine(lines[gunnarVoiceIndex++ % lines.length], { rate:.92, pitch:.76, volume:.98 });
 }
+function speakGunnarDefeated() {
+  const lines = ['Buuh! Du er en stræber!', 'Det var ERLING, der gjorde det!', 'Hvorfor er du kun efter MIG?!'];
+  const choices = lines.map((_, index) => index).filter(index => index !== lastGunnarDefeatVoiceIndex);
+  const index = choices[rand(0, choices.length - 1)];
+  lastGunnarDefeatVoiceIndex = index;
+  gameVoice.stop();
+  speakLine(lines[index], { volume:1, exact:true });
+}
 function speakElse(force = false) {
   const now = gameNow();
   if (!force && now - lastElseVoiceAt < 6000) return;
@@ -587,6 +596,7 @@ function removeProjectile(p) {
 function onEnemyDefeated(enemy) {
   const type = enemy.type;
   if (type === 'gunnar') {
+    speakGunnarDefeated();
     gunnarSlime.burst(enemy.group.position);
     gunnarProjectiles.burst(enemy.group.position,camera.position);
     feedbackEl.textContent = 'SPLAT! Grønt snask over det hele!';
