@@ -394,6 +394,7 @@
   let switchingJacobView = false;
   let disposeFractionLesson = null;
   const appendCurrentPracticeResult = async result => {
+    if (isGuest()) return null; // Guest sessions are memory-only and must never reach Supabase.
     if (isFractionTester()) return null; // Teacher preview is session-only; never impersonate a student.
     const remoteId=await backend.appendResult(state.user.id, result);
     if (result?.correct === true && TOPICS[result?.topic]) {
@@ -423,7 +424,7 @@
     return canLearnFractions() ? `<button type="button" class="topic-card fraction-pilot-card" data-action="learn-fractions"><span class="topic-icon">½ : ¾</span><strong>Lær brøkregning</strong><small>Find regnearten, og vælg den rigtige regneregel.</small></button>` : "";
   }
 
-  const GUEST_TOPICS = new Set(["multiplication", "tableDrill", "divisionDrill", "divisionLollipops", "subtractionBorrowing"]);
+  const GUEST_TOPICS = new Set(Object.keys(TOPICS));
   const isGuest = () => state.user?.role === "guest";
   const createGuest = () => ({
     id:`guest-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`,
@@ -444,6 +445,7 @@
   let teacherResultsSignature = "";
   let teacherResultsCursor = null;
   const save = () => {
+    if (isGuest()) return Promise.resolve(); // Guest progress disappears when the session ends.
     if (!usingCentralDatabase) { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); return Promise.resolve(); }
     if (state.user?.role !== "teacher") return Promise.resolve();
     remoteSaveQueue = remoteSaveQueue
@@ -668,6 +670,7 @@
             <button class="btn full" type="submit">${signup ? "Opret bruger" : 'Log ind <span aria-hidden="true">→</span>'}</button>
             <div class="login-divider"><span>eller</span></div>
             <button class="btn secondary full" type="button" data-action="${signup ? "show-login" : "show-signup"}">${signup ? "Tilbage til login" : "Opret bruger"}</button>
+            ${signup ? "" : `<button class="btn guest-login full" type="button" data-action="guest-login">Gæst</button><small class="guest-login-note">Ingen resultater gemmes.</small>`}
             <p class="login-card-quote">SMÅ<br>FREMSKRIDT<br>STORE DRØMME</p>
           </form>
           <div class="login-poster-tagline" aria-hidden="true">BEDRE<br>MATEMATIK<br>EN LYSERE<br>FREMTID</div>
@@ -2531,6 +2534,19 @@
       render(); window.scrollTo(0,0); return;
     }
     if (["logout", "home", "change-password"].includes(action)) leaveFoodtruck();
+    if (action === "guest-login" && !state.user && !signupBusy) {
+      stopErlingAudio(); stopKaptajnAudio(); stopLuigiAudio(); stopLetterLearningAudio();
+      state.user=createGuest();
+      state.view="student";
+      state.task=null;
+      state.matrixDrill=null;
+      state.sessionAnswers=[];
+      state.sessionCorrect=0;
+      state.questionNumber=1;
+      renderStudentHome();
+      window.scrollTo(0,0);
+      return;
+    }
     if (["show-signup", "show-login"].includes(action) && !state.user && !signupBusy) { state.view = action === "show-signup" ? "signup" : "login"; renderLogin(); return; }
     if (action === "open-registration-profile") {
       if (!state.user?.canManageRegistrations || registrations.loading) return;
