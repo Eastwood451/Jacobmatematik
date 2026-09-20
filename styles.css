@@ -228,6 +228,7 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
 .subtraction-steps li.active { color:var(--purple-dark); }.subtraction-steps li.active>span { border-color:var(--purple); color:white; background:var(--purple); box-shadow:0 0 0 5px rgba(91,75,218,.12); }
 .subtraction-steps li.complete { color:#187550; }.subtraction-steps li.complete>span { border-color:var(--mint); color:white; background:var(--mint); }
 .subtraction-prompt h2 { margin:7px 0 9px; font-size:clamp(30px,4vw,43px); line-height:1.08; letter-spacing:-.035em; }
+.subtraction-borrow-subtitle { display:block; margin:-2px 0 12px; color:var(--muted); font-size:14px; font-weight:750; }
 .subtraction-prompt>p { margin-bottom:21px; color:var(--muted); line-height:1.5; }
 .subtraction-cannot { min-height:58px; font-size:19px; }
 .subtraction-keypad { display:grid; grid-template-columns:repeat(5,1fr); gap:8px; }
