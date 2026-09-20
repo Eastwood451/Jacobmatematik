@@ -128,3 +128,27 @@ body:has(.login-cinematic) .site-copyright { position:absolute; top:calc(75vw - 
   .login-cinematic .login-footer { bottom:22px; right:22px; }
   body:has(.login-cinematic) .site-copyright { position:fixed; top:auto; bottom:8px; left:10px; font-size:9px; }
 }
+
+
+/* Guest login */
+.login-cinematic .login-card .guest-login{
+  margin-top:12px;
+  min-height:52px;
+  color:#f8f3ff;
+  border:1px solid #8f79e8;
+  background:linear-gradient(135deg,#392d68,#493687);
+  box-shadow:0 7px 20px #160f3a40,inset 0 1px 0 #ffffff20;
+}
+.login-cinematic .login-card .guest-login:hover{
+  color:#fff;
+  border-color:#b09cff;
+  background:linear-gradient(135deg,#443478,#57409b);
+}
+.login-cinematic .guest-login-note{
+  display:block;
+  margin:8px 0 0!important;
+  color:#aebbd2!important;
+  text-align:center;
+  font-size:12px;
+  font-weight:650;
+}
