@@ -1,0 +1,130 @@
+/* The artwork follows the approved 1448 × 1086 poster. All form controls are HTML. */
+body:has(.login-cinematic) { margin:0; background:#030c1d; }
+.login-wrap.login-cinematic {
+  grid-template-columns:65% 35%; align-items:start; min-height:100svh;
+  overflow:hidden; background:#030c1d url("assets/figurer/jacobmatematik-cinematic-world-v1.webp") top center/100% auto no-repeat;
+}
+.login-cinematic::before { display:none; }
+.login-cinematic .login-intro.login-illustrated-intro {
+  min-height:0; padding:0; background:transparent; overflow:hidden;
+}
+.login-cinematic .login-scene {
+  width:100%; aspect-ratio:13/15; overflow:hidden; background:transparent; box-shadow:none;
+}
+.login-cinematic .login-scene::before,.login-cinematic .login-scene::after { display:none; }
+.login-cinematic .login-scene-image {
+  display:block; width:153.846154%; max-width:none; height:auto; filter:none;
+}
+.login-cinematic .login-scene-fps {
+  position:absolute; z-index:3; left:6%; top:78.3%; width:86%; height:16.5%;
+  border-radius:clamp(10px,1.5vw,25px); transition:box-shadow .2s; cursor:pointer;
+}
+.login-cinematic .login-scene-fps:hover { box-shadow:0 0 24px #efbd635c,inset 0 0 24px #efbd6330; }
+.login-cinematic .login-scene-fps:focus-visible { outline:3px solid #ffdb79; outline-offset:3px; }
+.login-cinematic .scene-captain { left:42%; top:14%; width:25%; height:12%; }
+.login-cinematic .scene-dennis { left:44%; top:29.5%; width:13%; height:11%; }
+.login-cinematic .scene-luigi { left:40%; top:41%; width:20%; height:12%; }
+.login-cinematic .scene-erling { left:41%; top:54.5%; width:15%; height:16%; }
+.login-cinematic .scene-obbe { left:0; top:53.5%; width:40%; height:23%; }
+.login-cinematic .login-panel {
+  display:block; min-width:0; min-height:75vw; padding:10.75vw 3.5vw 13.5vw 0;
+  border:0; background:transparent; box-shadow:none; overflow:visible;
+}
+.login-cinematic .login-panel::before,.login-cinematic .login-panel::after { display:none; }
+.login-cinematic .login-card {
+  isolation:isolate; display:flex; flex-direction:column; width:100%; max-width:none;
+  min-height:49.3vw; margin:0; padding:clamp(24px,3.3vw,64px);
+  border:1px solid #73a7e8; border-radius:clamp(18px,1.55vw,30px);
+  background:linear-gradient(145deg,#17264ae8,#06122be8 65%,#0b1834ca);
+  box-shadow:0 14px 55px #0107175e,inset 0 1px 0 #ffffff1a;
+  backdrop-filter:blur(3px); color:#e5ecff;
+}
+.login-cinematic .login-card::before {
+  content:""; position:absolute; z-index:-1; inset:0; border-radius:inherit;
+  background:url("assets/figurer/jacobmatematik-cinematic-world-v1.webp") right bottom/318% auto no-repeat;
+  mask-image:linear-gradient(transparent 75%,#0009); opacity:.65; pointer-events:none;
+}
+.login-cinematic .login-brand { margin:0 0 clamp(24px,2.2vw,42px); gap:13px; font-size:clamp(14px,1.18vw,22px); }
+.login-cinematic .login-brand .brand-mark { width:clamp(36px,3vw,56px); height:clamp(36px,3vw,56px); border-radius:12px; font-size:30px; }
+.login-cinematic .login-card h2 {
+  position:relative; margin:0 0 16px; color:#ffe398;
+  font:850 clamp(28px,2.8vw,54px)/1.12 ui-rounded,"Avenir Next",system-ui,sans-serif; letter-spacing:-.035em;
+}
+.login-cinematic .login-card h2::after {
+  content:""; display:block; position:absolute; width:48%; height:3px; right:12%; bottom:-5px;
+  background:linear-gradient(90deg,transparent,#ffcf64 24%,#ffcf64 70%,transparent); transform:rotate(-5deg);
+}
+.login-cinematic .login-card>p:not(.error):not(.login-card-quote) { margin:0 0 clamp(22px,2vw,38px); font-size:clamp(14px,1.1vw,20px); line-height:1.5; color:#d1dbef; }
+.login-cinematic .login-card .field { position:relative; margin:0 0 clamp(17px,1.5vw,28px); gap:8px; }
+.login-cinematic .field label { font-size:clamp(13px,.98vw,18px); }
+.login-cinematic .login-card .field input {
+  min-height:clamp(48px,3.6vw,68px); padding:12px 16px 12px 48px; border-radius:14px;
+  border:1px solid #7285b1; background:linear-gradient(130deg,#1a2c53d9,#2a3554c9);
+  font-size:clamp(14px,1vw,19px); color:#f5f7ff; box-shadow:inset 0 1px 0 #ffffff0c;
+}
+.login-cinematic .login-card .field input::placeholder { color:#a6b6d4; }
+.login-cinematic .field::after {
+  content:""; position:absolute; left:17px; bottom:17px; width:18px; height:18px;
+  background:center/contain no-repeat; pointer-events:none;
+}
+.login-cinematic .login-username-field::after { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d1dcf2' stroke-width='1.8'%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3Cpath d='M4 22v-3a8 8 0 0 1 16 0v3z'/%3E%3C/svg%3E"); }
+.login-cinematic .login-password-field::after { background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23d1dcf2' stroke-width='1.8'%3E%3Crect x='4' y='10' width='16' height='12' rx='2'/%3E%3Cpath d='M7 10V7a5 5 0 0 1 10 0v3m-5 4v4'/%3E%3C/svg%3E"); }
+.login-cinematic .login-card .field input:focus { border-color:#b5c9ff; box-shadow:0 0 0 3px #99a7ff33; }
+.login-cinematic #login-error:empty { display:none; }
+.login-cinematic #login-error:not(:empty) { margin:0 0 16px; }
+.login-cinematic .login-card>small { color:#d1dbef; line-height:1.5; margin-bottom:16px; }
+.login-cinematic .login-card .btn.full { margin-top:0; min-height:clamp(48px,3.6vw,68px); border-radius:14px; font-size:clamp(15px,1.18vw,22px); }
+.login-cinematic .login-card .btn.full[type="submit"] {
+  background:linear-gradient(180deg,#7853ff,#6341f0); border:1px solid #ad92ff;
+  box-shadow:0 0 25px #6645ff65,inset 0 2px 4px #ffffff33;
+}
+.login-cinematic .login-card .btn.full[type="submit"] span { margin-left:8px; }
+.login-cinematic .login-card .btn.secondary.full { border:1px solid #ffd56d; color:#ffdc7d; background:#14244380; }
+.login-cinematic .login-divider { margin:clamp(14px,1.35vw,24px) 0; }
+.login-cinematic .login-card-quote {
+  align-self:flex-end; margin:clamp(28px,2.5vw,46px) 0 0!important;
+  color:#adbadd!important; text-align:center; font:italic 400 clamp(16px,1.35vw,24px)/1.4 "Segoe Print","Comic Sans MS",cursive;
+  transform:rotate(-8deg); letter-spacing:.01em;
+}
+.login-cinematic .login-card-quote::after { content:""; display:block; width:70%; height:2px; margin:10px 0 0 auto; background:#ffcf64; transform:rotate(-12deg); }
+.login-cinematic .login-poster-note {
+  display:block; top:4.5vw; right:5.5vw; font-size:clamp(13px,1.16vw,22px); font-weight:400; opacity:.85;
+}
+.login-cinematic .login-poster-tagline { display:block; bottom:6vw; right:3vw; font-size:clamp(12px,1.07vw,20px); font-weight:400; }
+.login-cinematic .login-footer { position:absolute; bottom:1.5vw; right:4.5vw; font-size:12px; }
+.login-cinematic .login-footer a { color:#c3d2ee; text-decoration:none; }
+.login-cinematic .login-footer a:hover { text-decoration:underline; }
+body:has(.login-cinematic) .site-copyright { position:absolute; top:calc(75vw - 24px); bottom:auto; left:2.5vw; color:#c3d2ee!important; opacity:.85!important; }
+@media (max-width:1100px) {
+  .login-wrap.login-cinematic { grid-template-columns:60% 40%; }
+  .login-cinematic .login-scene { aspect-ratio:12/15; }
+  .login-cinematic .login-scene-image { width:166.666667%; }
+  .login-cinematic .login-panel { padding:9vw 2.5vw 18vw 1vw; min-height:75vw; }
+  .login-cinematic .login-card { padding:24px; }
+  .login-cinematic .login-card-quote { font-size:16px; margin-top:24px!important; }
+  .login-cinematic .login-poster-note,.login-cinematic .login-poster-tagline { display:none; }
+  .login-cinematic .scene-captain { left:46%; }
+  .login-cinematic .scene-dennis { left:48%; }
+  .login-cinematic .scene-luigi { left:43%; }
+  .login-cinematic .scene-erling { left:44%; }
+  .login-cinematic .login-scene-fps { left:6.5%; width:93%; }
+}
+@media (max-width:800px) {
+  .login-wrap.login-cinematic { display:flex; flex-direction:column; background:#030c1d; }
+  .login-cinematic .login-intro.login-illustrated-intro { width:100%; }
+  .login-cinematic .login-scene { aspect-ratio:13/14.3; }
+  .login-cinematic .login-scene-image { width:153.846154%; }
+  .login-cinematic .login-scene-fps { left:6%; top:82.13%; width:86%; height:17.3%; }
+  .login-cinematic .scene-captain { left:42%; top:14.7%; }
+  .login-cinematic .scene-dennis { left:44%; top:31%; }
+  .login-cinematic .scene-luigi { left:40%; top:43%; }
+  .login-cinematic .scene-erling { left:41%; top:57%; }
+  .login-cinematic .scene-obbe { top:56%; }
+  .login-cinematic .login-panel { width:100%; min-height:0; padding:28px 20px 64px; background:#030c1d; }
+  .login-cinematic .login-card { width:min(460px,100%); margin:auto; padding:28px 24px; min-height:0; }
+  .login-cinematic .login-card h2 { font-size:34px; }
+  .login-cinematic .login-brand { margin-bottom:28px; }
+  .login-cinematic .login-card-quote { margin-top:32px!important; }
+  .login-cinematic .login-footer { bottom:22px; right:22px; }
+  body:has(.login-cinematic) .site-copyright { position:fixed; top:auto; bottom:8px; left:10px; font-size:9px; }
+}

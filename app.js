@@ -638,11 +638,12 @@
     leaveFoodtruck();
     const signup = state.view === "signup";
     app.innerHTML = `
-      <div class="login-wrap">
+      <div class="login-wrap login-cinematic">
         <section class="login-intro login-illustrated-intro" aria-label="Velkommen til Jacobmatematik">
           <h1 class="sr-only">Jacobmatematik – Byg matematikfærdigheder på et stærkt fundament!</h1>
           <div class="login-scene">
-            <img class="login-scene-image" src="assets/figurer/jacobmatematik-sunny-school-v2.webp" width="1254" height="1254" alt="Matematiktårnet på en grøn græsmark under blå himmel og sol. Kaptajn Kvadratrod, Divisions-Dennis, Luigi og Erling sidder på tårnet. Øbbe Øvdig laver armbøjninger, Gunnar Giderik dovner under et træ, og bag skolen lurer Eksamens-Else med sin røde kuglepen." fetchpriority="high" decoding="async">
+            <img class="login-scene-image" src="assets/figurer/jacobmatematik-cinematic-world-v1.webp" width="1448" height="1086" alt="Jacobmatematik i gyldent aftenlys med matematiktårnet, skolen og skovklædte bjerge. Kaptajn Kvadratrod, Divisions-Dennis, Luigi og Erling sidder på tårnet. Øbbe Øvdig laver armbøjninger, Gunnar Giderik dovner under et træ, og bag skolen lurer Eksamens-Else med sin røde kuglepen." fetchpriority="high" decoding="async">
+            <a id="fps-trial-entry" class="login-scene-fps" href="fps.html?trial=1" aria-label="Prøv Erling FPS uden login"><span class="sr-only">Erling FPS – Regn. Tjen blyanter. Overlev skolen. Spil nu.</span></a>
             <button type="button" class="login-scene-hotspot scene-captain" data-kaptajn-audio aria-label="Hør Kaptajn Kvadratrod" title="Hør Kaptajn Kvadratrod"></button>
             <button type="button" class="login-scene-hotspot scene-dennis character-card dennis" aria-label="Hør Divisions-Dennis" title="Hør Divisions-Dennis"></button>
             <button type="button" class="login-scene-hotspot scene-luigi" data-luigi-audio aria-label="Hør Luigi Lækkermat" title="Hør Luigi Lækkermat"></button>
@@ -660,17 +661,17 @@
             <div class="login-brand"><span class="brand-mark" aria-hidden="true">∑</span><span>jacobmatematik</span></div>
             <h2>${signup ? "Opret bruger" : "Godt at se dig"}</h2>
             <p>${signup ? "Vælg et brugernavn og en adgangskode. Dine fremskridt bliver gemt." : "Log ind som elev eller lærer for at fortsætte."}</p>
-            <div class="field"><label for="username">Brugernavn</label><input id="username" name="username" maxlength="40" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="fx alma7" required></div>
-            <div class="field"><label for="password">Adgangskode</label><input id="password" name="password" type="password" ${signup ? 'minlength="6" maxlength="72"' : ""} autocomplete="${signup ? "new-password" : "current-password"}" placeholder="${signup ? "Mindst 6 tegn" : "Din adgangskode"}" required></div>
+            <div class="field login-username-field"><label for="username">Brugernavn</label><input id="username" name="username" maxlength="40" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="fx alma7" required></div>
+            <div class="field login-password-field"><label for="password">Adgangskode</label><input id="password" name="password" type="password" ${signup ? 'minlength="6" maxlength="72"' : ""} autocomplete="${signup ? "new-password" : "current-password"}" placeholder="${signup ? "Mindst 6 tegn" : "Din adgangskode"}" required></div>
             ${signup ? '<small>Husk dit brugernavn og din adgangskode. Din lærer kan senere placere dig i en klasse.</small>' : ""}
             <p id="login-error" class="error" role="alert"></p>
-            <button class="btn full" type="submit">${signup ? "Opret bruger" : "Log ind"}</button>
+            <button class="btn full" type="submit">${signup ? "Opret bruger" : 'Log ind <span aria-hidden="true">→</span>'}</button>
             <div class="login-divider"><span>eller</span></div>
             <button class="btn secondary full" type="button" data-action="${signup ? "show-login" : "show-signup"}">${signup ? "Tilbage til login" : "Opret bruger"}</button>
-            <p class="login-card-quote">Små fremskridt hver dag<br><strong>skaber store resultater</strong></p>
+            <p class="login-card-quote">SMÅ<br>FREMSKRIDT<br>STORE DRØMME</p>
           </form>
-          <div class="login-horizon" aria-hidden="true"><span></span><span></span><span></span></div>
-          <div class="login-poster-tagline" aria-hidden="true">BEDRE MATEMATIK<br>EN LYSERE FREMTID</div>
+          <div class="login-poster-tagline" aria-hidden="true">BEDRE<br>MATEMATIK<br>EN LYSERE<br>FREMTID</div>
+          <nav class="login-footer" aria-label="Information"><a href="privatliv.html">Cookies og privatliv</a></nav>
         </section>
       </div>`;
     if (window.matchMedia("(min-width: 901px) and (pointer: fine)").matches) document.getElementById("username").focus();

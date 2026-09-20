@@ -82,7 +82,7 @@ const source = file => fs.readFileSync(path.join(root, file), 'utf8');
   const ui = { console, Intl, Date, Math, Set, Map,
     localStorage:{ getItem:() => null }, sessionStorage:{ getItem:() => null },
     FormData:class { constructor(form) { this.data=form.values; } get(key) { return this.data[key]; } },
-    document:{ hidden:true, body:{classList:{remove(){}}}, getElementById:element, querySelector:() => null, addEventListener:(name, callback) => { listeners[name]=callback; } },
+    document:{ hidden:true, body:{classList:{add(){},remove(){}}}, getElementById:element, querySelector:() => null, addEventListener:(name, callback) => { listeners[name]=callback; } },
     window:{ JacobBackend:uiBackend, matchMedia:() => ({ matches:false }), addEventListener() {}, setInterval:() => 1, clearInterval() {} },
   };
   vm.createContext(ui);
@@ -90,7 +90,8 @@ const source = file => fs.readFileSync(path.join(root, file), 'utf8');
   const api=ui.window.testApi;
   api.renderLogin();
   assert.match(element('app').innerHTML, /Opret bruger/);
-  assert.doesNotMatch(element('app').innerHTML, /Gæst|fps\.html/);
+  assert.doesNotMatch(element('app').innerHTML, /Gæst/);
+  assert.match(element('app').innerHTML, /href="fps\.html\?trial=1"/, 'The public banner opens the isolated trial');
   assert.doesNotMatch(source('index.html'), /<a[^>]+fps-launch/);
   api.state.view='signup'; api.renderLogin();
   assert.match(element('app').innerHTML, /autocomplete="new-password"/);
