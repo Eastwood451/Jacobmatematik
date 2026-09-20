@@ -1481,3 +1481,26 @@ body{
 @media(max-width:760px){
   .student-home-layout::before{display:none}
 }
+
+
+/* Core fallback: borrowing copy for stale app bundles */
+.subtraction-prompt:has(.subtraction-drag-cue):not(:has(.subtraction-borrow-subtitle)) h2{
+  font-size:0;
+  margin-bottom:3px;
+}
+.subtraction-prompt:has(.subtraction-drag-cue):not(:has(.subtraction-borrow-subtitle)) h2::after{
+  content:"Så må man låne!";
+  display:block;
+  color:var(--ink);
+  font-size:clamp(30px,4vw,43px);
+  line-height:1.08;
+  letter-spacing:-.035em;
+}
+.subtraction-prompt:has(.subtraction-drag-cue):not(:has(.subtraction-borrow-subtitle)) > p::before{
+  content:"(Lån en 10'er)";
+  display:block;
+  margin:0 0 10px;
+  color:var(--muted);
+  font-size:14px;
+  font-weight:750;
+}
