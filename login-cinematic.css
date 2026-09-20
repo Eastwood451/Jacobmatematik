@@ -41,7 +41,7 @@ body:has(.login-cinematic) { margin:0; background:#030c1d; }
 }
 .login-cinematic .login-card::before {
   content:""; position:absolute; z-index:-1; inset:0; border-radius:inherit;
-  background:url("assets/figurer/jacobmatematik-cinematic-world-v1.webp") right bottom/318% auto no-repeat;
+  background:url("assets/figurer/jacobmatematik-cinematic-world-v1.webp") right top/318% auto no-repeat;
   mask-image:linear-gradient(transparent 75%,#0009); opacity:.65; pointer-events:none;
 }
 .login-cinematic .login-brand { margin:0 0 clamp(24px,2.2vw,42px); gap:13px; font-size:clamp(14px,1.18vw,22px); }
