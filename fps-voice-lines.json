@@ -119,6 +119,24 @@
       "character": "erling",
       "text": "U-sejt!",
       "trigger": "hit"
+    },
+    {
+      "id": "gunnar-buuh-du-er-en-straeber",
+      "character": "gunnar",
+      "text": "Buuh! Du er en stræber!",
+      "trigger": "defeat"
+    },
+    {
+      "id": "gunnar-det-var-erling",
+      "character": "gunnar",
+      "text": "Det var ERLING, der gjorde det!",
+      "trigger": "defeat"
+    },
+    {
+      "id": "gunnar-hvorfor-kun-efter-mig",
+      "character": "gunnar",
+      "text": "Hvorfor er du kun efter MIG?!",
+      "trigger": "defeat"
     }
   ]
 }
