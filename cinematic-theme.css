@@ -1,0 +1,451 @@
+/* Jacobmatematik authenticated-site cinematic daylight theme
+   Bright enough for classroom use, with the login mockup's violet, gold,
+   orange and deep-navy visual language. */
+
+body.site-authenticated{
+  --ink:#17233f;
+  --muted:#6f6877;
+  --paper:#fffaf2;
+  --cream:#f7efe2;
+  --purple:#6d4de9;
+  --purple-dark:#4f34c7;
+  --mint:#319a78;
+  --amber:#e8a63a;
+  --red:#d65c58;
+  --line:#e6d6c2;
+  --shadow:0 14px 36px rgba(53,36,79,.10);
+  min-height:100vh;
+  color:var(--ink);
+  background:
+    radial-gradient(circle at 5% 7%,rgba(112,76,232,.11),transparent 28rem),
+    radial-gradient(circle at 96% 8%,rgba(242,169,59,.15),transparent 30rem),
+    radial-gradient(circle at 76% 88%,rgba(230,126,54,.07),transparent 32rem),
+    linear-gradient(180deg,#fcf7ee 0%,#f7efe3 55%,#faf4ea 100%);
+}
+.site-authenticated .app-shell{background:transparent}
+
+/* Navigation */
+.site-authenticated .topbar{
+  border-bottom:1px solid rgba(112,76,154,.13);
+  background:rgba(255,250,241,.91);
+  box-shadow:0 6px 24px rgba(74,47,30,.055);
+  backdrop-filter:blur(16px);
+}
+.site-authenticated .brand{color:#17233f}
+.site-authenticated .brand .brand-mark{
+  background:linear-gradient(145deg,#7b60ff,#5439d5);
+  box-shadow:0 7px 20px rgba(103,72,221,.28);
+}
+.site-authenticated .user-pill{color:#776b7d}
+.site-authenticated .foodtruck-link{
+  color:#5f4819;
+  border-color:#e5c56f;
+  background:linear-gradient(180deg,#fff7d5,#f7e8b9);
+  box-shadow:0 4px 12px rgba(151,102,30,.08);
+}
+.site-authenticated .jacob-view-switch{
+  border-color:#d7c7ae;
+  background:#fff8ec;
+}
+.site-authenticated .jacob-view-switch span.active{
+  color:white;
+  background:linear-gradient(135deg,#26375c,#4b357e);
+}
+
+/* Shared typography */
+.site-authenticated .eyebrow,
+.site-authenticated .section-label{
+  color:#7250b5;
+  font-weight:850;
+}
+.site-authenticated h1,
+.site-authenticated h2,
+.site-authenticated h3{color:#17233f}
+.site-authenticated .hero-line h1,
+.site-authenticated .dashboard-head h1{
+  color:#17233f;
+  text-shadow:0 1px 0 rgba(255,255,255,.85);
+}
+.site-authenticated .hero-line p,
+.site-authenticated .dashboard-head p{color:#766d79}
+
+/* Buttons */
+.site-authenticated .btn{
+  border:1px solid rgba(115,87,228,.20);
+  background:linear-gradient(135deg,#7558ee,#5b3ed4);
+  color:white;
+  box-shadow:0 7px 18px rgba(86,57,194,.18),inset 0 1px 0 rgba(255,255,255,.18);
+}
+.site-authenticated .btn:hover{
+  background:linear-gradient(135deg,#8065f3,#6044da);
+}
+.site-authenticated .btn.secondary{
+  color:#372952;
+  border:1px solid #dec99e;
+  background:linear-gradient(180deg,#fffdf8,#fff5e7);
+  box-shadow:0 4px 11px rgba(99,69,34,.055);
+}
+.site-authenticated .btn.secondary:hover{
+  color:#4c3375;
+  border-color:#d6ad4f;
+  background:#fff5dd;
+}
+.site-authenticated .btn.ghost{
+  color:#665b71;
+  border-color:#d9cbb9;
+  background:rgba(255,250,241,.55);
+}
+.site-authenticated .exercise-leaderboard-link{
+  color:#64470d!important;
+  border-color:#dfad42!important;
+  background:linear-gradient(180deg,#fff4c9,#ffe6a1)!important;
+}
+
+/* Home/menu cards */
+.site-authenticated .streak,
+.site-authenticated .mini-stat{
+  border-color:#ead9c0;
+  background:linear-gradient(145deg,#fffdf8,#fff5e7);
+  box-shadow:0 7px 20px rgba(100,67,35,.06);
+}
+.site-authenticated .streak span,
+.site-authenticated .mini-stat span{color:#8a6b75}
+.site-authenticated .streak strong,
+.site-authenticated .mini-stat strong{color:#3d2b65}
+.site-authenticated .topic-card,
+.site-authenticated .topic-tower .topic-card,
+.site-authenticated .topic-tower-extras .topic-card{
+  color:#17233f;
+  border-color:#e6d7c5;
+  background:linear-gradient(145deg,#fffdf9,#fff7ec);
+  box-shadow:0 7px 19px rgba(79,54,33,.06);
+}
+.site-authenticated .topic-card:hover,
+.site-authenticated .topic-tower .topic-card:hover,
+.site-authenticated .topic-tower-extras .topic-card:hover{
+  border-color:#d8ad4f;
+  box-shadow:0 12px 28px rgba(105,69,28,.11);
+}
+.site-authenticated .topic-card .topic-icon{color:#323459}
+.site-authenticated .topic-card strong{color:#17233f}
+.site-authenticated .topic-card small{color:#746d79}
+.site-authenticated .topic-tower-row:nth-child(even) .topic-card{
+  background:linear-gradient(145deg,#fffaf1,#f6efff);
+}
+.site-authenticated .topic-tower-row:nth-child(3n) .topic-card{
+  background:linear-gradient(145deg,#fffaf1,#fff0dd);
+}
+.site-authenticated .topic-card.mixed{
+  color:white;
+  border-color:#6949df;
+  background:
+    radial-gradient(circle at 87% 18%,rgba(255,201,83,.24),transparent 28%),
+    linear-gradient(135deg,#7555ec,#5838ce 72%,#4629aa);
+  box-shadow:0 10px 26px rgba(81,55,190,.22);
+}
+.site-authenticated .topic-card.mixed strong,
+.site-authenticated .topic-card.mixed .topic-icon{color:#fff9e9}
+.site-authenticated .topic-card.mixed small{color:#e8e0ff}
+.site-authenticated .topic-tower-base,
+.site-authenticated .math-tower-foundation{
+  color:#ffe9b0;
+  background:linear-gradient(90deg,#202d4f,#37355f 52%,#212b49);
+  box-shadow:0 9px 22px rgba(32,35,71,.16);
+}
+
+/* Math tower */
+.site-authenticated .math-tower h2{color:#292645}
+.site-authenticated .math-tower>p,
+.site-authenticated .math-tower-help{color:#776d77}
+.site-authenticated .math-tower-plaque{
+  border-color:#9c8161;
+  background:rgba(255,249,237,.95);
+}
+.site-authenticated .math-tower-symbol{color:#7652df}
+.site-authenticated .math-tower-score{color:#1c2948}
+.site-authenticated .math-tower-legend{color:#6e6470}
+
+/* Game banners */
+.site-authenticated .foodtruck-card{
+  color:#493713!important;
+  border-color:#dfa83c!important;
+  background:
+    radial-gradient(circle at 86% 18%,rgba(255,248,193,.56),transparent 28%),
+    linear-gradient(110deg,#f7c65e,#eca640)!important;
+  box-shadow:0 10px 25px rgba(145,92,24,.16)!important;
+}
+.site-authenticated .foodtruck-card strong{color:#3f3012}
+.site-authenticated .foodtruck-card small{color:#6b501f!important}
+.site-authenticated .home-game-links .fps-trial-entry{
+  border-color:#e1af48;
+  background:linear-gradient(135deg,#132f52,#273a69 58%,#644b85);
+  box-shadow:0 12px 28px rgba(34,30,76,.17);
+}
+
+/* Generic exercise chrome */
+.site-authenticated .topic-tag{
+  color:#5a3ab1;
+  border:1px solid #d5c4ef;
+  background:linear-gradient(180deg,#f3ecff,#e9ddff);
+}
+.site-authenticated .question-card,
+.site-authenticated .table-drill-card,
+.site-authenticated .division-lollipop-card,
+.site-authenticated .subtraction-card,
+.site-authenticated .letter-learning-card{
+  border-color:#e4d4c2;
+  background:linear-gradient(160deg,#fffdf8,#fff8ed);
+  box-shadow:0 16px 38px rgba(65,46,35,.085);
+}
+.site-authenticated .question-top,
+.site-authenticated .lollipop-board,
+.site-authenticated .subtraction-board{
+  background:
+    radial-gradient(circle at 86% 12%,rgba(242,177,63,.08),transparent 24%),
+    linear-gradient(180deg,#fffdf8,#fff9f1);
+}
+.site-authenticated .answer-area,
+.site-authenticated .lollipop-controls,
+.site-authenticated .subtraction-controls{
+  border-top-color:#eadbc7;
+  background:linear-gradient(180deg,#fffaf2,#fff6e9);
+}
+.site-authenticated .answer-input,
+.site-authenticated .table-drill-answer-preview,
+.site-authenticated .fl-answer-input,
+.site-authenticated .fa-page .fl-answer-input{
+  color:#17233f;
+  border-color:#dfcfbb;
+  background:#fffdf9;
+}
+.site-authenticated .answer-input:focus,
+.site-authenticated .fl-answer-input:focus{
+  border-color:#8d72ea;
+  box-shadow:0 0 0 4px rgba(119,87,225,.13);
+}
+
+/* Keypads */
+.site-authenticated .key,
+.site-authenticated .ft-keypad button,
+.site-authenticated .lollipop-keypad .key,
+.site-authenticated .subtraction-keypad .key{
+  color:#1f2947;
+  border-color:#e0d1bc;
+  background:linear-gradient(180deg,#fffdf9,#fff5e7);
+  box-shadow:0 4px 0 #ddcfbb;
+}
+.site-authenticated .key:hover,
+.site-authenticated .ft-keypad button:hover{
+  border-color:#d9ac4a;
+  background:#fff0cf;
+}
+.site-authenticated .key.enter,
+.site-authenticated .ft-submit{
+  color:white;
+  border-color:#6244d9;
+  background:linear-gradient(135deg,#7657ee,#5839cf);
+  box-shadow:0 4px 0 #4326a6;
+}
+.site-authenticated .key.utility{
+  color:#5b3bb7;
+  background:#f1eaff;
+}
+
+/* Drill tables */
+.site-authenticated .table-drill-status{
+  color:#625b6d;
+  border-bottom-color:#eadac4;
+  background:linear-gradient(90deg,#fff6e8,#f5efff);
+}
+.site-authenticated .table-drill-layout{background:#fffaf2}
+.site-authenticated .table-drill-answer,
+.site-authenticated .table-drill-complete{
+  border-color:#dfcfbb;
+  background:linear-gradient(160deg,#fffdf9,#fff5e8);
+}
+.site-authenticated .table-drill-answer-preview{
+  border-color:#d9c9b5;
+}
+.site-authenticated .table-drill-grid th{
+  color:#5e5480;
+  background:#f3ebff;
+}
+.site-authenticated .table-drill-grid td{
+  border-color:#ded8cf;
+  background:#fbfaf7;
+}
+
+/* Leaderboards */
+.site-authenticated .practice-leaderboard{
+  border-color:#4a3774;
+  background:
+    radial-gradient(circle at 100% 0%,rgba(240,171,61,.15),transparent 29%),
+    linear-gradient(145deg,#fff9ed,#f6efff);
+  box-shadow:6px 7px 0 #33284f;
+}
+.site-authenticated .leaderboard-my-status{
+  color:#5b431b;
+  border-color:#d9bb72;
+  background:#fff0c6;
+}
+.site-authenticated .leaderboard-list li{
+  border-color:#e4d4c2;
+  background:#fffdf8;
+}
+.site-authenticated .leaderboard-list li.is-me{
+  border-color:#7758dd;
+  background:#f0eaff;
+}
+
+/* Teacher/admin surfaces */
+.site-authenticated .class-manager,
+.site-authenticated .roster-panel,
+.site-authenticated .teacher-detail,
+.site-authenticated .pair-detail,
+.site-authenticated .registrations-panel{
+  border-color:#e5d5c1;
+  background:rgba(255,250,241,.91);
+  box-shadow:0 10px 28px rgba(76,49,30,.065);
+}
+.site-authenticated .class-kpis article,
+.site-authenticated .student-kpis article{
+  border-color:#e5d4bd;
+  background:linear-gradient(145deg,#fffdf8,#fff5e6);
+  box-shadow:0 6px 18px rgba(85,57,31,.055);
+}
+.site-authenticated .class-kpis article:nth-child(even),
+.site-authenticated .student-kpis article:nth-child(even){
+  background:linear-gradient(145deg,#fffaf2,#f5efff);
+}
+.site-authenticated .class-kpis article.attention{
+  border-color:#e7a29a;
+  background:#fff1ed;
+}
+.site-authenticated .panel-title>span{
+  color:#684f77;
+  background:#f1e7d9;
+}
+.site-authenticated .roster-item{
+  border-color:transparent;
+}
+.site-authenticated .roster-item:hover{
+  background:#fff2da;
+}
+.site-authenticated .roster-item.active{
+  color:#2e2450;
+  background:linear-gradient(90deg,#eee7ff,#fff0d4);
+}
+.site-authenticated .student-summary,
+.site-authenticated .topic-row,
+.site-authenticated .insight-card,
+.site-authenticated .analytics-card{
+  border-color:#e7d7c4;
+  background:#fffaf3;
+}
+.site-authenticated .student-form .field input,
+.site-authenticated .student-profile-editor .field input,
+.site-authenticated .class-form input,
+.site-authenticated .registration-search input,
+.site-authenticated .registration-row select{
+  color:#17233f;
+  border-color:#decdb8;
+  background:#fffdf9;
+}
+.site-authenticated .student-form .field input:focus,
+.site-authenticated .student-profile-editor .field input:focus,
+.site-authenticated .class-form input:focus,
+.site-authenticated .registration-search input:focus{
+  border-color:#8b70e8;
+  box-shadow:0 0 0 3px rgba(111,78,218,.12);
+}
+
+/* Fraction lesson */
+.site-authenticated .fl-page,
+.site-authenticated .fa-page{
+  color:#17233f;
+}
+.site-authenticated .fl-problem-panel,
+.site-authenticated .fl-question-panel,
+.site-authenticated .ff-card,
+.site-authenticated .fo-card{
+  border-color:#e4d4c0!important;
+  background:linear-gradient(155deg,#fffdf8,#fff5e7)!important;
+  box-shadow:0 11px 28px rgba(79,53,31,.075)!important;
+}
+.site-authenticated .fl-operation,
+.site-authenticated .fl-rule,
+.site-authenticated .fa-choice,
+.site-authenticated .ff-divisor{
+  color:#252c4d;
+  border-color:#dfcfbb!important;
+  background:#fffaf3!important;
+}
+.site-authenticated .fl-operation:hover,
+.site-authenticated .fl-rule:hover,
+.site-authenticated .fa-choice:hover,
+.site-authenticated .ff-divisor:hover{
+  border-color:#d7a943!important;
+  background:#fff0d3!important;
+}
+.site-authenticated .fl-operation.correct,
+.site-authenticated .fl-rule.correct,
+.site-authenticated .fa-choice.correct,
+.site-authenticated .ff-divisor.correct{
+  color:#294f3e!important;
+  border-color:#7fbea5!important;
+  background:#eaf7f0!important;
+}
+.site-authenticated .fl-primary{
+  color:white!important;
+  background:linear-gradient(135deg,#7656ee,#5839cf)!important;
+}
+.site-authenticated .fl-steps li.current span,
+.site-authenticated .fl-steps li.complete span{
+  color:white;
+  background:linear-gradient(135deg,#7656ee,#e3a83c);
+}
+
+/* Foodtruck app */
+.site-authenticated.foodtruck-active{
+  background:
+    radial-gradient(circle at 10% 9%,rgba(111,76,232,.10),transparent 28rem),
+    radial-gradient(circle at 92% 10%,rgba(239,164,56,.16),transparent 30rem),
+    linear-gradient(180deg,#fff6e7,#f8e7d2);
+}
+.site-authenticated .ft-game{
+  color:#1d2948;
+}
+.site-authenticated .ft-top,
+.site-authenticated .ft-station,
+.site-authenticated .ft-ticket,
+.site-authenticated .ft-finished{
+  border-color:#dfcba9!important;
+  background:linear-gradient(155deg,#fffaf1,#fff0d9)!important;
+  box-shadow:0 12px 28px rgba(102,64,24,.09)!important;
+}
+.site-authenticated .ft-submit{
+  color:white!important;
+  background:linear-gradient(135deg,#7656ee,#5839cf)!important;
+}
+.site-authenticated .ft-hint-button{
+  color:#684812!important;
+  border-color:#dba542!important;
+  background:#fff1c9!important;
+}
+
+/* Coach / decorative rails */
+.site-authenticated .obbe-drill,
+.site-authenticated .fo-rail{
+  border-color:#46375e;
+  background:linear-gradient(145deg,#fff4dc,#f1e9ff);
+}
+.site-authenticated .obbe-bubble,
+.site-authenticated .fo-bubble{
+  border-color:#544067;
+  background:#fffdf9;
+}
+
+/* Keep contrast strong, but avoid a dark classroom UI */
+@media(max-width:760px){
+  .site-authenticated .topbar{background:rgba(255,249,239,.95)}
+}
