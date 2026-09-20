@@ -51,7 +51,10 @@ scene.add(camera);
 const minigun=createMinigunPowerup();
 const minigunView=createMinigunView(scene,camera);
 const minigunSound=createMinigunSound(()=>audioCtx);
-const captainHologram=createCaptainHologram({\n  playVoice:text => { gameVoice.stop(); return gameVoice.play(text,{volume:1,exact:true}); },\n  stopVoice:() => gameVoice.stop(),\n});
+const captainHologram=createCaptainHologram({
+  playVoice:text => { gameVoice.stop(); return gameVoice.play(text,{volume:1,exact:true}); },
+  stopVoice:() => gameVoice.stop(),
+});
 
 const hemisphere = new THREE.HemisphereLight(0xf4f1dc, 0xa4a29a, 2.2);
 scene.add(hemisphere);
