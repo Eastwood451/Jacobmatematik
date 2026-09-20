@@ -69,7 +69,7 @@ jobs:
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add app.js assets/figurer/audio/erling-*.mp3
+          git add app.js assets/figurer/audio/*.mp3
           if git diff --cached --quiet; then
             echo 'No Erling changes.'
           else
