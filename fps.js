@@ -475,12 +475,14 @@ function maybeSpeakWhileMoving(now) {
   }
 }
 function spawnWave(count = 1, announce = true) {
-  if (schoolyardDoorOpen || schoolyardEntered) return;
+  // Opening the schoolyard door is only an unlock. Indoor combat continues
+  // until the player actually enters the schoolyard.
+  if (schoolyardEntered) return;
   for (let i = 0; i < count; i++) createErling();
   if (announce) speakSpawn();
 }
 function updateErlingSpawns(dt) {
-  if(schoolyardDoorOpen||schoolyardEntered||divisionChallenge?.active)return;
+  if(schoolyardEntered||divisionChallenge?.active)return;
   erlingSpawnElapsed+=dt;
   if(erlingSpawnElapsed>=10){
     erlingSpawnElapsed%=10;
@@ -847,12 +849,10 @@ function updateSchoolyardArrows(time) {
 }
 
 function openSchoolyardDoor() {
-  erlingFood.clear();
   schoolyardDoorOpen = true;
   campBoost = false;
   campMovementStartedAt = 0;
   removeMagicCircle();
-  clearEnemies();
   const door = createSchoolyardDoor();
   door.visible = true;
   createSchoolyardArrows();
