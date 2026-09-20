@@ -13,7 +13,7 @@ const gameNow = () => gameTime;
 const inputReady = () => touch?.enabled ? touch.active : controls.isLocked;
 const enterControls = () => touch?.enabled ? void touch.enter() : controls.lock();
 import { createSchoolWindows } from './fps-windows.js?v=20260907-windows1';
-import { createGameVoicePlayer } from './fps-voice.js?v=20260907-danish1';
+import { createGameVoicePlayer } from './fps-voice.js?v=20260920-erling-hit1';
 const gameVoice = createGameVoicePlayer();
 import { createPlayerMovement } from './fps-movement.js?v=20260909-touch2';
 import { createDuctBuilder } from './fps-ducts.js?v=20260907-ducts1';
@@ -279,6 +279,7 @@ let projectiles = [];
 let spawnVoiceIndex = 0;
 let moveVoiceIndex = 0;
 let gunnarVoiceIndex = 0;
+let lastErlingHitVoiceIndex = -1;
 let lastMoveVoiceAt = 0;
 let lastElseVoiceAt = 0;
 let musicMuted = false;
@@ -448,7 +449,15 @@ function clearEnemies() {
 }
 
 function speakLine(text, opts = {}) {
-  void gameVoice.play(text, { volume:opts.volume ?? .92 });
+  void gameVoice.play(text, { volume:opts.volume ?? .92, exact:Boolean(opts.exact) });
+}
+function speakErlingHit() {
+  const lines = ['Du SNYDER!', 'Du KIGGEDE EFTER!', 'U-sejt!'];
+  const choices = lines.map((_, index) => index).filter(index => index !== lastErlingHitVoiceIndex);
+  const index = choices[rand(0, choices.length - 1)];
+  lastErlingHitVoiceIndex = index;
+  gameVoice.stop();
+  speakLine(lines[index], { volume:1, exact:true });
 }
 function speakSpawn() {
   const lines = ['Nu kommer Erling!', 'Ned med de dygtige!'];
@@ -609,6 +618,7 @@ function onEnemyDefeated(enemy) {
 }
 function hitEnemy(enemy) {
   if (enemy.hp <= 0) return;
+  if (enemy.type === 'erling') speakErlingHit();
   enemy.hp--;
   if (enemy.hp <= 0) {
     onEnemyDefeated(enemy);
