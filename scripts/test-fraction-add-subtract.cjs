@@ -175,13 +175,19 @@ function pass(text){reports.push(text);console.log('PASS',text);}
    await full.locator('[data-action="learn-fractions"]').click();await full.locator('[data-fa-mode="plus"]').click();
    await full.locator('[data-fa-exit]').click();await full.waitForSelector('.student-home-layout');
    await full.close();
-   pass('Actual app entry/toggle still use Jacob-only gating; mode switches cancel pending timers; exit and backend switch preserve teacher role without student writes.');
+   pass('Actual app entry and teacher toggle work; mode switches cancel pending timers; exit and backend switch preserve teacher role without student writes.');
    for(const kind of ['student','other']) {
-     const page=await open({kind,full:true});assert.equal(await page.locator('[data-action="learn-fractions"]').count(),0);
-     await page.evaluate(()=>{const el=document.createElement('div');el.id='blocked';document.body.append(el);JacobFractionAddSubtract.mount(el,{user:{id:'not-jacob',name:'Jacob',role:'teacher'}});});
-     assert.equal(await page.locator('#blocked').innerHTML(),'');assert.equal(await page.locator('[data-fa-mode]').count(),0);await page.close();
+     const page=await open({kind,full:true});
+     await page.locator('[data-action="learn-fractions"]').click();
+     for(const mode of ['plus','minus','mixed']) {
+       await page.locator(`[data-fa-mode="${mode}"]`).click();
+       assert.equal(await page.locator('[data-fa-mode][aria-pressed="true"]').getAttribute('data-fa-mode'),mode);
+       assert.equal(await page.locator('.fl-page').count(),1);
+       assert.equal(await page.locator('.fl-pilot').count(),0);
+     }
+     await page.close();
    }
-   pass('No pilot access for other teachers or students, even with display name Jacob.');
+   pass('Students and other teachers can open addition, subtraction and mixed lessons without a test badge.');
    assert.deepEqual(errors,[]);pass('No uncaught browser errors.');
    fs.writeFileSync(path.join(out,'summary.txt'),reports.join('\n')+'\n');
  }finally{await browser.close();}

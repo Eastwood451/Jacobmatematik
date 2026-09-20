@@ -132,12 +132,12 @@ const errors = [];
     assert.equal(await page.locator('.fo-layout').count(),0);
     assert.equal(await page.evaluate(()=>window.__profile.role),'teacher');assert.ok(await page.evaluate(()=>window.__writes.every(r=>r==='teacher')));
     await page.evaluate(id=>{
-      for(const user of [null,{id,role:'student'},{id:'other',name:'Jacob',role:'teacher'}]) {
+      for(const user of [null,{}, {id:'invalid',role:'unknown'}]) {
         const el=document.createElement('div');document.body.append(el);JacobFractionLesson.mount(el,{user});
-        if(el.innerHTML)throw Error('Pilot exposed to wrong profile');el.remove();
+        if(el.innerHTML)throw Error('Lesson exposed without a valid profile');el.remove();
       }
     },JACOB);
     await page.close();assert.deepEqual(errors,[]);
-    console.log('PASS 390px full-app entry, cancellation on mode change, teacher toggle, Jacob-only access and no browser errors');
+    console.log('PASS 390px full-app entry, cancellation on mode change, teacher toggle, valid-profile access and no browser errors');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});

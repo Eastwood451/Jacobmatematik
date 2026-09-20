@@ -136,11 +136,11 @@ const pass=s=>{reports.push(s);console.log('PASS',s);};
   await page.locator('[data-fa-mode="multiply"]').click();await page.locator('[data-fl-operation="*"]').click();
   await page.locator('[data-fl-exit]').click();await page.waitForTimeout(950);assert.equal(await page.locator('#app').innerText(),'Afsluttet');
   pass('Division still uses 4/6, multiplication uses 3/8; four-mode switching and exit cancel delayed transitions.');
-  for(const user of [null,{}, {id:JACOB,role:'student'},{id:'other',role:'teacher',name:'Jacob'}]) {
+  for(const user of [null,{}, {id:'invalid',role:'unknown'}]) {
    const html=await page.evaluate(user=>{const el=document.createElement('div');window.__core.mount(el,{user,operation:'multiply'});return el.innerHTML;},user);assert.equal(html,'');
   }
   await page.close();
-  pass('Multiplication remains restricted to the exact Jacob teacher profile.');
+  pass('Multiplication still rejects missing or invalid profiles.');
   if(!logicOnly) {
    for(const width of [1280,320,390,768]) {
     const p=await open(width);await p.locator('[data-fa-mode="multiply"]').click();await toAnswer(p);

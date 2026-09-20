@@ -387,8 +387,9 @@
   const backend = window.JacobBackend;
   const usingCentralDatabase = Boolean(backend?.configured);
 
-  // Jacob fraction pilot: view state is not an authorization role.
-  const isFractionTester = () => window.JacobFractionLesson?.isEnabled(state.user) === true;
+  // Practice access and Jacob's teacher preview are independent of authorization roles.
+  const isFractionTester = () => state.user?.id === "c8b8e1c4-3264-40e9-a43d-0eb6214a0183" && state.user.role === "teacher";
+  const canLearnFractions = () => window.JacobFractionLesson?.isEnabled(state.user) === true;
   let jacobFrontend = false;
   let switchingJacobView = false;
   let disposeFractionLesson = null;
@@ -405,20 +406,21 @@
   }
   function renderFractionLesson() {
     leaveFractionLesson();
-    if (!isFractionTester()) { state.view = state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
-    jacobFrontend = true;
+    if (!canLearnFractions()) { state.view = state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
+    jacobFrontend = isFractionTester();
     app.innerHTML = `${header()}<div id="fraction-lesson-root"></div>`;
     disposeFractionLesson = window.JacobFractionLesson.mount(document.getElementById("fraction-lesson-root"), {
       user: state.user,
-      onExit() { leaveFractionLesson(); state.view="student"; renderStudentHome(); window.scrollTo(0,0); },
+      onExit() { leaveFractionLesson(); state.view=state.user?.role === "teacher" && !jacobFrontend ? "teacher" : "student"; render(); window.scrollTo(0,0); },
     });
   }
   function jacobViewButton() {
-    if (!isFractionTester()) return "";
-    return `<button type="button" class="jacob-view-switch" data-action="toggle-jacob-view" role="switch" aria-checked="${jacobFrontend}" aria-label="Front-end" title="Skift mellem front-end og back-end"><span class="${jacobFrontend ? "active" : ""}">Front-end</span><span class="${!jacobFrontend ? "active" : ""}">Back-end</span></button>${!jacobFrontend ? `<button type="button" class="btn secondary fraction-pilot-link" data-action="learn-fractions">Lær brøkregning · test</button>` : ""}`;
+    const lessonLink=canLearnFractions() && state.user?.role === "teacher" && state.view === "teacher" ? `<button type="button" class="btn secondary fraction-pilot-link" data-action="learn-fractions">Lær brøkregning</button>` : "";
+    if (!isFractionTester()) return lessonLink;
+    return `<button type="button" class="jacob-view-switch" data-action="toggle-jacob-view" role="switch" aria-checked="${jacobFrontend}" aria-label="Front-end" title="Skift mellem front-end og back-end"><span class="${jacobFrontend ? "active" : ""}">Front-end</span><span class="${!jacobFrontend ? "active" : ""}">Back-end</span></button>${lessonLink}`;
   }
   function fractionPilotCard() {
-    return isFractionTester() ? `<button type="button" class="topic-card fraction-pilot-card" data-action="learn-fractions"><em>Test · kun Jacob</em><span class="topic-icon">½ : ¾</span><strong>Lær brøkregning</strong><small>Find regnearten, og vælg den rigtige regneregel.</small></button>` : "";
+    return canLearnFractions() ? `<button type="button" class="topic-card fraction-pilot-card" data-action="learn-fractions"><span class="topic-icon">½ : ¾</span><strong>Lær brøkregning</strong><small>Find regnearten, og vælg den rigtige regneregel.</small></button>` : "";
   }
 
   const GUEST_TOPICS = new Set(["multiplication", "tableDrill", "divisionDrill", "divisionLollipops", "subtractionBorrowing"]);
@@ -2511,17 +2513,18 @@
 
     if (["toggle-jacob-view", "learn-fractions"].includes(action)) {
       event.preventDefault();
-      if (!isFractionTester() || switchingJacobView) return;
+      const allowed=() => action === "learn-fractions" ? canLearnFractions() : isFractionTester();
+      if (!allowed() || switchingJacobView) return;
       switchingJacobView=true;
       const userId=state.user.id;
       try {
         if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned");
-        if (state.user?.id !== userId || !isFractionTester()) return;
+        if (state.user?.id !== userId || !allowed()) return;
         leaveFractionLesson(); leaveFoodtruck(); stopMatrixDrillTimer(); stopTeacherLiveUpdates();
         stopErlingAudio(); stopKaptajnAudio(); stopLuigiAudio(); stopLetterLearningAudio();
         clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag();
         state.task=null; state.matrixDrill=null;
-        jacobFrontend=action === "learn-fractions" ? true : !jacobFrontend;
+        jacobFrontend=action === "learn-fractions" ? isFractionTester() : !jacobFrontend;
         state.view=action === "learn-fractions" ? "learn-fractions" : jacobFrontend ? "student" : "teacher";
         render(); window.scrollTo(0,0);
       } finally { switchingJacobView=false; }

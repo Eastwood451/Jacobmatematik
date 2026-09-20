@@ -22,9 +22,9 @@ module.exports=async function testMixed(browser) {
   for(const name of ['fraction-simplify.js','fraction-lesson.js','fraction-add-subtract.js','fraction-obbe.js']) await page.addScriptTag({content:read(name).toString()});
   await page.clock.install();
   await page.evaluate(()=>{
-   // Deterministic shuffle also exercises the boundary-repeat protection.
+   // Deterministic shuffle keeps this integration test reproducible.
    Math.random=()=>0.5;
-   window.cleanup=JacobFractionLesson.mount(document.querySelector('#app'),{user:{id:'c8b8e1c4-3264-40e9-a43d-0eb6214a0183',role:'teacher'},onExit:()=>{window.cleanup();document.querySelector('#app').textContent='Afsluttet';}});
+   window.cleanup=JacobFractionLesson.mount(document.querySelector('#app'),{user:{id:'ordinary-student',role:'student'},onExit:()=>{window.cleanup();document.querySelector('#app').textContent='Afsluttet';}});
   });
   await page.getByRole('button',{name:'Blandede opgaver',exact:true}).click();
   const seen=[];

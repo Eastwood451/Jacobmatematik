@@ -126,7 +126,7 @@ function pass(text){reports.push(text);console.log('PASS',text);}
   }
   try {
     const page=await mount();
-    assert.deepEqual(await page.evaluate(id=>[JacobFractionLesson.isEnabled({id,role:'teacher'}),...[null,{}, {id,role:'student'},{id:'other',name:'Jacob',role:'teacher'}].map(u=>JacobFractionLesson.isEnabled(u))],JACOB),[true,false,false,false,false]);
+    assert.deepEqual(await page.evaluate(id=>[JacobFractionLesson.isEnabled({id,role:'teacher'}),...[null,{}, {id,role:'student'},{id:'other',name:'Jacob',role:'teacher'}].map(u=>JacobFractionLesson.isEnabled(u))],JACOB),[true,false,false,true,true]);
     for(const operation of ['+','-','*']) {
       await page.locator(`[data-fl-operation="${operation}"]`).click();
       assert.equal(await page.locator('[data-fl-rule]').count(),0);

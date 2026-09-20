@@ -11,7 +11,8 @@ vm.runInNewContext(source,sandbox);
 const lesson=sandbox.window.JacobFractionLesson;
 const JACOB='c8b8e1c4-3264-40e9-a43d-0eb6214a0183';
 assert.equal(lesson.isEnabled({id:JACOB,role:'teacher'}),true);
-for (const user of [null,{}, {id:JACOB,role:'student'}, {id:'s1',name:'Jacob',username:'Jacob',role:'student'}, {id:'other-teacher',username:'Jacob',role:'teacher'}]) assert.equal(lesson.isEnabled(user),false);
+for (const user of [null,{}, {id:'unknown',role:'unknown'}]) assert.equal(lesson.isEnabled(user),false);
+for (const role of ['student','teacher','guest']) assert.equal(lesson.isEnabled({id:'ordinary-user',role}),true);
 for (let i=0;i<2000;i++) {
   const p=lesson.createProblem(i);
   for (const n of [p.a,p.b,p.c,p.d]) assert.ok(Number.isInteger(n) && n>0);
@@ -21,13 +22,13 @@ for (let i=0;i<2000;i++) {
 assert.deepEqual(JSON.parse(JSON.stringify(lesson.createProblem(0))),{a:1,b:2,c:3,d:4,notation:'stacked'});
 assert.equal(lesson.expressionHTML(lesson.createProblem(0)).includes('fl-compound'),true);
 const app=fs.readFileSync('app.js','utf8');
-assert.match(app,/Jacob fraction pilot: view state is not an authorization role/);
+
 const css=['styles.css','fraction-lesson.css','fraction-multiply.css','fraction-simplify.css'].map(f=>fs.readFileSync(f,'utf8')).join('\n');
 const out='test-results/fraction-pilot';
 fs.mkdirSync(out,{recursive:true});
 const summary=[];
 function pass(label) { summary.push(label); console.log('PASS',label); }
-pass('Only the verified Jacob teacher profile is enabled; 2,000 valid problems alternate notation.');
+pass('All student, teacher and guest profiles are enabled; 2,000 valid problems alternate notation.');
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.CHROME_PATH || undefined,args:['--no-sandbox']});
  const errors=[];
@@ -180,15 +181,26 @@ pass('Only the verified Jacob teacher profile is enabled; 2,000 valid problems a
    pass('No overflow at 320px, 390px and 768px; switching out of simplification preserves teacher permissions.');
    for(const kind of ['student','other','guest','out']) {
      const p=await mountAs(kind);
-     assert.equal(await p.locator('[data-action="learn-fractions"]').count(),0);
      assert.equal(await p.locator('[data-action="toggle-jacob-view"]').count(),0);
-     for(const action of ['learn-fractions','toggle-jacob-view']) {
-       await p.evaluate(action=>{const b=document.createElement('button');b.dataset.action=action;document.getElementById('app').append(b);b.click();b.remove()},action);
+     if(kind==='out') {
+       assert.equal(await p.locator('[data-action="learn-fractions"]').count(),0);
+       await p.evaluate(()=>{const b=document.createElement('button');b.dataset.action='learn-fractions';document.getElementById('app').append(b);b.click();b.remove()});
        assert.equal(await p.locator('.fl-page').count(),0);
+     } else {
+       await p.locator('[data-action="learn-fractions"]').click();
+       await p.waitForSelector('.fl-page');
+       assert.equal(await p.locator('.fl-pilot').count(),0);
+       const before=await p.locator('.fl-page').innerHTML();
+       await p.evaluate(()=>{const b=document.createElement('button');b.dataset.action='toggle-jacob-view';document.getElementById('app').append(b);b.click();b.remove()});
+       assert.equal(await p.locator('.fl-page').innerHTML(),before,'teacher switch remains restricted');
+       await p.locator('[data-fl-exit]').click();
+       await p.waitForSelector(kind==='other'?'.teacher-layout':'.student-home-layout');
+       assert.deepEqual(await p.evaluate(()=>window.__resultWrites),[]);
+       assert.equal(await p.evaluate(()=>window.__authProfile.role),kind==='other'?'teacher':kind);
      }
      await p.close();
    }
-   pass('No pilot entry or toggle for students, other teachers, guests or signed-out users; forged UI actions are ignored.');
+   pass('Public lesson entry and return for students, teachers and guests; signed-out access and forged teacher switches stay blocked.');
    assert.deepEqual(errors,[]);
    pass('No uncaught browser errors.');
    fs.writeFileSync(path.join(out,'summary.txt'),summary.join('\n')+'\n');
