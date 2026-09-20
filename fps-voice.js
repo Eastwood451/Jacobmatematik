@@ -1,6 +1,6 @@
 // Bundled recordings only: playback never depends on browser/OS voices.
 export function createGameVoicePlayer() {
-  const voiceData = fetch(new URL('./fps-voice-lines.json?v=20260911-erling3', import.meta.url))
+  const voiceData = fetch(new URL('./fps-voice-lines.json?v=20260920-erling-hit1', import.meta.url))
     .then(response => {
       if (!response.ok) throw new Error(`Voice manifest: HTTP ${response.status}`);
       return response.json();
@@ -38,7 +38,7 @@ export function createGameVoicePlayer() {
     }
   }
 
-  async function play(requestedText, { volume = .92 } = {}) {
+  async function play(requestedText, { volume = .92, exact = false } = {}) {
     // Do not queue taunts: an old line should not play long after its event.
     if (pending || active) return false;
     const ticket = generation;
@@ -54,8 +54,8 @@ export function createGameVoicePlayer() {
 
     // Every Erling trigger may choose from his full pool.
     // Never use the same Erling line twice in a row.
-    if (entry.character === 'erling') {
-      const pool = data.byCharacter.get('erling') || [entry];
+    if (entry.character === 'erling' && !exact) {
+      const pool = (data.byCharacter.get('erling') || [entry]).filter(line => line.trigger !== 'hit');
       const choices = pool.filter(line => line.text !== lastErlingText);
       const candidates = choices.length ? choices : pool;
       entry = candidates[Math.floor(Math.random() * candidates.length)] || entry;
