@@ -1280,3 +1280,203 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
     margin:12px auto 22px;
   }
 }
+
+
+/* Warm cinematic daylight theme · authenticated homepage */
+:root{
+  --ink:#17233f;
+  --muted:#6b6a7b;
+  --paper:#fffaf2;
+  --cream:#f7f0e4;
+  --purple:#6848e8;
+  --purple-dark:#4f34c8;
+  --amber:#e8a736;
+  --line:#e4d7c8;
+}
+body{
+  background:
+    radial-gradient(circle at 8% 8%,rgba(111,76,232,.10),transparent 26rem),
+    radial-gradient(circle at 93% 10%,rgba(242,173,67,.14),transparent 28rem),
+    linear-gradient(180deg,#fbf6ed 0%,#f6efe3 56%,#f8f2e8 100%);
+}
+.topbar{
+  border-bottom:1px solid rgba(105,76,160,.12);
+  background:rgba(255,250,241,.90);
+  box-shadow:0 5px 22px rgba(78,58,37,.045);
+}
+.topbar .brand-mark{
+  background:linear-gradient(145deg,#785cff,#573cd7);
+  box-shadow:0 7px 20px rgba(101,72,220,.27);
+}
+.topbar .brand{
+  color:#17233f;
+}
+.topbar .foodtruck-link{
+  border-color:#e4c776;
+  background:linear-gradient(180deg,#fff7d8,#f7e9bd);
+  color:#624a18;
+}
+.student-home-layout{
+  position:relative;
+}
+.student-home-layout::before{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  inset:-28px -30px auto 250px;
+  height:230px;
+  border-radius:38px;
+  pointer-events:none;
+  background:
+    radial-gradient(circle at 80% 20%,rgba(241,166,55,.14),transparent 30%),
+    radial-gradient(circle at 15% 20%,rgba(105,72,232,.09),transparent 34%);
+  filter:blur(1px);
+}
+.student-home-content .eyebrow,
+.math-tower>.eyebrow{
+  color:#724edb;
+}
+.hero-line h1{
+  color:#17233f;
+  text-shadow:0 1px 0 #fff;
+}
+.hero-line p{
+  color:#736d78;
+}
+.streak{
+  border:1px solid #e7d6b7;
+  background:linear-gradient(145deg,#fffaf1,#fff3dc);
+  box-shadow:0 9px 24px rgba(113,80,34,.08);
+}
+.streak span{
+  color:#806b53;
+}
+.streak strong{
+  color:#4e357d;
+}
+.section-label{
+  color:#735995;
+  font-weight:850;
+}
+.topic-tower-intro{
+  color:#766d7a;
+}
+.topic-tower-intro>span{
+  color:#e1a126;
+}
+.topic-tower .topic-card,
+.topic-tower-extras .topic-card,
+.topic-card{
+  border-color:#e5d8c8;
+  background:
+    linear-gradient(145deg,rgba(255,253,248,.98),rgba(255,247,235,.98));
+  box-shadow:0 7px 20px rgba(72,51,34,.065);
+}
+.topic-tower .topic-card:hover,
+.topic-tower-extras .topic-card:hover,
+.topic-card:hover{
+  border-color:#d8b35f;
+  box-shadow:0 12px 26px rgba(112,73,27,.11);
+}
+.topic-card .topic-icon{
+  color:#2c345f;
+}
+.topic-card strong{
+  color:#17233f;
+}
+.topic-card small{
+  color:#706c79;
+}
+.topic-tower-row:nth-child(2n) .topic-card{
+  background:
+    linear-gradient(145deg,#fffaf2,#f7f0ff);
+}
+.topic-tower-row:nth-child(3n) .topic-card{
+  background:
+    linear-gradient(145deg,#fffaf2,#fff2df);
+}
+.topic-tower-row:last-of-type .topic-card{
+  border-color:#cbb9f2;
+  background:linear-gradient(135deg,#fff9ef,#eee8ff);
+}
+.topic-card.mixed{
+  color:white;
+  border-color:#6c4ce6;
+  background:
+    radial-gradient(circle at 82% 18%,rgba(255,199,81,.24),transparent 28%),
+    linear-gradient(135deg,#6d4de9,#5133c6 72%,#442cad);
+  box-shadow:0 10px 24px rgba(83,56,194,.22);
+}
+.topic-card.mixed strong,
+.topic-card.mixed .topic-icon{
+  color:#fff8e7;
+}
+.topic-card.mixed small{
+  color:#e7dfff;
+}
+.topic-tower-base,
+.math-tower-foundation{
+  background:linear-gradient(90deg,#202b4d,#313660 52%,#222b4a);
+  color:#ffe7ae;
+  box-shadow:0 8px 20px rgba(31,34,69,.15);
+}
+.math-tower h2{
+  color:#242446;
+}
+.math-tower>p,
+.math-tower-help{
+  color:#746b78;
+}
+.math-tower-plaque{
+  border-color:#9b8060;
+  background:rgba(255,249,237,.94);
+}
+.math-tower-symbol{
+  color:#724fe0;
+}
+.math-tower-score{
+  color:#1d2b4a;
+}
+.math-tower-legend{
+  color:#6c6270;
+}
+.mini-stat{
+  border-color:#eadbc6;
+  background:linear-gradient(145deg,rgba(255,253,248,.92),rgba(255,246,232,.90));
+  box-shadow:0 5px 15px rgba(83,59,34,.045);
+}
+.mini-stat span{
+  color:#8b6d75;
+}
+.mini-stat strong{
+  color:#37295c;
+}
+.practice-leaderboard{
+  border-color:#48376f;
+  background:
+    radial-gradient(circle at 100% 0%,rgba(239,171,62,.14),transparent 28%),
+    linear-gradient(145deg,#fff9ee,#f7f0ff);
+  box-shadow:6px 7px 0 #33284f;
+}
+.leaderboard-my-status{
+  border-color:#d8bb74;
+  background:#fff1cc;
+  color:#5d441d;
+}
+.foodtruck-card{
+  border-color:#dca83d!important;
+  background:
+    radial-gradient(circle at 86% 20%,rgba(255,247,190,.55),transparent 28%),
+    linear-gradient(110deg,#f6c45a,#efad45)!important;
+  color:#493814!important;
+  box-shadow:0 10px 25px rgba(147,95,24,.16);
+}
+.foodtruck-card strong{
+  color:#3f3214;
+}
+.foodtruck-card small{
+  color:#695022!important;
+}
+@media(max-width:760px){
+  .student-home-layout::before{display:none}
+}
