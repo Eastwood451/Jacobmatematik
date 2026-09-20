@@ -476,3 +476,29 @@ body.site-authenticated{
 .site-authenticated .table-drill-grid td.active-cell strong{
   color:white;
 }
+
+
+/* Borrow-step copy fallback for stale SPA sessions */
+.site-authenticated .subtraction-prompt:has(.subtraction-drag-cue) h2{
+  font-size:0;
+  margin-bottom:3px;
+}
+.site-authenticated .subtraction-prompt:has(.subtraction-drag-cue) h2::after{
+  content:"Så må man låne!";
+  display:block;
+  color:#17233f;
+  font-size:clamp(30px,4vw,43px);
+  line-height:1.08;
+  letter-spacing:-.035em;
+}
+.site-authenticated .subtraction-prompt:has(.subtraction-drag-cue) > p::before{
+  content:"(Lån en 10'er)";
+  display:block;
+  margin:0 0 10px;
+  color:var(--muted);
+  font-size:14px;
+  font-weight:750;
+}
+.site-authenticated .subtraction-prompt:has(.subtraction-drag-cue) .subtraction-borrow-subtitle{
+  display:none;
+}
