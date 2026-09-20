@@ -560,7 +560,7 @@
     document.body.classList.add("site-authenticated");
     const userLabel = isFractionTester() && jacobFrontend ? "Jacob · Front-end" : state.user.role === "teacher" ? "Lærer" : isGuest() ? "Gæst" : `${escapeHtml(state.user.name)} · Elev`;
     const passwordButton = state.user.role === "student" ? `<button class="btn ghost" data-action="change-password">Skift adgangskode</button>` : "";
-    return `<a class="fps-launch" href="fps.html"><span>NYT SPIL</span>✎ Erling FPS</a><header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions">${state.user.role === "teacher" && state.view !== "foodtruck" ? `<a class="foodtruck-link" href="#foodtruck" data-action="foodtruck">🍔 Foodtruck</a>` : ""}<span class="user-pill">${userLabel}</span>${passwordButton}${jacobViewButton()}<button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
+    return `<header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions"><span class="user-pill">${userLabel}</span>${passwordButton}${jacobViewButton()}<button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
   }
   function stopErlingAudio() {
     if (activeErlingAudio) {
