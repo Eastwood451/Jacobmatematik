@@ -56,6 +56,7 @@
 
   const app = document.getElementById("app");
   if (!app) return;
+  ensureStyle();
   const observer = new MutationObserver(addCard);
   observer.observe(app, { childList:true, subtree:true });
   addCard();
