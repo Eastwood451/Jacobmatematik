@@ -979,3 +979,304 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
 @media(max-width:900px){
   .login-panel{border-left:0;border-top:1px solid rgba(87,142,220,.22)}
 }
+
+
+/* Full cinematic poster login · approved mockup */
+.login-wrap{
+  position:relative;
+  min-height:100vh;
+  grid-template-columns:minmax(0,1.52fr) minmax(430px,.78fr);
+  background:
+    radial-gradient(circle at 23% 21%,rgba(24,105,186,.18),transparent 36rem),
+    radial-gradient(circle at 76% 12%,rgba(78,73,205,.14),transparent 30rem),
+    linear-gradient(180deg,#071a30 0%,#061426 58%,#040d1a 100%);
+}
+.login-wrap::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  pointer-events:none;
+  z-index:0;
+  background:
+    radial-gradient(circle at 48% 84%,rgba(244,164,54,.11),transparent 19rem),
+    radial-gradient(circle at 88% 82%,rgba(235,112,42,.10),transparent 18rem);
+}
+.login-intro.login-illustrated-intro{
+  position:relative;
+  z-index:1;
+  min-height:100vh;
+  background:transparent;
+}
+.login-scene{
+  position:relative;
+  width:100%;
+  background:#071a30;
+  box-shadow:0 22px 70px rgba(0,5,14,.36);
+}
+.login-scene::before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:1;
+  pointer-events:none;
+  background:
+    linear-gradient(180deg,rgba(4,17,35,.10) 0%,transparent 18%,transparent 70%,rgba(4,15,29,.42) 92%,#061426 100%),
+    radial-gradient(circle at 78% 16%,rgba(255,181,62,.18),transparent 18rem);
+  mix-blend-mode:screen;
+}
+.login-scene::after{
+  content:"";
+  position:absolute;
+  inset:auto 0 -1px;
+  height:17%;
+  z-index:1;
+  pointer-events:none;
+  background:linear-gradient(to bottom,transparent 0%,rgba(6,20,38,.64) 50%,#061426 100%);
+}
+.login-scene-image{
+  width:100%;
+  filter:saturate(1.17) contrast(1.06) brightness(.99);
+}
+.login-illustrated-intro>.fps-trial-entry{
+  width:min(92%,780px);
+  max-width:none;
+  min-height:190px;
+  margin:18px auto 34px;
+  transform:none;
+  border-radius:20px;
+}
+.login-illustrated-intro>.fps-trial-entry:hover{
+  transform:translateY(-2px);
+}
+.login-panel{
+  position:relative;
+  z-index:2;
+  min-height:100vh;
+  padding:clamp(28px,4vw,64px) clamp(24px,3.6vw,56px);
+  overflow:hidden;
+  border-left:1px solid rgba(76,139,212,.28);
+  background:
+    radial-gradient(circle at 52% 11%,rgba(58,108,205,.22),transparent 21rem),
+    linear-gradient(180deg,#0b2442 0%,#081b34 48%,#061427 100%);
+}
+.login-panel::before{
+  opacity:.12;
+  background-size:44px 44px;
+  background-image:
+    linear-gradient(rgba(92,149,214,.22) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(92,149,214,.22) 1px,transparent 1px);
+  -webkit-mask-image:linear-gradient(to bottom,black 0%,rgba(0,0,0,.28) 62%,transparent 92%);
+  mask-image:linear-gradient(to bottom,black 0%,rgba(0,0,0,.28) 62%,transparent 92%);
+}
+.login-panel::after{
+  content:"";
+  position:absolute;
+  z-index:0;
+  left:-8%;
+  right:-5%;
+  bottom:-10%;
+  height:47%;
+  pointer-events:none;
+  background:
+    radial-gradient(ellipse at 70% 88%,rgba(247,151,43,.18),transparent 24%),
+    radial-gradient(ellipse at 28% 82%,rgba(74,87,184,.28),transparent 43%),
+    linear-gradient(170deg,transparent 0 48%,rgba(4,13,26,.92) 49% 100%);
+  filter:blur(.2px);
+}
+.login-card{
+  width:min(470px,100%);
+  margin:auto;
+  padding:clamp(30px,3vw,44px);
+  border:1px solid rgba(91,162,241,.60);
+  border-radius:28px;
+  background:
+    linear-gradient(180deg,rgba(11,34,64,.94),rgba(5,18,37,.97));
+  box-shadow:
+    0 32px 92px rgba(0,5,16,.52),
+    inset 0 1px 0 rgba(255,255,255,.07),
+    0 0 0 1px rgba(20,69,117,.18),
+    0 0 44px rgba(27,95,175,.10);
+  backdrop-filter:blur(16px);
+}
+.login-card::before{
+  content:"";
+  position:absolute;
+  inset:-1px;
+  z-index:-1;
+  border-radius:inherit;
+  background:
+    linear-gradient(135deg,rgba(91,173,255,.36),transparent 24%,transparent 72%,rgba(247,179,65,.48));
+  opacity:.78;
+  filter:blur(.1px);
+}
+.login-brand{
+  margin-bottom:34px;
+}
+.login-brand .brand-mark{
+  background:linear-gradient(145deg,#7d67ff,#4b38db);
+  box-shadow:0 0 28px rgba(105,82,255,.55),0 8px 24px rgba(0,0,0,.30);
+}
+.login-card h2{
+  margin-bottom:11px;
+  color:#ffe29a;
+  font-size:clamp(34px,3vw,44px);
+  letter-spacing:-.045em;
+  text-shadow:0 2px 24px rgba(255,196,75,.10);
+}
+.login-card>p:not(.error):not(.login-card-quote){
+  color:#c5d2e3;
+  margin-bottom:31px;
+}
+.login-card .field{
+  margin:18px 0;
+}
+.login-card .field label{
+  color:#f2f6fd;
+}
+.login-card .field input{
+  min-height:54px;
+  color:#f4f8ff;
+  border:1px solid rgba(111,173,240,.56);
+  background:linear-gradient(180deg,#193552 0%,#122b47 100%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.045),0 0 0 1px rgba(0,0,0,.18);
+}
+.login-card .field input:focus{
+  border-color:#86bdff;
+  box-shadow:0 0 0 3px rgba(79,142,229,.16),0 0 26px rgba(59,128,221,.17);
+}
+.login-card .btn.full[type="submit"]{
+  min-height:54px;
+  border:1px solid rgba(160,132,255,.72);
+  background:linear-gradient(135deg,#725dff 0%,#5b42e6 54%,#764cf1 100%);
+  box-shadow:0 9px 26px rgba(72,48,210,.36),inset 0 1px 0 rgba(255,255,255,.24);
+}
+.login-card .btn.secondary.full{
+  min-height:51px;
+  color:#ffd66d;
+  border:1px solid rgba(244,185,67,.92);
+  background:rgba(4,17,35,.46);
+  box-shadow:0 0 24px rgba(238,166,50,.08),inset 0 1px 0 rgba(255,255,255,.04);
+}
+.login-divider{
+  margin:20px 0;
+  color:#a8b8cc;
+}
+.login-card-quote{
+  margin:28px 0 0!important;
+  color:#93a6c0!important;
+  text-align:center;
+  font-size:13px;
+  font-style:italic;
+  line-height:1.45!important;
+}
+.login-card-quote strong{
+  color:#b9c6d7;
+  font-weight:700;
+}
+.login-poster-note{
+  position:absolute;
+  z-index:3;
+  right:5.5%;
+  top:6.5%;
+  color:#8099bd;
+  font:700 15px/1.28 "Comic Sans MS","Segoe Print",cursive;
+  letter-spacing:.08em;
+  transform:rotate(-4deg);
+  opacity:.78;
+  text-align:right;
+}
+.login-poster-note::after{
+  content:"";
+  display:block;
+  width:64px;
+  height:3px;
+  margin:8px 0 0 auto;
+  border-radius:10px;
+  background:linear-gradient(90deg,transparent,#f2b84b);
+  transform:rotate(-5deg);
+}
+.login-poster-tagline{
+  position:absolute;
+  z-index:3;
+  right:6%;
+  bottom:9%;
+  color:#9aaac4;
+  font:700 14px/1.3 "Comic Sans MS","Segoe Print",cursive;
+  letter-spacing:.05em;
+  transform:rotate(-4deg);
+  opacity:.72;
+  text-align:right;
+}
+.login-poster-tagline::after{
+  content:"";
+  display:block;
+  width:76px;
+  height:3px;
+  margin:9px 0 0 auto;
+  border-radius:10px;
+  background:linear-gradient(90deg,transparent,#efad3f);
+}
+.login-horizon{
+  position:absolute;
+  z-index:1;
+  left:0;
+  right:0;
+  bottom:0;
+  height:34%;
+  pointer-events:none;
+  overflow:hidden;
+  opacity:.85;
+}
+.login-horizon span{
+  position:absolute;
+  bottom:-4%;
+  background:#030b15;
+  clip-path:polygon(0 100%,0 78%,8% 73%,14% 62%,20% 68%,28% 44%,35% 63%,42% 47%,50% 69%,58% 55%,67% 76%,73% 66%,80% 81%,87% 73%,94% 86%,100% 80%,100% 100%);
+}
+.login-horizon span:nth-child(1){
+  inset:0 -12% -6% -12%;
+  opacity:.42;
+  transform:scaleY(.68);
+  transform-origin:bottom;
+  background:#122b4d;
+}
+.login-horizon span:nth-child(2){
+  inset:0 -14% -9% -8%;
+  opacity:.68;
+  transform:translateX(5%) scaleY(.86);
+  transform-origin:bottom;
+  background:#09182c;
+}
+.login-horizon span:nth-child(3){
+  inset:0 -18% -13% -15%;
+  opacity:.96;
+  transform:translateX(-4%);
+  background:#030b15;
+}
+.site-copyright{
+  color:#b9c5d6!important;
+  opacity:.45!important;
+}
+@media(max-width:1100px){
+  .login-poster-note,.login-poster-tagline{display:none}
+  .login-card{width:min(440px,100%)}
+}
+@media(max-width:900px){
+  .login-wrap{grid-template-columns:1fr}
+  .login-intro.login-illustrated-intro{min-height:auto}
+  .login-panel{
+    min-height:auto;
+    border-left:0;
+    border-top:1px solid rgba(76,139,212,.28);
+    padding-top:56px;
+    padding-bottom:78px;
+  }
+  .login-horizon{height:28%}
+}
+@media(max-width:620px){
+  .login-illustrated-intro>.fps-trial-entry{
+    width:calc(100% - 28px);
+    min-height:170px;
+    margin:12px auto 22px;
+  }
+}
