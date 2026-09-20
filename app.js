@@ -101,6 +101,7 @@
     "assets/figurer/audio/erling-hold-op-med-at-oeve-dig.mp3",
     "assets/figurer/audio/erling-giv-nu-bare-op.mp3",
     "assets/figurer/audio/erling-kom-og-vaer-sur.mp3",
+    "assets/figurer/audio/erling-din-matematik-er-staerk.mp3",
   ];
   let activeErlingAudio = null;
   let lastErlingAudioIndex = -1;
