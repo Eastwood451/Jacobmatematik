@@ -28,7 +28,7 @@ jobs:
         run: python scripts/generate_fps_audio.py
       - name: Commit generated clips
         run: |
-          if git diff --quiet -- assets/figurer/audio; then
+          if [ -z "$(git status --porcelain -- assets/figurer/audio)" ]; then
             echo "No new clips."
             exit 0
           fi
