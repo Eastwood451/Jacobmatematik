@@ -29,6 +29,9 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
   const stick = document.getElementById('move-stick');
   const knob = stick.querySelector('span');
   const look = document.getElementById('look-pad');
+  const lookStick = document.getElementById('look-stick');
+  const lookKnob = lookStick.querySelector('span');
+  let lookStickId = null, lookAxisX = 0, lookAxisY = 0;
   let paused = false, moveId = null, lookId = null, lookX = 0, lookY = 0;
   let lookStart = null, previousTap = null;
   let tapTimer = null, crouchLatched = false;
@@ -60,6 +63,7 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
     touchInput.x = touchInput.z = 0;
     touchInput.sprint = touchInput.crouch = false;
     moveId = lookId = null;
+    resetLookStick();
     lookStart = previousTap = null;
     cancelTap();
     crouchLatched = false;
@@ -139,8 +143,45 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
     moveId = null; touchInput.x = touchInput.z = 0; knob.style.transform = '';
   }
   for (const event of ['pointerup','pointercancel','lostpointercapture']) stick.addEventListener(event,endMove);
+  function resetLookStick() {
+    lookStickId = null;
+    lookAxisX = lookAxisY = 0;
+    lookKnob.style.transform = '';
+  }
+  function steerLook(e) {
+    const rect = lookStick.getBoundingClientRect(), radius = rect.width * .32;
+    let x = (e.clientX - rect.left - rect.width / 2) / radius;
+    let y = (e.clientY - rect.top - rect.height / 2) / radius;
+    const length = Math.hypot(x, y);
+    if (length > 1) { x /= length; y /= length; }
+    const strength = Math.max(0, (Math.min(length, 1) - .14) / .86);
+    lookAxisX = length ? x / Math.min(length, 1) * strength : 0;
+    lookAxisY = length ? y / Math.min(length, 1) * strength : 0;
+    lookKnob.style.transform = `translate(${x * radius}px,${y * radius}px)`;
+  }
+  function update(dt) {
+    if (!available() || lookStickId === null) return;
+    const step = Math.max(0, Math.min(dt, .04));
+    camera.rotation.order = 'YXZ';
+    camera.rotation.y -= lookAxisX * 2.4 * step;
+    camera.rotation.x = Math.max(-Math.PI / 2 + .05, Math.min(Math.PI / 2 - .05, camera.rotation.x - lookAxisY * 1.8 * step));
+    camera.rotation.z = 0;
+  }
+  lookStick.addEventListener('pointerdown', e => {
+    if (!available() || lookStickId !== null || lookId !== null) return;
+    cancelTap();
+    lookStickId = e.pointerId;
+    capture(lookStick, e);
+    steerLook(e);
+  });
+  lookStick.addEventListener('pointermove', e => {
+    if (e.pointerId === lookStickId && available()) steerLook(e);
+  });
+  for (const event of ['pointerup','pointercancel','lostpointercapture']) lookStick.addEventListener(event, e => {
+    if (e.pointerId === lookStickId) resetLookStick();
+  });
   look.addEventListener('pointerdown', e => {
-    if (!available() || lookId !== null) return;
+    if (!available() || lookId !== null || lookStickId !== null) return;
     lookId = e.pointerId; lookX = e.clientX; lookY = e.clientY; capture(look,e);
     lookStart = {x:e.clientX, y:e.clientY, time:performance.now(), moved:false};
   });
@@ -223,7 +264,7 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
   panel.addEventListener('contextmenu', e => e.preventDefault());
   sync();
   return {
-    enter, reset, sync, setEnabled,
+    enter, reset, sync, setEnabled, update,
     get enabled(){return enabled;},
     get active(){return available();},
     get blocked(){return enabled && !available();}

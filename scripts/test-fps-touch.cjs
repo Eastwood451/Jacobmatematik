@@ -23,6 +23,7 @@ function setup(t,touch=true) {
   const controls=api.createTouchControls({camera,isPlaying:()=>playing,keydown:e=>keys.push(e.code),fire:()=>fired++,clearKeys:()=>cleared++});
   const get=selector=>w.document.querySelector(selector);
   get('#move-stick').getBoundingClientRect=()=>({left:0,top:0,width:100,height:100});
+  get('#look-stick').getBoundingClientRect=()=>({left:600,top:100,width:100,height:100});
   const pointer=(selector,type,id,x=50,y=50)=>{
     const event=new w.Event(type,{bubbles:true,cancelable:true});
     Object.assign(event,{pointerId:id,clientX:x,clientY:y});
@@ -70,6 +71,72 @@ test('stick dead zone, analog speed and hold release are bounded',t=>{
   s.pointer('[data-hold="sprint"]','lostpointercapture',2);
   s.pointer('[data-hold="crouch"]','pointercancel',3);
   assert.equal(s.api.touchInput.sprint,false);assert.equal(s.api.touchInput.crouch,false);
+});
+
+test('right joystick turns continuously while walking and stops on release without jumping',t=>{
+  const s=setup(t);
+  s.pointer('#move-stick','pointerdown',1,50,18);
+  s.pointer('#look-stick','pointerdown',2,682,150);
+  s.controls.update(.02);
+  const yaw=s.camera.rotation.y;
+  assert.ok(yaw<0);
+  s.controls.update(.02);
+  assert.ok(s.camera.rotation.y<yaw);
+  assert.equal(s.api.touchInput.z,-1);
+  s.pointer('#touch-fire','pointerdown',3);
+  assert.equal(s.fired,1);
+  s.pointer('#look-stick','pointerup',2,682,150);
+  const stopped=s.camera.rotation.y;
+  s.controls.update(.02);
+  assert.equal(s.camera.rotation.y,stopped);
+  assert.equal(s.get('#look-stick span').style.transform,'');
+  assert.equal(s.keys.length,0);
+});
+
+test('look joystick has a dead zone, frame-independent speed and bounded pitch',t=>{
+  const s=setup(t);
+  s.pointer('#look-stick','pointerdown',1,651,151);
+  s.controls.update(.02);
+  assert.equal(s.camera.rotation.y,0);
+  assert.equal(s.camera.rotation.x,0);
+  s.pointer('#look-stick','pointermove',1,666,150);
+  s.controls.update(.02);
+  const partial=Math.abs(s.camera.rotation.y);
+  s.camera.rotation.set(0,0,0);
+  s.pointer('#look-stick','pointermove',1,682,150);
+  for(let i=0;i<50;i++) s.controls.update(.02);
+  const yaw=s.camera.rotation.y;
+  assert.ok(partial>0 && partial<Math.abs(yaw)/50);
+  s.camera.rotation.set(0,0,0);
+  for(let i=0;i<100;i++) s.controls.update(.01);
+  assert.ok(Math.abs(s.camera.rotation.y-yaw)<1e-10);
+  s.pointer('#look-stick','pointermove',1,650,9999);
+  for(let i=0;i<200;i++) s.controls.update(.02);
+  assert.ok(s.camera.rotation.x>=-Math.PI/2+.05);
+  s.pointer('#look-stick','pointermove',1,650,-9999);
+  for(let i=0;i<200;i++) s.controls.update(.02);
+  assert.ok(s.camera.rotation.x<=Math.PI/2-.05);
+});
+
+test('look joystick resets on cancellation, lost capture, pause, resize and disabled controls',t=>{
+  for(const stop of [
+    s=>s.pointer('#look-stick','pointercancel',1),
+    s=>s.pointer('#look-stick','lostpointercapture',1),
+    s=>s.get('#touch-pause').click(),
+    s=>s.w.dispatchEvent(new s.w.Event('resize')),
+    s=>s.w.dispatchEvent(new s.w.Event('blur')),
+    s=>s.controls.setEnabled(false),
+    s=>{s.setPlaying(false);s.controls.sync();},
+  ]) {
+    const s=setup(t);
+    s.pointer('#look-stick','pointerdown',1,682,150);
+    s.controls.update(.02);
+    const yaw=s.camera.rotation.y;
+    stop(s);
+    s.controls.update(.02);
+    assert.equal(s.camera.rotation.y,yaw);
+    assert.equal(s.get('#look-stick span').style.transform,'');
+  }
 });
 
 test('rotation, pause, blur and game over clear input; unsupported fullscreen is harmless',async t=>{

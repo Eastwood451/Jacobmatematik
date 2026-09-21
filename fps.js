@@ -1385,6 +1385,7 @@ function loop(t) {
   const dt = Math.min((t - last) / 1000, .04);
   last = t;
   touch?.sync();
+  touch?.update(dt);
   schoolWindows.update(t);
   if (!touch?.blocked) gameTime += dt * 1000;
   update(dt, multiplayer?.active ? t : gameTime);

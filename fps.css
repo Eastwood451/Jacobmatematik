@@ -55,12 +55,14 @@ button:focus-visible,input:focus-visible{outline:3px solid #277d7d;outline-offse
 .touch-device .overlay-card p{font-size:13px;margin:8px 0}
 .touch-device .start-button{padding:10px;font-size:15px}
 .touch-device #touch-controls{display:block;position:fixed;inset:0;z-index:20;pointer-events:none}
-.touch-device #touch-controls button,.touch-device #move-stick,.touch-device #look-pad{pointer-events:auto;touch-action:none}
+.touch-device #touch-controls button,.touch-device #move-stick,.touch-device #look-stick,.touch-device #look-pad{pointer-events:auto;touch-action:none}
 #look-pad{position:absolute;right:var(--right-edge);top:60px;bottom:calc(var(--number-height) + var(--bottom-edge) + 12px);width:44%;border-radius:30px}
 #look-pad>span{position:absolute;right:12px;top:0;font-size:9px;letter-spacing:.12em;color:#fff8;pointer-events:none}
-#move-stick{position:absolute;left:calc(var(--left-edge) + 12px);bottom:calc(var(--number-height) + var(--bottom-edge) + 24px);width:clamp(96px,25vh,126px);aspect-ratio:1;border:2px solid #fff8;border-radius:50%;background:#14212b55;box-shadow:inset 0 0 20px #10182044;display:grid;place-items:center}
-#move-stick span{width:44%;height:44%;border:2px solid #fff9;border-radius:50%;background:#f3e8ce88;box-shadow:0 3px 8px #0005;pointer-events:none}
-#move-stick small{position:absolute;bottom:8px;font-size:8px;letter-spacing:.1em;color:#fff9;pointer-events:none}
+#move-stick,#look-stick{position:absolute;bottom:calc(var(--number-height) + var(--bottom-edge) + 24px);width:clamp(96px,25vh,126px);aspect-ratio:1;border:2px solid #fff8;border-radius:50%;background:#14212b55;box-shadow:inset 0 0 20px #10182044;display:grid;place-items:center}
+#move-stick span,#look-stick span{width:44%;height:44%;border:2px solid #fff9;border-radius:50%;background:#f3e8ce88;box-shadow:0 3px 8px #0005;pointer-events:none}
+#move-stick small,#look-stick small{position:absolute;bottom:8px;font-size:8px;letter-spacing:.1em;color:#fff9;pointer-events:none}
+#move-stick{left:calc(var(--left-edge) + 12px)}
+#look-stick{right:calc(var(--right-edge) + 92px);bottom:calc(var(--number-height) + var(--bottom-edge) + 84px)}
 .touch-actions{position:absolute;right:calc(var(--right-edge) + 6px);bottom:calc(var(--number-height) + var(--bottom-edge) + 18px);display:grid;grid-template-columns:48px 48px 72px;gap:7px;align-items:end}
 #touch-controls button,#touch-pause{border:2px solid #101820;border-radius:10px;background:#f3e8cedd;color:#121820;font-weight:900;box-shadow:2px 3px 0 #10182088;-webkit-tap-highlight-color:transparent}
 .touch-actions button{height:46px;font-size:11px;padding:4px}
@@ -97,7 +99,9 @@ button:focus-visible,input:focus-visible{outline:3px solid #277d7d;outline-offse
 .touch-device #else-boss-hud{top:max(7px,env(safe-area-inset-top))!important;left:var(--left-edge)!important;right:calc(var(--right-edge) + 54px)!important;transform:none!important;width:auto!important;pointer-events:none;padding:4px 8px!important;font-size:10px!important;border-width:2px!important}
 @media (max-height:370px) and (orientation:landscape){
  .touch-device{--number-height:42px}
- .touch-device #move-stick{width:90px;bottom:calc(var(--number-height) + var(--bottom-edge) + 14px)}
+ .touch-device #move-stick,.touch-device #look-stick{width:90px}
+ .touch-device #move-stick{bottom:calc(var(--number-height) + var(--bottom-edge) + 14px)}
+ .touch-device #look-stick{bottom:calc(var(--number-height) + var(--bottom-edge) + 70px)}
  .touch-device .touch-actions{bottom:calc(var(--number-height) + var(--bottom-edge) + 10px)}
  .touch-device.touch-playing .math-panel{width:164px}
 }
