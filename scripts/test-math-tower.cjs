@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
 const context = vm.createContext({});
 // Exercise the production helpers without starting authentication or the app.
-const names = ['matrixDrillIsGreen', 'matrixDrillCellStyle', 'tableDrillSessions', 'mathTowerBestHeatmap', 'mathTowerFloorArt'];
+const names = ['matrixDrillIsGreen', 'matrixDrillCellStyle', 'tableDrillSessions', 'numberValueStats', 'numberMastery', 'mathTowerBestHeatmap', 'mathTowerNumberStones', 'mathTowerFloorArt'];
 const functions = names.map(name => {
   const start = source.indexOf(`  function ${name}(`);
   assert.ok(start >= 0, name);
@@ -13,7 +13,7 @@ const functions = names.map(name => {
   return source.slice(start, end);
 });
 vm.runInContext(`${source.match(/  const TABLE_DRILL_VALUES = .+;/)[0]}\n${source.match(/  const recordedTime = .+;/)[0]}\n${functions.join('\n')}`, context);
-const { matrixDrillIsGreen: green, matrixDrillCellStyle: style, mathTowerBestHeatmap: best, mathTowerFloorArt: art } = context;
+const { matrixDrillIsGreen: green, matrixDrillCellStyle: style, mathTowerBestHeatmap: best, mathTowerNumberStones: numberStones, mathTowerFloorArt: art } = context;
 const result = (id, row, column, correct = true, responseTime = 3, day = 1) => ({
   topic:'tableDrill', drillSessionId:id, drillRow:row, drillColumn:column,
   correct, responseTime, timestamp:`2026-09-${String(day).padStart(2, '0')}T12:00:00Z`,
@@ -46,4 +46,22 @@ const full = {results:Array.from({length:81}, (_,i) => result('complete',Math.fl
 assert.equal(best(full).bricks, 81);
 assert.equal((art('heatmap',3,best(full)).match(/class="math-tower-brick"/g) || []).length,81);
 assert.equal((art('heatmap',3,best(full)).match(/class="math-tower-hole"/g) || []).length,0);
-console.log('PASS: heatmap green boundary, empty/full floors, best-session selection, ties, wrong/slow answers, exact cell positions and no merging across sessions.');
+const numberResult = (number, correct=true, responseTime=5, sequence=1) => ({ topic:'numbers', problem:`Antal ${number}`, correct, responseTime, timestamp:`2026-09-20T12:00:${String(sequence).padStart(2,'0')}Z` });
+const numberUser = {results:[
+  ...[1,2,3].map(sequence => numberResult(0, true, 4, sequence)),
+  ...[4,5,6].map(sequence => numberResult(10, true, 5, sequence)),
+  ...[7,8].map(sequence => numberResult(4, true, 4, sequence)),
+]};
+const towerNumbers = numberStones(numberUser);
+assert.equal(towerNumbers.stones.length, 11);
+assert.equal(towerNumbers.built, 2, 'a number becomes a stone after three quick correct answers');
+assert.equal(towerNumbers.stones[0].stage, 'silver');
+assert.equal(towerNumbers.stones[10].stage, 'silver');
+assert.equal(towerNumbers.stones[4].stage, 'none');
+const numberSvg = art('number-stones', 6, null, towerNumbers);
+assert.equal((numberSvg.match(/class="math-tower-number-stone"/g) || []).length, 2);
+assert.equal((numberSvg.match(/class="math-tower-number-hole"/g) || []).length, 9);
+assert.match(numberSvg, /data-number="0"/);
+assert.match(numberSvg, /data-number="10"/);
+assert.match(numberSvg, />10<\/text>/);
+console.log('PASS: heatmap and number-stone floors: green boundary, session selection, 0–10 stone mapping, mastery threshold, holes and exact cells.');
