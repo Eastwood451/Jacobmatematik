@@ -72,8 +72,8 @@
   const SUBTRACTION_DRILL_SINGLE_FACTS = SINGLE_DIGITS.flatMap(minuend =>
     Array.from({length:minuend + 1}, (_, subtrahend) => ({ minuend, subtrahend, group:0 }))
   );
-  const SUBTRACTION_DRILL_TWO_DIGIT_FACTS = Array.from({length:9}, (_, tens) => tens + 1).flatMap(tens =>
-    SINGLE_DIGITS.flatMap(ones => SINGLE_DIGITS.map(subtrahend => ({ minuend:tens * 10 + ones, subtrahend, group:tens })))
+  const SUBTRACTION_DRILL_ONES_PATTERNS = SINGLE_DIGITS.flatMap(ones =>
+    SINGLE_DIGITS.map(subtrahend => ({ ones, subtrahend }))
   );
   const MATRIX_DRILL_TOPICS = new Set(["tableDrill", "divisionDrill"]);
   const DRILL_SESSION_TOPICS = { tableDrill:"tableDrillSession", divisionDrill:"divisionDrillSession" };
@@ -203,16 +203,23 @@
     subtractionDrill: {
       generate(level, user) {
         const grouped=subtractionDrillPairStats(user || { results:[] });
-        const practiceWeight=fact => {
+        // Tocifrede opgaver bruger ét-mønster-mastery, étcifrede bruger det eksakte par.
+        const twoDigit=Math.random() < .72;
+        if (twoDigit) {
+          const patternWeight=pattern => {
+            const mastery=drillMastery(grouped.get(`ones:${pattern.ones}-${pattern.subtrahend}`) || []);
+            return mastery.learned ? .15 : mastery.streak ? 1.4 : 4;
+          };
+          const pattern=weightedPick(SUBTRACTION_DRILL_ONES_PATTERNS, patternWeight);
+          const tens=rand(1, 9);
+          const minuend=tens * 10 + pattern.ones;
+          return makeTask("subtractionDrill", `${minuend} − ${pattern.subtrahend}`, minuend - pattern.subtrahend, "Træk fra uden at gå under nul.", { minuend, subtrahend:pattern.subtrahend, group:tens });
+        }
+        const singleWeight=fact => {
           const mastery=drillMastery(grouped.get(`${fact.minuend}-${fact.subtrahend}`) || []);
           return mastery.learned ? .15 : mastery.streak ? 1.4 : 4;
         };
-        // Tieren vælges først, så første ciffer i en tocifret minuend altid er tilfældigt.
-        const twoDigit=Math.random() < .72;
-        const facts=twoDigit
-          ? SUBTRACTION_DRILL_TWO_DIGIT_FACTS.filter(fact => fact.group === rand(1, 9))
-          : SUBTRACTION_DRILL_SINGLE_FACTS;
-        const fact=weightedPick(facts, practiceWeight);
+        const fact=weightedPick(SUBTRACTION_DRILL_SINGLE_FACTS, singleWeight);
         return makeTask("subtractionDrill", `${fact.minuend} − ${fact.subtrahend}`, fact.minuend - fact.subtrahend, "Træk fra uden at gå under nul.", fact);
       },
       calculate: (minuend, subtrahend) => minuend - subtrahend,
@@ -751,17 +758,15 @@
   }
   function mathTowerSubtractionStones(user) {
     const grouped=subtractionDrillPairStats(user);
+    const singleFacts=SUBTRACTION_DRILL_SINGLE_FACTS;
     const groups=[
-      { label:"0–9", facts:SUBTRACTION_DRILL_SINGLE_FACTS },
-      ...Array.from({length:9}, (_, tens) => {
-        const start=(tens + 1) * 10;
-        return { label:`${start}–${start + 9}`, facts:SUBTRACTION_DRILL_TWO_DIGIT_FACTS.filter(fact => fact.group === tens + 1) };
-      }),
+      { label:"0–9", facts:singleFacts, keyFn:fact => `${fact.minuend}-${fact.subtrahend}` },
+      { label:"Ét-mønstre", facts:SUBTRACTION_DRILL_ONES_PATTERNS, keyFn:pattern => `ones:${pattern.ones}-${pattern.subtrahend}` },
     ];
     const stones=groups.map(group => ({
       ...group,
-      learned:group.facts.every(fact => drillMastery(grouped.get(`${fact.minuend}-${fact.subtrahend}`) || []).learned),
-      learnedFacts:group.facts.filter(fact => drillMastery(grouped.get(`${fact.minuend}-${fact.subtrahend}`) || []).learned).length,
+      learned:group.facts.every(fact => drillMastery(grouped.get(group.keyFn(fact)) || []).learned),
+      learnedFacts:group.facts.filter(fact => drillMastery(grouped.get(group.keyFn(fact)) || []).learned).length,
     }));
     return { stones, built:stones.filter(stone => stone.learned).length, learnedFacts:stones.reduce((sum, stone) => sum + stone.learnedFacts, 0) };
   }
@@ -854,7 +859,7 @@
       </nav>
       <div class="math-tower-foundation">Et solidt fundament</div>
       <div class="math-tower-legend" aria-label="Tårnets byggestadier"><span><i class="legend-frame"></i>0 % · Rammeværk</span><span><i class="legend-wood"></i>30 % · Træ</span><span><i class="legend-timber"></i>60 % · Bindingsværk</span><span><i class="legend-granite"></i>95 % · Granit</span></div>
-      <details class="math-tower-help"><summary>Hvordan bygges tårnet?</summary><p>Vælg en etage for at øve. Gange-etagen viser dit bedste Gange-drill-heatmap, og Division-etagen viser dit bedste Division-drill-heatmap: sessionen med flest grønne felter (korrekt på højst 4 sekunder). Ved lighed bruges den nyeste session. Hvert grønt felt bliver en granitmursten, og alle andre felter er sorte huller. Plus-etagen har alle 100 ordnede étcifrede pluspar, så 5 + 9 og 9 + 5 er hver sin mursten. Minus-etagen har ti lodrette sten: étcifrede minusstykker og hver tiergruppe fra 10 til 99. Tælle-etagen har én lodret sten for hvert tal fra 0 til 10. Sten og mursten bliver granit, når opgaven er lært.</p><p>På de øvrige etager følger materialet din score: andelen af rigtige blandt dine seneste 20 svar i hvert tilknyttet modul. Har etagen flere moduler, bruges gennemsnittet; moduler uden svar tæller som 0 %. Scoren kan både stige og falde.</p></details>
+      <details class="math-tower-help"><summary>Hvordan bygges tårnet?</summary><p>Vælg en etage for at øve. Gange-etagen viser dit bedste Gange-drill-heatmap, og Division-etagen viser dit bedste Division-drill-heatmap: sessionen med flest grønne felter (korrekt på højst 4 sekunder). Ved lighed bruges den nyeste session. Hvert grønt felt bliver en granitmursten, og alle andre felter er sorte huller. Plus-etagen har alle 100 ordnede étcifrede pluspar, så 5 + 9 og 9 + 5 er hver sin mursten. Minus-etagen har to lodrette sten: étcifrede minusstykker og ét-mønstre for tocifrede tal — fordi fx X5 − 7 virker ens uanset om det er 15, 25 eller 65. Tælle-etagen har én lodret sten for hvert tal fra 0 til 10. Sten og mursten bliver granit, når opgaven er lært.</p><p>På de øvrige etager følger materialet din score: andelen af rigtige blandt dine seneste 20 svar i hvert tilknyttet modul. Har etagen flere moduler, bruges gennemsnittet; moduler uden svar tæller som 0 %. Scoren kan både stige og falde.</p></details>
     </aside>`;
   }
   function leaderboardMedal(rank) {
@@ -1162,7 +1167,7 @@
   function renderSubtractionDrillHeatmap(user) {
     const grouped=subtractionDrillPairStats(user);
     const values=[...SINGLE_DIGITS];
-    const cell=(minuend, subtrahend, unavailable=false) => {
+    const singleCell=(minuend, subtrahend, unavailable=false) => {
       if (unavailable) return `<td class="subtraction-heatmap-cell unavailable" title="${minuend} − ${subtrahend} giver et negativt tal og øves ikke" aria-label="${minuend} minus ${subtrahend}: øves ikke"></td>`;
       const items=grouped.get(`${minuend}-${subtrahend}`) || [];
       const latest=[...items].sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))[0];
@@ -1172,14 +1177,21 @@
       const status=!items.length ? 'ikke øvet endnu' : mastery.learned ? 'lært' : latest.correct ? `senest korrekt, ${mastery.streak}/3 hurtige i træk` : 'senest forkert';
       return `<td class="subtraction-heatmap-cell${mastery.learned ? ' learned' : ''}${latest && !latest.correct ? ' wrong' : ''}" style="--subtraction-cell-color:${color}" title="${minuend} − ${subtrahend}: ${status}" aria-label="${minuend} minus ${subtrahend}: ${status}">${mastery.learned ? '✓' : ''}</td>`;
     };
-    const table=(heading, minuends, single=false) => `<section class="subtraction-heatmap-group"><h3>${heading}</h3><table><thead><tr><th aria-hidden="true">−</th>${values.map(value=>`<th scope="col">${value}</th>`).join('')}</tr></thead><tbody>${minuends.map(minuend=>`<tr><th scope="row">${minuend}</th>${values.map(subtrahend=>cell(minuend,subtrahend,single && subtrahend > minuend)).join('')}</tr>`).join('')}</tbody></table></section>`;
-    const single=table('Étcifrede', values, true);
-    const twoDigit=Array.from({length:9}, (_, tens) => {
-      const start=(tens + 1) * 10;
-      return table(`${start}–${start + 9}`, Array.from({length:10}, (_, ones) => start + ones));
-    }).join('');
-    const learned=[...grouped.values()].filter(items=>drillMastery(items).learned).length;
-    return `<section class="subtraction-exercise-heatmap" aria-labelledby="subtraction-heatmap-title"><header><div><span class="eyebrow">Dit minuskort</span><h2 id="subtraction-heatmap-title">Minus uden negative svar</h2></div><strong>${learned}/955</strong></header><p>Øv 0–9 minus et mindre eller lige så stort tal samt alle 10–99 minus 0–9. Grøn = lært · rød = senest forkert.</p><div class="subtraction-heatmap-groups">${single}${twoDigit}</div></section>`;
+    const onesCell=(ones, subtrahend) => {
+      const items=grouped.get(`ones:${ones}-${subtrahend}`) || [];
+      const latest=[...items].sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))[0];
+      const mastery=drillMastery(items);
+      const average=items.length ? items.reduce((sum,item)=>sum+recordedTime(item),0)/items.length : 0;
+      const color=!items.length ? '#e8e8e6' : mastery.learned ? '#8ed9b1' : latest.correct ? responseTimeColor(average) : '#ed9b96';
+      const status=!items.length ? 'ikke øvet endnu' : mastery.learned ? 'lært' : latest.correct ? `senest korrekt, ${mastery.streak}/3 hurtige i træk` : 'senest forkert';
+      return `<td class="subtraction-heatmap-cell${mastery.learned ? ' learned' : ''}${latest && !latest.correct ? ' wrong' : ''}" style="--subtraction-cell-color:${color}" title="X${ones} − ${subtrahend}: ${status}" aria-label="ét-mønster ${ones} minus ${subtrahend}: ${status}">${mastery.learned ? '✓' : ''}</td>`;
+    };
+    const singleTable=`<section class="subtraction-heatmap-group"><h3>Étcifrede</h3><table><thead><tr><th aria-hidden="true">−</th>${values.map(value=>`<th scope="col">${value}</th>`).join('')}</tr></thead><tbody>${values.map(minuend=>`<tr><th scope="row">${minuend}</th>${values.map(subtrahend=>singleCell(minuend,subtrahend,subtrahend > minuend)).join('')}</tr>`).join('')}</tbody></table></section>`;
+    const onesTable=`<section class="subtraction-heatmap-group"><h3>Ét-mønstre (tocifrede)</h3><table><thead><tr><th aria-hidden="true">−</th>${values.map(value=>`<th scope="col">${value}</th>`).join('')}</tr></thead><tbody>${values.map(ones=>`<tr><th scope="row">X${ones}</th>${values.map(subtrahend=>onesCell(ones,subtrahend)).join('')}</tr>`).join('')}</tbody></table></section>`;
+    const singleLearned=[...grouped.entries()].filter(([key,items])=>!key.startsWith('ones:') && drillMastery(items).learned).length;
+    const onesLearned=[...grouped.entries()].filter(([key,items])=>key.startsWith('ones:') && drillMastery(items).learned).length;
+    const totalLearned=singleLearned + onesLearned;
+    return `<section class="subtraction-exercise-heatmap" aria-labelledby="subtraction-heatmap-title"><header><div><span class="eyebrow">Dit minuskort</span><h2 id="subtraction-heatmap-title">Minus uden negative svar</h2></div><strong>${totalLearned}/155</strong></header><p>Étcifrede øves enkeltvis. Tocifrede grupperes efter étterne: X5 − 7 dækker 15−7, 25−7, 65−7 osv. Grøn = lært · rød = senest forkert.</p><div class="subtraction-heatmap-groups">${singleTable}${onesTable}</div></section>`;
   }
   function renderExercise() {
     const task = state.task;
@@ -2050,7 +2062,9 @@
     return grouped;
   }
 
-  /* Minusstykkerne gemmes med rækkefølge og kun lovlige, ikke-negative fakta. */
+  /* Étcifrede minusstykker grupperes efter det eksakte par (fx "5-3").
+     Tocifrede minusstykker grupperes efter ét-mønster (fx "ones:2-4"),
+     fordi 52−4, 82−4 og 32−4 alle tester samme étter-færdighed. */
   function subtractionDrillPairStats(user) {
     const grouped=new Map();
     (user.results || []).filter(item => item.topic === "subtractionDrill").forEach(item => {
@@ -2060,7 +2074,7 @@
       const isSingle=SINGLE_DIGITS.includes(minuend) && subtrahend <= minuend;
       const isTwoDigit=minuend >= 10 && minuend <= 99 && SINGLE_DIGITS.includes(subtrahend);
       if (!isSingle && !isTwoDigit) return;
-      const key=`${minuend}-${subtrahend}`;
+      const key=isTwoDigit ? `ones:${minuend % 10}-${subtrahend}` : `${minuend}-${subtrahend}`;
       if (!grouped.has(key)) grouped.set(key, []);
       grouped.get(key).push(item);
     });
