@@ -698,32 +698,46 @@
     // Match the existing topic scores; unpractised associated topics count as zero.
     return topics.reduce((sum, topic) => sum + getStats(user, topic).accuracy * 100, 0) / topics.length;
   }
-  function mathTowerFloorArt(stage, index) {
-    const outline = 'stroke="#343a40" stroke-width="3" stroke-linejoin="round"';
-    const beams = `<path d="M17 8L22 109M278 8L274 109M20 15L277 15M22 103L274 103" stroke="#67472f" stroke-width="9" fill="none"/><path d="M22 15L148 103L276 15M148 15V103" stroke="#755035" stroke-width="6" fill="none"/>`;
-    let art;
-    if (stage === "frame") {
-      art = `<path d="M24 111L16 11L276 6L284 110M18 13L283 107M277 9L26 107M17 10L278 6M23 108L283 110" fill="none" stroke="#88775e" stroke-width="5" stroke-linecap="round"/><path d="M16 26L35 24M262 18L280 17M17 91L36 89M268 92L287 91" stroke="#c9b791" stroke-width="3"/><path d="M30 113H272" stroke="#746a58" stroke-width="5"/>`;
+  function mathTowerBestHeatmap(user) {
+    // Keep one real session, never combine cells from different heatmaps.
+    // Sessions are newest first, so the most recent wins a tie.
+    return tableDrillSessions(user).reduce((best, session) => {
+      const bricks = Object.values(session.attempts).filter(matrixDrillIsGreen).length;
+      return !best.session || bricks > best.bricks ? { session, bricks } : best;
+    }, { session:null, bricks:0 });
+  }
+  function mathTowerFloorArt(stage, index, heatmap = null) {
+    const outline = 'stroke="#5b5144" stroke-width="2"';
+    let art = '';
+    if (heatmap) {
+      // Same row/column order as the 9 × 9 heatmap, stretched across the floor.
+      const width = 276 / TABLE_DRILL_VALUES.length, height = 120 / TABLE_DRILL_VALUES.length;
+      art = `<rect x="12" y="2" width="276" height="120" fill="#262a31"/>`;
+      TABLE_DRILL_VALUES.forEach((row, r) => TABLE_DRILL_VALUES.forEach((column, c) => {
+        const brick = matrixDrillIsGreen(heatmap.session?.attempts[`${row}-${column}`]);
+        const x = 12 + c * width, y = 2 + r * height;
+        art += `<g class="math-tower-${brick ? "brick" : "hole"}" data-cell="${row}-${column}"><rect x="${x+0.8}" y="${y+0.8}" width="${width-1.6}" height="${height-1.6}" rx="1" fill="${brick ? ['#b78c61','#c59a6c','#ac8058'][(r+c)%3] : '#363940'}"/>${brick ? `<path d="M${x+2} ${y+height-2}H${x+width-2}V${y+2}" fill="none" stroke="#78573e" stroke-width="1.5"/><path d="M${x+2} ${y+height-3}V${y+2}H${x+width-2}" fill="none" stroke="#e5c599" stroke-width="1"/>` : `<path d="M${x+1} ${y+height-1}V${y+1}H${x+width-1}" fill="none" stroke="#181c24" stroke-width="2"/>`}</g>`;
+      }));
+    } else if (stage === "frame") {
+      art = `<rect x="15" y="5" width="270" height="114" fill="none" stroke="#88775e" stroke-width="6"/><path d="M18 8L282 116M282 8L18 116" stroke="#a28e70" stroke-width="4"/><path d="M18 8H282M18 116H282" stroke="#c9b791" stroke-width="2"/>`;
     } else if (stage === "wood") {
-      art = `<path d="M14 8L285 11L281 112L18 111Z" fill="#bb8549" ${outline}/>`;
-      for (let row = 0; row < 5; row++) {
-        const y=13+row*19;
-        art += `<path d="M20 ${y}L280 ${y+2}" stroke="#704b2c" stroke-width="2"/><path d="M29 ${y+8}Q75 ${y+3} 115 ${y+9}T268 ${y+8}" fill="none" stroke="#dda76b" stroke-width="2"/><circle cx="26" cy="${y+5}" r="1.6" fill="#423a30"/><circle cx="273" cy="${y+5}" r="1.6" fill="#423a30"/>`;
+      art = `<rect x="12" y="2" width="276" height="120" fill="#bb8549" ${outline}/>`;
+      for (let row=0; row<6; row++) {
+        const y=3+row*20;
+        art += `<path d="M13 ${y}H287" stroke="#704b2c" stroke-width="2"/><path d="M22 ${y+9}Q75 ${y+4} 115 ${y+10}T278 ${y+9}" fill="none" stroke="#dda76b" stroke-width="2"/>`;
       }
-      art += `<path d="M20 8L24 112M279 10L276 112" stroke="#805632" stroke-width="8"/>`;
     } else if (stage === "timber") {
-      art = `<path d="M14 8H285L280 112H20Z" fill="#e8dbc0" ${outline}/><path d="M25 26L269 96M30 96L268 27" stroke="#d5c4a4" stroke-width="2"/>${beams}`;
+      art = `<rect x="12" y="2" width="276" height="120" fill="#e8dbc0" ${outline}/><path d="M16 6H284V118H16ZM16 6L150 118L284 6M150 6V118" fill="none" stroke="#755035" stroke-width="8"/>`;
     } else {
-      art = `<path d="M12 6H287V114H12Z" fill="#939da2" ${outline}/>`;
-      for (let row=0; row<4; row++) {
+      art = `<rect x="12" y="2" width="276" height="120" fill="#535e65"/>`;
+      for (let row=0; row<5; row++) {
         for (let col=0; col<5; col++) {
-          const x=15+col*70-(row%2)*35, y=9+row*25;
-          const left=Math.max(15,x), right=Math.min(284,x+66);
+          const x=12+col*69-(row%2)*34.5, y=2+row*24;
+          const left=Math.max(12,x), right=Math.min(288,x+69);
           if(right<=left) continue;
-          art += `<rect x="${left}" y="${y}" width="${right-left}" height="22" rx="2" fill="${['#aeb5b6','#939da1','#bdc2c0'][(row+col+index)%3]}" stroke="#535e65" stroke-width="1.5"/><path d="M${left+3} ${y+4}H${right-3}" stroke="#dce0db" stroke-opacity=".55"/><path d="M${left+5} ${y+16}l4 -2m9 -6l3 2" stroke="#69777f" stroke-opacity=".5"/>`;
+          art += `<rect x="${left+1}" y="${y+1}" width="${right-left-2}" height="22" rx="2" fill="${['#aeb5b6','#939da1','#bdc2c0'][(row+col+index)%3]}"/><path d="M${left+3} ${y+4}H${right-3}" stroke="#dce0db" stroke-opacity=".55"/>`;
         }
       }
-      art += `<path d="M8 110H292V119H8Z" fill="#697780" ${outline}/>`;
     }
     return `<svg class="math-tower-floor-art" viewBox="0 0 300 124" preserveAspectRatio="none" aria-hidden="true" focusable="false">${art}</svg>`;
   }
@@ -733,22 +747,23 @@
       <h2 id="math-tower-title">Matematiktårnet</h2>
       <p>Stærke grundfærdigheder.<br>Et stærkere tårn.</p>
       <nav class="math-tower-building" aria-label="Matematiktårnets etager – Tælle er fundamentet">
-        <div class="math-tower-crown" aria-hidden="true"><svg viewBox="0 0 300 48"><path d="M16 46V9H53V26H89V9H127V26H166V9H205V26H242V9H281V46Z" fill="#79858b" stroke="#343a40" stroke-width="3"/><path d="M19 40H278" stroke="#bac1c1" stroke-width="3"/></svg></div>
+        <div class="math-tower-crown" aria-hidden="true"><svg viewBox="0 0 300 48"><path d="M12 46V9H53V26H89V9H127V26H166V9H205V26H242V9H288V46Z" fill="#79858b" stroke="#343a40" stroke-width="3"/><path d="M19 40H278" stroke="#bac1c1" stroke-width="3"/></svg></div>
         ${MATH_TOWER_LEVELS.map((level, index) => {
-          const score = mathTowerScore(state.user, level.topics);
-          const stage = mathTowerStage(score);
+          const heatmap = level.topics.includes("tableDrill") ? mathTowerBestHeatmap(state.user) : null;
+          const score = heatmap ? heatmap.bricks / (TABLE_DRILL_VALUES.length ** 2) * 100 : mathTowerScore(state.user, level.topics);
+          const stage = heatmap ? { key:"heatmap", name:`${heatmap.bricks}/81 mursten` } : mathTowerStage(score);
           const topic = level.topics.find(key => availableTopics.includes(key));
           const percentage = Math.floor(score + 1e-9);
           const description = `${level.label}: ${percentage} %, ${stage.name}. ${level.topics.map(key => TOPICS[key].name).join(" og ")}.`;
           return `<button type="button" class="math-tower-level tower-${stage.key}" style="--floor:${index}" ${topic ? `data-topic="${topic}"` : "disabled"} aria-label="${description}${topic ? " Klik for at øve." : " Log ind for at øve."}" title="${description}">
-            ${mathTowerFloorArt(stage.key, index)}
+            ${mathTowerFloorArt(stage.key, index, heatmap)}
             <span class="math-tower-plaque"><span class="math-tower-symbol" aria-hidden="true">${level.symbol}</span><span class="math-tower-name">${level.label}<small>${stage.name}</small></span><span class="math-tower-score">${percentage}<small>%</small></span></span>
           </button>`;
         }).join("")}
       </nav>
       <div class="math-tower-foundation">Et solidt fundament</div>
       <div class="math-tower-legend" aria-label="Tårnets byggestadier"><span><i class="legend-frame"></i>0 % · Rammeværk</span><span><i class="legend-wood"></i>30 % · Træ</span><span><i class="legend-timber"></i>60 % · Bindingsværk</span><span><i class="legend-granite"></i>95 % · Granit</span></div>
-      <details class="math-tower-help"><summary>Hvordan bygges tårnet?</summary><p>Vælg en etage for at øve. Materialet følger din score: andelen af rigtige blandt dine seneste 20 svar i hvert tilknyttet modul. Har etagen flere moduler, bruges gennemsnittet; moduler uden svar tæller som 0 %. Scoren kan både stige og falde.</p><p>Gange: Lille tabel og Tabel-drill. Division: Divisions-slikkepinde og Division-drill. De øvrige etager følger hver deres øvelse.</p></details>
+      <details class="math-tower-help"><summary>Hvordan bygges tårnet?</summary><p>Vælg en etage for at øve. Gange-etagen viser dit bedste Tabel-drill-heatmap: sessionen med flest grønne felter (korrekt på højst 4 sekunder). Ved lighed bruges den nyeste session. Hvert grønt felt bliver en mursten, og alle andre felter er huller. Procenten viser, hvor mange af de 81 mursten du har bygget.</p><p>På de øvrige etager følger materialet din score: andelen af rigtige blandt dine seneste 20 svar i hvert tilknyttet modul. Har etagen flere moduler, bruges gennemsnittet; moduler uden svar tæller som 0 %. Scoren kan både stige og falde.</p><p>Division: Divisions-slikkepinde og Division-drill. De øvrige etager følger hver deres øvelse.</p></details>
     </aside>`;
   }
   function leaderboardMedal(rank) {
@@ -909,9 +924,12 @@
     const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
     return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, "0")}`;
   }
+  function matrixDrillIsGreen(attempt) {
+    return Boolean(attempt?.correct && recordedTime(attempt) <= 4);
+  }
   function matrixDrillCellStyle(attempt) {
     if (!attempt?.correct || recordedTime(attempt) >= 10) return "--cell-color:hsl(0 72% 78%)";
-    if (recordedTime(attempt) <= 4) return "--cell-color:hsl(138 55% 72%)";
+    if (matrixDrillIsGreen(attempt)) return "--cell-color:hsl(138 55% 72%)";
     const hue = Math.round(138 * (10 - recordedTime(attempt)) / 6);
     return `--cell-color:hsl(${hue} 68% 76%)`;
   }

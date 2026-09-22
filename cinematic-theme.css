@@ -158,8 +158,7 @@ body.site-authenticated{
 .site-authenticated .math-tower>p,
 .site-authenticated .math-tower-help{color:#776d77}
 .site-authenticated .math-tower-plaque{
-  border-color:#9c8161;
-  background:rgba(255,249,237,.95);
+  background:transparent;
 }
 .site-authenticated .math-tower-symbol{color:#7652df}
 .site-authenticated .math-tower-score{color:#1c2948}
