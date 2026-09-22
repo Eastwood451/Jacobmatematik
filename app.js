@@ -408,7 +408,7 @@
     return database;
   }
   let db = normalizeDatabase(loadDatabase());
-  const state = { user: null, view: "login", selectedTopic: "mixed", task: null, taskStartedAt: 0, answered: false, questionNumber: 1, sessionCorrect: 0, sessionAnswers: [], matrixDrill:null, showExerciseTimer:loadTimerVisibility(), expandedStudent: "s1", activeClassId:null, teacherTopicDetail: null, studentFormOpen: false, classRenameFormOpen: false, studentProfileNotice:"" };
+  const state = { user: null, view: "login", selectedTopic: "mixed", task: null, taskStartedAt: 0, answered: false, questionNumber: 1, sessionCorrect: 0, sessionAnswers: [], matrixDrill:null, subtractionConfirmationMode:"enter", showExerciseTimer:loadTimerVisibility(), expandedStudent: "s1", activeClassId:null, teacherTopicDetail: null, studentFormOpen: false, classRenameFormOpen: false, studentProfileNotice:"" };
   const app = document.getElementById("app");
   const backend = window.JacobBackend;
   const usingCentralDatabase = Boolean(backend?.configured);
@@ -1232,15 +1232,19 @@
     const signedKey = task.topic === "numbers" || task.topic === "subtractionDrill"
       ? ""
       : `<button class="key utility" type="button" data-key="minus" aria-label="Minustegn">−</button>`;
-    const answerSection = `<form class="answer-area" id="answer-form">
-          <label class="sr-only" for="answer">${subtractionAnswerPrefix ? `Tiercifret ${subtractionAnswerPrefix} er udfyldt. Skriv enercifret.` : "Dit svar"}</label>
-          <input class="answer-input ${subtractionAnswerPrefix ? "subtraction-prefilled-answer" : ""}" id="answer" name="answer" inputmode="none" autocomplete="off" value="${subtractionAnswerPrefix}" data-fixed-prefix="${subtractionAnswerPrefix}" placeholder="Dit svar" readonly>
-          <div class="keypad" aria-label="Taltastatur">
+    const subtractionModeToggle = task.topic === "subtractionDrill" ? `<fieldset class="subtraction-confirm-mode"><legend>Svarmetode</legend><button class="${state.subtractionConfirmationMode === "enter" ? "active" : ""}" type="button" data-subtraction-mode="enter" aria-pressed="${state.subtractionConfirmationMode === "enter"}">Bekræft med Enter</button><button class="${state.subtractionConfirmationMode === "auto" ? "active" : ""}" type="button" data-subtraction-mode="auto" aria-pressed="${state.subtractionConfirmationMode === "auto"}">Autobekræft</button></fieldset>` : "";
+    const subtractionDigitPreview = task.topic === "subtractionDrill" ? `<div class="subtraction-answer-positions" aria-label="Svar opdelt i tier og ener">${subtractionAnswerPrefix ? `<span class="subtraction-fixed-digit"><strong>${subtractionAnswerPrefix}</strong><small>udfyldt</small></span>` : ""}<span class="subtraction-input-digit"><strong id="subtraction-ones-preview">?</strong><small>skriv her</small></span></div>` : "";
+    const answerSection = `<form class="answer-area ${task.topic === "subtractionDrill" ? "subtraction-drill-answer-area" : ""}" id="answer-form">
+          ${subtractionModeToggle}
+          <label class="${task.topic === "subtractionDrill" ? "subtraction-answer-label" : "sr-only"}" for="answer">${task.topic === "subtractionDrill" ? "SKRIV ÉNEREN" : subtractionAnswerPrefix ? `Tiercifret ${subtractionAnswerPrefix} er udfyldt. Skriv enercifret.` : "Dit svar"}</label>
+          ${subtractionDigitPreview}
+          <input class="answer-input ${task.topic === "subtractionDrill" ? "sr-only" : ""} ${subtractionAnswerPrefix ? "subtraction-prefilled-answer" : ""}" id="answer" name="answer" inputmode="none" autocomplete="off" value="${subtractionAnswerPrefix}" data-fixed-prefix="${subtractionAnswerPrefix}" placeholder="Dit svar" readonly>
+          <div class="keypad ${task.topic === "subtractionDrill" ? "subtraction-drill-keypad" : ""}" aria-label="Taltastatur">
             ${keypadNumbers.map(number => `<button class="key" type="button" data-key="${number}">${number}</button>`).join("")}
             ${signedKey}
             <button class="key utility" type="button" data-key="delete">Slet</button>
             ${undefinedKey}
-            <button class="key enter" type="button" data-key="enter">Enter</button>
+            ${task.topic !== "subtractionDrill" || state.subtractionConfirmationMode === "enter" ? `<button class="key enter" type="button" data-key="enter">Enter</button>` : ""}
           </div>
           <p id="answer-error" class="error" role="alert"></p>
         </form>`;
@@ -1926,10 +1930,14 @@
     else if (/^\d$/.test(key) && input.value.replace("-", "").length < 8) input.value = input.value === "Kan ikke beregnes" ? key : input.value + key;
 
     document.getElementById("answer-error").textContent = "";
-    const cellAnswer=document.getElementById("matrix-drill-cell-answer"), axisAnswer=document.getElementById("matrix-drill-axis-answer"), drillPreview=document.getElementById("matrix-drill-answer-preview");
+    const cellAnswer=document.getElementById("matrix-drill-cell-answer"), axisAnswer=document.getElementById("matrix-drill-axis-answer"), drillPreview=document.getElementById("matrix-drill-answer-preview"), subtractionOnesPreview=document.getElementById("subtraction-ones-preview");
     if (cellAnswer) cellAnswer.textContent=input.value;
     if (axisAnswer) axisAnswer.textContent=input.value || "?";
     if (drillPreview) drillPreview.textContent=input.value || "?";
+    if (subtractionOnesPreview) subtractionOnesPreview.textContent=fixedPrefix ? input.value.slice(fixedPrefix.length) || "?" : input.value || "?";
+    if (state.task.topic === "subtractionDrill" && state.subtractionConfirmationMode === "auto" && /^\d+$/.test(input.value) && (!fixedPrefix || input.value.length > fixedPrefix.length)) {
+      return submitAnswer(form);
+    }
     if (MATRIX_DRILL_TOPICS.has(state.task.topic) && state.matrixDrill?.confirmationMode === "auto" && /^\d+$/.test(input.value)) {
       const expected=String(state.task.answer);
       if (input.value === expected || !expected.startsWith(input.value)) submitAnswer(form);
@@ -2615,7 +2623,7 @@
       stopErlingAudio(); stopKaptajnAudio(); stopLuigiAudio();
       return;
     }
-    const subtractionKeyButton=event.target.closest("[data-subtraction-key]"), borrowTenButton=event.target.closest("[data-borrow-ten]"), lollipopKeyButton=event.target.closest("[data-lollipop-key]"), pullDigitButton=event.target.closest("[data-pull-digit]"), keyButton=event.target.closest("[data-key]"), luigiButton=event.target.closest("[data-luigi-surprise]"), luigiAudioButton=event.target.closest("[data-luigi-audio]"), erlingButton=event.target.closest("[data-erling-audio]"), kaptajnButton=event.target.closest("[data-kaptajn-audio]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
+    const subtractionKeyButton=event.target.closest("[data-subtraction-key]"), borrowTenButton=event.target.closest("[data-borrow-ten]"), lollipopKeyButton=event.target.closest("[data-lollipop-key]"), pullDigitButton=event.target.closest("[data-pull-digit]"), keyButton=event.target.closest("[data-key]"), luigiButton=event.target.closest("[data-luigi-surprise]"), luigiAudioButton=event.target.closest("[data-luigi-audio]"), erlingButton=event.target.closest("[data-erling-audio]"), kaptajnButton=event.target.closest("[data-kaptajn-audio]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), subtractionModeButton=event.target.closest("[data-subtraction-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
     if (subtractionKeyButton) { await handleBorrowingSubtractionKey(subtractionKeyButton.dataset.subtractionKey); return; }
     if (borrowTenButton && event.detail === 0) { completeBorrowingSubtractionBorrow(); return; }
     if (lollipopKeyButton) { handleDivisionLollipopKey(lollipopKeyButton.dataset.lollipopKey); return; }
@@ -2631,6 +2639,11 @@
     if (drillModeButton && state.matrixDrill && !state.matrixDrill.completedAt) {
       state.matrixDrill.confirmationMode=drillModeButton.dataset.drillMode === "auto" ? "auto" : "enter";
       renderMatrixDrill();
+      return;
+    }
+    if (subtractionModeButton && state.task?.topic === "subtractionDrill" && !state.answered) {
+      state.subtractionConfirmationMode=subtractionModeButton.dataset.subtractionMode === "auto" ? "auto" : "enter";
+      renderExercise();
       return;
     }
     if (topicButton) {
