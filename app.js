@@ -706,6 +706,14 @@
       return !best.session || bricks > best.bricks ? { session, bricks } : best;
     }, { session:null, bricks:0 });
   }
+  function mathTowerBestDivisionHeatmap(user) {
+    // Same rule as Gange: use the single Division-drill session with the
+    // most green cells. At a tie the newest session wins.
+    return divisionDrillSessions(user).reduce((best, session) => {
+      const bricks = Object.values(session.attempts).filter(matrixDrillIsGreen).length;
+      return !best.session || bricks > best.bricks ? { session, bricks } : best;
+    }, { session:null, bricks:0 });
+  }
   function mathTowerNumberStones(user) {
     const grouped = numberValueStats(user);
     const stones = Array.from({length:11}, (_, number) => ({ number, ...numberMastery(grouped.get(String(number)) || []) }));
@@ -763,7 +771,11 @@
       <nav class="math-tower-building" aria-label="Matematiktårnets etager – Tælle er fundamentet">
         <div class="math-tower-crown" aria-hidden="true"><svg viewBox="0 0 300 48"><path d="M12 46V9H53V26H89V9H127V26H166V9H205V26H242V9H288V46Z" fill="#79858b" stroke="#343a40" stroke-width="3"/><path d="M19 40H278" stroke="#bac1c1" stroke-width="3"/></svg></div>
         ${MATH_TOWER_LEVELS.map((level, index) => {
-          const heatmap = level.topics.includes("tableDrill") ? mathTowerBestHeatmap(state.user) : null;
+          const heatmap = level.topics.includes("tableDrill")
+            ? mathTowerBestHeatmap(state.user)
+            : level.topics.includes("divisionDrill")
+            ? mathTowerBestDivisionHeatmap(state.user)
+            : null;
           const numberStones = level.topics.includes("numbers") ? mathTowerNumberStones(state.user) : null;
           const score = heatmap ? heatmap.bricks / (TABLE_DRILL_VALUES.length ** 2) * 100 : numberStones ? numberStones.built / numberStones.stones.length * 100 : mathTowerScore(state.user, level.topics);
           const stage = heatmap ? { key:"heatmap", name:`${heatmap.bricks}/81 mursten` } : numberStones ? { key:"number-stones", name:`${numberStones.built}/11 granit` } : mathTowerStage(score);
@@ -778,7 +790,7 @@
       </nav>
       <div class="math-tower-foundation">Et solidt fundament</div>
       <div class="math-tower-legend" aria-label="Tårnets byggestadier"><span><i class="legend-frame"></i>0 % · Rammeværk</span><span><i class="legend-wood"></i>30 % · Træ</span><span><i class="legend-timber"></i>60 % · Bindingsværk</span><span><i class="legend-granite"></i>95 % · Granit</span></div>
-      <details class="math-tower-help"><summary>Hvordan bygges tårnet?</summary><p>Vælg en etage for at øve. Gange-etagen viser dit bedste Tabel-drill-heatmap: sessionen med flest grønne felter (korrekt på højst 4 sekunder). Ved lighed bruges den nyeste session. Hvert grønt felt bliver en mursten, og alle andre felter er huller. Tælle-etagen har én lodret sten for hvert tal fra 0 til 10. En sten bliver granit, når tallet mindst er lært til sølv.</p><p>På de øvrige etager følger materialet din score: andelen af rigtige blandt dine seneste 20 svar i hvert tilknyttet modul. Har etagen flere moduler, bruges gennemsnittet; moduler uden svar tæller som 0 %. Scoren kan både stige og falde.</p><p>Division: Divisions-slikkepinde og Division-drill. De øvrige etager følger hver deres øvelse.</p></details>
+      <details class="math-tower-help"><summary>Hvordan bygges tårnet?</summary><p>Vælg en etage for at øve. Gange-etagen viser dit bedste Tabel-drill-heatmap, og Division-etagen viser dit bedste Division-drill-heatmap: sessionen med flest grønne felter (korrekt på højst 4 sekunder). Ved lighed bruges den nyeste session. Hvert grønt felt bliver en granitmursten, og alle andre felter er sorte huller. Tælle-etagen har én lodret sten for hvert tal fra 0 til 10. En sten bliver granit, når tallet mindst er lært til sølv.</p><p>På de øvrige etager følger materialet din score: andelen af rigtige blandt dine seneste 20 svar i hvert tilknyttet modul. Har etagen flere moduler, bruges gennemsnittet; moduler uden svar tæller som 0 %. Scoren kan både stige og falde.</p></details>
     </aside>`;
   }
   function leaderboardMedal(rank) {
