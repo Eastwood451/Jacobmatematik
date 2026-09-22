@@ -5,15 +5,15 @@ const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
 const context = vm.createContext({});
 // Exercise the production helpers without starting authentication or the app.
-const names = ['matrixDrillIsGreen', 'matrixDrillCellStyle', 'tableDrillSessions', 'additionPairStats', 'numberValueStats', 'drillMastery', 'numberMastery', 'mathTowerBestHeatmap', 'mathTowerNumberStones', 'mathTowerAdditionBricks', 'mathTowerFloorArt', 'renderAdditionExerciseHeatmap'];
+const names = ['matrixDrillIsGreen', 'matrixDrillCellStyle', 'tableDrillSessions', 'additionPairStats', 'subtractionDrillPairStats', 'numberValueStats', 'drillMastery', 'numberMastery', 'mathTowerBestHeatmap', 'mathTowerNumberStones', 'mathTowerAdditionBricks', 'mathTowerSubtractionStones', 'mathTowerFloorArt', 'renderAdditionExerciseHeatmap', 'renderSubtractionDrillHeatmap'];
 const functions = names.map(name => {
   const start = source.indexOf(`  function ${name}(`);
   assert.ok(start >= 0, name);
   const end = source.indexOf('\n  function ', start + 1);
   return source.slice(start, end);
 });
-vm.runInContext(`${source.match(/  const TABLE_DRILL_VALUES = .+;/)[0]}\n${source.match(/  const SINGLE_DIGITS = .+;/)[0]}\n${source.match(/  const recordedTime = .+;/)[0]}\n${source.match(/  const responseTimeColor = \(seconds\) => \{[\s\S]*?\n  \};/)[0]}\n${functions.join('\n')}`, context);
-const { matrixDrillIsGreen: green, matrixDrillCellStyle: style, mathTowerBestHeatmap: best, mathTowerNumberStones: numberStones, mathTowerAdditionBricks: additionBricks, mathTowerFloorArt: art, renderAdditionExerciseHeatmap: additionHeatmap } = context;
+vm.runInContext(`${source.match(/  const TABLE_DRILL_VALUES = .+;/)[0]}\n${source.match(/  const SINGLE_DIGITS = .+;/)[0]}\nconst SUBTRACTION_DRILL_SINGLE_FACTS = SINGLE_DIGITS.flatMap(minuend => Array.from({length:minuend + 1}, (_, subtrahend) => ({ minuend, subtrahend, group:0 })));\nconst SUBTRACTION_DRILL_TWO_DIGIT_FACTS = Array.from({length:9}, (_, tens) => tens + 1).flatMap(tens => SINGLE_DIGITS.flatMap(ones => SINGLE_DIGITS.map(subtrahend => ({ minuend:tens * 10 + ones, subtrahend, group:tens }))));\n${source.match(/  const recordedTime = .+;/)[0]}\n${source.match(/  const responseTimeColor = \(seconds\) => \{[\s\S]*?\n  \};/)[0]}\n${functions.join('\n')}`, context);
+const { matrixDrillIsGreen: green, matrixDrillCellStyle: style, mathTowerBestHeatmap: best, mathTowerNumberStones: numberStones, mathTowerAdditionBricks: additionBricks, mathTowerSubtractionStones: subtractionStones, mathTowerFloorArt: art, renderAdditionExerciseHeatmap: additionHeatmap, renderSubtractionDrillHeatmap: subtractionHeatmap } = context;
 const result = (id, row, column, correct = true, responseTime = 3, day = 1) => ({
   topic:'tableDrill', drillSessionId:id, drillRow:row, drillColumn:column,
   correct, responseTime, timestamp:`2026-09-${String(day).padStart(2, '0')}T12:00:00Z`,
@@ -84,4 +84,25 @@ assert.match(additionMap, /Alle étcifrede pluspar/);
 assert.match(additionMap, /2\/100/);
 assert.match(additionMap, /0 \+ 1: lært/);
 assert.match(additionMap, /2 \+ 2: senest forkert/);
-console.log('PASS: heatmap, number-stone and addition-brick floors: ordered pair mapping, mastery threshold, exercise heatmap, holes and exact cells.');
+const subtractionResult = (minuend, subtrahend, correct=true, responseTime=4, sequence=1) => ({ topic:'subtractionDrill', problem:`${minuend} − ${subtrahend}`, correct, responseTime, timestamp:`2026-09-22T12:00:${String(sequence).padStart(2,'0')}Z` });
+const subtractionUser = {results:[
+  ...[1,2,3].map(sequence => subtractionResult(9, 5, true, 4, sequence)),
+  ...[4,5,6].map(sequence => subtractionResult(10, 0, true, 4, sequence)),
+  ...[7,8].map(sequence => subtractionResult(19, 9, true, 4, sequence)),
+  subtractionResult(5, 9, true, 1, 9),
+]};
+const towerSubtraction = subtractionStones(subtractionUser);
+assert.equal(towerSubtraction.stones.length, 10);
+assert.equal(towerSubtraction.built, 0, 'a tens stone requires every valid fact in its group');
+assert.equal(towerSubtraction.learnedFacts, 2);
+const subtractionSvg = art('subtraction-stones', 4, null, null, null, towerSubtraction);
+assert.equal((subtractionSvg.match(/class="math-tower-subtraction-hole"/g) || []).length, 10);
+assert.match(subtractionSvg, /data-range="0–9"/);
+assert.match(subtractionSvg, /data-range="10–19"/);
+const subtractionMap = subtractionHeatmap(subtractionUser);
+assert.match(subtractionMap, /Minus uden negative svar/);
+assert.match(subtractionMap, /2\/955/);
+assert.match(subtractionMap, /9 − 5: lært/);
+assert.match(subtractionMap, /5 − 9 giver et negativt tal og øves ikke/);
+assert.match(subtractionMap, /10–19/);
+console.log('PASS: heatmap, number, addition and subtraction tower floors: ordered facts, mastery thresholds, no negative subtraction, holes and exact cells.');
