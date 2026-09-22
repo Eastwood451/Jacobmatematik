@@ -1504,3 +1504,14 @@ body{
   font-size:14px;
   font-weight:750;
 }
+
+
+/* Minus-drill: fixed tens digit */
+.answer-input.subtraction-prefilled-answer{
+  color:#17243d;
+  font-weight:900;
+  letter-spacing:.08em;
+}
+.answer-input.subtraction-prefilled-answer::selection{
+  background:transparent;
+}
