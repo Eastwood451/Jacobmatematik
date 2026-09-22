@@ -2945,6 +2945,18 @@
     if (erling && (event.key==="Enter"||event.key===" ")) { event.preventDefault(); erling.click(); return; }
     const student=event.target.closest?.("[data-student]");
     if (student && (event.key==="Enter"||event.key===" ")) { event.preventDefault(); student.click(); return; }
+    // `event.key` for space is normally a literal space, but some keyboard/browser
+    // combinations report "Spacebar" instead. `event.code` makes the next-task
+    // shortcut work consistently regardless of the currently focused element.
+    const isContinueKey=event.key === "Enter" || event.key === " " || event.key === "Spacebar" || event.code === "Space";
+    if (state.view === "exercise" && state.answered && isContinueKey) {
+      const continueButton = document.querySelector('[data-action="continue-after-correction"]');
+      if (continueButton) {
+        event.preventDefault();
+        continueButton.click();
+        return;
+      }
+    }
     if (state.view !== "exercise" || state.answered) return;
     if (state.task?.topic === "subtractionBorrowing") {
       if (event.target.closest?.("[data-borrow-ten]")) return;
