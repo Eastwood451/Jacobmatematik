@@ -1515,3 +1515,109 @@ body{
 .answer-input.subtraction-prefilled-answer::selection{
   background:transparent;
 }
+
+
+/* Minus-drill positions and confirm mode */
+.subtraction-drill-answer-area{
+  max-width:560px;
+  margin:0 auto;
+  padding:18px 26px 24px;
+}
+.subtraction-confirm-mode{
+  width:min(360px,100%);
+  margin:0 auto 16px;
+  padding:3px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  border:1px solid #d8d3c8;
+  border-radius:12px;
+  background:#ebe7de;
+}
+.subtraction-confirm-mode legend{
+  position:absolute;
+  width:1px;
+  height:1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+}
+.subtraction-confirm-mode button{
+  min-height:40px;
+  padding:6px 8px;
+  border:0;
+  border-radius:9px;
+  color:var(--muted);
+  background:transparent;
+  font:750 12px/1.15 ui-rounded,system-ui,sans-serif;
+  cursor:pointer;
+}
+.subtraction-confirm-mode button.active{
+  color:var(--purple-dark);
+  background:white;
+  box-shadow:0 1px 5px rgba(23,36,61,.14);
+}
+.subtraction-answer-label{
+  display:block;
+  margin:2px 0 10px;
+  color:var(--muted);
+  text-align:center;
+  font-size:13px;
+  font-weight:850;
+  letter-spacing:.08em;
+}
+.subtraction-answer-positions{
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  gap:10px;
+  margin:0 auto 16px;
+}
+.subtraction-answer-positions>span{
+  width:74px;
+  min-height:82px;
+  display:grid;
+  grid-template-rows:56px auto;
+  align-items:center;
+  justify-items:center;
+  border-radius:15px;
+}
+.subtraction-answer-positions strong{
+  width:74px;
+  height:56px;
+  display:grid;
+  place-items:center;
+  border-radius:13px;
+  font:900 32px/1 Georgia,serif;
+}
+.subtraction-answer-positions small{
+  margin-top:4px;
+  font-size:10px;
+  font-weight:800;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+}
+.subtraction-fixed-digit strong{
+  color:#2e3a55;
+  border:2px solid #c6c0b3;
+  background:#e8e3d9;
+  box-shadow:inset 0 1px 0 #fff,0 3px 0 #c5beaf;
+}
+.subtraction-fixed-digit small{
+  color:#6c746f;
+}
+.subtraction-input-digit strong{
+  color:var(--purple-dark);
+  border:3px dashed #8ea99e;
+  background:#f8fbf8;
+  box-shadow:0 0 0 3px rgba(122,165,148,.08);
+}
+.subtraction-input-digit small{
+  color:#567b6c;
+}
+.subtraction-drill-keypad{
+  width:min(520px,100%);
+}
+@media(max-width:560px){
+  .subtraction-drill-answer-area{padding:14px 12px 20px}
+  .subtraction-answer-positions>span,
+  .subtraction-answer-positions strong{width:64px}
+}
