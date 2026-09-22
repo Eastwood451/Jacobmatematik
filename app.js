@@ -707,8 +707,6 @@
     }, { session:null, bricks:0 });
   }
   function mathTowerBestDivisionHeatmap(user) {
-    // Same rule as Gange: use the single Division-drill session with the
-    // most green cells. At a tie the newest session wins.
     return divisionDrillSessions(user).reduce((best, session) => {
       const bricks = Object.values(session.attempts).filter(matrixDrillIsGreen).length;
       return !best.session || bricks > best.bricks ? { session, bricks } : best;
@@ -719,7 +717,12 @@
     const stones = Array.from({length:11}, (_, number) => ({ number, ...numberMastery(grouped.get(String(number)) || []) }));
     return { stones, built:stones.filter(stone => stone.stage !== "none").length };
   }
-  function mathTowerFloorArt(stage, index, heatmap = null, numberStones = null) {
+  function mathTowerAdditionBricks(user) {
+    const grouped = additionPairStats(user);
+    const bricks = Array.from({length:10}, (_, left) => Array.from({length:10}, (_, right) => ({ left, right, learned:drillMastery(grouped.get(`${left}-${right}`) || []).learned })));
+    return { bricks, built:bricks.flat().filter(brick => brick.learned).length };
+  }
+  function mathTowerFloorArt(stage, index, heatmap = null, numberStones = null, additionBricks = null) {
     const outline = 'stroke="#5b5144" stroke-width="2"';
     let art = '';
     if (heatmap) {
@@ -731,6 +734,14 @@
         const x = 12 + c * width, y = 2 + r * height;
         const granite = ['#aeb7ba','#939fa4','#c0c7c8'][(r+c)%3];
         art += `<g class="math-tower-${brick ? "brick" : "hole"}" data-cell="${row}-${column}"><rect x="${x+0.8}" y="${y+0.8}" width="${width-1.6}" height="${height-1.6}" rx=".7" fill="${brick ? granite : '#000'}"/>${brick ? `<path d="M${x+2} ${y+height-2}H${x+width-2}V${y+2}" fill="none" stroke="#59666b" stroke-width="1.15"/><path d="M${x+2} ${y+2}H${x+width-2}" stroke="#e3e8e6" stroke-opacity=".7" stroke-width=".8"/><circle cx="${x+5+(r%3)*3}" cy="${y+5+(c%2)*3}" r=".8" fill="#657176"/><circle cx="${x+width-6}" cy="${y+height-5}" r=".7" fill="#dce1df" opacity=".55"/>` : ''}</g>`;
+      }));
+    } else if (additionBricks) {
+      // All ordered one-digit additions: 0+0 through 9+9.
+      const width=27.6, height=12;
+      art = `<rect x="12" y="2" width="276" height="120" fill="#000"/>`;
+      additionBricks.bricks.forEach((row, r) => row.forEach((brick, c) => {
+        const x=12+c*width, y=2+r*height, granite=['#aeb7ba','#939fa4','#c0c7c8'][(r+c)%3];
+        art += `<g class="math-tower-addition-${brick.learned ? "brick" : "hole"}" data-pair="${brick.left}+${brick.right}"><rect x="${x+.8}" y="${y+.8}" width="${width-1.6}" height="${height-1.6}" rx=".7" fill="${brick.learned ? granite : '#000'}"/>${brick.learned ? `<path d="M${x+2} ${y+height-2}H${x+width-2}V${y+2}" fill="none" stroke="#59666b" stroke-width="1.1"/><path d="M${x+2} ${y+2}H${x+width-2}" stroke="#e3e8e6" stroke-opacity=".7" stroke-width=".8"/><circle cx="${x+5+(r%3)*2}" cy="${y+5+(c%2)*2}" r=".7" fill="#657176"/>` : ''}</g>`;
       }));
     } else if (numberStones) {
       // One upright foundation stone for each number from 0 to 10.
@@ -777,20 +788,21 @@
             ? mathTowerBestDivisionHeatmap(state.user)
             : null;
           const numberStones = level.topics.includes("numbers") ? mathTowerNumberStones(state.user) : null;
-          const score = heatmap ? heatmap.bricks / (TABLE_DRILL_VALUES.length ** 2) * 100 : numberStones ? numberStones.built / numberStones.stones.length * 100 : mathTowerScore(state.user, level.topics);
-          const stage = heatmap ? { key:"heatmap", name:`${heatmap.bricks}/81 mursten` } : numberStones ? { key:"number-stones", name:`${numberStones.built}/11 granit` } : mathTowerStage(score);
+          const additionBricks = level.topics.includes("addition") ? mathTowerAdditionBricks(state.user) : null;
+          const score = heatmap ? heatmap.bricks / (TABLE_DRILL_VALUES.length ** 2) * 100 : numberStones ? numberStones.built / numberStones.stones.length * 100 : additionBricks ? additionBricks.built / 100 * 100 : mathTowerScore(state.user, level.topics);
+          const stage = heatmap ? { key:"heatmap", name:`${heatmap.bricks}/81 mursten` } : numberStones ? { key:"number-stones", name:`${numberStones.built}/11 granit` } : additionBricks ? { key:"addition-bricks", name:`${additionBricks.built}/100 mursten` } : mathTowerStage(score);
           const topic = level.topics.find(key => availableTopics.includes(key));
           const percentage = Math.floor(score + 1e-9);
           const description = `${level.label}: ${percentage} %, ${stage.name}. ${level.topics.map(key => TOPICS[key].name).join(" og ")}.`;
           return `<button type="button" class="math-tower-level tower-${stage.key}" style="--floor:${index}" ${topic ? `data-topic="${topic}"` : "disabled"} aria-label="${description}${topic ? " Klik for at øve." : " Log ind for at øve."}" title="${description}">
-            ${mathTowerFloorArt(stage.key, index, heatmap, numberStones)}
+            ${mathTowerFloorArt(stage.key, index, heatmap, numberStones, additionBricks)}
             <span class="math-tower-plaque"><span class="math-tower-symbol" aria-hidden="true">${level.symbol}</span><span class="math-tower-name">${level.label}<small>${stage.name}</small></span><span class="math-tower-score">${percentage}<small>%</small></span></span>
           </button>`;
         }).join("")}
       </nav>
       <div class="math-tower-foundation">Et solidt fundament</div>
       <div class="math-tower-legend" aria-label="Tårnets byggestadier"><span><i class="legend-frame"></i>0 % · Rammeværk</span><span><i class="legend-wood"></i>30 % · Træ</span><span><i class="legend-timber"></i>60 % · Bindingsværk</span><span><i class="legend-granite"></i>95 % · Granit</span></div>
-      <details class="math-tower-help"><summary>Hvordan bygges tårnet?</summary><p>Vælg en etage for at øve. Gange-etagen viser dit bedste Tabel-drill-heatmap, og Division-etagen viser dit bedste Division-drill-heatmap: sessionen med flest grønne felter (korrekt på højst 4 sekunder). Ved lighed bruges den nyeste session. Hvert grønt felt bliver en granitmursten, og alle andre felter er sorte huller. Tælle-etagen har én lodret sten for hvert tal fra 0 til 10. En sten bliver granit, når tallet mindst er lært til sølv.</p><p>På de øvrige etager følger materialet din score: andelen af rigtige blandt dine seneste 20 svar i hvert tilknyttet modul. Har etagen flere moduler, bruges gennemsnittet; moduler uden svar tæller som 0 %. Scoren kan både stige og falde.</p></details>
+      <details class="math-tower-help"><summary>Hvordan bygges tårnet?</summary><p>Vælg en etage for at øve. Gange-etagen viser dit bedste Tabel-drill-heatmap, og Division-etagen viser dit bedste Division-drill-heatmap: sessionen med flest grønne felter (korrekt på højst 4 sekunder). Ved lighed bruges den nyeste session. Hvert grønt felt bliver en granitmursten, og alle andre felter er sorte huller. Plus-etagen har alle 100 ordnede étcifrede pluspar, så 5 + 9 og 9 + 5 er hver sin mursten. Tælle-etagen har én lodret sten for hvert tal fra 0 til 10. Sten og mursten bliver granit, når opgaven er lært.</p><p>På de øvrige etager følger materialet din score: andelen af rigtige blandt dine seneste 20 svar i hvert tilknyttet modul. Har etagen flere moduler, bruges gennemsnittet; moduler uden svar tæller som 0 %. Scoren kan både stige og falde.</p></details>
     </aside>`;
   }
   function leaderboardMedal(rank) {
@@ -1080,6 +1092,21 @@
     state.taskStartedAt = Date.now(); state.answered = false;
     renderExercise();
   }
+  function renderAdditionExerciseHeatmap(user) {
+    const grouped=additionPairStats(user);
+    const values=Array.from({length:10}, (_, number) => number);
+    const cells=left => values.map(right => {
+      const items=grouped.get(`${left}-${right}`) || [];
+      const latest=[...items].sort((a,b)=>new Date(b.timestamp)-new Date(a.timestamp))[0];
+      const mastery=drillMastery(items);
+      const average=items.length ? items.reduce((sum,item)=>sum+recordedTime(item),0)/items.length : 0;
+      const color=!items.length ? '#e8e8e6' : mastery.learned ? '#8ed9b1' : latest.correct ? responseTimeColor(average) : '#ed9b96';
+      const status=!items.length ? 'ikke øvet endnu' : mastery.learned ? 'lært' : latest.correct ? `senest korrekt, ${mastery.streak}/3 hurtige i træk` : 'senest forkert';
+      return `<td class="addition-heatmap-cell${mastery.learned ? ' learned' : ''}${latest && !latest.correct ? ' wrong' : ''}" style="--addition-cell-color:${color}" title="${left} + ${right}: ${status}" aria-label="${left} plus ${right}: ${status}">${mastery.learned ? '✓' : ''}</td>`;
+    }).join('');
+    const learned=[...grouped.values()].filter(items=>drillMastery(items).learned).length;
+    return `<section class="addition-exercise-heatmap" aria-labelledby="addition-heatmap-title"><header><div><span class="eyebrow">Dit pluskort</span><h2 id="addition-heatmap-title">Alle étcifrede pluspar</h2></div><strong>${learned}/100</strong></header><p>Grøn = lært · rød = senest forkert · lysere felter er ikke øvet endnu.</p><div class="addition-heatmap-scroll"><table><thead><tr><th aria-hidden="true">+</th>${values.map(value=>`<th scope="col">${value}</th>`).join('')}</tr></thead><tbody>${values.map(left=>`<tr><th scope="row">${left}</th>${cells(left)}</tr>`).join('')}</tbody></table></div></section>`;
+  }
   function renderExercise() {
     const task = state.task;
     if (MATRIX_DRILL_TOPICS.has(task?.topic)) { renderMatrixDrill(); return; }
@@ -1160,6 +1187,7 @@
         <img class="luigi-character" src="assets/figurer/luigi-laekkermat-cutout.webp?v=20260907-no-smykker1" width="1024" height="1536" loading="lazy" decoding="async" alt="Luigi Lækkermat holder pizzaerne 48 delt i 6 og 8 samt 63 delt i 7 og 9">
       </button>
     </section>` : "";
+    const additionHeatmap = task.topic === "addition" ? renderAdditionExerciseHeatmap(state.user) : "";
 
     app.innerHTML = `${header()}<div class="page exercise-page">
       <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button>${exerciseLeaderboardLink(task.topic)}<span class="topic-tag">${TOPICS[task.topic].name}</span></div>
@@ -1168,6 +1196,7 @@
         ${state.answered ? correctionSection : answerSection}
       </section>
       <div class="progress-row" aria-label="Svar i denne runde">${Array.from({length:10},(_,i)=>`<i class="progress-dot ${cycleAnswers[i] === true ? "correct" : cycleAnswers[i] === false ? "wrong" : ""}"></i>`).join("")}</div>
+      ${additionHeatmap}
       ${luigiPlayground}
       ${learnedSection}
     </div>`;
