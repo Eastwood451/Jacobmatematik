@@ -1225,12 +1225,15 @@
     const keypadNumbers = task.topic === "numbers"
       ? (learnedNumberTask ? shuffle(SMALL_TABLES) : ORDERED_NUMBER_KEYS)
       : [...SINGLE_DIGITS.slice(1), 0];
-    const signedKey = task.topic === "numbers"
+    const subtractionAnswerPrefix = task.topic === "subtractionDrill" && Number(task.answer) >= 10
+      ? String(Math.floor(Number(task.answer) / 10))
+      : "";
+    const signedKey = task.topic === "numbers" || task.topic === "subtractionDrill"
       ? ""
       : `<button class="key utility" type="button" data-key="minus" aria-label="Minustegn">−</button>`;
     const answerSection = `<form class="answer-area" id="answer-form">
-          <label class="sr-only" for="answer">Dit svar</label>
-          <input class="answer-input" id="answer" name="answer" inputmode="none" autocomplete="off" placeholder="Dit svar" readonly>
+          <label class="sr-only" for="answer">${subtractionAnswerPrefix ? `Tiercifret ${subtractionAnswerPrefix} er udfyldt. Skriv enercifret.` : "Dit svar"}</label>
+          <input class="answer-input ${subtractionAnswerPrefix ? "subtraction-prefilled-answer" : ""}" id="answer" name="answer" inputmode="none" autocomplete="off" value="${subtractionAnswerPrefix}" data-fixed-prefix="${subtractionAnswerPrefix}" placeholder="Dit svar" readonly>
           <div class="keypad" aria-label="Taltastatur">
             ${keypadNumbers.map(number => `<button class="key" type="button" data-key="${number}">${number}</button>`).join("")}
             ${signedKey}
@@ -1910,10 +1913,15 @@
       if (MATRIX_DRILL_TOPICS.has(state.task.topic) && state.matrixDrill?.confirmationMode === "auto") return;
       return submitAnswer(form);
     }
+    const fixedPrefix=input.dataset.fixedPrefix || "";
     if (key === "undefined") input.value = "Kan ikke beregnes";
-    else if (key === "delete") input.value = input.value === "Kan ikke beregnes" ? "" : input.value.slice(0, -1);
+    else if (key === "delete") {
+      if (fixedPrefix) input.value = fixedPrefix;
+      else input.value = input.value === "Kan ikke beregnes" ? "" : input.value.slice(0, -1);
+    }
     else if (key === "minus") input.value = input.value === "Kan ikke beregnes" ? "-" : input.value.startsWith("-") ? input.value.slice(1) : `-${input.value}`;
     else if (key === "10" && state.task.topic === "numbers") input.value = "10";
+    else if (/^\d$/.test(key) && fixedPrefix) input.value = fixedPrefix + key;
     else if (/^\d$/.test(key) && input.value.replace("-", "").length < 8) input.value = input.value === "Kan ikke beregnes" ? key : input.value + key;
 
     document.getElementById("answer-error").textContent = "";
