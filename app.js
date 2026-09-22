@@ -706,7 +706,12 @@
       return !best.session || bricks > best.bricks ? { session, bricks } : best;
     }, { session:null, bricks:0 });
   }
-  function mathTowerFloorArt(stage, index, heatmap = null) {
+  function mathTowerNumberStones(user) {
+    const grouped = numberValueStats(user);
+    const stones = Array.from({length:11}, (_, number) => ({ number, ...numberMastery(grouped.get(String(number)) || []) }));
+    return { stones, built:stones.filter(stone => stone.stage !== "none").length };
+  }
+  function mathTowerFloorArt(stage, index, heatmap = null, numberStones = null) {
     const outline = 'stroke="#5b5144" stroke-width="2"';
     let art = '';
     if (heatmap) {
@@ -719,6 +724,14 @@
         const granite = ['#aeb7ba','#939fa4','#c0c7c8'][(r+c)%3];
         art += `<g class="math-tower-${brick ? "brick" : "hole"}" data-cell="${row}-${column}"><rect x="${x+0.8}" y="${y+0.8}" width="${width-1.6}" height="${height-1.6}" rx=".7" fill="${brick ? granite : '#000'}"/>${brick ? `<path d="M${x+2} ${y+height-2}H${x+width-2}V${y+2}" fill="none" stroke="#59666b" stroke-width="1.15"/><path d="M${x+2} ${y+2}H${x+width-2}" stroke="#e3e8e6" stroke-opacity=".7" stroke-width=".8"/><circle cx="${x+5+(r%3)*3}" cy="${y+5+(c%2)*3}" r=".8" fill="#657176"/><circle cx="${x+width-6}" cy="${y+height-5}" r=".7" fill="#dce1df" opacity=".55"/>` : ''}</g>`;
       }));
+    } else if (numberStones) {
+      // One upright foundation stone for each number from 0 to 10.
+      const width = 276 / numberStones.stones.length;
+      art = `<rect x="12" y="2" width="276" height="120" fill="#000"/>`;
+      numberStones.stones.forEach((stone, column) => {
+        const x=12+column*width, granite=['#aeb7ba','#939fa4','#c0c7c8'][column%3], built=stone.stage !== "none";
+        art += `<g class="math-tower-number-${built ? "stone" : "hole"}" data-number="${stone.number}"><rect x="${x+.9}" y="2.8" width="${width-1.8}" height="118.4" rx="1" fill="${built ? granite : '#000'}"/>${built ? `<path d="M${x+2.2} 118.5H${x+width-2.2}V4.5" fill="none" stroke="#59666b" stroke-width="1.2"/><path d="M${x+2.2} 4.5H${x+width-2.2}" stroke="#e3e8e6" stroke-opacity=".7" stroke-width=".8"/><circle cx="${x+5+(column%3)*2}" cy="${16+(column%5)*12}" r=".9" fill="#657176"/><circle cx="${x+width-5}" cy="${102-(column%4)*11}" r=".7" fill="#dce1df" opacity=".55"/><text x="${x+width/2}" y="67" text-anchor="middle" fill="#3b474d" font-family="Georgia,serif" font-size="${stone.number===10 ? 10 : 13}" font-weight="900">${stone.number}</text>` : ''}</g>`;
+      });
     } else if (stage === "frame") {
       art = `<rect x="15" y="5" width="270" height="114" fill="none" stroke="#88775e" stroke-width="6"/><path d="M18 8L282 116M282 8L18 116" stroke="#a28e70" stroke-width="4"/><path d="M18 8H282M18 116H282" stroke="#c9b791" stroke-width="2"/>`;
     } else if (stage === "wood") {
@@ -751,20 +764,21 @@
         <div class="math-tower-crown" aria-hidden="true"><svg viewBox="0 0 300 48"><path d="M12 46V9H53V26H89V9H127V26H166V9H205V26H242V9H288V46Z" fill="#79858b" stroke="#343a40" stroke-width="3"/><path d="M19 40H278" stroke="#bac1c1" stroke-width="3"/></svg></div>
         ${MATH_TOWER_LEVELS.map((level, index) => {
           const heatmap = level.topics.includes("tableDrill") ? mathTowerBestHeatmap(state.user) : null;
-          const score = heatmap ? heatmap.bricks / (TABLE_DRILL_VALUES.length ** 2) * 100 : mathTowerScore(state.user, level.topics);
-          const stage = heatmap ? { key:"heatmap", name:`${heatmap.bricks}/81 mursten` } : mathTowerStage(score);
+          const numberStones = level.topics.includes("numbers") ? mathTowerNumberStones(state.user) : null;
+          const score = heatmap ? heatmap.bricks / (TABLE_DRILL_VALUES.length ** 2) * 100 : numberStones ? numberStones.built / numberStones.stones.length * 100 : mathTowerScore(state.user, level.topics);
+          const stage = heatmap ? { key:"heatmap", name:`${heatmap.bricks}/81 mursten` } : numberStones ? { key:"number-stones", name:`${numberStones.built}/11 granit` } : mathTowerStage(score);
           const topic = level.topics.find(key => availableTopics.includes(key));
           const percentage = Math.floor(score + 1e-9);
           const description = `${level.label}: ${percentage} %, ${stage.name}. ${level.topics.map(key => TOPICS[key].name).join(" og ")}.`;
           return `<button type="button" class="math-tower-level tower-${stage.key}" style="--floor:${index}" ${topic ? `data-topic="${topic}"` : "disabled"} aria-label="${description}${topic ? " Klik for at øve." : " Log ind for at øve."}" title="${description}">
-            ${mathTowerFloorArt(stage.key, index, heatmap)}
+            ${mathTowerFloorArt(stage.key, index, heatmap, numberStones)}
             <span class="math-tower-plaque"><span class="math-tower-symbol" aria-hidden="true">${level.symbol}</span><span class="math-tower-name">${level.label}<small>${stage.name}</small></span><span class="math-tower-score">${percentage}<small>%</small></span></span>
           </button>`;
         }).join("")}
       </nav>
       <div class="math-tower-foundation">Et solidt fundament</div>
       <div class="math-tower-legend" aria-label="Tårnets byggestadier"><span><i class="legend-frame"></i>0 % · Rammeværk</span><span><i class="legend-wood"></i>30 % · Træ</span><span><i class="legend-timber"></i>60 % · Bindingsværk</span><span><i class="legend-granite"></i>95 % · Granit</span></div>
-      <details class="math-tower-help"><summary>Hvordan bygges tårnet?</summary><p>Vælg en etage for at øve. Gange-etagen viser dit bedste Tabel-drill-heatmap: sessionen med flest grønne felter (korrekt på højst 4 sekunder). Ved lighed bruges den nyeste session. Hvert grønt felt bliver en mursten, og alle andre felter er huller. Procenten viser, hvor mange af de 81 mursten du har bygget.</p><p>På de øvrige etager følger materialet din score: andelen af rigtige blandt dine seneste 20 svar i hvert tilknyttet modul. Har etagen flere moduler, bruges gennemsnittet; moduler uden svar tæller som 0 %. Scoren kan både stige og falde.</p><p>Division: Divisions-slikkepinde og Division-drill. De øvrige etager følger hver deres øvelse.</p></details>
+      <details class="math-tower-help"><summary>Hvordan bygges tårnet?</summary><p>Vælg en etage for at øve. Gange-etagen viser dit bedste Tabel-drill-heatmap: sessionen med flest grønne felter (korrekt på højst 4 sekunder). Ved lighed bruges den nyeste session. Hvert grønt felt bliver en mursten, og alle andre felter er huller. Tælle-etagen har én lodret sten for hvert tal fra 0 til 10. En sten bliver granit, når tallet mindst er lært til sølv.</p><p>På de øvrige etager følger materialet din score: andelen af rigtige blandt dine seneste 20 svar i hvert tilknyttet modul. Har etagen flere moduler, bruges gennemsnittet; moduler uden svar tæller som 0 %. Scoren kan både stige og falde.</p><p>Division: Divisions-slikkepinde og Division-drill. De øvrige etager følger hver deres øvelse.</p></details>
     </aside>`;
   }
   function leaderboardMedal(rank) {
