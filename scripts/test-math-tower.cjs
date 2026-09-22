@@ -5,15 +5,15 @@ const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
 const context = vm.createContext({});
 // Exercise the production helpers without starting authentication or the app.
-const names = ['matrixDrillIsGreen', 'matrixDrillCellStyle', 'tableDrillSessions', 'numberValueStats', 'numberMastery', 'mathTowerBestHeatmap', 'mathTowerNumberStones', 'mathTowerFloorArt'];
+const names = ['matrixDrillIsGreen', 'matrixDrillCellStyle', 'tableDrillSessions', 'additionPairStats', 'numberValueStats', 'drillMastery', 'numberMastery', 'mathTowerBestHeatmap', 'mathTowerNumberStones', 'mathTowerAdditionBricks', 'mathTowerFloorArt', 'renderAdditionExerciseHeatmap'];
 const functions = names.map(name => {
   const start = source.indexOf(`  function ${name}(`);
   assert.ok(start >= 0, name);
   const end = source.indexOf('\n  function ', start + 1);
   return source.slice(start, end);
 });
-vm.runInContext(`${source.match(/  const TABLE_DRILL_VALUES = .+;/)[0]}\n${source.match(/  const recordedTime = .+;/)[0]}\n${functions.join('\n')}`, context);
-const { matrixDrillIsGreen: green, matrixDrillCellStyle: style, mathTowerBestHeatmap: best, mathTowerNumberStones: numberStones, mathTowerFloorArt: art } = context;
+vm.runInContext(`${source.match(/  const TABLE_DRILL_VALUES = .+;/)[0]}\n${source.match(/  const SINGLE_DIGITS = .+;/)[0]}\n${source.match(/  const recordedTime = .+;/)[0]}\n${source.match(/  const responseTimeColor = \(seconds\) => \{[\s\S]*?\n  \};/)[0]}\n${functions.join('\n')}`, context);
+const { matrixDrillIsGreen: green, matrixDrillCellStyle: style, mathTowerBestHeatmap: best, mathTowerNumberStones: numberStones, mathTowerAdditionBricks: additionBricks, mathTowerFloorArt: art, renderAdditionExerciseHeatmap: additionHeatmap } = context;
 const result = (id, row, column, correct = true, responseTime = 3, day = 1) => ({
   topic:'tableDrill', drillSessionId:id, drillRow:row, drillColumn:column,
   correct, responseTime, timestamp:`2026-09-${String(day).padStart(2, '0')}T12:00:00Z`,
@@ -64,4 +64,24 @@ assert.equal((numberSvg.match(/class="math-tower-number-hole"/g) || []).length, 
 assert.match(numberSvg, /data-number="0"/);
 assert.match(numberSvg, /data-number="10"/);
 assert.match(numberSvg, />10<\/text>/);
-console.log('PASS: heatmap and number-stone floors: green boundary, session selection, 0–10 stone mapping, mastery threshold, holes and exact cells.');
+const additionResult = (left, right, correct=true, responseTime=4, sequence=1) => ({ topic:'addition', problem:`${left} + ${right}`, correct, responseTime, timestamp:`2026-09-21T12:00:${String(sequence).padStart(2,'0')}Z` });
+const additionUser = {results:[
+  ...[1,2,3].map(sequence => additionResult(0, 1, true, 4, sequence)),
+  ...[4,5,6].map(sequence => additionResult(9, 5, true, 4, sequence)),
+  ...[7,8].map(sequence => additionResult(5, 9, true, 4, sequence)),
+  additionResult(2, 2, false, 2, 9),
+]};
+const towerAddition = additionBricks(additionUser);
+assert.equal(towerAddition.built, 2);
+const additionSvg = art('addition-bricks', 5, null, null, towerAddition);
+assert.equal((additionSvg.match(/class="math-tower-addition-brick"/g) || []).length, 2);
+assert.equal((additionSvg.match(/class="math-tower-addition-hole"/g) || []).length, 98);
+assert.match(additionSvg, /data-pair="0\+1"/);
+assert.match(additionSvg, /data-pair="9\+5"/);
+assert.match(additionSvg, /data-pair="5\+9"/);
+const additionMap = additionHeatmap(additionUser);
+assert.match(additionMap, /Alle étcifrede pluspar/);
+assert.match(additionMap, /2\/100/);
+assert.match(additionMap, /0 \+ 1: lært/);
+assert.match(additionMap, /2 \+ 2: senest forkert/);
+console.log('PASS: heatmap, number-stone and addition-brick floors: ordered pair mapping, mastery threshold, exercise heatmap, holes and exact cells.');
