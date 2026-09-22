@@ -9,7 +9,7 @@
   const TOPICS = {
     letters: { name: "Bogstavlæring", icon: "A B C", description: "Find billedet med den rigtige startlyd" },
     numbers: { name: "Tallene", icon: "● ● ●", description: "Tæl figurer og fingre fra 0 til 10" },
-    addition: { name: "Plusstykker", icon: "4 + 5", description: "Plus med etcifrede tal" },
+    addition: { name: "Plus-drill", icon: "4 + 5", description: "Plus med etcifrede tal" },
     subtractionBorrowing: { name: "Minusstykker", icon: "81 − 37", description: "Lån en tier og træk fra trin for trin" },
     subtractionDrill: { name: "Minus-drill", icon: "92 − 7", description: "Minusstykker uden negative svar" },
     basics: { name: "Basisregler", icon: "0 · 1", description: "Regneregler med 0 og 1" },
