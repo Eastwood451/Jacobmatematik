@@ -647,13 +647,13 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
 .math-tower { padding-top:16px; text-align:center; }
 .math-tower h2 { font:900 29px/1.1 Georgia,serif; letter-spacing:-.04em; margin:7px 0 10px; }
 .math-tower>p { color:var(--muted); font-size:14px; line-height:1.5; margin:0 auto 12px; }
-.math-tower-building { --tower-label-width:106px; position:relative; display:flex; flex-direction:column; padding:0; }
+.math-tower-building { --tower-label-width:116px; position:relative; display:flex; flex-direction:column; padding:0; }
 .math-tower-crown { width:calc(100% - var(--tower-label-width)); margin:0 0 -1px auto; line-height:0; }
 .math-tower-crown svg { width:100%; }
 .math-tower-level { position:relative; display:grid; grid-template-columns:var(--tower-label-width) minmax(0,1fr); align-items:center; width:100%; height:86px; flex-shrink:0; padding:0; border:0; background:transparent; color:#17243d; cursor:pointer; text-align:left; }
 .math-tower-floor-art { grid-area:1 / 2; width:100%; height:100%; }
 .math-tower-plaque { grid-area:1 / 1; display:grid; grid-template-columns:16px minmax(0,1fr); align-items:center; gap:3px; margin-right:5px; padding:6px 3px; border:0; border-radius:4px; box-shadow:none; }
-.math-tower-name { min-width:0; font-size:11px; font-weight:850; line-height:1.25; overflow-wrap:anywhere; }
+.math-tower-name { min-width:0; font-size:11px; font-weight:850; line-height:1.25; white-space:nowrap; }
 .math-tower-name small { display:block; margin-top:3px; font-size:9px; font-weight:500; color:#59616b; }
 .math-tower-symbol { text-align:center; font:900 17px/1 Georgia,serif; color:#5144ba; }
 .math-tower-level:last-child .math-tower-symbol { font-size:10px; }
