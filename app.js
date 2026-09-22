@@ -664,7 +664,8 @@
     document.body.classList.remove("site-authenticated");
     leaveFractionLesson(); jacobFrontend=false;
     leaveFoodtruck();
-    const signup = state.view === "signup";
+    const registrationEnabled = backend?.selfRegistrationEnabled === true;
+    const signup = registrationEnabled && state.view === "signup";
     app.innerHTML = `
       <div class="login-wrap login-cinematic">
         <section class="login-intro login-illustrated-intro" aria-label="Velkommen til Jacobmatematik">
@@ -695,7 +696,7 @@
             <p id="login-error" class="error" role="alert"></p>
             <button class="btn full" type="submit">${signup ? "Opret bruger" : 'Log ind <span aria-hidden="true">→</span>'}</button>
             <div class="login-divider"><span>eller</span></div>
-            <button class="btn secondary full" type="button" data-action="${signup ? "show-login" : "show-signup"}">${signup ? "Tilbage til login" : "Opret bruger"}</button>
+            ${registrationEnabled ? `<button class="btn secondary full" type="button" data-action="${signup ? "show-login" : "show-signup"}">${signup ? "Tilbage til login" : "Opret bruger"}</button>` : ""}
             ${signup ? "" : `<button class="btn guest-login full" type="button" data-action="guest-login">Gæst</button><small class="guest-login-note">Ingen resultater gemmes.</small>`}
             <p class="login-card-quote">SMÅ<br>FREMSKRIDT<br>STORE DRØMME</p>
           </form>
@@ -2462,6 +2463,10 @@
     event.preventDefault();
     if (event.target.id === "signup-form") {
       if (signupBusy || state.user) return;
+      if (backend?.selfRegistrationEnabled !== true) {
+        document.getElementById("login-error").textContent = "Brugeroprettelse er midlertidigt lukket.";
+        return;
+      }
       const data = new FormData(event.target), username = normalizeUsername(data.get("username")), password = String(data.get("password") || "");
       const error = document.getElementById("login-error");
       if (!usingCentralDatabase) { error.textContent="Brugeroprettelse kræver forbindelse til databasen."; return; }
@@ -2721,7 +2726,7 @@
       window.scrollTo(0,0);
       return;
     }
-    if (["show-signup", "show-login"].includes(action) && !state.user && !signupBusy) { state.view = action === "show-signup" ? "signup" : "login"; renderLogin(); return; }
+    if (["show-signup", "show-login"].includes(action) && !state.user && !signupBusy) { state.view = action === "show-signup" && backend?.selfRegistrationEnabled === true ? "signup" : "login"; renderLogin(); return; }
     if (action === "open-registration-profile") {
       if (!state.user?.canManageRegistrations || registrations.loading) return;
       const teacherId = state.user.id;

@@ -1,4 +1,7 @@
 project_id = "uxbrnmcbvxgpsvdbzcov"
 
+[auth]
+enable_signup = false
+
 [functions.manage-student]
 verify_jwt = false

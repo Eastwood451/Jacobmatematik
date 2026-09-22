@@ -7,18 +7,18 @@ const root = path.resolve(__dirname, '..');
 const source = file => fs.readFileSync(path.join(root, file), 'utf8');
 
 (async () => {
-  let enabled = false, authCalls = 0, authError = null, session = true, lastSignup, assignment;
+  let enabled = false, authCalls = 0, registrationChecks = 0, assignment;
   let profile = { id:'student', role:'student', teacher_id:null, username:'søren7', name:'søren7' };
   const results = [{ id:'result-1', student_id:'student', data:{ topic:'addition', correct:true }, created_at:'2026-09-09T12:00:00Z' }];
   let school = { classes:[], users:[] }, saved;
   const client = {
     auth:{
-      async signUp(values) { authCalls++; lastSignup=values; return { error:authError, data:{ session:session ? {} : null } }; },
+      async signUp() { authCalls++; throw new Error('Signup must remain closed'); },
       async getUser() { return { data:{ user:{ id:profile.id } } }; },
       async signInWithPassword() { return {}; },
     },
     async rpc(name, values) {
-      if (name === 'self_registration_enabled') return { data:enabled };
+      if (name === 'self_registration_enabled') { registrationChecks++; return { data:enabled }; }
       if (name === 'can_manage_self_registered') return { data:true };
       if (name === 'get_my_student_state') return { data:school };
       if (name === 'list_self_registered') { assert.equal(values.p_search, 'sø'); assert.equal(values.p_offset, 50); return { data:[{ id:'student' }] }; }
@@ -37,26 +37,15 @@ const source = file => fs.readFileSync(path.join(root, file), 'utf8');
   const context = { crypto:webcrypto, TextEncoder, Uint8Array, window:{ JACOBMATEMATIK_SUPABASE:{ url:'test', publishableKey:'test' }, supabase:{ createClient:() => client } } };
   vm.createContext(context); vm.runInContext(source('supabase-backend.js'), context);
   const backend = context.window.JacobBackend;
-  await assert.rejects(backend.signUp('søren7', 'abcdef'), /ikke aktiveret/);
-  assert.equal(authCalls, 0);
+  assert.equal(backend.selfRegistrationEnabled, false);
+  await assert.rejects(backend.signUp('søren7', 'abcdef'), /midlertidigt lukket/);
   enabled = true;
-  await assert.rejects(backend.signUp('bad@name', 'abcdef'), /1–40/);
-  await assert.rejects(backend.signUp('søren7', '123'), /mindst 6/);
-  assert.equal(authCalls, 0);
-  await backend.signUp(' SØREN7 ', 'test-password');
-  assert.equal(lastSignup.options.data.username, 'søren7');
-  assert.equal(lastSignup.options.data.registration_source, 'self');
-  assert.equal(Object.hasOwn(lastSignup.options.data, 'role'), false);
-  assert.match(lastSignup.email, /^[a-f0-9]{64}@unicode\.users/);
-  await backend.signUp('Alma7', 'test-password');
-  assert.equal(lastSignup.email, 'alma7@users.jacobmatematik.invalid');
-  authError = { code:'user_already_exists' };
-  await assert.rejects(backend.signUp('alma7', 'abcdef'), /allerede i brug/);
-  authError = { status:429 };
-  await assert.rejects(backend.signUp('alma7', 'abcdef'), /Vent lidt/);
-  authError = null; session = false;
-  await assert.rejects(backend.signUp('alma7', 'abcdef'), /afventer aktivering/);
-  session = true;
+  await assert.rejects(backend.signUp('alma7', 'abcdef'), /midlertidigt lukket/);
+  // An altered exported flag must not bypass the private client-side guard.
+  backend.selfRegistrationEnabled = true;
+  await assert.rejects(backend.signUp('alma7', 'abcdef'), /midlertidigt lukket/);
+  assert.equal(authCalls, 0, 'Paused registration must not call Auth');
+  assert.equal(registrationChecks, 0, 'Paused registration must not send credentials or RPCs');
   const loaded = await backend.loadDatabase();
   assert.equal(loaded.database.users[0].classId, null);
   assert.equal(loaded.database.users[0].results[0].remoteId, 'result-1');
@@ -74,10 +63,11 @@ const source = file => fs.readFileSync(path.join(root, file), 'utf8');
     if (!elements.has(id)) elements.set(id, { innerHTML:'', textContent:'', lastElementChild:{textContent:''}, classList:{remove(){}}, focus() {} });
     return elements.get(id);
   };
-  let submitCount = 0, resolveSignup, failLoad = false;
-  const uiBackend = { configured:true,
-    signUp:() => { submitCount++; return new Promise(resolve => { resolveSignup=resolve; }); },
-    loadDatabase:async () => { if (failLoad) throw new Error('offline'); return structuredClone(loaded); },
+  let submitCount = 0;
+  const uiBackend = { configured:true, selfRegistrationEnabled:false,
+    signUp:async () => { submitCount++; },
+    signIn:async () => structuredClone(loaded),
+    loadDatabase:async () => structuredClone(loaded),
   };
   const ui = { console, Intl, Date, Math, Set, Map,
     localStorage:{ getItem:() => null }, sessionStorage:{ getItem:() => null },
@@ -89,33 +79,27 @@ const source = file => fs.readFileSync(path.join(root, file), 'utf8');
   vm.runInContext(source('app.js').replace('  start();\n})();', '  window.testApi = { state, registrations, renderLogin, renderRegistrations, renderTeacher, refreshTeacherResults, normalizeDatabase, setDatabase:value=>db=value, getDatabase:()=>db, flushSaves:()=>remoteSaveQueue };\n})();'), ui);
   const api=ui.window.testApi;
   api.renderLogin();
-  assert.match(element('app').innerHTML, /Opret bruger/);
-  assert.doesNotMatch(element('app').innerHTML, /Gæst/);
+  assert.doesNotMatch(element('app').innerHTML, /Opret bruger|show-signup|signup-form/);
+  assert.match(element('app').innerHTML, /Gæst/);
   assert.match(element('app').innerHTML, /href="fps\.html\?trial=1"/, 'The public banner opens the isolated trial');
   assert.doesNotMatch(source('index.html'), /<a[^>]+fps-launch/);
   api.state.view='signup'; api.renderLogin();
-  assert.match(element('app').innerHTML, /autocomplete="new-password"/);
-  assert.match(element('app').innerHTML, /minlength="6"/);
-  assert.equal(api.normalizeDatabase(structuredClone(loaded.database), false).users[0].classId, null);
-  const buttons=[{ disabled:false }, { disabled:false }];
-  const form={ id:'signup-form', values:{ username:'søren7', password:'test-password' }, querySelectorAll:() => buttons, reset() { this.values.password=''; } };
+  assert.match(element('app').innerHTML, /id="login-form"/);
+  assert.doesNotMatch(element('app').innerHTML, /signup-form|new-password|Opret bruger/);
+  const showSignup={dataset:{action:'show-signup'}};
+  await listeners.click({target:{closest:selector=>selector==='[data-action]'?showSignup:null}});
+  assert.equal(api.state.view, 'login', 'Old signup actions resolve to login');
+  const form={ id:'signup-form', dataset:{}, values:{ username:'søren7', password:'test-password' } };
   const event={ preventDefault() {}, target:form };
-  const first=listeners.submit(event);
   await listeners.submit(event);
-  assert.equal(submitCount, 1, 'Double submit must create at most one account');
-  assert.equal(buttons.every(button => button.disabled), true);
-  resolveSignup(); await first;
-  assert.equal(api.state.view, 'student');
-  assert.equal(api.state.user.classId, null);
-  assert.equal(api.state.user.results.length, 1);
-  assert.equal(form.values.password, '');
-  assert.equal(buttons.some(button => button.disabled), false);
+  assert.equal(submitCount, 0, 'Even an injected signup form cannot create an account');
+  assert.match(element('login-error').textContent, /midlertidigt lukket/);
+  assert.equal(api.normalizeDatabase(structuredClone(loaded.database), false).users[0].classId, null);
+  form.id='login-form';
+  await listeners.submit(event);
+  assert.equal(api.state.view, 'student', 'Existing accounts can still log in');
+  assert.equal(api.state.user.results[0].remoteId, 'result-1');
   assert.equal(api.renderRegistrations(), '', 'Students cannot see registry');
-  api.state.user=null; api.state.view='signup'; api.renderLogin(); failLoad=true;
-  form.values.password='test-password';
-  const second=listeners.submit(event); resolveSignup(); await second;
-  assert.equal(api.state.view, 'login');
-  assert.match(element('login-error').textContent, /bruger er oprettet/);
   api.state.user={ id:'teacher', role:'teacher', canManageRegistrations:true };
   api.registrations.open=true;
   api.registrations.rows=[{ id:'student', username:'test', name:'<script>bad</script>', created_at:'2026-09-09T12:00:00Z', assigned:false }];
@@ -176,5 +160,5 @@ const source = file => fs.readFileSync(path.join(root, file), 'utf8');
   assert.equal(api.getDatabase().users.find(x=>x.id==='self-student').name,'Kaj');
   ui.document.hidden=true;
   console.log('PASS: shared unclassified student card, profile editing, exercise settings, heatmaps, class placement, registry link and live newcomers.');
-  console.log('PASS: signup gating, validation, aliases, duplicate/rate errors, unassigned login and results, RPC parameters, secret stripping, login UI, double-submit and post-signup recovery.');
+  console.log('PASS: paused signup rejects before network access, tampered flags/actions/forms cannot register, signup UI is absent, guest entry and existing-account login remain available.');
 })().catch(error => { console.error(error); process.exitCode=1; });

@@ -1,6 +1,8 @@
 (() => {
   "use strict";
 
+  // Paused at Jacob's request on 2026-09-22. Re-enable only on his explicit request.
+  const selfRegistrationEnabled = false;
   const config = window.JACOBMATEMATIK_SUPABASE || {};
   const configured = Boolean(config.url && config.publishableKey && window.supabase?.createClient);
   const client = configured ? window.supabase.createClient(config.url, config.publishableKey) : null;
@@ -46,6 +48,7 @@
   }
 
   async function signUp(username, password) {
+    if (!selfRegistrationEnabled) throw new Error("Brugeroprettelse er midlertidigt lukket.");
     username = normalizeUsername(username);
     if (!/^[a-zæøå0-9._-]{1,40}$/.test(username)) throw new Error("Brug 1–40 tegn: a–z, æ, ø, å, tal, punktum, bindestreg eller understregning.");
     if (password.length < 6) throw new Error("Adgangskoden skal have mindst 6 tegn.");
@@ -228,6 +231,7 @@
 
   window.JacobBackend = {
     configured,
+    selfRegistrationEnabled,
     // Share the existing authenticated client with ephemeral game rooms.
     realtimeClient:client,
     signIn,

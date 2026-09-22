@@ -114,9 +114,9 @@
   }
 
   function setMode(mode) {
-    const signup = mode === "signup";
-    gate.dataset.mode = mode;
-    gate.querySelectorAll("[data-trial-tab]").forEach(button => button.classList.toggle("active", button.dataset.trialTab === mode));
+    const signup = mode === "signup" && window.JacobBackend?.selfRegistrationEnabled === true;
+    gate.dataset.mode = signup ? "signup" : "login";
+    gate.querySelectorAll("[data-trial-tab]").forEach(button => button.classList.toggle("active", button.dataset.trialTab === gate.dataset.mode));
     gate.querySelector("#fps-trial-title").textContent = signup ? "Opret en bruger og fortsæt" : "Log ind og fortsæt";
     gate.querySelector("#fps-trial-copy").textContent = signup
       ? "Vælg brugernavn og adgangskode. Dine fremskridt på Jacob Matematik kan derefter gemmes."
@@ -129,6 +129,7 @@
   }
 
   function buildGate() {
+    const registrationEnabled = window.JacobBackend?.selfRegistrationEnabled === true;
     gate = document.createElement("section");
     gate.id = "fps-trial-auth";
     gate.setAttribute("role", "dialog");
@@ -139,16 +140,16 @@
         <span class="eyebrow">ERLING FPS · PRØVESPIL</span>
         <h2 id="fps-trial-title">Log ind og fortsæt</h2>
         <p id="fps-trial-copy">Prøvetiden er slut. Log ind, så åbner skolen igen med det samme.</p>
-        <div class="fps-trial-tabs" role="tablist" aria-label="Vælg login eller opret bruger">
+        ${registrationEnabled ? `<div class="fps-trial-tabs" role="tablist" aria-label="Vælg login eller opret bruger">
           <button type="button" class="active" data-trial-tab="login">LOG IND</button>
           <button type="button" data-trial-tab="signup">OPRET BRUGER</button>
-        </div>
+        </div>` : ""}
         <form id="fps-trial-form" class="fps-trial-form">
           <label for="fps-trial-username">Brugernavn</label>
           <input id="fps-trial-username" name="username" maxlength="40" autocomplete="username" autocapitalize="none" spellcheck="false" required>
           <label for="fps-trial-password">Adgangskode</label>
           <input id="fps-trial-password" name="password" type="password" autocomplete="current-password" required>
-          <small class="fps-trial-small">Ved oprettelse skal adgangskoden være mindst 6 tegn.</small>
+          ${registrationEnabled ? '<small class="fps-trial-small">Ved oprettelse skal adgangskoden være mindst 6 tegn.</small>' : ""}
           <p id="fps-trial-error" role="alert"></p>
           <button id="fps-trial-submit" class="fps-trial-submit" type="submit">LOG IND OG FORTSÆT</button>
         </form>
@@ -170,6 +171,10 @@
     const password = form.password.value;
     const signup = gate.dataset.mode === "signup";
     error.textContent = "";
+    if (signup && window.JacobBackend?.selfRegistrationEnabled !== true) {
+      error.textContent = "Brugeroprettelse er midlertidigt lukket.";
+      return;
+    }
     if (!window.JacobBackend?.configured) {
       error.textContent = "Login er ikke tilgængeligt lige nu. Prøv igen om lidt.";
       return;

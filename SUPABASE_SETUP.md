@@ -65,7 +65,22 @@ eller vælge lærer eller klasse.
 Se https://supabase.com/docs/reference/javascript/auth-signup og
 https://supabase.com/docs/guides/auth/managing-user-data.
 
-### Aktivering
+### Midlertidigt lukket fra 22. september 2026
+
+Jacob har bedt om at lukke selvoprettelsen på grund af en GDPR-bekymring.
+Genåbn kun efter hans udtrykkelige besked. Eksisterende konti, login, resultater,
+gæsteadgang og lærerens elevadministration skal bevares.
+
+- `selfRegistrationEnabled = false` i `supabase-backend.js` skjuler oprettelse
+  på forsiden og i Erling FPS og afviser direkte kald til browserens `signUp`.
+- `public.registration_settings.enabled = false` lukker den eksisterende
+  databasetrigger, også for gamle åbne faner.
+- `auth.enable_signup = false` i `supabase/config.toml` fastholder lukningen
+  i konfigurationen. På det hostede projekt skal **Allow new users to sign up**
+  også være slået fra under Authentication → Sign In / Providers; en ændring
+  af den lokale konfigurationsfil alene ændrer ikke det hostede projekt.
+
+### Aktivering — kun efter Jacobs udtrykkelige besked
 
 1. Kør migrationen i produktion. Oprettelse er stadig slået fra.
 2. Kontrollér, at `registration_administrators` indeholder Jacobs lærer-ID.
@@ -75,7 +90,9 @@ https://supabase.com/docs/guides/auth/managing-user-data.
    **Confirm email** fra, da de interne brugernavnsadresser ikke er postkasser.
    Undlad at ændre eksisterende konti, adgangskoder eller deres sessioner.
 4. Kør `update public.registration_settings set enabled = true where id;`.
-5. Udgiv frontendfilerne og prøv ny konto, genlogin, gemt resultat, oversigt og
+5. Sæt `selfRegistrationEnabled = true` i browserklienten og
+   `auth.enable_signup = true` i `supabase/config.toml`.
+6. Udgiv frontendfilerne og prøv ny konto, genlogin, gemt resultat, oversigt og
    klasseplacering. Der er ingen ny Edge Function at udgive.
 
 `can_manage_self_registered` kontrollerer den beskyttede administratortabel.
