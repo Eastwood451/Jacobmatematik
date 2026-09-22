@@ -712,11 +712,12 @@
     if (heatmap) {
       // Same row/column order as the 9 × 9 heatmap, stretched across the floor.
       const width = 276 / TABLE_DRILL_VALUES.length, height = 120 / TABLE_DRILL_VALUES.length;
-      art = `<rect x="12" y="2" width="276" height="120" fill="#262a31"/>`;
+      art = `<rect x="12" y="2" width="276" height="120" fill="#000"/>`;
       TABLE_DRILL_VALUES.forEach((row, r) => TABLE_DRILL_VALUES.forEach((column, c) => {
         const brick = matrixDrillIsGreen(heatmap.session?.attempts[`${row}-${column}`]);
         const x = 12 + c * width, y = 2 + r * height;
-        art += `<g class="math-tower-${brick ? "brick" : "hole"}" data-cell="${row}-${column}"><rect x="${x+0.8}" y="${y+0.8}" width="${width-1.6}" height="${height-1.6}" rx="1" fill="${brick ? ['#b78c61','#c59a6c','#ac8058'][(r+c)%3] : '#363940'}"/>${brick ? `<path d="M${x+2} ${y+height-2}H${x+width-2}V${y+2}" fill="none" stroke="#78573e" stroke-width="1.5"/><path d="M${x+2} ${y+height-3}V${y+2}H${x+width-2}" fill="none" stroke="#e5c599" stroke-width="1"/>` : `<path d="M${x+1} ${y+height-1}V${y+1}H${x+width-1}" fill="none" stroke="#181c24" stroke-width="2"/>`}</g>`;
+        const granite = ['#aeb7ba','#939fa4','#c0c7c8'][(r+c)%3];
+        art += `<g class="math-tower-${brick ? "brick" : "hole"}" data-cell="${row}-${column}"><rect x="${x+0.8}" y="${y+0.8}" width="${width-1.6}" height="${height-1.6}" rx=".7" fill="${brick ? granite : '#000'}"/>${brick ? `<path d="M${x+2} ${y+height-2}H${x+width-2}V${y+2}" fill="none" stroke="#59666b" stroke-width="1.15"/><path d="M${x+2} ${y+2}H${x+width-2}" stroke="#e3e8e6" stroke-opacity=".7" stroke-width=".8"/><circle cx="${x+5+(r%3)*3}" cy="${y+5+(c%2)*3}" r=".8" fill="#657176"/><circle cx="${x+width-6}" cy="${y+height-5}" r=".7" fill="#dce1df" opacity=".55"/>` : ''}</g>`;
       }));
     } else if (stage === "frame") {
       art = `<rect x="15" y="5" width="270" height="114" fill="none" stroke="#88775e" stroke-width="6"/><path d="M18 8L282 116M282 8L18 116" stroke="#a28e70" stroke-width="4"/><path d="M18 8H282M18 116H282" stroke="#c9b791" stroke-width="2"/>`;
