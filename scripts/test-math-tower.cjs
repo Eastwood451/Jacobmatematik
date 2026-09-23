@@ -5,15 +5,22 @@ const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
 const context = vm.createContext({});
 // Exercise the production helpers without starting authentication or the app.
-const names = ['matrixDrillIsGreen', 'matrixDrillCellStyle', 'tableDrillSessions', 'additionPairStats', 'subtractionDrillPairStats', 'subtractionDrillTroubleFacts', 'syncSubtractionDrillTroubles', 'numberValueStats', 'drillMastery', 'numberMastery', 'mathTowerBestHeatmap', 'mathTowerNumberStones', 'mathTowerAdditionBricks', 'mathTowerSubtractionStones', 'mathTowerFloorArt', 'renderAdditionExerciseHeatmap', 'renderSubtractionDrillHeatmap', 'additionColumnTokenPresentation', 'additionColumnCurrent', 'additionColumnSlot', 'renderColumnAdditionFigure'];
+const names = ['matrixDrillIsGreen', 'matrixDrillCellStyle', 'tableDrillSessions', 'additionPairStats', 'subtractionDrillPairStats', 'subtractionDrillExactPairStats', 'subtractionDrillLevelProgress', 'subtractionDrillLevelIndex', 'subtractionDrillTroubleFacts', 'syncSubtractionDrillTroubles', 'numberValueStats', 'drillMastery', 'numberMastery', 'mathTowerBestHeatmap', 'mathTowerNumberStones', 'mathTowerAdditionBricks', 'mathTowerSubtractionStones', 'mathTowerFloorArt', 'renderAdditionExerciseHeatmap', 'renderSubtractionDrillHeatmap', 'additionColumnTokenPresentation', 'additionColumnCurrent', 'additionColumnSlot', 'renderColumnAdditionFigure'];
 const functions = names.map(name => {
   const start = source.indexOf(`  function ${name}(`);
   assert.ok(start >= 0, name);
   const end = source.indexOf('\n  function ', start + 1);
   return source.slice(start, end);
 });
-vm.runInContext(`${source.match(/  const TABLE_DRILL_VALUES = .+;/)[0]}\n${source.match(/  const SINGLE_DIGITS = .+;/)[0]}\nconst state = {subtractionDrillTroubles:null, answered:false};\nconst escapeHtml = value => String(value);\nconst SUBTRACTION_DRILL_SINGLE_FACTS = SINGLE_DIGITS.flatMap(minuend => Array.from({length:minuend + 1}, (_, subtrahend) => ({ minuend, subtrahend, group:0 })));\nconst SUBTRACTION_DRILL_ONES_PATTERNS = SINGLE_DIGITS.flatMap(ones => SINGLE_DIGITS.map(subtrahend => ({ones,subtrahend})));\nconst SUBTRACTION_DRILL_TWO_DIGIT_FACTS = Array.from({length:9}, (_, tens) => tens + 1).flatMap(tens => SINGLE_DIGITS.flatMap(ones => SINGLE_DIGITS.map(subtrahend => ({ minuend:tens * 10 + ones, subtrahend, group:tens }))));\n${source.match(/  const recordedTime = .+;/)[0]}\n${source.match(/  const responseTimeColor = \(seconds\) => \{[\s\S]*?\n  \};/)[0]}\n${functions.join('\n')}`, context);
-const { matrixDrillIsGreen: green, matrixDrillCellStyle: style, mathTowerBestHeatmap: best, mathTowerNumberStones: numberStones, mathTowerAdditionBricks: additionBricks, mathTowerSubtractionStones: subtractionStones, mathTowerFloorArt: art, renderAdditionExerciseHeatmap: additionHeatmap, renderSubtractionDrillHeatmap: subtractionHeatmap, subtractionDrillTroubleFacts: subtractionTroubles, syncSubtractionDrillTroubles: syncTroubles } = context;
+vm.runInContext(`${source.match(/  const TABLE_DRILL_VALUES = .+;/)[0]}\n${source.match(/  const SINGLE_DIGITS = .+;/)[0]}\nconst state = {subtractionDrillTroubles:null, answered:false};\nconst escapeHtml = value => String(value);\nconst SUBTRACTION_DRILL_SINGLE_FACTS = SINGLE_DIGITS.flatMap(minuend => Array.from({length:minuend + 1}, (_, subtrahend) => ({ minuend, subtrahend, group:0 })));
+const SUBTRACTION_DRILL_BRIDGE_FACTS = Array.from({length:9}, (_, index) => index + 10).flatMap(minuend => SINGLE_DIGITS.slice(Math.max(0, minuend - 9), Math.min(9, minuend) + 1).map(subtrahend => ({ minuend, subtrahend, group:0 })));
+const SUBTRACTION_DRILL_LEVELS = [
+  { name:"Étcifrede minusstykker", hint:"Træk et etcifret tal fra et etcifret tal.", facts:SUBTRACTION_DRILL_SINGLE_FACTS },
+  { name:"Til étcifret facit", hint:"Træk et etcifret tal fra 10–18. Svaret skal være etcifret.", facts:SUBTRACTION_DRILL_BRIDGE_FACTS },
+  { name:"Blandede minusstykker", hint:"Træk fra uden at gå under nul.", facts:null },
+];
+const SUBTRACTION_DRILL_ONES_PATTERNS = SINGLE_DIGITS.flatMap(ones => SINGLE_DIGITS.map(subtrahend => ({ones,subtrahend})));\nconst SUBTRACTION_DRILL_TWO_DIGIT_FACTS = Array.from({length:9}, (_, tens) => tens + 1).flatMap(tens => SINGLE_DIGITS.flatMap(ones => SINGLE_DIGITS.map(subtrahend => ({ minuend:tens * 10 + ones, subtrahend, group:tens }))));\n${source.match(/  const recordedTime = .+;/)[0]}\n${source.match(/  const responseTimeColor = \(seconds\) => \{[\s\S]*?\n  \};/)[0]}\n${functions.join('\n')}`, context);
+const { matrixDrillIsGreen: green, matrixDrillCellStyle: style, mathTowerBestHeatmap: best, mathTowerNumberStones: numberStones, mathTowerAdditionBricks: additionBricks, mathTowerSubtractionStones: subtractionStones, mathTowerFloorArt: art, renderAdditionExerciseHeatmap: additionHeatmap, renderSubtractionDrillHeatmap: subtractionHeatmap, subtractionDrillTroubleFacts: subtractionTroubles, subtractionDrillLevelProgress: subtractionLevelProgress, subtractionDrillLevelIndex: subtractionLevelIndex, syncSubtractionDrillTroubles: syncTroubles } = context;
 const additionTokenPresentation = context.additionColumnTokenPresentation;
 const renderAdditionFigure = context.renderColumnAdditionFigure;
 const result = (id, row, column, correct = true, responseTime = 3, day = 1) => ({
@@ -87,6 +94,21 @@ assert.match(additionMap, /2\/100/);
 assert.match(additionMap, /0 \+ 1: lært/);
 assert.match(additionMap, /2 \+ 2: senest forkert/);
 const subtractionResult = (minuend, subtrahend, correct=true, responseTime=4, sequence=1) => ({ topic:'subtractionDrill', problem:`${minuend} − ${subtrahend}`, correct, responseTime, timestamp:`2026-09-22T12:00:${String(sequence).padStart(2,'0')}Z` });
+const bridgeFacts = vm.runInContext('SUBTRACTION_DRILL_BRIDGE_FACTS', context);
+assert.equal(bridgeFacts.length,45, 'niveau 2 contains every teen subtraction with a one-digit answer');
+assert.ok(bridgeFacts.every(({minuend,subtrahend}) => minuend >= 10 && minuend <= 18 && subtrahend <= 9 && minuend >= subtrahend && minuend - subtrahend <= 9), 'niveau 2 has no negative or two-digit answers');
+const learningUser={results:[]};
+assert.equal(subtractionLevelIndex(learningUser),0);
+assert.equal(subtractionLevelProgress(learningUser,0).total,55);
+const teachFacts=facts=>facts.forEach(fact=>Array.from({length:3},()=>{
+  const sequence=learningUser.results.length;
+  learningUser.results.push({topic:'subtractionDrill',problem:`${fact.minuend} − ${fact.subtrahend}`,correct:true,responseTime:4,timestamp:new Date(Date.UTC(2026,8,23,12,0,sequence)).toISOString()});
+}));
+teachFacts(vm.runInContext('SUBTRACTION_DRILL_SINGLE_FACTS', context));
+assert.equal(subtractionLevelIndex(learningUser),1, 'mastering all one-digit facts opens level 2');
+assert.equal(subtractionLevelProgress(learningUser,1).total,45);
+teachFacts(bridgeFacts);
+assert.equal(subtractionLevelIndex(learningUser),2, 'mastering all bridge facts opens the existing mixed drill');
 const subtractionUser = {results:[
   ...[1,2,3].map(sequence => subtractionResult(9, 5, true, 4, sequence)),
   ...[4,5,6].map(sequence => subtractionResult(10, 0, true, 4, sequence)),
