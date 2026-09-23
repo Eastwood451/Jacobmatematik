@@ -842,12 +842,13 @@
   }
   function mathTowerFloorArt(stage, index, heatmap = null, numberStones = null, additionBricks = null, subtractionStones = null) {
     const outline = 'stroke="#5b5144" stroke-width="2"';
-    const holeFill="#000";
+    const holeFill="none";
+    const holeBackdrop = `url(#math-tower-hole-${index})`;
     let art = '';
     if (heatmap) {
       // Same row/column order as the 9 × 9 heatmap, stretched across the floor.
       const width = 276 / TABLE_DRILL_VALUES.length, height = 120 / TABLE_DRILL_VALUES.length;
-      art = `<rect x="12" y="2" width="276" height="120" fill="${holeFill}"/>`;
+      art = `<rect x="12" y="2" width="276" height="120" fill="${holeBackdrop}"/>`;
       TABLE_DRILL_VALUES.forEach((row, r) => TABLE_DRILL_VALUES.forEach((column, c) => {
         const brick = matrixDrillIsGreen(heatmap.session?.attempts[`${row}-${column}`]);
         const x = 12 + c * width, y = 2 + r * height;
@@ -857,7 +858,7 @@
     } else if (additionBricks) {
       // All ordered one-digit additions: 0+0 through 9+9.
       const width=27.6, height=12;
-      art = `<rect x="12" y="2" width="276" height="120" fill="${holeFill}"/>`;
+      art = `<rect x="12" y="2" width="276" height="120" fill="${holeBackdrop}"/>`;
       additionBricks.bricks.forEach((row, r) => row.forEach((brick, c) => {
         const x=12+c*width, y=2+r*height, granite=['#aeb7ba','#939fa4','#c0c7c8'][(r+c)%3];
         art += `<g class="math-tower-addition-${brick.learned ? "brick" : "hole"}" data-pair="${brick.left}+${brick.right}"><rect x="${x+.8}" y="${y+.8}" width="${width-1.6}" height="${height-1.6}" rx=".7" fill="${brick.learned ? granite : holeFill}"/>${brick.learned ? `<path d="M${x+2} ${y+height-2}H${x+width-2}V${y+2}" fill="none" stroke="#59666b" stroke-width="1.1"/><path d="M${x+2} ${y+2}H${x+width-2}" stroke="#e3e8e6" stroke-opacity=".7" stroke-width=".8"/><circle cx="${x+5+(r%3)*2}" cy="${y+5+(c%2)*2}" r=".7" fill="#657176"/>` : ''}</g>`;
@@ -865,7 +866,7 @@
     } else if (subtractionStones) {
       // One upright stone for the one-digit set and each two-digit tens group.
       const width=276/subtractionStones.stones.length;
-      art = `<rect x="12" y="2" width="276" height="120" fill="${holeFill}"/>`;
+      art = `<rect x="12" y="2" width="276" height="120" fill="${holeBackdrop}"/>`;
       subtractionStones.stones.forEach((stone, column) => {
         const x=12+column*width, granite=['#aeb7ba','#939fa4','#c0c7c8'][column%3];
         art += `<g class="math-tower-subtraction-${stone.learned ? "stone" : "hole"}" data-range="${stone.label}"><rect x="${x+.9}" y="2.8" width="${width-1.8}" height="118.4" rx="1" fill="${stone.learned ? granite : holeFill}"/>${stone.learned ? `<path d="M${x+2.2} 118.5H${x+width-2.2}V4.5" fill="none" stroke="#59666b" stroke-width="1.2"/><path d="M${x+2.2} 4.5H${x+width-2.2}" stroke="#e3e8e6" stroke-opacity=".7" stroke-width=".8"/><circle cx="${x+5+(column%3)*2}" cy="${16+(column%5)*12}" r=".9" fill="#657176"/><text x="${x+width/2}" y="67" text-anchor="middle" fill="#3b474d" font-family="Georgia,serif" font-size="8" font-weight="900">${column ? `${column}0s` : '0–9'}</text>` : ''}</g>`;
@@ -873,7 +874,7 @@
     } else if (numberStones) {
       // One upright foundation stone for each number from 0 to 10.
       const width = 276 / numberStones.stones.length;
-      art = `<rect x="12" y="2" width="276" height="120" fill="${holeFill}"/>`;
+      art = `<rect x="12" y="2" width="276" height="120" fill="${holeBackdrop}"/>`;
       numberStones.stones.forEach((stone, column) => {
         const x=12+column*width, granite=['#aeb7ba','#939fa4','#c0c7c8'][column%3], built=stone.stage !== "none";
         art += `<g class="math-tower-number-${built ? "stone" : "hole"}" data-number="${stone.number}"><rect x="${x+.9}" y="2.8" width="${width-1.8}" height="118.4" rx="1" fill="${built ? granite : holeFill}"/>${built ? `<path d="M${x+2.2} 118.5H${x+width-2.2}V4.5" fill="none" stroke="#59666b" stroke-width="1.2"/><path d="M${x+2.2} 4.5H${x+width-2.2}" stroke="#e3e8e6" stroke-opacity=".7" stroke-width=".8"/><circle cx="${x+5+(column%3)*2}" cy="${16+(column%5)*12}" r=".9" fill="#657176"/><circle cx="${x+width-5}" cy="${102-(column%4)*11}" r=".7" fill="#dce1df" opacity=".55"/><text x="${x+width/2}" y="67" text-anchor="middle" fill="#3b474d" font-family="Georgia,serif" font-size="${stone.number===10 ? 10 : 13}" font-weight="900">${stone.number}</text>` : ''}</g>`;
@@ -899,7 +900,8 @@
         }
       }
     }
-    return `<svg class="math-tower-floor-art" viewBox="0 0 300 124" preserveAspectRatio="none" aria-hidden="true" focusable="false">${art}</svg>`;
+    const gradient = `<defs><linearGradient id="math-tower-hole-${index}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#202d4f"/><stop offset=".52" stop-color="#37355f"/><stop offset="1" stop-color="#212b49"/></linearGradient></defs>`;
+    return `<svg class="math-tower-floor-art" viewBox="0 0 300 124" preserveAspectRatio="none" aria-hidden="true" focusable="false">${gradient}${art}</svg>`;
   }
   function renderMathTower(availableTopics) {
     return `<aside class="math-tower" aria-labelledby="math-tower-title">
