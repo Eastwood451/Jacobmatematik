@@ -287,7 +287,7 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
 .column-addition-progress { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px clamp(18px,3vw,30px); border-bottom:1px solid var(--line); color:var(--muted); font-size:12px; }
 .column-addition-progress strong { color:#176b4d; font-size:12px; }
 .column-addition-layout { display:grid; grid-template-columns:minmax(390px,1.08fr) minmax(300px,.92fr); min-height:540px; }
-.column-addition-board { min-width:0; padding:clamp(28px,5vw,54px); display:grid; place-items:center; border-right:1px solid var(--line); background:radial-gradient(circle at 50% 22%,rgba(91,75,218,.09),transparent 15rem),#fffdf8; }
+.column-addition-board { min-width:0; padding:clamp(28px,5vw,54px); display:grid; place-items:start center; align-content:start; border-right:1px solid var(--line); background:radial-gradient(circle at 50% 22%,rgba(91,75,218,.09),transparent 15rem),#fffdf8; }
 .column-addition-controls { min-width:0; padding:clamp(24px,3.5vw,40px); display:flex; flex-direction:column; justify-content:center; background:#faf8f3; }
 .column-addition-figure { position:relative; width:min(360px,100%); display:grid; justify-items:center; gap:17px; }
 .column-addition-work { width:276px; }
