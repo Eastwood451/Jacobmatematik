@@ -203,6 +203,17 @@
     subtractionDrill: {
       generate(level, user) {
         const grouped=subtractionDrillPairStats(user || { results:[] });
+        if (state.subtractionDrillTroubles) {
+          const allowedKeys=new Set(state.subtractionDrillTroubles);
+          const troubleFacts=subtractionDrillTroubleFacts(user || { results:[] }).filter(fact=>allowedKeys.has(fact.key));
+          if (!troubleFacts.length) return null;
+          const fact=pick(troubleFacts);
+          if (fact.type === "ones") {
+            const tens=rand(1,9), minuend=tens * 10 + fact.ones;
+            return makeTask("subtractionDrill", `${minuend} − ${fact.subtrahend}`, minuend - fact.subtrahend, "Øv de stykker, der har drillet.", { minuend, subtrahend:fact.subtrahend, group:tens });
+          }
+          return makeTask("subtractionDrill", `${fact.minuend} − ${fact.subtrahend}`, fact.minuend - fact.subtrahend, "Øv de stykker, der har drillet.", fact);
+        }
         // Tocifrede opgaver bruger ét-mønster-mastery, étcifrede bruger det eksakte par.
         const twoDigit=Math.random() < .72;
         if (twoDigit) {
@@ -415,7 +426,7 @@
     return database;
   }
   let db = normalizeDatabase(loadDatabase());
-  const state = { user: null, view: "login", selectedTopic: "mixed", task: null, taskStartedAt: 0, answered: false, questionNumber: 1, sessionCorrect: 0, sessionAnswers: [], matrixDrill:null, subtractionConfirmationMode:"enter", showExerciseTimer:loadTimerVisibility(), expandedStudent: "s1", activeClassId:null, teacherTopicDetail: null, studentFormOpen: false, classRenameFormOpen: false, studentProfileNotice:"" };
+  const state = { user: null, view: "login", selectedTopic: "mixed", task: null, taskStartedAt: 0, answered: false, questionNumber: 1, sessionCorrect: 0, sessionAnswers: [], matrixDrill:null, subtractionConfirmationMode:"enter", subtractionDrillTroubles:null, showExerciseTimer:loadTimerVisibility(), expandedStudent: "s1", activeClassId:null, teacherTopicDetail: null, studentFormOpen: false, classRenameFormOpen: false, studentProfileNotice:"" };
   const app = document.getElementById("app");
   const backend = window.JacobBackend;
   const usingCentralDatabase = Boolean(backend?.configured);
@@ -1133,6 +1144,13 @@
   function newTask() {
     if (!state.user || state.view !== "exercise") return;
     const topic = state.selectedTopic === "mixed" ? chooseWeightedTopic(state.user) : state.selectedTopic;
+    if (topic === "subtractionDrill" && state.subtractionDrillTroubles) {
+      const allowedKeys=new Set(state.subtractionDrillTroubles);
+      const remaining=subtractionDrillTroubleFacts(state.user).filter(fact=>allowedKeys.has(fact.key));
+      if (!remaining.length) {
+        state.task=null; state.answered=false; renderSubtractionDrillComplete(); return;
+      }
+    }
     if (MATRIX_DRILL_TOPICS.has(topic)) {
       const drill = state.matrixDrill;
       const pair = drill?.pairs[drill.currentIndex];
@@ -1166,6 +1184,12 @@
   }
   function renderSubtractionDrillHeatmap(user) {
     const grouped=subtractionDrillPairStats(user);
+    const troubleFacts=subtractionDrillTroubleFacts(user);
+    const troubleAction=state.subtractionDrillTroubles
+      ? `<button type="button" class="btn secondary" data-action="stop-subtraction-troubles">Tilbage til alle minusstykker</button>`
+      : troubleFacts.length
+        ? `<button type="button" class="btn" data-action="practice-subtraction-troubles">Øv drillere (${troubleFacts.length})</button>`
+        : "";
     const values=[...SINGLE_DIGITS];
     const singleCell=(minuend, subtrahend, unavailable=false) => {
       if (unavailable) return `<td class="subtraction-heatmap-cell unavailable" title="${minuend} − ${subtrahend} giver et negativt tal og øves ikke" aria-label="${minuend} minus ${subtrahend}: øves ikke"></td>`;
@@ -1191,7 +1215,11 @@
     const singleLearned=[...grouped.entries()].filter(([key,items])=>!key.startsWith('ones:') && drillMastery(items).learned).length;
     const onesLearned=[...grouped.entries()].filter(([key,items])=>key.startsWith('ones:') && drillMastery(items).learned).length;
     const totalLearned=singleLearned + onesLearned;
-    return `<section class="subtraction-exercise-heatmap" aria-labelledby="subtraction-heatmap-title"><header><div><span class="eyebrow">Dit minuskort</span><h2 id="subtraction-heatmap-title">Minus uden negative svar</h2></div><strong>${totalLearned}/155</strong></header><p>Étcifrede øves enkeltvis. Tocifrede grupperes efter étterne: X5 − 7 dækker 15−7, 25−7, 65−7 osv. Grøn = lært · rød = senest forkert.</p><div class="subtraction-heatmap-groups">${singleTable}${onesTable}</div></section>`;
+    return `<section class="subtraction-exercise-heatmap" aria-labelledby="subtraction-heatmap-title"><header><div><span class="eyebrow">Dit minuskort</span><h2 id="subtraction-heatmap-title">Minus uden negative svar</h2></div><div class="subtraction-heatmap-tools">${troubleAction}<strong>${totalLearned}/155</strong></div></header><p>Étcifrede øves enkeltvis. Tocifrede grupperes efter étterne: X5 − 7 dækker 15−7, 25−7, 65−7 osv. Grøn = lært · rød = senest forkert.</p>${troubleAction ? `<div class="subtraction-drill-actions">${troubleAction}<small>Øv kun stykker, der tidligere er besvaret forkert, indtil de er lært.</small></div>` : ""}<div class="subtraction-heatmap-groups">${singleTable}${onesTable}</div></section>`;
+  }
+  function renderSubtractionDrillComplete() {
+    const count=state.sessionCorrect;
+    app.innerHTML=`${header()}<div class="page exercise-page"><div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button><span class="topic-tag">Minus-drill · drillere</span></div><section class="question-card subtraction-drill-complete"><div class="question-top"><span class="question-number">Drillerne er lært</span><div class="expression">✓</div><p class="hint">Du har lært alle de minusstykker, du tidligere har svaret forkert på. Flot trænet!</p></div><div class="answer-area"><button class="btn full" type="button" data-action="stop-subtraction-troubles">Tilbage til alle minusstykker</button><small>${count} korrekte svar i denne træningsrunde</small></div></section></div>`;
   }
   function renderExercise() {
     const task = state.task;
@@ -1282,9 +1310,17 @@
     </section>` : "";
     const additionHeatmap = task.topic === "addition" ? renderAdditionExerciseHeatmap(state.user) : "";
     const subtractionHeatmap = task.topic === "subtractionDrill" ? renderSubtractionDrillHeatmap(state.user) : "";
+    const subtractionTroubleFacts = task.topic === "subtractionDrill" ? subtractionDrillTroubleFacts(state.user) : [];
+    const subtractionTroubleAction = task.topic !== "subtractionDrill"
+      ? ""
+      : state.subtractionDrillTroubles
+        ? `<button type="button" class="btn secondary subtraction-trouble-action" data-action="stop-subtraction-troubles">Tilbage til alle minusstykker</button>`
+        : subtractionTroubleFacts.length
+          ? `<button type="button" class="btn subtraction-trouble-action" data-action="practice-subtraction-troubles">Øv drillere (${subtractionTroubleFacts.length})</button>`
+          : "";
 
     app.innerHTML = `${header()}<div class="page exercise-page">
-      <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button>${exerciseLeaderboardLink(task.topic)}<span class="topic-tag">${TOPICS[task.topic].name}</span></div>
+      <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button>${exerciseLeaderboardLink(task.topic)}${subtractionTroubleAction}<span class="topic-tag">${TOPICS[task.topic].name}${state.subtractionDrillTroubles ? " · drillere" : ""}</span></div>
       <section class="question-card">
         <div class="question-top"><span class="question-number">Opgave ${state.questionNumber}</span><div class="question-main ${attemptHistory ? "with-history" : ""}">${taskVisual}${attemptHistory}</div><p class="hint">${escapeHtml(task.hint || "Skriv dit svar nedenfor.")}</p></div>
         ${state.answered ? correctionSection : answerSection}
@@ -2081,6 +2117,21 @@
     return grouped;
   }
 
+  function subtractionDrillTroubleFacts(user) {
+    const grouped=subtractionDrillPairStats(user);
+    return [...grouped.entries()].flatMap(([key,items]) => {
+      if (!items.some(item=>!item.correct) || drillMastery(items).learned) return [];
+      if (key.startsWith("ones:")) {
+        const [ones,subtrahend]=key.slice("ones:".length).split("-").map(Number);
+        return SINGLE_DIGITS.includes(ones) && SINGLE_DIGITS.includes(subtrahend) ? [{key,type:"ones",ones,subtrahend}] : [];
+      }
+      const [minuend,subtrahend]=key.split("-").map(Number);
+      return SINGLE_DIGITS.includes(minuend) && SINGLE_DIGITS.includes(subtrahend) && subtrahend<=minuend
+        ? [{key,type:"single",minuend,subtrahend}]
+        : [];
+    });
+  }
+
   function numberValueStats(user) {
     const grouped = new Map();
     (user.results || []).filter(item => item.topic === "numbers").forEach(item => {
@@ -2665,6 +2716,7 @@
       if (isGuest() && !GUEST_TOPICS.has(topicButton.dataset.topic)) return;
       clearDivisionLollipopDrag();
       clearBorrowingSubtractionDrag();
+      state.subtractionDrillTroubles=null;
       if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned");
       if (MATRIX_DRILL_TOPICS.has(topicButton.dataset.topic)) { startMatrixDrill(topicButton.dataset.topic); return; }
       if (topicButton.dataset.topic === "divisionLollipops") divisionLollipopDeck=[];
@@ -2683,6 +2735,23 @@
 
     if (action === "exercise-leaderboard") {
       await openExerciseLeaderboard(actionButton.dataset.leaderboardTopic);
+      return;
+    }
+
+    if (action === "practice-subtraction-troubles") {
+      if (state.task?.topic !== "subtractionDrill") return;
+      const facts=subtractionDrillTroubleFacts(state.user);
+      if (!facts.length) return;
+      state.subtractionDrillTroubles=facts.map(fact=>fact.key);
+      state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[];
+      newTask();
+      return;
+    }
+    if (action === "stop-subtraction-troubles") {
+      state.subtractionDrillTroubles=null;
+      state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[];
+      if (state.view === "exercise" && state.selectedTopic === "subtractionDrill") newTask();
+      else { state.task=null; state.view="student"; renderStudentHome(); }
       return;
     }
     if (action === "close-exercise-leaderboard") {
@@ -2791,9 +2860,9 @@
       return;
     }
     if (action === "logout") { registrations.request++; Object.assign(registrations, { open:false, rows:[], search:"", offset:0, more:false, loading:false, error:"", notice:"" }); }
-    if (action==="logout") { closeExerciseLeaderboard(); closePracticeLeaderboardPrompt(); practiceLeaderboard.request++; Object.assign(practiceLeaderboard,{rows:[],status:null,loading:false,promptOpen:false}); clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,matrixDrill:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
+    if (action==="logout") { closeExerciseLeaderboard(); closePracticeLeaderboardPrompt(); practiceLeaderboard.request++; Object.assign(practiceLeaderboard,{rows:[],status:null,loading:false,promptOpen:false}); clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,matrixDrill:null,subtractionDrillTroubles:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
     if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
-    if (action==="home") { clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); state.matrixDrill=null; state.task=null; state.view="student"; renderStudentHome(); }
+    if (action==="home") { clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); state.matrixDrill=null; state.subtractionDrillTroubles=null; state.task=null; state.view="student"; renderStudentHome(); }
     if (action==="subtraction-cannot" && state.task?.topic === "subtractionBorrowing") { startBorrowingSubtraction(); return; }
     if (action==="next-subtraction" && state.task?.topic === "subtractionBorrowing" && state.answered) { state.questionNumber++; newTask(); return; }
     if (action==="next-division-lollipop" && state.task?.topic === "divisionLollipops" && state.answered) { state.questionNumber++; newTask(); }
