@@ -1287,6 +1287,7 @@
     const tokens = (task.tokens || []).map((token, index) => {
       const used = task.placed?.[token.id] !== undefined;
       const active = !used && index === task.activeTokenIndex && !state.answered;
+      const presentation = additionColumnTokenPresentation(token, current, task);
       return `<button type="button" class="column-addition-token ${active ? "ready" : ""} ${used ? "used" : ""}" data-addition-token="${token.id}" aria-label="${presentation.ariaLabel}" aria-grabbed="false" ${active ? "" : "disabled"}><span class="column-addition-token-value">${token.value}</span><small class="column-addition-token-place">${presentation.caption}</small></button>`;
     }).join("");
     const tokenTray = tokens ? `<div class="column-addition-token-tray" aria-label="Tal der skal trækkes">${tokens}</div>` : "";
