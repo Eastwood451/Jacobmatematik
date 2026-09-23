@@ -1027,10 +1027,10 @@
       ["basics"],
       ["negatives"],
       ["pemdas"],
-      ["divisionLollipops", "divisionDrill"],
-      ["multiplication", "tableDrill"],
-      ["subtractionBorrowing", "subtractionDrill"],
-      ["additionColumn", "addition"],
+      ["divisionDrill", "divisionLollipops"],
+      ["tableDrill", "multiplication"],
+      ["subtractionDrill", "subtractionBorrowing"],
+      ["addition", "additionColumn"],
       ["numbers"],
     ];
     const card = key => {
