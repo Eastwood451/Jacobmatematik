@@ -1240,9 +1240,30 @@
     return columnIndex === 0 ? "carry-tens" : "result-hundreds";
   }
 
-  function additionColumnDigitLabel(value, carry = false) {
-    if (carry) return "tieren";
-    return value === 1 ? "étteren" : `${value}-tallet`;
+  function additionColumnTokenPresentation(token, current, task) {
+    if (token.id === "carry-tens") {
+      return {
+        caption:"10",
+        ariaLabel:`${token.value} i tierkolonnen; det er 10`,
+        heading:"Hvor skal 10-eren hen?",
+        instruction:`Træk tierens 1-tal op over ${Math.floor(task.a / 10) % 10}.`,
+      };
+    }
+    if (token.id === "result-hundreds") {
+      return {
+        caption:"100",
+        ariaLabel:"1 på hundredepladsen; det er 100",
+        heading:"Hvor skal 100-tallet hen?",
+        instruction:"Træk 1-tallet til 100-pladsen i resultatet.",
+      };
+    }
+    const place = token.id === "result-ones" ? "ener" : "tier";
+    return {
+      caption:place,
+      ariaLabel:`${token.value} som ${place}-ciffer`,
+      heading:`Hvor skal ${place}-cifret fra ${current.total} hen?`,
+      instruction:`Træk ${place}-cifret ${token.value} ned under ${current.bottom}.`,
+    };
   }
 
   function additionColumnSlot(task, id, label, value, extraClass = "") {
@@ -1266,7 +1287,7 @@
     const tokens = (task.tokens || []).map((token, index) => {
       const used = task.placed?.[token.id] !== undefined;
       const active = !used && index === task.activeTokenIndex && !state.answered;
-      return `<button type="button" class="column-addition-token ${active ? "ready" : ""} ${used ? "used" : ""}" data-addition-token="${token.id}" aria-label="${additionColumnDigitLabel(token.value, token.kind === "carry")}" aria-grabbed="false" ${active ? "" : "disabled"}>${token.value}</button>`;
+      return `<button type="button" class="column-addition-token ${active ? "ready" : ""} ${used ? "used" : ""}" data-addition-token="${token.id}" aria-label="${presentation.ariaLabel}" aria-grabbed="false" ${active ? "" : "disabled"}><span class="column-addition-token-value">${token.value}</span><small class="column-addition-token-place">${presentation.caption}</small></button>`;
     }).join("");
     const tokenTray = tokens ? `<div class="column-addition-token-tray" aria-label="Tal der skal trækkes">${tokens}</div>` : "";
     const hundreds = task.answer >= 100
@@ -1306,14 +1327,8 @@
     }
     const token = task.tokens?.[task.activeTokenIndex];
     if (!token) return "";
-    if (token.kind === "carry" && task.pendingDestination === "carry-tens") {
-      return `<div class="column-addition-prompt"><span class="eyebrow">Rigtigt!</span><h2>Hvor skal tieren hen?</h2><p>Træk 1-tallet op over ${Math.floor(task.a / 10) % 10}.</p></div>`;
-    }
-    if (token.kind === "carry" && task.pendingDestination === "result-hundreds") {
-      return `<div class="column-addition-prompt"><span class="eyebrow">Rigtigt!</span><h2>Hvor skal tieren hen?</h2><p>Træk 1-tallet til 100-pladsen i resultatet.</p></div>`;
-    }
-    const under = current.column === "ones" ? current.bottom : current.bottom;
-    return `<div class="column-addition-prompt"><span class="eyebrow">Rigtigt!</span><h2>Hvor skal ${additionColumnDigitLabel(token.value)} hen?</h2><p>Træk ${token.value}-tallet ned under ${under}.</p></div>`;
+    const presentation = additionColumnTokenPresentation(token, current, task);
+    return `<div class="column-addition-prompt"><span class="eyebrow">Rigtigt!</span><h2>${presentation.heading}</h2><p>${presentation.instruction}</p></div>`;
   }
 
   function columnAdditionKeypad(task) {
