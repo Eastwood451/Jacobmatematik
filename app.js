@@ -1284,9 +1284,11 @@
     const tensResult = task.placed?.["result-tens"];
     const onesResult = task.placed?.["result-ones"];
     const carryRow = `<div class="column-addition-row column-addition-carry-row" aria-label="Mente-tal"><span></span><span class="column-addition-empty"></span>${additionColumnSlot(task, "carry-tens", "Mente over tierkolonnen", carryTens, "column-addition-carry-slot")}<span class="column-addition-empty"></span></div>`;
-    const tokens = (task.tokens || []).map((token, index) => {
+    const tokenPlaceOrder = { "result-hundreds":0, "carry-tens":1, "result-tens":1, "result-ones":2 };
+    const activeTokenId = task.tokens?.[task.activeTokenIndex]?.id;
+    const tokens = [...(task.tokens || [])].sort((left, right) => (tokenPlaceOrder[left.id] ?? 3) - (tokenPlaceOrder[right.id] ?? 3)).map(token => {
       const used = task.placed?.[token.id] !== undefined;
-      const active = !used && index === task.activeTokenIndex && !state.answered;
+      const active = !used && token.id === activeTokenId && !state.answered;
       const presentation = additionColumnTokenPresentation(token, current, task);
       return `<button type="button" class="column-addition-token ${active ? "ready" : ""} ${used ? "used" : ""}" data-addition-token="${token.id}" aria-label="${presentation.ariaLabel}" aria-grabbed="false" ${active ? "" : "disabled"}><span class="column-addition-token-value">${token.value}</span><small class="column-addition-token-place">${presentation.caption}</small></button>`;
     }).join("");
