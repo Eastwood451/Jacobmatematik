@@ -1624,3 +1624,5 @@ body{
   .subtraction-answer-positions>span,
   .subtraction-answer-positions strong{width:64px}
 }
+
+.roster-legend { display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin:0 0 10px; color:var(--muted); font-size:11px; line-height:1.4; }.roster-legend .status-light { flex:0 0 auto; margin-left:5px; }

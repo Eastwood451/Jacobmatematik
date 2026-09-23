@@ -2532,14 +2532,14 @@
       </section>
       ${renderRegistrations()}
       <section class="class-kpis">
-        <article><span>Elever</span><strong>${students.length}</strong><small>aktive profiler</small></article>
+        <article><span>Elever</span><strong>${students.length}</strong><small>elever i klassen</small></article>
         <article><span>Besvarelser</span><strong>${allResults.length}</strong><small>registreret i alt</small></article>
         <article><span>${unassigned ? "Sikkerhed" : "Klassens sikkerhed"}</span><strong>${classAccuracy} %</strong><small>korrekte svar</small></article>
         <article class="${needsAttention ? "attention" : ""}"><span>Kræver blik</span><strong>${needsAttention}</strong><small>elever med udfordringer</small></article>
       </section>
 
       <section class="teacher-layout">
-        <aside class="roster-panel"><div class="panel-title"><h2>Elever</h2><span>${students.length}</span></div><div class="roster-list">
+        <aside class="roster-panel"><div class="panel-title"><h2>Elever</h2><span>${students.length}</span></div><p class="roster-legend"><i class="status-light good" aria-hidden="true"></i> På rette spor <i class="status-light weak" aria-hidden="true"></i> Har udfordringer</p><div class="roster-list">
           ${students.map(student => { const stats=getOverallStats(student,20), weak=Object.keys(TOPICS).some(topic=>getStats(student,topic).status==="weak"); return `<button class="roster-item ${student.id===selected?.id?"active":""}" data-student="${student.id}"><span class="avatar">${escapeHtml(student.name.slice(0,1))}</span><span><strong>${escapeHtml(student.name)}</strong><small>${Math.round(stats.accuracy*100)} % · ${stats.avgTime.toFixed(1)} sek.</small></span><i class="status-light ${weak?"weak":"good"}" aria-label="${weak?"Har udfordringer":"På rette spor"}"></i></button>`; }).join("")}
         </div></aside>
         <div class="teacher-detail">${studentDetail}</div>
