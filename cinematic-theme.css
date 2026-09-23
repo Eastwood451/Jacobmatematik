@@ -475,6 +475,10 @@ body.site-authenticated{
 .site-authenticated .table-drill-grid td.active-cell strong{
   color:white;
 }
+/* Keep multiplication facts readable; match the active axis label. */
+.site-authenticated .table-drill-grid:not(.division-drill-grid) td.active-cell span{
+  color:#5233a9;
+}
 
 
 /* Borrow-step copy fallback for stale SPA sessions */
