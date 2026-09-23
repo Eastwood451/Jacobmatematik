@@ -90,6 +90,14 @@
   const SUBTRACTION_DRILL_SINGLE_FACTS = SINGLE_DIGITS.flatMap(minuend =>
     Array.from({length:minuend + 1}, (_, subtrahend) => ({ minuend, subtrahend, group:0 }))
   );
+  const SUBTRACTION_DRILL_BRIDGE_FACTS = Array.from({length:9}, (_, index) => index + 10).flatMap(minuend =>
+    SINGLE_DIGITS.slice(Math.max(0, minuend - 9), Math.min(9, minuend) + 1).map(subtrahend => ({ minuend, subtrahend, group:0 }))
+  );
+  const SUBTRACTION_DRILL_LEVELS = [
+    { name:"Étcifrede minusstykker", hint:"Træk et etcifret tal fra et etcifret tal.", facts:SUBTRACTION_DRILL_SINGLE_FACTS },
+    { name:"Til étcifret facit", hint:"Træk et etcifret tal fra 10–18. Svaret skal være etcifret.", facts:SUBTRACTION_DRILL_BRIDGE_FACTS },
+    { name:"Blandede minusstykker", hint:"Træk fra uden at gå under nul.", facts:null },
+  ];
   const SUBTRACTION_DRILL_ONES_PATTERNS = SINGLE_DIGITS.flatMap(ones =>
     SINGLE_DIGITS.map(subtrahend => ({ ones, subtrahend }))
   );
@@ -243,10 +251,10 @@
     },
     subtractionDrill: {
       generate(level, user) {
-        const grouped=subtractionDrillPairStats(user || { results:[] });
+        const learner=user || { results:[]};
         if (state.subtractionDrillTroubles) {
           const allowedKeys=new Set(state.subtractionDrillTroubles);
-          const troubleFacts=subtractionDrillTroubleFacts(user || { results:[] }).filter(fact=>allowedKeys.has(fact.key));
+          const troubleFacts=subtractionDrillTroubleFacts(learner).filter(fact=>allowedKeys.has(fact.key));
           if (!troubleFacts.length) return null;
           const fact=pick(troubleFacts);
           if (fact.type === "ones") {
@@ -255,6 +263,17 @@
           }
           return makeTask("subtractionDrill", `${fact.minuend} − ${fact.subtrahend}`, fact.minuend - fact.subtrahend, "Øv de stykker, der har drillet.", fact);
         }
+        const levelIndex=subtractionDrillLevelIndex(learner);
+        if (levelIndex < 2) {
+          const currentLevel=SUBTRACTION_DRILL_LEVELS[levelIndex];
+          const grouped=levelIndex === 0 ? subtractionDrillPairStats(learner) : subtractionDrillExactPairStats(learner);
+          const fact=weightedPick(currentLevel.facts, candidate => {
+            const mastery=drillMastery(grouped.get(`${candidate.minuend}-${candidate.subtrahend}`) || []);
+            return mastery.learned ? .15 : mastery.streak ? 1.4 : 4;
+          });
+          return makeTask("subtractionDrill", `${fact.minuend} − ${fact.subtrahend}`, fact.minuend - fact.subtrahend, currentLevel.hint, { ...fact, subtractionDrillLevel:levelIndex });
+        }
+        const grouped=subtractionDrillPairStats(learner);
         // Tocifrede opgaver bruger ét-mønster-mastery, étcifrede bruger det eksakte par.
         const twoDigit=Math.random() < .72;
         if (twoDigit) {
@@ -265,14 +284,14 @@
           const pattern=weightedPick(SUBTRACTION_DRILL_ONES_PATTERNS, patternWeight);
           const tens=rand(1, 9);
           const minuend=tens * 10 + pattern.ones;
-          return makeTask("subtractionDrill", `${minuend} − ${pattern.subtrahend}`, minuend - pattern.subtrahend, "Træk fra uden at gå under nul.", { minuend, subtrahend:pattern.subtrahend, group:tens });
+          return makeTask("subtractionDrill", `${minuend} − ${pattern.subtrahend}`, minuend - pattern.subtrahend, SUBTRACTION_DRILL_LEVELS[levelIndex].hint, { minuend, subtrahend:pattern.subtrahend, group:tens, subtractionDrillLevel:levelIndex });
         }
         const singleWeight=fact => {
           const mastery=drillMastery(grouped.get(`${fact.minuend}-${fact.subtrahend}`) || []);
           return mastery.learned ? .15 : mastery.streak ? 1.4 : 4;
         };
         const fact=weightedPick(SUBTRACTION_DRILL_SINGLE_FACTS, singleWeight);
-        return makeTask("subtractionDrill", `${fact.minuend} − ${fact.subtrahend}`, fact.minuend - fact.subtrahend, "Træk fra uden at gå under nul.", fact);
+        return makeTask("subtractionDrill", `${fact.minuend} − ${fact.subtrahend}`, fact.minuend - fact.subtrahend, SUBTRACTION_DRILL_LEVELS[levelIndex].hint, { ...fact, subtractionDrillLevel:levelIndex });
       },
       calculate: (minuend, subtrahend) => minuend - subtrahend,
       evaluate: (answer, task) => Number(answer) === task.answer,
@@ -1648,10 +1667,21 @@
           ? `<button type="button" class="btn subtraction-trouble-action" data-action="practice-subtraction-troubles">Øv drillere (${subtractionTroubleFacts.length})</button>`
           : "";
 
+    const subtractionStageIndex=task.topic === "subtractionDrill" && !state.subtractionDrillTroubles
+      ? (Number.isInteger(task.subtractionDrillLevel) ? task.subtractionDrillLevel : subtractionDrillLevelIndex(state.user))
+      : null;
+    const subtractionStage=subtractionStageIndex === null ? null : SUBTRACTION_DRILL_LEVELS[subtractionStageIndex];
+    const subtractionStageProgress=subtractionStageIndex !== null && subtractionStageIndex < 2
+      ? subtractionDrillLevelProgress(state.user, subtractionStageIndex)
+      : null;
+    const subtractionStageBadge=subtractionStage
+      ? `<div class="subtraction-drill-stage"><strong>Niveau ${subtractionStageIndex + 1} af 3</strong><span>${escapeHtml(subtractionStage.name)}</span>${subtractionStageProgress ? `<small>${subtractionStageProgress.learned}/${subtractionStageProgress.total} lært</small>` : ""}</div>`
+      : "";
+
     app.innerHTML = `${header()}<div class="page exercise-page">
       <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button>${exerciseLeaderboardLink(task.topic)}${subtractionTroubleAction}<span class="topic-tag">${TOPICS[task.topic].name}${state.subtractionDrillTroubles ? " · drillere" : ""}</span></div>
       <section class="question-card">
-        <div class="question-top"><span class="question-number">Opgave ${state.questionNumber}</span><div class="question-main ${attemptHistory ? "with-history" : ""}">${taskVisual}${attemptHistory}</div><p class="hint">${escapeHtml(task.hint || "Skriv dit svar nedenfor.")}</p></div>
+        <div class="question-top"><span class="question-number">Opgave ${state.questionNumber}</span>${subtractionStageBadge}<div class="question-main ${attemptHistory ? "with-history" : ""}">${taskVisual}${attemptHistory}</div><p class="hint">${escapeHtml(task.hint || "Skriv dit svar nedenfor.")}</p></div>
         ${state.answered ? correctionSection : answerSection}
       </section>
       <div class="progress-row" aria-label="Svar i denne runde">${Array.from({length:10},(_,i)=>`<i class="progress-dot ${cycleAnswers[i] === true ? "correct" : cycleAnswers[i] === false ? "wrong" : ""}"></i>`).join("")}</div>
@@ -2474,6 +2504,33 @@
       grouped.get(key).push(item);
     });
     return grouped;
+  }
+
+  function subtractionDrillExactPairStats(user) {
+    const grouped=new Map();
+    (user.results || []).filter(item => item.topic === "subtractionDrill").forEach(item => {
+      const match=String(item.problem).match(/^\s*(\d{1,2})\s*[−-]\s*(\d)\s*$/);
+      if (!match) return;
+      const key=`${Number(match[1])}-${Number(match[2])}`;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(item);
+    });
+    return grouped;
+  }
+
+  function subtractionDrillLevelProgress(user, index) {
+    const level=SUBTRACTION_DRILL_LEVELS[index];
+    if (!level?.facts) return { learned:0, total:0, complete:true };
+    const grouped=index === 0 ? subtractionDrillPairStats(user) : subtractionDrillExactPairStats(user);
+    const learned=level.facts.filter(fact => drillMastery(grouped.get(`${fact.minuend}-${fact.subtrahend}`) || []).learned).length;
+    return { learned, total:level.facts.length, complete:learned === level.facts.length };
+  }
+
+  function subtractionDrillLevelIndex(user) {
+    for (let index=0; index<SUBTRACTION_DRILL_LEVELS.length - 1; index++) {
+      if (!subtractionDrillLevelProgress(user, index).complete) return index;
+    }
+    return SUBTRACTION_DRILL_LEVELS.length - 1;
   }
 
   function subtractionDrillTroubleFacts(user) {
