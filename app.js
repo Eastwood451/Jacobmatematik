@@ -10,6 +10,7 @@
     letters: { name: "Bogstavlæring", icon: "A B C", description: "Find billedet med den rigtige startlyd" },
     numbers: { name: "Tallene", icon: "● ● ●", description: "Tæl figurer og fingre fra 0 til 10" },
     addition: { name: "Plus-drill", icon: "4 + 5", description: "Plus med etcifrede tal" },
+    additionColumn: { name: "Plusstykker", icon: "34 + 25", description: "Læg tal sammen lodret trin for trin" },
     subtractionBorrowing: { name: "Minusstykker", icon: "81 − 37", description: "Lån en tier og træk fra trin for trin" },
     subtractionDrill: { name: "Minus-drill", icon: "92 − 7", description: "Minusstykker uden negative svar" },
     basics: { name: "Basisregler", icon: "0 · 1", description: "Regneregler med 0 og 1" },
@@ -47,6 +48,23 @@
   const SINGLE_DIGITS = Array.from({length:10}, (_,index) => index);
   const ORDERED_NUMBER_KEYS = [...SMALL_TABLES.slice(1), 0];
   const TABLE_DRILL_VALUES = Array.from({length:9}, (_,index) => index + 1);
+  const COLUMN_ADDITION_LEVELS = [
+    {
+      key: "foundation",
+      name: "Uden tier-overgang",
+      tasks: [[12,23],[24,15],[31,28],[42,16],[53,24],[65,23]].map(([a,b]) => ({ key:`${a}+${b}`, a, b })),
+    },
+    {
+      key: "carry",
+      name: "Med én tier-overgang",
+      tasks: [[26,15],[34,18],[47,16],[58,23],[69,14],[75,16]].map(([a,b]) => ({ key:`${a}+${b}`, a, b })),
+    },
+    {
+      key: "hundreds",
+      name: "Med mente til hundredepladsen",
+      tasks: [[86,25],[76,35],[68,44],[57,66],[94,27],[85,36]].map(([a,b]) => ({ key:`${a}+${b}`, a, b })),
+    },
+  ];
   const DIVISION_LOLLIPOP_FACTS = TABLE_DRILL_VALUES.flatMap(divisor => TABLE_DRILL_VALUES.map(quotient => ({
     divisor,
     quotient,
@@ -131,6 +149,7 @@
   let borrowingSubtractionDeck = [];
   let borrowingSubtractionFirstTask = true;
   let borrowingSubtractionDrag = null;
+  let columnAdditionDrag = null;
   const makeTask = (topic, expression, answer, hint = "", options = {}) => ({ topic, expression, answer, hint, ...options });
 
   /* Hvert emne er et selvstændigt modul med generate, calculate og evaluate. */
@@ -171,6 +190,28 @@
         const a = pick(assignedFirst.length ? assignedFirst : SINGLE_DIGITS);
         const b = pick(assignedSecond.length ? assignedSecond : SINGLE_DIGITS);
         return makeTask("addition", `${a} + ${b}`, this.calculate(a, b));
+      },
+      calculate: (a, b) => a + b,
+      evaluate: (answer, task) => Number(answer) === task.answer,
+    },
+    additionColumn: {
+      generate(level, user) {
+        const levelIndex = additionColumnLevelIndex(user || { results:[] });
+        const levelData = COLUMN_ADDITION_LEVELS[levelIndex];
+        const stats = additionColumnStats(user || { results:[] });
+        const unfinished = levelData.tasks.filter(item => additionColumnCorrectCount(stats.get(item.key)) < 2);
+        const pool = unfinished.length ? unfinished : levelData.tasks;
+        const selected = weightedPick(pool, item => Math.max(1, 2 - additionColumnCorrectCount(stats.get(item.key))));
+        return makeTask("additionColumn", `${selected.a} + ${selected.b}`, selected.a + selected.b, "", {
+          ...selected,
+          levelIndex,
+          phase:"answer",
+          input:"",
+          columnIndex:0,
+          carries:[],
+          placed:{},
+          resultDigits:String(selected.a + selected.b).split("").reverse().map(Number),
+        });
       },
       calculate: (a, b) => a + b,
       evaluate: (answer, task) => Number(answer) === task.answer,
@@ -989,7 +1030,7 @@
       ["divisionLollipops", "divisionDrill"],
       ["multiplication", "tableDrill"],
       ["subtractionBorrowing", "subtractionDrill"],
-      ["addition"],
+      ["additionColumn", "addition"],
       ["numbers"],
     ];
     const card = key => {
@@ -1145,7 +1186,8 @@
     if (!state.user || state.view !== "exercise") return;
     const topic = state.selectedTopic === "mixed" ? chooseWeightedTopic(state.user) : state.selectedTopic;
     if (topic === "subtractionDrill" && state.subtractionDrillTroubles) {
-      const remaining=syncSubtractionDrillTroubles(state.user);
+      const allowedKeys=new Set(state.subtractionDrillTroubles);
+      const remaining=subtractionDrillTroubleFacts(state.user).filter(fact=>allowedKeys.has(fact.key));
       if (!remaining.length) {
         state.task=null; state.answered=false; renderSubtractionDrillComplete(); return;
       }
@@ -1181,14 +1223,282 @@
     const learned=[...grouped.values()].filter(items=>drillMastery(items).learned).length;
     return `<section class="addition-exercise-heatmap" aria-labelledby="addition-heatmap-title"><header><div><span class="eyebrow">Dit pluskort</span><h2 id="addition-heatmap-title">Alle étcifrede pluspar</h2></div><strong>${learned}/100</strong></header><p>Grøn = lært · rød = senest forkert · lysere felter er ikke øvet endnu.</p><div class="addition-heatmap-scroll"><table><thead><tr><th aria-hidden="true">+</th>${values.map(value=>`<th scope="col">${value}</th>`).join('')}</tr></thead><tbody>${values.map(left=>`<tr><th scope="row">${left}</th>${cells(left)}</tr>`).join('')}</tbody></table></div></section>`;
   }
+  function additionColumnCurrent(task) {
+    const column = task.columnIndex === 0 ? "ones" : "tens";
+    const top = column === "ones" ? task.a % 10 : Math.floor(task.a / 10) % 10;
+    const bottom = column === "ones" ? task.b % 10 : Math.floor(task.b / 10) % 10;
+    const carryIn = column === "ones" ? 0 : Number(task.carries?.[0] || 0);
+    const total = top + bottom + carryIn;
+    return { column, top, bottom, carryIn, total, result:total % 10, carryOut:Math.floor(total / 10) };
+  }
+
+  function additionColumnResultKey(columnIndex) {
+    return columnIndex === 0 ? "result-ones" : "result-tens";
+  }
+
+  function additionColumnCarryKey(columnIndex) {
+    return columnIndex === 0 ? "carry-tens" : "result-hundreds";
+  }
+
+  function additionColumnDigitLabel(value, carry = false) {
+    if (carry) return "tieren";
+    return value === 1 ? "étteren" : `${value}-tallet`;
+  }
+
+  function additionColumnSlot(task, id, label, value, extraClass = "") {
+    const filled = value !== undefined && value !== null;
+    const active = task.pendingDestination === id && !state.answered;
+    const drop = active ? ` data-addition-drop="${id}"` : "";
+    return `<span class="column-addition-slot ${extraClass} ${active ? "active" : ""} ${filled ? "filled" : ""}"${drop} aria-label="${label}${filled ? `: ${value}` : ""}">${filled ? escapeHtml(value) : ""}</span>`;
+  }
+
+  function renderColumnAdditionFigure(task) {
+    const current = additionColumnCurrent(task);
+    const aTens = Math.floor(task.a / 10) % 10;
+    const aOnes = task.a % 10;
+    const bTens = Math.floor(task.b / 10) % 10;
+    const bOnes = task.b % 10;
+    const carryTens = task.placed?.["carry-tens"];
+    const hundredsResult = task.placed?.["result-hundreds"];
+    const tensResult = task.placed?.["result-tens"];
+    const onesResult = task.placed?.["result-ones"];
+    const carryRow = `<div class="column-addition-row column-addition-carry-row" aria-label="Mente-tal"><span></span><span class="column-addition-empty"></span>${additionColumnSlot(task, "carry-tens", "Mente over tierkolonnen", carryTens, "column-addition-carry-slot")}<span class="column-addition-empty"></span></div>`;
+    const tokens = (task.tokens || []).map((token, index) => {
+      const used = task.placed?.[token.id] !== undefined;
+      const active = !used && index === task.activeTokenIndex && !state.answered;
+      return `<button type="button" class="column-addition-token ${active ? "ready" : ""} ${used ? "used" : ""}" data-addition-token="${token.id}" aria-label="${additionColumnDigitLabel(token.value, token.kind === "carry")}" aria-grabbed="false" ${active ? "" : "disabled"}>${token.value}</button>`;
+    }).join("");
+    const tokenTray = tokens ? `<div class="column-addition-token-tray" aria-label="Tal der skal trækkes">${tokens}</div>` : "";
+    const hundreds = task.answer >= 100
+      ? additionColumnSlot(task, "result-hundreds", "Hundredepladsen i resultatet", hundredsResult, "column-addition-result-hundreds")
+      : `<span class="column-addition-empty"></span>`;
+    return `<div class="column-addition-figure" role="group" aria-label="${task.a} plus ${task.b} stillet op lodret">
+      <div class="column-addition-work">
+        ${carryRow}
+        <div class="column-addition-row column-addition-number-row"><span class="column-addition-sign"></span><span class="column-addition-empty"></span><span class="column-addition-digit">${aTens}</span><span class="column-addition-digit">${aOnes}</span></div>
+        <div class="column-addition-row column-addition-number-row"><span class="column-addition-sign">+</span><span class="column-addition-empty"></span><span class="column-addition-digit">${bTens}</span><span class="column-addition-digit">${bOnes}</span></div>
+        <div class="column-addition-rule" aria-hidden="true"></div>
+        <div class="column-addition-row column-addition-result-row"><span></span>${hundreds}${additionColumnSlot(task, "result-tens", "Tierpladsen i resultatet", tensResult, "column-addition-result-tens")}${additionColumnSlot(task, "result-ones", "Enerpladsen i resultatet", onesResult, "column-addition-result-ones")}</div>
+      </div>
+      ${tokenTray}
+      ${task.phase !== "answer" && !state.answered ? `<p class="column-addition-placement-note">Træk det aktive tal til det lilla, markerede felt.</p>` : ""}
+      ${task.phase === "answer" && !state.answered ? `<p class="column-addition-placeholders" aria-hidden="true">${task.resultDigits.map(() => "□").join(" ")}</p>` : ""}
+      <span class="column-addition-current" aria-hidden="true">${current.column === "ones" ? "enerkolonne" : "tierkolonne"}</span>
+    </div>`;
+  }
+
+  function renderColumnAdditionInstruction(task) {
+    const current = additionColumnCurrent(task);
+    if (state.answered && task.resultCorrect) {
+      const progress = additionColumnLevelProgress(state.user, task.levelIndex);
+      const levelDone = progress.completed === progress.total && task.levelIndex < COLUMN_ADDITION_LEVELS.length - 1;
+      return `<div class="column-addition-message success"><strong>${levelDone ? "Niveauet er gennemført!" : "Opgaven er løst!"}</strong><span>${task.a} + ${task.b} = ${task.answer}</span><small>${levelDone ? "Næste opgave åbner næste niveau." : "Begge kolonner og alle mente-tal er placeret rigtigt."}</small><button class="btn full" type="button" data-action="next-column-addition">Næste opgave →</button></div>`;
+    }
+    if (state.answered) {
+      const wrongColumn = task.wrongColumn || current;
+      const expression = wrongColumn.carryIn ? `${wrongColumn.carryIn} + ${wrongColumn.top} + ${wrongColumn.bottom}` : `${wrongColumn.top} + ${wrongColumn.bottom}`;
+      return `<div class="column-addition-message correction" role="alert"><strong>Ikke helt.</strong><span>${expression} = ${wrongColumn.total}</span><small>Prøv næste stykke, og arbejd fra højre mod venstre.</small><button class="btn secondary full" type="button" data-action="next-column-addition">Næste opgave</button></div>`;
+    }
+    if (task.phase === "answer") {
+      const expression = current.carryIn ? `${current.carryIn} + ${current.top} + ${current.bottom}` : `${current.top} + ${current.bottom}`;
+      const columnName = current.column === "ones" ? "enerkolonnen" : "tierkolonnen";
+      return `<div class="column-addition-prompt"><span class="eyebrow">${current.column === "ones" ? "Trin 1" : "Næste kolonne"}</span><h2>Hvad er ${expression}?</h2><p>Skriv summen for ${columnName}.</p>${columnAdditionKeypad(task)}</div>`;
+    }
+    const token = task.tokens?.[task.activeTokenIndex];
+    if (!token) return "";
+    if (token.kind === "carry" && task.pendingDestination === "carry-tens") {
+      return `<div class="column-addition-prompt"><span class="eyebrow">Rigtigt!</span><h2>Hvor skal tieren hen?</h2><p>Træk 1-tallet op over ${Math.floor(task.a / 10) % 10}.</p></div>`;
+    }
+    if (token.kind === "carry" && task.pendingDestination === "result-hundreds") {
+      return `<div class="column-addition-prompt"><span class="eyebrow">Rigtigt!</span><h2>Hvor skal tieren hen?</h2><p>Træk 1-tallet til 100-pladsen i resultatet.</p></div>`;
+    }
+    const under = current.column === "ones" ? current.bottom : current.bottom;
+    return `<div class="column-addition-prompt"><span class="eyebrow">Rigtigt!</span><h2>Hvor skal ${additionColumnDigitLabel(token.value)} hen?</h2><p>Træk ${token.value}-tallet ned under ${under}.</p></div>`;
+  }
+
+  function columnAdditionKeypad(task) {
+    return `<form class="column-addition-answer" id="column-addition-answer-form"><label class="sr-only" for="column-addition-answer">Skriv summen</label><output class="column-addition-answer-preview" aria-live="polite">${task.input || "?"}</output><input class="sr-only" id="column-addition-answer" name="answer" value="${escapeHtml(task.input)}" readonly><div class="keypad column-addition-keypad" aria-label="Taltastatur">${[...SINGLE_DIGITS.slice(1),0].map(number => `<button class="key" type="button" data-addition-key="${number}">${number}</button>`).join("")}<button class="key utility" type="button" data-addition-key="delete">Slet</button><button class="key enter" type="submit">Bekræft</button></div></form>`;
+  }
+
+  function renderColumnAddition() {
+    const task = state.task;
+    const progress = additionColumnLevelProgress(state.user, task.levelIndex);
+    const stats = additionColumnStats(state.user);
+    const attempts = Math.min(2, additionColumnCorrectCount(stats.get(task.key)));
+    const cycleStart = Math.floor((state.questionNumber - 1) / 10) * 10;
+    const cycleAnswers = state.sessionAnswers.slice(cycleStart, cycleStart + 10);
+    app.innerHTML = `${header()}<div class="page column-addition-page">
+      <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button>${exerciseLeaderboardLink(task.topic)}<span class="topic-tag">${TOPICS[task.topic].name}</span></div>
+      <section class="column-addition-card">
+        <div class="column-addition-card-head"><div><span class="question-number">Opgave ${state.questionNumber}</span><strong>${task.a} + ${task.b}</strong></div><div class="column-addition-level"><span>Niveau ${task.levelIndex + 1}</span><small>${escapeHtml(COLUMN_ADDITION_LEVELS[task.levelIndex].name)}</small></div></div>
+        <div class="column-addition-progress" aria-label="Niveauets fremdrift"><span>${progress.completed}/${progress.total} stykker lært</span><strong>Dette stykke: ${attempts}/2</strong></div>
+        <div class="column-addition-layout"><div class="column-addition-board">${renderColumnAdditionFigure(task)}</div><div class="column-addition-controls">${renderColumnAdditionInstruction(task)}<p class="column-addition-error" role="alert">${escapeHtml(task.stepError || "")}</p></div></div>
+      </section>
+      <div class="progress-row" aria-label="Svar i denne runde">${Array.from({length:10},(_,i)=>`<i class="progress-dot ${cycleAnswers[i] === true ? "correct" : cycleAnswers[i] === false ? "wrong" : ""}"></i>`).join("")}</div>
+    </div>`;
+  }
+
+  async function persistColumnAdditionResult(result) {
+    state.user.results.push(result);
+    try {
+      if (usingCentralDatabase && !isGuest()) result.remoteId = await appendCurrentPracticeResult(result);
+      else await save();
+      return true;
+    } catch (error) {
+      state.user.results.pop();
+      console.error(error);
+      return false;
+    }
+  }
+
+  async function submitColumnAdditionAnswer() {
+    const task = state.task;
+    if (!task || task.topic !== "additionColumn" || state.answered || task.phase !== "answer") return;
+    const current = additionColumnCurrent(task);
+    const raw = String(task.input || "").trim();
+    if (!/^\d+$/.test(raw)) { task.stepError = "Skriv et svar først."; renderColumnAddition(); return; }
+    const answer = Number(raw);
+    if (answer !== current.total) {
+      const responseTime = Math.max(.1, (Date.now() - state.taskStartedAt) / 1000);
+      const result = { topic:task.topic, problem:task.expression, answer, correctAnswer:task.answer, correct:false, responseTime:+responseTime.toFixed(2), timestamp:new Date().toISOString(), additionColumnLevel:task.levelIndex, additionColumnIndex:task.columnIndex, additionColumnExpected:current.total };
+      state.answered = true;
+      task.resultCorrect = false;
+      task.wrongColumn = current;
+      state.sessionAnswers.push(false);
+      if (!await persistColumnAdditionResult(result)) {
+        state.answered = false; state.sessionAnswers.pop(); task.resultCorrect = null; task.stepError = "Svaret kunne ikke gemmes. Kontrollér forbindelsen og prøv igen.";
+      }
+      renderColumnAddition();
+      return;
+    }
+    task.stepError = "";
+    const resultKey = additionColumnResultKey(task.columnIndex);
+    const carryKey = additionColumnCarryKey(task.columnIndex);
+    task.tokens = [{ id:resultKey, value:current.result, kind:"result" }];
+    if (current.carryOut) task.tokens.push({ id:carryKey, value:current.carryOut, kind:"carry" });
+    task.activeTokenIndex = 0;
+    task.pendingDestination = resultKey;
+    task.phase = "place-result";
+    renderColumnAddition();
+  }
+
+  function handleColumnAdditionKey(key) {
+    const task = state.task;
+    if (!task || task.topic !== "additionColumn" || state.answered || task.phase !== "answer") return;
+    if (key === "delete") task.input = String(task.input || "").slice(0, -1);
+    else if (/^\d$/.test(key) && String(task.input || "").length < 2) task.input = `${task.input || ""}${key}`;
+    else return;
+    task.stepError = "";
+    renderColumnAddition();
+  }
+
+  async function completeColumnAdditionTask() {
+    const task = state.task;
+    const responseTime = Math.max(.1, (Date.now() - state.taskStartedAt) / 1000);
+    const result = { topic:task.topic, problem:task.expression, answer:task.answer, correctAnswer:task.answer, correct:true, responseTime:+responseTime.toFixed(2), timestamp:new Date().toISOString(), additionColumnLevel:task.levelIndex, additionColumnSteps:task.placed };
+    state.answered = true;
+    task.resultCorrect = true;
+    state.sessionAnswers.push(true);
+    state.sessionCorrect++;
+    if (!await persistColumnAdditionResult(result)) {
+      state.answered = false; task.resultCorrect = null; state.sessionAnswers.pop(); state.sessionCorrect--; task.stepError = "Svaret kunne ikke gemmes. Kontrollér forbindelsen og prøv igen.";
+    }
+    renderColumnAddition();
+  }
+
+  function completeColumnAdditionDrop(tokenId) {
+    const task = state.task;
+    if (!task || task.topic !== "additionColumn" || state.answered || !task.tokens?.length) return;
+    const token = task.tokens[task.activeTokenIndex];
+    if (!token || token.id !== tokenId || task.pendingDestination !== token.id) return;
+    task.placed[token.id] = token.value;
+    task.stepError = "";
+    if (task.activeTokenIndex < task.tokens.length - 1) {
+      task.activeTokenIndex++;
+      task.phase = "place-carry";
+      task.pendingDestination = task.tokens[task.activeTokenIndex].id;
+      renderColumnAddition();
+      return;
+    }
+    const current = additionColumnCurrent(task);
+    if (token.kind === "carry" && task.columnIndex === 0) {
+      task.carries[0] = current.carryOut;
+      task.columnIndex = 1;
+      task.input = "";
+      task.tokens = [];
+      task.activeTokenIndex = 0;
+      task.pendingDestination = "";
+      task.phase = "answer";
+      renderColumnAddition();
+      return;
+    }
+    if (task.columnIndex === 0) {
+      task.columnIndex = 1;
+      task.input = "";
+      task.tokens = [];
+      task.activeTokenIndex = 0;
+      task.pendingDestination = "";
+      task.phase = "answer";
+      renderColumnAddition();
+      return;
+    }
+    completeColumnAdditionTask();
+  }
+
+  function positionColumnAdditionGhost(event) {
+    if (!columnAdditionDrag?.ghost) return;
+    columnAdditionDrag.ghost.style.left = `${event.clientX - columnAdditionDrag.width / 2}px`;
+    columnAdditionDrag.ghost.style.top = `${event.clientY - columnAdditionDrag.height / 2}px`;
+  }
+
+  function beginColumnAdditionDrag(event, source) {
+    if (event.button !== undefined && event.button !== 0) return;
+    const task = state.task;
+    if (!task || task.topic !== "additionColumn" || state.answered || source.dataset.additionToken !== task.tokens?.[task.activeTokenIndex]?.id) return;
+    event.preventDefault();
+    const rect = source.getBoundingClientRect();
+    const ghost = source.cloneNode(true);
+    ghost.removeAttribute("data-addition-token"); ghost.removeAttribute("disabled"); ghost.setAttribute("aria-hidden", "true"); ghost.tabIndex = -1; ghost.className = "column-addition-drag-ghost"; ghost.style.width = `${rect.width}px`; ghost.style.height = `${rect.height}px`;
+    document.body.appendChild(ghost);
+    source.classList.add("dragging"); source.setAttribute("aria-grabbed", "true");
+    try { source.setPointerCapture(event.pointerId); } catch { /* Pointer capture er ekstra robusthed. */ }
+    columnAdditionDrag = { pointerId:event.pointerId, source, ghost, width:rect.width, height:rect.height };
+    positionColumnAdditionGhost(event);
+  }
+
+  function moveColumnAdditionDrag(event) {
+    if (!columnAdditionDrag || event.pointerId !== columnAdditionDrag.pointerId) return;
+    event.preventDefault();
+    positionColumnAdditionGhost(event);
+  }
+
+  function clearColumnAdditionDrag() {
+    if (!columnAdditionDrag) return;
+    const { source, ghost, pointerId } = columnAdditionDrag;
+    source?.classList.remove("dragging"); source?.setAttribute("aria-grabbed", "false");
+    try { if (source?.hasPointerCapture(pointerId)) source.releasePointerCapture(pointerId); } catch { /* Kilden kan være fjernet ved en ny visning. */ }
+    ghost?.remove(); columnAdditionDrag = null;
+  }
+
+  function finishColumnAdditionDrag(event, cancelled = false) {
+    if (!columnAdditionDrag || event.pointerId !== columnAdditionDrag.pointerId) return;
+    const task = state.task;
+    const dropZone = task?.pendingDestination ? document.querySelector(`[data-addition-drop="${task.pendingDestination}"]`) : null;
+    const rect = dropZone?.getBoundingClientRect();
+    const dropped = !cancelled && rect && event.clientX >= rect.left - 16 && event.clientX <= rect.right + 16 && event.clientY >= rect.top - 16 && event.clientY <= rect.bottom + 16;
+    const tokenId = task?.tokens?.[task.activeTokenIndex]?.id;
+    clearColumnAdditionDrag();
+    if (dropped) { completeColumnAdditionDrop(tokenId); return; }
+    if (!cancelled && task?.topic === "additionColumn" && !state.answered) { task.stepError = "Slip tallet i det markerede felt."; renderColumnAddition(); }
+  }
+
   function renderSubtractionDrillHeatmap(user) {
     const grouped=subtractionDrillPairStats(user);
     const troubleFacts=subtractionDrillTroubleFacts(user);
-    const availableTroubleCount=state.subtractionDrillTroubles ? state.subtractionDrillTroubles.length : Math.min(3,troubleFacts.length);
     const troubleAction=state.subtractionDrillTroubles
       ? `<button type="button" class="btn secondary" data-action="stop-subtraction-troubles">Tilbage til alle minusstykker</button>`
-        : troubleFacts.length
-        ? `<button type="button" class="btn" data-action="practice-subtraction-troubles">Øv drillere (${availableTroubleCount})</button>`
+      : troubleFacts.length
+        ? `<button type="button" class="btn" data-action="practice-subtraction-troubles">Øv drillere (${troubleFacts.length})</button>`
         : "";
     const values=[...SINGLE_DIGITS];
     const singleCell=(minuend, subtrahend, unavailable=false) => {
@@ -1225,6 +1535,7 @@
     const task = state.task;
     if (MATRIX_DRILL_TOPICS.has(task?.topic)) { renderMatrixDrill(); return; }
     if (task?.topic === "subtractionBorrowing") { renderBorrowingSubtraction(); return; }
+    if (task?.topic === "additionColumn") { renderColumnAddition(); return; }
     if (task?.topic === "divisionLollipops") { renderDivisionLollipop(); return; }
     if (task?.topic === "letters") { renderLetterExercise(); return; }
     const cycleStart = Math.floor((state.questionNumber - 1) / 10) * 10;
@@ -1311,13 +1622,12 @@
     const additionHeatmap = task.topic === "addition" ? renderAdditionExerciseHeatmap(state.user) : "";
     const subtractionHeatmap = task.topic === "subtractionDrill" ? renderSubtractionDrillHeatmap(state.user) : "";
     const subtractionTroubleFacts = task.topic === "subtractionDrill" ? subtractionDrillTroubleFacts(state.user) : [];
-    const subtractionTroubleCount = task.topic === "subtractionDrill" ? (state.subtractionDrillTroubles ? state.subtractionDrillTroubles.length : Math.min(3, subtractionTroubleFacts.length)) : 0;
     const subtractionTroubleAction = task.topic !== "subtractionDrill"
       ? ""
       : state.subtractionDrillTroubles
         ? `<button type="button" class="btn secondary subtraction-trouble-action" data-action="stop-subtraction-troubles">Tilbage til alle minusstykker</button>`
         : subtractionTroubleFacts.length
-          ? `<button type="button" class="btn subtraction-trouble-action" data-action="practice-subtraction-troubles">Øv drillere (${subtractionTroubleCount})</button>`
+          ? `<button type="button" class="btn subtraction-trouble-action" data-action="practice-subtraction-troubles">Øv drillere (${subtractionTroubleFacts.length})</button>`
           : "";
 
     app.innerHTML = `${header()}<div class="page exercise-page">
@@ -2057,6 +2367,7 @@
     return {
       numbers:"Øv små mængder først. Lad eleven pege på hver figur én gang, mens der tælles højt.",
       addition:"Træn korte serier med de valgte tal. Brug konkrete materialer, hvis et bestemt pluspar bliver ved med at drille.",
+      additionColumn:"Arbejd fra højre mod venstre. Lad eleven sige hver kolonne højt, før cifrene trækkes på plads.",
       basics:"Øv reglerne med 0 og 1 i korte serier. Tal især om, hvorfor division med 0 ikke kan beregnes.",
       multiplication:"Træn korte serier i de tabeller, hvor svartiden er højest. Stop, mens sikkerheden stadig er god.",
       tableDrill:"Brug drillen til at finde de gangestykker, der tager længst tid. Øv derefter netop disse i korte serier.",
@@ -2099,6 +2410,35 @@
     return grouped;
   }
 
+  function additionColumnStats(user) {
+    const grouped = new Map();
+    practiceResults(user || { results:[] }).filter(item => item.topic === "additionColumn").forEach(item => {
+      const match = String(item.problem).match(/^\s*(\d{2})\s*\+\s*(\d{2})\s*$/);
+      if (!match) return;
+      const key = `${Number(match[1])}+${Number(match[2])}`;
+      if (!grouped.has(key)) grouped.set(key, []);
+      grouped.get(key).push(item);
+    });
+    return grouped;
+  }
+
+  function additionColumnCorrectCount(items = []) {
+    return items.filter(item => item.correct === true).length;
+  }
+
+  function additionColumnLevelIndex(user) {
+    const stats = additionColumnStats(user || { results:[] });
+    const unfinishedLevel = COLUMN_ADDITION_LEVELS.findIndex(level => level.tasks.some(task => additionColumnCorrectCount(stats.get(task.key)) < 2));
+    return unfinishedLevel < 0 ? COLUMN_ADDITION_LEVELS.length - 1 : unfinishedLevel;
+  }
+
+  function additionColumnLevelProgress(user, levelIndex) {
+    const stats = additionColumnStats(user || { results:[] });
+    const level = COLUMN_ADDITION_LEVELS[levelIndex] || COLUMN_ADDITION_LEVELS[0];
+    const completed = level.tasks.filter(task => additionColumnCorrectCount(stats.get(task.key)) >= 2).length;
+    return { completed, total:level.tasks.length, level:level.name };
+  }
+
   /* Étcifrede minusstykker grupperes efter det eksakte par (fx "5-3").
      Tocifrede minusstykker grupperes efter ét-mønster (fx "ones:2-4"),
      fordi 52−4, 82−4 og 32−4 alle tester samme étter-færdighed. */
@@ -2122,31 +2462,15 @@
     const grouped=subtractionDrillPairStats(user);
     return [...grouped.entries()].flatMap(([key,items]) => {
       if (!items.some(item=>!item.correct) || drillMastery(items).learned) return [];
-      const wrongItems=items.filter(item=>!item.correct);
-      const averageTime=items.reduce((sum,item)=>sum+recordedTime(item),0)/items.length;
-      const wrongRate=wrongItems.length/items.length;
-      const latestTimestamp=Math.max(...items.map(item=>new Date(item.timestamp || 0).getTime()));
       if (key.startsWith("ones:")) {
         const [ones,subtrahend]=key.slice("ones:".length).split("-").map(Number);
-        return SINGLE_DIGITS.includes(ones) && SINGLE_DIGITS.includes(subtrahend) ? [{key,type:"ones",ones,subtrahend,wrongRate,wrongCount:wrongItems.length,averageTime,latestTimestamp,severity:wrongRate*100 + Math.min(averageTime,30) + wrongItems.length*2}] : [];
+        return SINGLE_DIGITS.includes(ones) && SINGLE_DIGITS.includes(subtrahend) ? [{key,type:"ones",ones,subtrahend}] : [];
       }
       const [minuend,subtrahend]=key.split("-").map(Number);
       return SINGLE_DIGITS.includes(minuend) && SINGLE_DIGITS.includes(subtrahend) && subtrahend<=minuend
-        ? [{key,type:"single",minuend,subtrahend,wrongRate,wrongCount:wrongItems.length,averageTime,latestTimestamp,severity:wrongRate*100 + Math.min(averageTime,30) + wrongItems.length*2}]
+        ? [{key,type:"single",minuend,subtrahend}]
         : [];
-    }).sort((left,right) => right.severity-left.severity || right.latestTimestamp-left.latestTimestamp || right.wrongCount-left.wrongCount);
-  }
-
-  function syncSubtractionDrillTroubles(user) {
-    if (!Array.isArray(state.subtractionDrillTroubles)) return [];
-    const troubleFacts=subtractionDrillTroubleFacts(user);
-    const byKey=new Map(troubleFacts.map(fact=>[fact.key,fact]));
-    const active=state.subtractionDrillTroubles.map(key=>byKey.get(key)).filter(Boolean);
-    const activeKeys=new Set(active.map(fact=>fact.key));
-    const next=troubleFacts.filter(fact=>!activeKeys.has(fact.key)).slice(0,Math.max(0,3-active.length));
-    const selected=[...active,...next];
-    state.subtractionDrillTroubles=selected.map(fact=>fact.key);
-    return selected;
+    });
   }
 
   function numberValueStats(user) {
@@ -2532,14 +2856,14 @@
       </section>
       ${renderRegistrations()}
       <section class="class-kpis">
-        <article><span>Elever</span><strong>${students.length}</strong><small>elever i klassen</small></article>
+        <article><span>Elever</span><strong>${students.length}</strong><small>aktive profiler</small></article>
         <article><span>Besvarelser</span><strong>${allResults.length}</strong><small>registreret i alt</small></article>
         <article><span>${unassigned ? "Sikkerhed" : "Klassens sikkerhed"}</span><strong>${classAccuracy} %</strong><small>korrekte svar</small></article>
         <article class="${needsAttention ? "attention" : ""}"><span>Kræver blik</span><strong>${needsAttention}</strong><small>elever med udfordringer</small></article>
       </section>
 
       <section class="teacher-layout">
-        <aside class="roster-panel"><div class="panel-title"><h2>Elever</h2><span>${students.length}</span></div><p class="roster-legend"><i class="status-light good" aria-hidden="true"></i> På rette spor <i class="status-light weak" aria-hidden="true"></i> Har udfordringer</p><div class="roster-list">
+        <aside class="roster-panel"><div class="panel-title"><h2>Elever</h2><span>${students.length}</span></div><div class="roster-list">
           ${students.map(student => { const stats=getOverallStats(student,20), weak=Object.keys(TOPICS).some(topic=>getStats(student,topic).status==="weak"); return `<button class="roster-item ${student.id===selected?.id?"active":""}" data-student="${student.id}"><span class="avatar">${escapeHtml(student.name.slice(0,1))}</span><span><strong>${escapeHtml(student.name)}</strong><small>${Math.round(stats.accuracy*100)} % · ${stats.avgTime.toFixed(1)} sek.</small></span><i class="status-light ${weak?"weak":"good"}" aria-label="${weak?"Har udfordringer":"På rette spor"}"></i></button>`; }).join("")}
         </div></aside>
         <div class="teacher-detail">${studentDetail}</div>
@@ -2698,6 +3022,7 @@
         db.users.push(newStudent); state.expandedStudent=newStudent.id; state.teacherTopicDetail=null; state.studentFormOpen=false; await save(); renderTeacher();
       } catch (studentError) { error.textContent="Eleven kunne ikke oprettes. Brugernavnet kan allerede være i brug."; console.error(studentError); }
     } else if (event.target.id === "division-lollipop-form") await submitDivisionLollipop();
+    else if (event.target.id === "column-addition-answer-form") await submitColumnAdditionAnswer();
     else if (event.target.id === "answer-form") await submitAnswer(event.target);
   });
   document.addEventListener("click", async (event) => {
@@ -2705,11 +3030,13 @@
       stopErlingAudio(); stopKaptajnAudio(); stopLuigiAudio();
       return;
     }
-    const subtractionKeyButton=event.target.closest("[data-subtraction-key]"), borrowTenButton=event.target.closest("[data-borrow-ten]"), lollipopKeyButton=event.target.closest("[data-lollipop-key]"), pullDigitButton=event.target.closest("[data-pull-digit]"), keyButton=event.target.closest("[data-key]"), luigiButton=event.target.closest("[data-luigi-surprise]"), luigiAudioButton=event.target.closest("[data-luigi-audio]"), erlingButton=event.target.closest("[data-erling-audio]"), kaptajnButton=event.target.closest("[data-kaptajn-audio]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), subtractionModeButton=event.target.closest("[data-subtraction-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
+    const subtractionKeyButton=event.target.closest("[data-subtraction-key]"), borrowTenButton=event.target.closest("[data-borrow-ten]"), lollipopKeyButton=event.target.closest("[data-lollipop-key]"), pullDigitButton=event.target.closest("[data-pull-digit]"), additionKeyButton=event.target.closest("[data-addition-key]"), additionTokenButton=event.target.closest("[data-addition-token]"), keyButton=event.target.closest("[data-key]"), luigiButton=event.target.closest("[data-luigi-surprise]"), luigiAudioButton=event.target.closest("[data-luigi-audio]"), erlingButton=event.target.closest("[data-erling-audio]"), kaptajnButton=event.target.closest("[data-kaptajn-audio]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), subtractionModeButton=event.target.closest("[data-subtraction-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
     if (subtractionKeyButton) { await handleBorrowingSubtractionKey(subtractionKeyButton.dataset.subtractionKey); return; }
     if (borrowTenButton && event.detail === 0) { completeBorrowingSubtractionBorrow(); return; }
     if (lollipopKeyButton) { handleDivisionLollipopKey(lollipopKeyButton.dataset.lollipopKey); return; }
     if (pullDigitButton && event.detail === 0) { completeDivisionLollipopPull(); return; }
+    if (additionKeyButton && state.task?.topic === "additionColumn") { handleColumnAdditionKey(additionKeyButton.dataset.additionKey); return; }
+    if (additionTokenButton && state.task?.topic === "additionColumn" && event.detail === 0) { completeColumnAdditionDrop(additionTokenButton.dataset.additionToken); return; }
     if (keyButton) { handleKeypad(keyButton.dataset.key); return; }
     if (luigiButton) { triggerLuigiSurprise(luigiButton); return; }
     if (luigiAudioButton) { playLuigiAudio(luigiAudioButton); return; }
@@ -2733,6 +3060,7 @@
       if (isGuest() && !GUEST_TOPICS.has(topicButton.dataset.topic)) return;
       clearDivisionLollipopDrag();
       clearBorrowingSubtractionDrag();
+      clearColumnAdditionDrag();
       state.subtractionDrillTroubles=null;
       if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned");
       if (MATRIX_DRILL_TOPICS.has(topicButton.dataset.topic)) { startMatrixDrill(topicButton.dataset.topic); return; }
@@ -2757,7 +3085,7 @@
 
     if (action === "practice-subtraction-troubles") {
       if (state.task?.topic !== "subtractionDrill") return;
-      const facts=subtractionDrillTroubleFacts(state.user).slice(0,3);
+      const facts=subtractionDrillTroubleFacts(state.user);
       if (!facts.length) return;
       state.subtractionDrillTroubles=facts.map(fact=>fact.key);
       state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[];
@@ -2803,7 +3131,7 @@
         if (state.user?.id !== userId || !allowed()) return;
         leaveFractionLesson(); leaveFoodtruck(); stopMatrixDrillTimer(); stopTeacherLiveUpdates();
         stopErlingAudio(); stopKaptajnAudio(); stopLuigiAudio(); stopLetterLearningAudio();
-        clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag();
+        clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); clearColumnAdditionDrag();
         state.task=null; state.matrixDrill=null;
         jacobFrontend=action === "learn-fractions" ? isFractionTester() : !jacobFrontend;
         state.view=action === "learn-fractions" ? "learn-fractions" : jacobFrontend ? "student" : "teacher";
@@ -2817,7 +3145,7 @@
       event.preventDefault();
       if (!state.user || isGuest() || state.view === "foodtruck") return;
       if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned");
-      stopMatrixDrillTimer(); clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag();
+      stopMatrixDrillTimer(); clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); clearColumnAdditionDrag();
       state.matrixDrill=null; state.task=null; state.view="foodtruck";
       renderFoodtruck(); window.scrollTo(0,0); return;
     }
@@ -2877,11 +3205,12 @@
       return;
     }
     if (action === "logout") { registrations.request++; Object.assign(registrations, { open:false, rows:[], search:"", offset:0, more:false, loading:false, error:"", notice:"" }); }
-    if (action==="logout") { closeExerciseLeaderboard(); closePracticeLeaderboardPrompt(); practiceLeaderboard.request++; Object.assign(practiceLeaderboard,{rows:[],status:null,loading:false,promptOpen:false}); clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,matrixDrill:null,subtractionDrillTroubles:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
+    if (action==="logout") { closeExerciseLeaderboard(); closePracticeLeaderboardPrompt(); practiceLeaderboard.request++; Object.assign(practiceLeaderboard,{rows:[],status:null,loading:false,promptOpen:false}); clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); clearColumnAdditionDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,matrixDrill:null,subtractionDrillTroubles:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
     if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
-    if (action==="home") { clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); state.matrixDrill=null; state.subtractionDrillTroubles=null; state.task=null; state.view="student"; renderStudentHome(); }
+    if (action==="home") { clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); clearColumnAdditionDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); state.matrixDrill=null; state.subtractionDrillTroubles=null; state.task=null; state.view="student"; renderStudentHome(); }
     if (action==="subtraction-cannot" && state.task?.topic === "subtractionBorrowing") { startBorrowingSubtraction(); return; }
     if (action==="next-subtraction" && state.task?.topic === "subtractionBorrowing" && state.answered) { state.questionNumber++; newTask(); return; }
+    if (action==="next-column-addition" && state.task?.topic === "additionColumn" && state.answered) { state.questionNumber++; newTask(); return; }
     if (action==="next-division-lollipop" && state.task?.topic === "divisionLollipops" && state.answered) { state.questionNumber++; newTask(); }
     if (action==="toggle-exercise-timer" && state.matrixDrill) {
       state.showExerciseTimer=!state.showExerciseTimer;
@@ -2962,11 +3291,13 @@
     const borrowSource=event.target.closest?.("[data-borrow-ten]");
     if (borrowSource) { beginBorrowingSubtractionDrag(event,borrowSource); return; }
     const source=event.target.closest?.("[data-pull-digit]");
-    if (source) beginDivisionLollipopDrag(event,source);
+    if (source) { beginDivisionLollipopDrag(event,source); return; }
+    const additionSource=event.target.closest?.("[data-addition-token]");
+    if (additionSource) beginColumnAdditionDrag(event,additionSource);
   });
-  document.addEventListener("pointermove", event => { moveBorrowingSubtractionDrag(event); moveDivisionLollipopDrag(event); }, {passive:false});
-  document.addEventListener("pointerup", event => { finishBorrowingSubtractionDrag(event); finishDivisionLollipopDrag(event); });
-  document.addEventListener("pointercancel", event => { finishBorrowingSubtractionDrag(event,true); finishDivisionLollipopDrag(event,true); });
+  document.addEventListener("pointermove", event => { moveBorrowingSubtractionDrag(event); moveDivisionLollipopDrag(event); moveColumnAdditionDrag(event); }, {passive:false});
+  document.addEventListener("pointerup", event => { finishBorrowingSubtractionDrag(event); finishDivisionLollipopDrag(event); finishColumnAdditionDrag(event); });
+  document.addEventListener("pointercancel", event => { finishBorrowingSubtractionDrag(event,true); finishDivisionLollipopDrag(event,true); finishColumnAdditionDrag(event,true); });
   document.addEventListener("change", event => {
     const letterStudentId = event.target.dataset?.letterStudent;
     if (letterStudentId) {
@@ -3056,6 +3387,13 @@
       else if (event.key === "Enter" && state.task.stage === "quotient") { event.preventDefault(); document.getElementById("division-lollipop-form")?.requestSubmit(); }
       return;
     }
+    if (state.task?.topic === "additionColumn") {
+      if (event.target.closest?.("[data-addition-token]")) return;
+      if (/^\d$/.test(event.key)) { event.preventDefault(); handleColumnAdditionKey(event.key); }
+      else if (event.key === "Backspace") { event.preventDefault(); handleColumnAdditionKey("delete"); }
+      else if (event.key === "Enter" && state.task.phase === "answer") { event.preventDefault(); submitColumnAdditionAnswer(); }
+      return;
+    }
     if (/^\d$/.test(event.key)) handleKeypad(event.key);
     if (event.key === "-") handleKeypad("minus");
     if (event.key === "Backspace") handleKeypad("delete");
@@ -3068,6 +3406,7 @@
     stopLuigiAudio();
     clearDivisionLollipopDrag();
     clearBorrowingSubtractionDrag();
+    clearColumnAdditionDrag();
     if (state.matrixDrill && !state.matrixDrill.finalizedAt) finalizeMatrixDrillSession("abandoned");
   });
   async function start() {
