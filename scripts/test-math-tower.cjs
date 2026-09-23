@@ -5,16 +5,17 @@ const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
 const context = vm.createContext({});
 // Exercise the production helpers without starting authentication or the app.
-const names = ['matrixDrillIsGreen', 'matrixDrillCellStyle', 'tableDrillSessions', 'additionPairStats', 'subtractionDrillPairStats', 'subtractionDrillTroubleFacts', 'syncSubtractionDrillTroubles', 'numberValueStats', 'drillMastery', 'numberMastery', 'mathTowerBestHeatmap', 'mathTowerNumberStones', 'mathTowerAdditionBricks', 'mathTowerSubtractionStones', 'mathTowerFloorArt', 'renderAdditionExerciseHeatmap', 'renderSubtractionDrillHeatmap', 'additionColumnTokenPresentation'];
+const names = ['matrixDrillIsGreen', 'matrixDrillCellStyle', 'tableDrillSessions', 'additionPairStats', 'subtractionDrillPairStats', 'subtractionDrillTroubleFacts', 'syncSubtractionDrillTroubles', 'numberValueStats', 'drillMastery', 'numberMastery', 'mathTowerBestHeatmap', 'mathTowerNumberStones', 'mathTowerAdditionBricks', 'mathTowerSubtractionStones', 'mathTowerFloorArt', 'renderAdditionExerciseHeatmap', 'renderSubtractionDrillHeatmap', 'additionColumnTokenPresentation', 'additionColumnCurrent', 'additionColumnSlot', 'renderColumnAdditionFigure'];
 const functions = names.map(name => {
   const start = source.indexOf(`  function ${name}(`);
   assert.ok(start >= 0, name);
   const end = source.indexOf('\n  function ', start + 1);
   return source.slice(start, end);
 });
-vm.runInContext(`${source.match(/  const TABLE_DRILL_VALUES = .+;/)[0]}\n${source.match(/  const SINGLE_DIGITS = .+;/)[0]}\nconst state = {subtractionDrillTroubles:null};\nconst SUBTRACTION_DRILL_SINGLE_FACTS = SINGLE_DIGITS.flatMap(minuend => Array.from({length:minuend + 1}, (_, subtrahend) => ({ minuend, subtrahend, group:0 })));\nconst SUBTRACTION_DRILL_ONES_PATTERNS = SINGLE_DIGITS.flatMap(ones => SINGLE_DIGITS.map(subtrahend => ({ones,subtrahend})));\nconst SUBTRACTION_DRILL_TWO_DIGIT_FACTS = Array.from({length:9}, (_, tens) => tens + 1).flatMap(tens => SINGLE_DIGITS.flatMap(ones => SINGLE_DIGITS.map(subtrahend => ({ minuend:tens * 10 + ones, subtrahend, group:tens }))));\n${source.match(/  const recordedTime = .+;/)[0]}\n${source.match(/  const responseTimeColor = \(seconds\) => \{[\s\S]*?\n  \};/)[0]}\n${functions.join('\n')}`, context);
+vm.runInContext(`${source.match(/  const TABLE_DRILL_VALUES = .+;/)[0]}\n${source.match(/  const SINGLE_DIGITS = .+;/)[0]}\nconst state = {subtractionDrillTroubles:null, answered:false};\nconst escapeHtml = value => String(value);\nconst SUBTRACTION_DRILL_SINGLE_FACTS = SINGLE_DIGITS.flatMap(minuend => Array.from({length:minuend + 1}, (_, subtrahend) => ({ minuend, subtrahend, group:0 })));\nconst SUBTRACTION_DRILL_ONES_PATTERNS = SINGLE_DIGITS.flatMap(ones => SINGLE_DIGITS.map(subtrahend => ({ones,subtrahend})));\nconst SUBTRACTION_DRILL_TWO_DIGIT_FACTS = Array.from({length:9}, (_, tens) => tens + 1).flatMap(tens => SINGLE_DIGITS.flatMap(ones => SINGLE_DIGITS.map(subtrahend => ({ minuend:tens * 10 + ones, subtrahend, group:tens }))));\n${source.match(/  const recordedTime = .+;/)[0]}\n${source.match(/  const responseTimeColor = \(seconds\) => \{[\s\S]*?\n  \};/)[0]}\n${functions.join('\n')}`, context);
 const { matrixDrillIsGreen: green, matrixDrillCellStyle: style, mathTowerBestHeatmap: best, mathTowerNumberStones: numberStones, mathTowerAdditionBricks: additionBricks, mathTowerSubtractionStones: subtractionStones, mathTowerFloorArt: art, renderAdditionExerciseHeatmap: additionHeatmap, renderSubtractionDrillHeatmap: subtractionHeatmap, subtractionDrillTroubleFacts: subtractionTroubles, syncSubtractionDrillTroubles: syncTroubles } = context;
 const additionTokenPresentation = context.additionColumnTokenPresentation;
+const renderAdditionFigure = context.renderColumnAdditionFigure;
 const result = (id, row, column, correct = true, responseTime = 3, day = 1) => ({
   topic:'tableDrill', drillSessionId:id, drillRow:row, drillColumn:column,
   correct, responseTime, timestamp:`2026-09-${String(day).padStart(2, '0')}T12:00:00Z`,
@@ -141,4 +142,13 @@ assert.equal(tensCarryToken.instruction, 'Træk tierens 1-tal op over 2.');
 const hundredsCarryToken = additionTokenPresentation({ id:'result-hundreds', value:1 }, { total:11, bottom:8 }, { a:18, b:22 });
 assert.equal(hundredsCarryToken.caption, '100');
 assert.equal(hundredsCarryToken.instruction, 'Træk 1-tallet til 100-pladsen i resultatet.');
-console.log('PASS: heatmaps, tower floors and guided addition place labels.');
+const placementFigure = renderAdditionFigure({
+  a:26, b:15, answer:41, columnIndex:0, carries:[], placed:{}, phase:'place-result',
+  tokens:[{id:'result-ones',value:1,kind:'result'},{id:'carry-tens',value:1,kind:'carry'}],
+  activeTokenIndex:0, pendingDestination:'result-ones',
+});
+assert.match(placementFigure, /aria-label="1 som ener-ciffer"/);
+assert.match(placementFigure, /<small class="column-addition-token-place">ener<\/small>/);
+assert.match(placementFigure, /<small class="column-addition-token-place">10<\/small>/);
+assert.match(placementFigure, /data-addition-drop="result-ones"/);
+console.log('PASS: heatmaps, tower floors and rendered guided addition tokens.');
