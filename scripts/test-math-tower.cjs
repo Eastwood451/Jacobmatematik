@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
 const context = vm.createContext({});
 // Exercise the production helpers without starting authentication or the app.
-const names = ['matrixDrillIsGreen', 'matrixDrillCellStyle', 'tableDrillSessions', 'additionPairStats', 'subtractionDrillPairStats', 'subtractionDrillTroubleFacts', 'syncSubtractionDrillTroubles', 'numberValueStats', 'drillMastery', 'numberMastery', 'mathTowerBestHeatmap', 'mathTowerNumberStones', 'mathTowerAdditionBricks', 'mathTowerSubtractionStones', 'mathTowerFloorArt', 'renderAdditionExerciseHeatmap', 'renderSubtractionDrillHeatmap'];
+const names = ['matrixDrillIsGreen', 'matrixDrillCellStyle', 'tableDrillSessions', 'additionPairStats', 'subtractionDrillPairStats', 'subtractionDrillTroubleFacts', 'syncSubtractionDrillTroubles', 'numberValueStats', 'drillMastery', 'numberMastery', 'mathTowerBestHeatmap', 'mathTowerNumberStones', 'mathTowerAdditionBricks', 'mathTowerSubtractionStones', 'mathTowerFloorArt', 'renderAdditionExerciseHeatmap', 'renderSubtractionDrillHeatmap', 'additionColumnTokenPresentation'];
 const functions = names.map(name => {
   const start = source.indexOf(`  function ${name}(`);
   assert.ok(start >= 0, name);
@@ -14,6 +14,7 @@ const functions = names.map(name => {
 });
 vm.runInContext(`${source.match(/  const TABLE_DRILL_VALUES = .+;/)[0]}\n${source.match(/  const SINGLE_DIGITS = .+;/)[0]}\nconst state = {subtractionDrillTroubles:null};\nconst SUBTRACTION_DRILL_SINGLE_FACTS = SINGLE_DIGITS.flatMap(minuend => Array.from({length:minuend + 1}, (_, subtrahend) => ({ minuend, subtrahend, group:0 })));\nconst SUBTRACTION_DRILL_ONES_PATTERNS = SINGLE_DIGITS.flatMap(ones => SINGLE_DIGITS.map(subtrahend => ({ones,subtrahend})));\nconst SUBTRACTION_DRILL_TWO_DIGIT_FACTS = Array.from({length:9}, (_, tens) => tens + 1).flatMap(tens => SINGLE_DIGITS.flatMap(ones => SINGLE_DIGITS.map(subtrahend => ({ minuend:tens * 10 + ones, subtrahend, group:tens }))));\n${source.match(/  const recordedTime = .+;/)[0]}\n${source.match(/  const responseTimeColor = \(seconds\) => \{[\s\S]*?\n  \};/)[0]}\n${functions.join('\n')}`, context);
 const { matrixDrillIsGreen: green, matrixDrillCellStyle: style, mathTowerBestHeatmap: best, mathTowerNumberStones: numberStones, mathTowerAdditionBricks: additionBricks, mathTowerSubtractionStones: subtractionStones, mathTowerFloorArt: art, renderAdditionExerciseHeatmap: additionHeatmap, renderSubtractionDrillHeatmap: subtractionHeatmap, subtractionDrillTroubleFacts: subtractionTroubles, syncSubtractionDrillTroubles: syncTroubles } = context;
+const additionTokenPresentation = context.additionColumnTokenPresentation;
 const result = (id, row, column, correct = true, responseTime = 3, day = 1) => ({
   topic:'tableDrill', drillSessionId:id, drillRow:row, drillColumn:column,
   correct, responseTime, timestamp:`2026-09-${String(day).padStart(2, '0')}T12:00:00Z`,
@@ -128,4 +129,16 @@ assert.ok(nextTroubles.some(fact=>fact.key === allTroubles[3].key || fact.key ==
 vm.runInContext('state.subtractionDrillTroubles=null', context);
 assert.match(subtractionHeatmap(troubleUser),/Øv drillere \(3\)/);
 assert.match(subtractionHeatmap(troubleUser),/tidligere er besvaret forkert/);
-console.log('PASS: heatmap, number, addition and subtraction tower floors: ordered facts, mastery thresholds, no negative subtraction, holes and exact cells.');
+const exampleTask = { a:26, b:15 };
+const onesToken = additionTokenPresentation({ id:'result-ones', value:1 }, { total:11, bottom:5 }, exampleTask);
+assert.equal(onesToken.caption, 'ener');
+assert.equal(onesToken.heading, 'Hvor skal ener-cifret fra 11 hen?');
+assert.equal(onesToken.instruction, 'Træk ener-cifret 1 ned under 5.');
+const tensCarryToken = additionTokenPresentation({ id:'carry-tens', value:1 }, { total:11, bottom:5 }, exampleTask);
+assert.equal(tensCarryToken.caption, '10');
+assert.equal(tensCarryToken.heading, 'Hvor skal 10-eren hen?');
+assert.equal(tensCarryToken.instruction, 'Træk tierens 1-tal op over 2.');
+const hundredsCarryToken = additionTokenPresentation({ id:'result-hundreds', value:1 }, { total:11, bottom:8 }, { a:18, b:22 });
+assert.equal(hundredsCarryToken.caption, '100');
+assert.equal(hundredsCarryToken.instruction, 'Træk 1-tallet til 100-pladsen i resultatet.');
+console.log('PASS: heatmaps, tower floors and guided addition place labels.');
