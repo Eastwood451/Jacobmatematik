@@ -253,8 +253,7 @@
       generate(level, user) {
         const learner=user || { results:[]};
         if (state.subtractionDrillTroubles) {
-          const allowedKeys=new Set(state.subtractionDrillTroubles);
-          const troubleFacts=subtractionDrillTroubleFacts(learner).filter(fact=>allowedKeys.has(fact.key));
+          const troubleFacts=syncSubtractionDrillTroubles(learner);
           if (!troubleFacts.length) return null;
           const fact=pick(troubleFacts);
           if (fact.type === "ones") {
@@ -843,8 +842,7 @@
   }
   function mathTowerFloorArt(stage, index, heatmap = null, numberStones = null, additionBricks = null, subtractionStones = null) {
     const outline = 'stroke="#5b5144" stroke-width="2"';
-    const holeGradientId = `math-tower-hole-${index}`;
-    const holeFill = `url(#${holeGradientId})`;
+    const holeFill="#000";
     let art = '';
     if (heatmap) {
       // Same row/column order as the 9 × 9 heatmap, stretched across the floor.
@@ -901,8 +899,7 @@
         }
       }
     }
-    const gradient = `<defs><linearGradient id="${holeGradientId}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="300" y2="0"><stop offset="0" stop-color="#202d4f"/><stop offset=".52" stop-color="#37355f"/><stop offset="1" stop-color="#212b49"/></linearGradient></defs>`;
-    return `<svg class="math-tower-floor-art" viewBox="0 0 300 124" preserveAspectRatio="none" aria-hidden="true" focusable="false">${gradient}${art}</svg>`;
+    return `<svg class="math-tower-floor-art" viewBox="0 0 300 124" preserveAspectRatio="none" aria-hidden="true" focusable="false">${art}</svg>`;
   }
   function renderMathTower(availableTopics) {
     return `<aside class="math-tower" aria-labelledby="math-tower-title">
@@ -1208,8 +1205,7 @@
     if (!state.user || state.view !== "exercise") return;
     const topic = state.selectedTopic === "mixed" ? chooseWeightedTopic(state.user) : state.selectedTopic;
     if (topic === "subtractionDrill" && state.subtractionDrillTroubles) {
-      const allowedKeys=new Set(state.subtractionDrillTroubles);
-      const remaining=subtractionDrillTroubleFacts(state.user).filter(fact=>allowedKeys.has(fact.key));
+      const remaining=syncSubtractionDrillTroubles(state.user);
       if (!remaining.length) {
         state.task=null; state.answered=false; renderSubtractionDrillComplete(); return;
       }
@@ -1538,7 +1534,7 @@
     const troubleAction=state.subtractionDrillTroubles
       ? `<button type="button" class="btn secondary" data-action="stop-subtraction-troubles">Tilbage til alle minusstykker</button>`
       : troubleFacts.length
-        ? `<button type="button" class="btn" data-action="practice-subtraction-troubles">Øv drillere (${troubleFacts.length})</button>`
+        ? `<button type="button" class="btn" data-action="practice-subtraction-troubles">Øv drillere (${Math.min(3,troubleFacts.length)})</button>`
         : "";
     const values=[...SINGLE_DIGITS];
     const singleCell=(minuend, subtrahend, unavailable=false) => {
@@ -1667,7 +1663,7 @@
       : state.subtractionDrillTroubles
         ? `<button type="button" class="btn secondary subtraction-trouble-action" data-action="stop-subtraction-troubles">Tilbage til alle minusstykker</button>`
         : subtractionTroubleFacts.length
-          ? `<button type="button" class="btn subtraction-trouble-action" data-action="practice-subtraction-troubles">Øv drillere (${subtractionTroubleFacts.length})</button>`
+          ? `<button type="button" class="btn subtraction-trouble-action" data-action="practice-subtraction-troubles">Øv drillere (${Math.min(3,subtractionTroubleFacts.length)})</button>`
           : "";
 
     const subtractionStageIndex=task.topic === "subtractionDrill" && !state.subtractionDrillTroubles
@@ -2539,16 +2535,38 @@
   function subtractionDrillTroubleFacts(user) {
     const grouped=subtractionDrillPairStats(user);
     return [...grouped.entries()].flatMap(([key,items]) => {
-      if (!items.some(item=>!item.correct) || drillMastery(items).learned) return [];
+      const ordered=[...items].sort((a,b)=>new Date(a.timestamp)-new Date(b.timestamp));
+      const mastery=drillMastery(ordered);
+      const mistakes=ordered.filter(item=>!item.correct);
+      if (!mistakes.length || mastery.learned) return [];
+      const latest=ordered.at(-1);
+      const severity=mistakes.length * 10 + mistakes.filter(item=>recordedTime(item)>5).length * 2 + (latest && !latest.correct ? 5 : 0) - mastery.streak;
       if (key.startsWith("ones:")) {
         const [ones,subtrahend]=key.slice("ones:".length).split("-").map(Number);
-        return SINGLE_DIGITS.includes(ones) && SINGLE_DIGITS.includes(subtrahend) ? [{key,type:"ones",ones,subtrahend}] : [];
+        return SINGLE_DIGITS.includes(ones) && SINGLE_DIGITS.includes(subtrahend) ? [{key,type:"ones",ones,subtrahend,severity}] : [];
       }
       const [minuend,subtrahend]=key.split("-").map(Number);
       return SINGLE_DIGITS.includes(minuend) && SINGLE_DIGITS.includes(subtrahend) && subtrahend<=minuend
-        ? [{key,type:"single",minuend,subtrahend}]
+        ? [{key,type:"single",minuend,subtrahend,severity}]
         : [];
-    });
+    }).sort((a,b)=>b.severity-a.severity || a.key.localeCompare(b.key));
+  }
+
+  function syncSubtractionDrillTroubles(user) {
+    if (!Array.isArray(state.subtractionDrillTroubles)) return [];
+    const facts=subtractionDrillTroubleFacts(user);
+    const byKey=new Map(facts.map(fact=>[fact.key,fact]));
+    const active=[];
+    for (const key of state.subtractionDrillTroubles) {
+      const fact=byKey.get(key);
+      if (fact && !active.some(item=>item.key===key)) active.push(fact);
+    }
+    for (const fact of facts) {
+      if (active.length>=3) break;
+      if (!active.some(item=>item.key===fact.key)) active.push(fact);
+    }
+    state.subtractionDrillTroubles=active.map(fact=>fact.key);
+    return active;
   }
 
   function numberValueStats(user) {
@@ -3165,7 +3183,7 @@
       if (state.task?.topic !== "subtractionDrill") return;
       const facts=subtractionDrillTroubleFacts(state.user);
       if (!facts.length) return;
-      state.subtractionDrillTroubles=facts.map(fact=>fact.key);
+      state.subtractionDrillTroubles=facts.slice(0,3).map(fact=>fact.key);
       state.questionNumber=1; state.sessionCorrect=0; state.sessionAnswers=[];
       newTask();
       return;
