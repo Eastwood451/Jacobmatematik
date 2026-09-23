@@ -901,7 +901,7 @@
         }
       }
     }
-    const gradient = `<defs><linearGradient id="${holeGradientId}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#202d4f"/><stop offset=".52" stop-color="#37355f"/><stop offset="1" stop-color="#212b49"/></linearGradient></defs>`;
+    const gradient = `<defs><linearGradient id="${holeGradientId}" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="300" y2="0"><stop offset="0" stop-color="#202d4f"/><stop offset=".52" stop-color="#37355f"/><stop offset="1" stop-color="#212b49"/></linearGradient></defs>`;
     return `<svg class="math-tower-floor-art" viewBox="0 0 300 124" preserveAspectRatio="none" aria-hidden="true" focusable="false">${gradient}${art}</svg>`;
   }
   function renderMathTower(availableTopics) {
@@ -1608,7 +1608,7 @@
       <h2>Lærte</h2>
       <div class="learned-pair-list">${learnedPairs.map(([a,b]) => `<div class="learned-pair" role="img" aria-label="${a} ${operator === "+" ? "plus" : "gange"} ${b} er lært" title="${a} ${operator} ${b} er lært"><strong aria-hidden="true">✓</strong><span>${a}</span><span>${b}</span></div>`).join("")}${numberCoins.map(({number,stage}) => `<div class="learned-number-coin ${stage}" role="img" aria-label="Tallet ${number} er på en ${stage === "gold" ? "guldmønt" : "sølvmønt"}" title="${stage === "gold" ? "Guld" : "Sølv"}: tallet ${number}"><span aria-hidden="true">${number}</span></div>`).join("")}</div>
     </section>` : "";
-    const undefinedKey = task.topic === "basics"
+    const undefinedKey = task.answerType === "undefined"
       ? `<button class="key utility impossible" type="button" data-key="undefined">Kan ikke beregnes</button>`
       : "";
     // I Tallene står svarene 1–10 med 0 til sidst, indtil det aktuelle antal er lært.
