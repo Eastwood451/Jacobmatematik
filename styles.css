@@ -303,12 +303,14 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
 .column-addition-slot.active { border-color:var(--purple); background:#f0edff; box-shadow:0 0 0 6px rgba(91,75,218,.15),0 5px 0 rgba(64,50,186,.25); animation:column-addition-drop-pulse 1s ease-in-out infinite; }
 .column-addition-slot.filled { border-color:#15845a; color:#126c4a; background:#e6f8ef; animation:none; }
 .column-addition-token-tray { min-height:76px; display:flex; justify-content:center; align-items:center; gap:12px; padding:8px 14px; border:2px dashed #c6bfee; border-radius:18px; background:#f4f1ff; }
-.column-addition-token { width:58px; height:58px; display:grid; place-items:center; padding:0; border:2px solid #c9c3f2; border-radius:13px; color:var(--ink); background:#fff7bd; box-shadow:0 5px 0 #d8d4ca; font:800 42px/1 Georgia,serif; cursor:grab; touch-action:none; }
+.column-addition-token { width:70px; height:66px; display:grid; grid-template-rows:1fr auto; place-items:center; align-content:center; gap:0; padding:3px 4px 4px; border:2px solid #c9c3f2; border-radius:13px; color:var(--ink); background:#fff7bd; box-shadow:0 5px 0 #d8d4ca; cursor:grab; touch-action:none; }
+.column-addition-token-value { font:800 34px/.9 Georgia,serif; }
+.column-addition-token-place { color:var(--muted); font:800 10px/1 system-ui,sans-serif; }
 .column-addition-token.ready { border-color:var(--purple); box-shadow:0 5px 0 var(--purple-dark),0 0 0 5px rgba(91,75,218,.10); animation:column-addition-token-ready 1s ease-in-out infinite; }
 .column-addition-token.used { opacity:.2; cursor:default; }
 .column-addition-token:disabled { opacity:.48; cursor:default; }
 .column-addition-token.dragging { opacity:.2; animation:none; cursor:grabbing; }
-.column-addition-drag-ghost { position:fixed; z-index:1000; display:grid; place-items:center; pointer-events:none; border:3px solid var(--purple); border-radius:14px; color:var(--ink); background:#fff7bd; box-shadow:0 12px 26px rgba(23,36,61,.25); font:800 42px/1 Georgia,serif; transform:rotate(-4deg) scale(1.04); }
+.column-addition-drag-ghost { position:fixed; z-index:1000; display:grid; grid-template-rows:1fr auto; place-items:center; gap:0; padding:3px 4px 4px; pointer-events:none; border:3px solid var(--purple); border-radius:14px; color:var(--ink); background:#fff7bd; box-shadow:0 12px 26px rgba(23,36,62,.25); transform:rotate(-4deg) scale(1.04); }
 .column-addition-placement-note { margin:0; color:var(--purple-dark); font-size:13px; font-weight:800; text-align:center; }
 .column-addition-placeholders { min-height:24px; margin:0; color:#c4bedf; font-size:30px; letter-spacing:12px; }
 .column-addition-current { color:#8d94a1; font-size:10px; font-weight:750; letter-spacing:.08em; text-transform:uppercase; }
@@ -721,7 +723,9 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
   .column-addition-rule{width:246px;height:4px;margin-top:0}
   .column-addition-slot{width:60px;height:60px;border-width:3px;font-size:46px}
   .column-addition-token-tray{min-height:68px;gap:9px}
-  .column-addition-token{width:52px;height:52px;font-size:38px}
+  .column-addition-token{width:64px;height:60px}
+  .column-addition-token-value{font-size:31px}
+  .column-addition-token-place{font-size:9px}
   .column-addition-prompt h2{font-size:34px}
   .column-addition-keypad{gap:7px}
   .column-addition-keypad .key{min-height:49px;font-size:19px}
