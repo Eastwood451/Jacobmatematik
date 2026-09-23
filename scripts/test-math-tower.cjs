@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
 const context = vm.createContext({});
 // Exercise the production helpers without starting authentication or the app.
-const names = ['matrixDrillIsGreen', 'matrixDrillCellStyle', 'tableDrillSessions', 'additionPairStats', 'subtractionDrillPairStats', 'subtractionDrillTroubleFacts', 'numberValueStats', 'drillMastery', 'numberMastery', 'mathTowerBestHeatmap', 'mathTowerNumberStones', 'mathTowerAdditionBricks', 'mathTowerSubtractionStones', 'mathTowerFloorArt', 'renderAdditionExerciseHeatmap', 'renderSubtractionDrillHeatmap'];
+const names = ['matrixDrillIsGreen', 'matrixDrillCellStyle', 'tableDrillSessions', 'additionPairStats', 'subtractionDrillPairStats', 'subtractionDrillTroubleFacts', 'syncSubtractionDrillTroubles', 'numberValueStats', 'drillMastery', 'numberMastery', 'mathTowerBestHeatmap', 'mathTowerNumberStones', 'mathTowerAdditionBricks', 'mathTowerSubtractionStones', 'mathTowerFloorArt', 'renderAdditionExerciseHeatmap', 'renderSubtractionDrillHeatmap'];
 const functions = names.map(name => {
   const start = source.indexOf(`  function ${name}(`);
   assert.ok(start >= 0, name);
@@ -13,7 +13,7 @@ const functions = names.map(name => {
   return source.slice(start, end);
 });
 vm.runInContext(`${source.match(/  const TABLE_DRILL_VALUES = .+;/)[0]}\n${source.match(/  const SINGLE_DIGITS = .+;/)[0]}\nconst state = {subtractionDrillTroubles:null};\nconst SUBTRACTION_DRILL_SINGLE_FACTS = SINGLE_DIGITS.flatMap(minuend => Array.from({length:minuend + 1}, (_, subtrahend) => ({ minuend, subtrahend, group:0 })));\nconst SUBTRACTION_DRILL_ONES_PATTERNS = SINGLE_DIGITS.flatMap(ones => SINGLE_DIGITS.map(subtrahend => ({ones,subtrahend})));\nconst SUBTRACTION_DRILL_TWO_DIGIT_FACTS = Array.from({length:9}, (_, tens) => tens + 1).flatMap(tens => SINGLE_DIGITS.flatMap(ones => SINGLE_DIGITS.map(subtrahend => ({ minuend:tens * 10 + ones, subtrahend, group:tens }))));\n${source.match(/  const recordedTime = .+;/)[0]}\n${source.match(/  const responseTimeColor = \(seconds\) => \{[\s\S]*?\n  \};/)[0]}\n${functions.join('\n')}`, context);
-const { matrixDrillIsGreen: green, matrixDrillCellStyle: style, mathTowerBestHeatmap: best, mathTowerNumberStones: numberStones, mathTowerAdditionBricks: additionBricks, mathTowerSubtractionStones: subtractionStones, mathTowerFloorArt: art, renderAdditionExerciseHeatmap: additionHeatmap, renderSubtractionDrillHeatmap: subtractionHeatmap, subtractionDrillTroubleFacts: subtractionTroubles } = context;
+const { matrixDrillIsGreen: green, matrixDrillCellStyle: style, mathTowerBestHeatmap: best, mathTowerNumberStones: numberStones, mathTowerAdditionBricks: additionBricks, mathTowerSubtractionStones: subtractionStones, mathTowerFloorArt: art, renderAdditionExerciseHeatmap: additionHeatmap, renderSubtractionDrillHeatmap: subtractionHeatmap, subtractionDrillTroubleFacts: subtractionTroubles, syncSubtractionDrillTroubles: syncTroubles } = context;
 const result = (id, row, column, correct = true, responseTime = 3, day = 1) => ({
   topic:'tableDrill', drillSessionId:id, drillRow:row, drillColumn:column,
   correct, responseTime, timestamp:`2026-09-${String(day).padStart(2, '0')}T12:00:00Z`,
@@ -108,12 +108,24 @@ assert.match(subtractionMap, /Ét-mønstre/);
 const troubleUser={results:[
   subtractionResult(8,3,false,2,1), subtractionResult(8,3,true,3,2),
   subtractionResult(52,7,false,2,3),
+  subtractionResult(4,1,false,8,4),
+  subtractionResult(7,2,false,6,5),
+  subtractionResult(5,0,false,7,6),
   subtractionResult(6,2,false,2,4), subtractionResult(6,2,true,3,5), subtractionResult(6,2,true,3,6), subtractionResult(6,2,true,3,7),
 ]};
-assert.deepEqual(JSON.parse(JSON.stringify(subtractionTroubles(troubleUser))),[
-  {key:'8-3',type:'single',minuend:8,subtrahend:3},
-  {key:'ones:2-7',type:'ones',ones:2,subtrahend:7},
-]);
-assert.match(subtractionHeatmap(troubleUser),/Øv drillere \(2\)/);
+const allTroubles=subtractionTroubles(troubleUser);
+assert.equal(allTroubles.length,5);
+assert.equal(new Set(allTroubles.slice(0,3).map(fact=>fact.key)).size,3, 'the trouble round starts with three unique facts');
+assert.ok(allTroubles[0].severity >= allTroubles[1].severity, 'worst facts are sorted first');
+vm.runInContext(`state.subtractionDrillTroubles=${JSON.stringify(allTroubles.slice(0,3).map(fact=>fact.key))}`, context);
+const retired=allTroubles[0];
+const retiredMinuend=retired.type === 'ones' ? 10 + retired.ones : retired.minuend;
+for (const sequence of [20,21,22]) troubleUser.results.push(subtractionResult(retiredMinuend, retired.subtrahend, true, 3, sequence));
+const nextTroubles=syncTroubles(troubleUser);
+assert.equal(nextTroubles.length,3, 'the active round stays capped at three');
+assert.ok(!nextTroubles.some(fact=>fact.key === retired.key), 'a learned trouble leaves the active round');
+assert.ok(nextTroubles.some(fact=>fact.key === allTroubles[3].key || fact.key === allTroubles[4].key), 'the next trouble enters after one is learned');
+vm.runInContext('state.subtractionDrillTroubles=null', context);
+assert.match(subtractionHeatmap(troubleUser),/Øv drillere \(3\)/);
 assert.match(subtractionHeatmap(troubleUser),/tidligere er besvaret forkert/);
 console.log('PASS: heatmap, number, addition and subtraction tower floors: ordered facts, mastery thresholds, no negative subtraction, holes and exact cells.');
