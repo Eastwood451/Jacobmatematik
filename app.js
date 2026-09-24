@@ -1385,8 +1385,7 @@ function columnMultiplicationSteps(task) {
       { title:`Hvad er ${tens} gange ${topOnes}?`, hint:"Byg det tocifrede svar i mellemregningen.", targets:[["work-tens",Math.floor(first/10),"palette"],["work-ones",first%10,"palette"]] },
       { title:"Hvor skal cifrene hen?", hint:"Flyt ét ciffer til andet delprodukt og ét til menten.", targets:[["second-tens",first%10,"work-ones"],["carry-mul",carry,"work-tens"]] },
       { title:`Hvad er ${tens} gange ${topTens}?`, hint:"Byg svaret i mellemregningen, før du bruger menten.", targets:[["work-tens",Math.floor(second/10),"palette"],["work-ones",second%10,"palette"]] },
-      { title:"Rigtigt. HUSK MENTEN!", hint:"Menten skal med i denne mellemregning.", action:"continue", targets:[] },
-      { title:"Hvad skal du nu?", hint:"Flyt menten ned til mellemregningen.", targets:[["work-carry",carry,"carry-mul"]] },
+      { title:"Rigtigt. HUSK MENTEN!", hint:"Træk menten ned til mellemregningen.", targets:[["work-carry",carry,"carry-mul"]] },
       { title:`Hvad er ${second} plus ${carry}?`, hint:"Byg summen under stregen i mellemregningen.", targets:[["work-sum-tens",Math.floor(sum/10),"palette"],["work-sum-ones",sum%10,"palette"]] },
       { title:"Hvor skal cifrene hen?", hint:"Flyt summen til de rigtige pladser i andet delprodukt.", targets:[["second-hundreds",sum%10,"work-sum-ones"],["second-thousands",Math.floor(sum/10),"work-sum-tens"]] },
       { title:`Hvad er ${topOnes} + 0?`, hint:"Begynd additionen i højre side.", targets:[["result-ones",topOnes,"palette"]] },
@@ -1412,7 +1411,6 @@ function columnMultiplicationSteps(task) {
       ["work-tens","work-ones"],
       ["multiplier-tens","multiplicand-tens"],
       ["work-tens","work-ones","carry-mul"],
-      ["carry-mul"],
       ["work-tens","work-ones","work-carry"],
       ["work-sum-tens","work-sum-ones"],
       ["first-ones","second-ones"],
@@ -1455,15 +1453,15 @@ function columnMultiplicationSteps(task) {
         <div class="multi-expression" aria-label="${task.a} gange ${task.b} på én linje">${digit(tens,"multiplier-tens")}${digit(ones,"multiplier-ones")}<span class="multi-sign">×</span>${digit(topTens,"multiplicand-tens")}${digit(topOnes,"multiplicand-ones")}</div>
         <div class="multi-rule" aria-hidden="true"></div>
         ${row("",[empty(),empty(),slot("first-tens"),slot("first-ones")],"multi-partial-row")}
-        ${task.stepIndex>=11?row("",[empty(),slot("carry-add"),empty(),empty()],"multi-carry-row multi-add-carry-row"):""}
+        ${task.stepIndex>=10?row("",[empty(),slot("carry-add"),empty(),empty()],"multi-carry-row multi-add-carry-row"):""}
         ${task.stepIndex>=2?row("+",[slot("second-thousands"),slot("second-hundreds"),slot("second-tens"),slot("second-ones")],"multi-partial-row multi-second-row"):""}
-        ${task.stepIndex>=10?`<div class="multi-rule" aria-hidden="true"></div>${row("=",[slot("result-thousands"),slot("result-hundreds"),slot("result-tens"),slot("result-ones")],"multi-result-row")}`:""}
+        ${task.stepIndex>=9?`<div class="multi-rule" aria-hidden="true"></div>${row("=",[slot("result-thousands"),slot("result-hundreds"),slot("result-tens"),slot("result-ones")],"multi-result-row")}`:""}
       </div>
       <div class="multi-palette"><span>Cifre til regnestykket</span><div class="multi-palette-grid" role="group" aria-label="Cifre 0 til 9">${palette}</div><small>Træk et ciffer, eller tryk på det og derefter på en tom plads.</small></div>
     </div>`;
   }
   function renderColumnMultiplicationWork(task) {
-    if (task.stepIndex < 3 || task.stepIndex > 9 || state.answered) return "";
+    if (task.stepIndex < 3 || task.stepIndex > 8 || state.answered) return "";
     const tens=Math.floor(task.a/10), topTens=Math.floor(task.b/10), topOnes=task.b%10;
     const label=task.stepIndex<=4?`${tens} × ${topOnes}`:`${tens} × ${topTens}`;
     const slot=(id,name)=>columnMultiplicationSlot(task,id,name);
@@ -1471,22 +1469,22 @@ function columnMultiplicationSteps(task) {
       <strong>Mellemregning</strong><span class="multi-work-label">${label}</span>
       <div class="multi-work-row"><span></span>${slot("work-tens","Tierplads i mellemregningen")}${slot("work-ones","Enerplads i mellemregningen")}</div>
       ${task.stepIndex>=6?`<div class="multi-work-row"><span class="multi-work-sign">+</span><span></span>${slot("work-carry","Mente under mellemregningen")}</div>`:""}
-      ${task.stepIndex>=8?`<div class="multi-work-rule" aria-hidden="true"></div><div class="multi-work-row"><span class="multi-work-sign">=</span>${slot("work-sum-tens","Tierplads i mellemregningens sum")}${slot("work-sum-ones","Enerplads i mellemregningens sum")}</div>`:""}
+      ${task.stepIndex>=7?`<div class="multi-work-rule" aria-hidden="true"></div><div class="multi-work-row"><span class="multi-work-sign">=</span>${slot("work-sum-tens","Tierplads i mellemregningens sum")}${slot("work-sum-ones","Enerplads i mellemregningens sum")}</div>`:""}
     </div>`;
   }
   function renderColumnMultiplicationInstruction(task) {
     if (state.answered) return `<div class="multi-success" role="status"><span>Opgaven er løst</span><h2>FLOT!</h2><p>${task.a} × ${task.b} = <strong>${task.answer}</strong></p><button type="button" class="btn full" data-action="next-column-multiplication">Næste gangestykke →</button></div>`;
-    if (task.stepIndex>=14) return `<div class="multi-prompt"><span class="eyebrow">Trin 15 af 15</span><h2>FLOT!</h2><p>Resultatet er ${task.answer}. Gem øvelsen for at fortsætte.</p><button type="button" class="btn" data-action="retry-column-multiplication">Gem opgaven</button></div>`;
+    if (task.stepIndex>=13) return `<div class="multi-prompt"><span class="eyebrow">Trin 14 af 14</span><h2>FLOT!</h2><p>Resultatet er ${task.answer}. Gem øvelsen for at fortsætte.</p><button type="button" class="btn" data-action="retry-column-multiplication">Gem opgaven</button></div>`;
     const step=columnMultiplicationStep(task), selected=task.selectedSource?columnMultiplicationSourceValue(task,task.selectedSource):null;
-    return `<div class="multi-prompt" aria-live="polite"><span class="eyebrow">Trin ${task.stepIndex+1} af 15</span><h2>${step.title}</h2><p>${step.hint}</p>${selected!==null&&selected!==undefined?`<p class="multi-selected">Ciffer ${selected} valgt. Vælg en plads.</p>`:""}${step.action==="continue"?'<button class="btn" type="button" data-action="continue-column-multiplication">Fortsæt →</button>':'<p class="multi-help">Vælg selv den rigtige plads i regnestykket.</p>'}</div>`;
+    return `<div class="multi-prompt" aria-live="polite"><span class="eyebrow">Trin ${task.stepIndex+1} af 14</span><h2>${step.title}</h2><p>${step.hint}</p>${selected!==null&&selected!==undefined?`<p class="multi-selected">Ciffer ${selected} valgt. Vælg en plads.</p>`:""}<p class="multi-help">Vælg selv den rigtige plads i regnestykket.</p></div>`;
   }
   function renderColumnMultiplication() {
-    const task=state.task, stepNumber=Math.min(task.stepIndex+1,15);
+    const task=state.task, stepNumber=Math.min(task.stepIndex+1,14);
     app.innerHTML=`${header()}<div class="page multi-page">
       <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button>${exerciseLeaderboardLink(task.topic)}<span class="topic-tag">${TOPICS[task.topic].name}</span></div>
       <section class="multi-card">
-        <header class="multi-card-head"><div><span class="question-number">Opgave ${state.questionNumber}</span><strong>${task.a} × ${task.b}</strong></div><span>Trin ${stepNumber} / 15</span></header>
-        <div class="multi-progress" role="progressbar" aria-valuemin="0" aria-valuemax="15" aria-valuenow="${stepNumber}" aria-label="Øvelsens trin"><span style="width:${stepNumber/15*100}%"></span></div>
+        <header class="multi-card-head"><div><span class="question-number">Opgave ${state.questionNumber}</span><strong>${task.a} × ${task.b}</strong></div><span>Trin ${stepNumber} / 14</span></header>
+        <div class="multi-progress" role="progressbar" aria-valuemin="0" aria-valuemax="14" aria-valuenow="${stepNumber}" aria-label="Øvelsens trin"><span style="width:${stepNumber/14*100}%"></span></div>
         <div class="multi-layout"><div class="multi-figure">${renderColumnMultiplicationFigure(task)}</div><div class="multi-controls">${renderColumnMultiplicationInstruction(task)}${renderColumnMultiplicationWork(task)}<p class="multi-error" role="alert">${escapeHtml(task.stepError||"")}</p></div></div>
       </section>
     </div>`;
@@ -1503,7 +1501,7 @@ function columnMultiplicationSteps(task) {
     renderColumnMultiplication();
     const result={ topic:task.topic, problem:task.expression, answer:task.answer, correctAnswer:task.answer, correct:true,
       responseTime:+Math.max(.1,(Date.now()-state.taskStartedAt)/1000).toFixed(2), timestamp:new Date().toISOString(),
-      multiplicationColumnSteps:14, multiplicationColumnMistakes:task.mistakes };
+      multiplicationColumnSteps:13, multiplicationColumnMistakes:task.mistakes };
     const saved=await persistGuidedArithmeticResult(result);
     task.saving=false;
     if (!saved) {
@@ -1527,7 +1525,7 @@ function columnMultiplicationSteps(task) {
     task.placed[targetId]=value; task.stageDone[targetId]=true; task.selectedSource=null; task.stepError="";
     if (step.targets.every(item=>task.stageDone[item[0]])) {
       task.stepIndex++; task.stageDone={};
-      if (task.stepIndex===14) { void completeColumnMultiplicationTask(); return; }
+      if (task.stepIndex===13) { void completeColumnMultiplicationTask(); return; }
     }
     renderColumnMultiplication();
   }
@@ -3557,10 +3555,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     if (action==="subtraction-cannot" && state.task?.topic === "subtractionBorrowing") { startBorrowingSubtraction(); return; }
     if (action==="next-subtraction" && state.task?.topic === "subtractionBorrowing" && state.answered) { state.questionNumber++; newTask(); return; }
     if (action==="next-column-addition" && state.task?.topic === "additionColumn" && state.answered) { state.questionNumber++; newTask(); return; }
-    if (action==="continue-column-multiplication" && state.task?.topic === "multiplicationColumn" && state.task.stepIndex===6 && !state.answered) {
-      state.task.stepIndex=7; renderColumnMultiplication(); return;
-    }
-    if (action==="retry-column-multiplication" && state.task?.topic === "multiplicationColumn" && state.task.stepIndex===14 && !state.answered) {
+    if (action==="retry-column-multiplication" && state.task?.topic === "multiplicationColumn" && state.task.stepIndex===13 && !state.answered) {
       void completeColumnMultiplicationTask(); return;
     }
     if (action==="next-column-multiplication" && state.task?.topic === "multiplicationColumn" && state.answered) {
