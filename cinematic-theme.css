@@ -571,3 +571,7 @@ body.site-authenticated{
 
 .multi-expression{display:grid;grid-template-columns:repeat(2,var(--multi-cell)) 34px repeat(2,var(--multi-cell));align-items:center;min-height:var(--multi-cell)}
 .multi-expression+.multi-rule{margin-left:0}
+
+/* The current operands are marked while answer positions stay neutral. */
+.multi-digit.multi-operand{border-radius:8px;background:#fff1d8;outline:2px dashed #d5742a;outline-offset:-2px}
+.multi-slot.filled.multi-operand{outline:2px dashed #d5742a;outline-offset:3px}
