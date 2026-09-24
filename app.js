@@ -1836,7 +1836,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       <h2>Lærte</h2>
       <div class="learned-pair-list">${learnedPairs.map(([a,b]) => `<div class="learned-pair" role="img" aria-label="${a} ${operator === "+" ? "plus" : "gange"} ${b} er lært" title="${a} ${operator} ${b} er lært"><strong aria-hidden="true">✓</strong><span>${a}</span><span>${b}</span></div>`).join("")}${numberCoins.map(({number,stage}) => `<div class="learned-number-coin ${stage}" role="img" aria-label="Tallet ${number} er på en ${stage === "gold" ? "guldmønt" : "sølvmønt"}" title="${stage === "gold" ? "Guld" : "Sølv"}: tallet ${number}"><span aria-hidden="true">${number}</span></div>`).join("")}</div>
     </section>` : "";
-    const undefinedKey = task.answerType === "undefined"
+    const undefinedKey = task.topic === "basics"
       ? `<button class="key utility impossible" type="button" data-key="undefined">Kan ikke beregnes</button>`
       : "";
     // I Tallene står svarene 1–10 med 0 til sidst, indtil det aktuelle antal er lært.
