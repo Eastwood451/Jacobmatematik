@@ -309,6 +309,8 @@
           () => makeTask("basics", `1 × ${number}`, number),
           () => makeTask("basics", `${number} ÷ 1`, number),
           () => makeTask("basics", `${number} ÷ ${number}`, 1),
+          () => makeTask("basics", `${number} : ${number}`, 1),
+          () => makeTask("basics", `${number}/${number}`, 1, "", { fractionNumber:number }),
           () => makeTask("basics", `0 ÷ ${number}`, 0),
           () => makeTask("basics", `${number} ÷ 0`, "undefined", "Vælg det svar, der passer til reglen.", { answerType:"undefined" }),
           () => makeTask("basics", `0 ÷ 0`, "undefined", "Vælg det svar, der passer til reglen.", { answerType:"undefined" }),
@@ -1877,7 +1879,9 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       ? task.countingMode === "hands"
         ? renderCountingHands(task.count)
         : `<div class="counting-field" role="img" aria-label="${task.count ? Array.from({length:task.count},()=>"figur").join(", ") : "Et tomt felt"}">${task.shapes.map((shape,index) => `<span class="count-shape ${shape} color-${index%4}" aria-hidden="true"></span>`).join("")}</div>`
-      : `<div class="expression">${task.expression}</div>`;
+      : task.topic === "basics" && task.fractionNumber
+        ? `<div class="expression"><span class="basics-fraction" role="img" aria-label="${task.fractionNumber} divideret med ${task.fractionNumber}"><span aria-hidden="true">${task.fractionNumber}</span><span aria-hidden="true">${task.fractionNumber}</span></span></div>`
+        : `<div class="expression">${task.expression}</div>`;
     const luigiPlayground = task.topic === "multiplication" ? `<section class="luigi-playground" aria-label="Luigi Lækkermats pizzakøkken">
       <button class="luigi-surprise" type="button" data-luigi-surprise aria-label="Få Luigi Lækkermat til at jonglere med pizzaerne">
         <span class="luigi-speech" aria-live="polite">Tryk på Luigi!</span>
