@@ -1891,6 +1891,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
 
     app.innerHTML = `${header()}<div class="page exercise-page">
       <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button>${exerciseLeaderboardLink(task.topic)}${subtractionTroubleAction}<span class="topic-tag">${TOPICS[task.topic].name}${state.subtractionDrillTroubles ? " · drillere" : ""}</span></div>
+      ${task.topic === "multiplication" ? '<aside class="guided-multiplication-callout"><div><strong>Gangestykker trin for trin</strong><span>Prøv en opstilling med delprodukter og mente.</span></div><button class="btn secondary" type="button" data-topic="multiplicationColumn">Åbn gangeøvelsen →</button></aside>' : ""}
       <section class="question-card">
         <div class="question-top"><span class="question-number">Opgave ${state.questionNumber}</span>${subtractionStageBadge}<div class="question-main ${attemptHistory ? "with-history" : ""}">${taskVisual}${attemptHistory}</div><p class="hint">${escapeHtml(task.hint || "Skriv dit svar nedenfor.")}</p></div>
         ${state.answered ? correctionSection : answerSection}
