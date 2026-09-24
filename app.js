@@ -1432,8 +1432,7 @@ function columnMultiplicationSteps(task) {
     return `<div class="multi-board">
       <div class="multi-calculation" role="group" aria-label="${task.b} ganget med ${task.a} opstillet lodret">
         ${row("",[empty(),empty(),task.stepIndex>=4?slot("carry-mul"):empty(),empty()],"multi-carry-row")}
-        ${row("",[empty(),empty(),digit(topTens),digit(topOnes)],"multi-number-row")}
-        ${row("×",[empty(),empty(),digit(tens),digit(ones)],"multi-number-row")}
+        <div class="multi-expression" aria-label="${task.a} gange ${task.b} på én linje">${digit(tens)}${digit(ones)}<span class="multi-sign">×</span>${digit(topTens)}${digit(topOnes)}</div>
         <div class="multi-rule" aria-hidden="true"></div>
         ${row("",[empty(),empty(),slot("first-tens"),slot("first-ones")],"multi-partial-row")}
         ${task.stepIndex>=11?row("",[empty(),slot("carry-add"),empty(),empty()],"multi-carry-row multi-add-carry-row"):""}
