@@ -1402,13 +1402,31 @@ function columnMultiplicationSteps(task) {
     return Boolean(columnMultiplicationStep(task)?.targets.some(t=>!task.stageDone[t[0]] && t[2]===kind)) &&
       (kind==="palette" || task.placed[key]!==undefined);
   }
+  function columnMultiplicationOperandIds(task) {
+    return [
+      ["multiplier-ones","multiplicand-ones"],
+      ["multiplier-ones","multiplicand-tens"],
+      ["multiplier-tens"],
+      ["multiplier-tens","multiplicand-ones"],
+      ["work-tens","work-ones"],
+      ["multiplier-tens","multiplicand-tens"],
+      ["work-tens","work-ones","carry-mul"],
+      ["carry-mul"],
+      ["work-tens","work-ones","work-carry"],
+      ["work-sum-tens","work-sum-ones"],
+      ["first-ones","second-ones"],
+      ["first-tens","second-tens"],
+      ["carry-add","second-hundreds"],
+      ["second-thousands"],
+    ][task.stepIndex] || [];
+  }
   function columnMultiplicationSlot(task, id, label) {
     const step=columnMultiplicationStep(task), value=task.placed[id], filled=value!==undefined;
     const target=!state.answered && !filled && Boolean(step?.targets.length);
     const source=!state.answered && filled && step?.targets.some(t=>t[2]===id && !task.stageDone[t[0]]);
     const tag=target||source?"button":"span";
     const attrs=(tag==="button"?' type="button"':"")+(target?` data-multiply-target="${id}"`:"")+(source?` data-multiply-source="${id}" aria-grabbed="false"`:"");
-    return `<${tag} class="multi-slot ${filled?"filled":""} ${source?"source":""} ${task.selectedSource===id?"selected":""}"${attrs} aria-label="${label}${filled?`: ${value}`:""}">${filled?value:""}</${tag}>`;
+    return `<${tag} class="multi-slot ${filled?"filled":""} ${filled&&columnMultiplicationOperandIds(task).includes(id)?"multi-operand":""} ${source?"source":""} ${task.selectedSource===id?"selected":""}"${attrs} aria-label="${label}${filled?`: ${value}`:""}">${filled?value:""}</${tag}>`;
   }
   function renderColumnMultiplicationFigure(task) {
     const tens=Math.floor(task.a/10), ones=task.a%10, topTens=Math.floor(task.b/10), topOnes=task.b%10;
@@ -1425,14 +1443,15 @@ function columnMultiplicationSteps(task) {
     };
     const slot=id=>columnMultiplicationSlot(task,id,labels[id]);
     const empty=()=>'<span class="multi-empty" aria-hidden="true"></span>';
-    const digit=value=>`<span class="multi-digit">${value}</span>`;
+    const activeOperands=new Set(columnMultiplicationOperandIds(task));
+    const digit=(value,id)=>`<span class="multi-digit ${activeOperands.has(id)?"multi-operand":""}">${value}</span>`;
     const row=(sign,cells,extra="")=>`<div class="multi-row ${extra}"><span class="multi-sign">${sign}</span>${cells.join("")}</div>`;
     const step=columnMultiplicationStep(task), paletteEnabled=!state.answered && Boolean(step?.targets.some(t=>t[2]==="palette"));
     const palette=SINGLE_DIGITS.map(n=>`<button type="button" class="multi-palette-digit ${task.selectedSource===`palette:${n}`?"selected":""}" data-multiply-source="palette:${n}" aria-label="Ciffer ${n}" aria-grabbed="false" ${paletteEnabled?"":"disabled"}>${n}</button>`).join("");
     return `<div class="multi-board">
-      <div class="multi-calculation" role="group" aria-label="${task.b} ganget med ${task.a} opstillet lodret">
+      <div class="multi-calculation" role="group" aria-label="${task.a} gange ${task.b} med delprodukter nedenunder">
         ${row("",[empty(),empty(),task.stepIndex>=4?slot("carry-mul"):empty(),empty()],"multi-carry-row")}
-        <div class="multi-expression" aria-label="${task.a} gange ${task.b} på én linje">${digit(tens)}${digit(ones)}<span class="multi-sign">×</span>${digit(topTens)}${digit(topOnes)}</div>
+        <div class="multi-expression" aria-label="${task.a} gange ${task.b} på én linje">${digit(tens,"multiplier-tens")}${digit(ones,"multiplier-ones")}<span class="multi-sign">×</span>${digit(topTens,"multiplicand-tens")}${digit(topOnes,"multiplicand-ones")}</div>
         <div class="multi-rule" aria-hidden="true"></div>
         ${row("",[empty(),empty(),slot("first-tens"),slot("first-ones")],"multi-partial-row")}
         ${task.stepIndex>=11?row("",[empty(),slot("carry-add"),empty(),empty()],"multi-carry-row multi-add-carry-row"):""}
