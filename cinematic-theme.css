@@ -558,3 +558,13 @@ body.site-authenticated{
 @media(max-width:560px){.multi-card-head{min-height:70px}.multi-figure{padding:20px 9px}.multi-board{gap:14px 8px}.multi-calculation{--multi-cell:clamp(43px,11vw,55px)}.multi-work{--multi-cell:49px}.multi-palette{flex-basis:100%;max-width:350px}.multi-palette-digit{min-height:51px}}
 
 .guided-multiplication-callout{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:0 0 17px;padding:17px 22px;border:1px solid #dcd2ed;border-radius:18px;background:#f8f5ff}.guided-multiplication-callout>div{display:grid;gap:4px}.guided-multiplication-callout strong{color:var(--ink);font-size:17px}.guided-multiplication-callout span{color:var(--muted);font-size:14px}.guided-multiplication-callout .btn{white-space:nowrap}@media(max-width:640px){.guided-multiplication-callout{align-items:stretch;flex-direction:column}}
+
+/* Gangestykker: one stationary calculation, the working area beside the prompt. */
+.multi-board{flex-direction:column;flex-wrap:nowrap;align-items:center;justify-content:flex-start;gap:20px;min-height:0}
+.multi-calculation{position:relative}
+.multi-palette{flex:none;max-width:390px}
+.multi-controls .multi-work{width:max-content;min-width:200px;max-width:100%;margin:26px auto 0}
+.multi-add-carry-row{position:relative;display:block;height:0;min-height:0!important}
+.multi-add-carry-row>.multi-sign,.multi-add-carry-row>.multi-empty{display:none}
+.multi-add-carry-row .multi-slot{position:absolute;top:-35px;left:calc(34px + var(--multi-cell) + 9px);margin:0}
+@media(max-width:920px){.multi-controls .multi-work{margin-top:20px}}
