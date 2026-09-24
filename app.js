@@ -1429,27 +1429,30 @@ function columnMultiplicationSteps(task) {
     const row=(sign,cells,extra="")=>`<div class="multi-row ${extra}"><span class="multi-sign">${sign}</span>${cells.join("")}</div>`;
     const step=columnMultiplicationStep(task), paletteEnabled=!state.answered && Boolean(step?.targets.some(t=>t[2]==="palette"));
     const palette=SINGLE_DIGITS.map(n=>`<button type="button" class="multi-palette-digit ${task.selectedSource===`palette:${n}`?"selected":""}" data-multiply-source="palette:${n}" aria-label="Ciffer ${n}" aria-grabbed="false" ${paletteEnabled?"":"disabled"}>${n}</button>`).join("");
-    const workLabel=task.stepIndex<3?"Klar til næste trin":task.stepIndex<=4?`${tens} × ${topOnes}`:task.stepIndex<=9?`${tens} × ${topTens}`:"Mellemregning";
     return `<div class="multi-board">
       <div class="multi-calculation" role="group" aria-label="${task.b} ganget med ${task.a} opstillet lodret">
-        ${row("",[empty(),empty(),slot("carry-mul"),empty()],"multi-carry-row")}
+        ${row("",[empty(),empty(),task.stepIndex>=4?slot("carry-mul"):empty(),empty()],"multi-carry-row")}
         ${row("",[empty(),empty(),digit(topTens),digit(topOnes)],"multi-number-row")}
         ${row("×",[empty(),empty(),digit(tens),digit(ones)],"multi-number-row")}
         <div class="multi-rule" aria-hidden="true"></div>
         ${row("",[empty(),empty(),slot("first-tens"),slot("first-ones")],"multi-partial-row")}
-        ${row("",[empty(),slot("carry-add"),empty(),empty()],"multi-carry-row")}
-        ${row("+",[slot("second-thousands"),slot("second-hundreds"),slot("second-tens"),slot("second-ones")],"multi-partial-row")}
-        <div class="multi-rule" aria-hidden="true"></div>
-        ${row("=",[slot("result-thousands"),slot("result-hundreds"),slot("result-tens"),slot("result-ones")],"multi-result-row")}
-      </div>
-      <div class="multi-work" role="group" aria-label="Mellemregning">
-        <strong>Mellemregning</strong><span class="multi-work-label">${workLabel}</span>
-        <div class="multi-work-row"><span></span>${slot("work-tens")}${slot("work-ones")}</div>
-        <div class="multi-work-row"><span class="multi-work-sign">+</span>${empty()}${slot("work-carry")}</div>
-        <div class="multi-work-rule" aria-hidden="true"></div>
-        <div class="multi-work-row"><span class="multi-work-sign">=</span>${slot("work-sum-tens")}${slot("work-sum-ones")}</div>
+        ${task.stepIndex>=11?row("",[empty(),slot("carry-add"),empty(),empty()],"multi-carry-row multi-add-carry-row"):""}
+        ${task.stepIndex>=2?row("+",[slot("second-thousands"),slot("second-hundreds"),slot("second-tens"),slot("second-ones")],"multi-partial-row multi-second-row"):""}
+        ${task.stepIndex>=10?`<div class="multi-rule" aria-hidden="true"></div>${row("=",[slot("result-thousands"),slot("result-hundreds"),slot("result-tens"),slot("result-ones")],"multi-result-row")}`:""}
       </div>
       <div class="multi-palette"><span>Cifre til regnestykket</span><div class="multi-palette-grid" role="group" aria-label="Cifre 0 til 9">${palette}</div><small>Træk et ciffer, eller tryk på det og derefter på en tom plads.</small></div>
+    </div>`;
+  }
+  function renderColumnMultiplicationWork(task) {
+    if (task.stepIndex < 3 || task.stepIndex > 9 || state.answered) return "";
+    const tens=Math.floor(task.a/10), topTens=Math.floor(task.b/10), topOnes=task.b%10;
+    const label=task.stepIndex<=4?`${tens} × ${topOnes}`:`${tens} × ${topTens}`;
+    const slot=(id,name)=>columnMultiplicationSlot(task,id,name);
+    return `<div class="multi-work" role="group" aria-label="Mellemregning">
+      <strong>Mellemregning</strong><span class="multi-work-label">${label}</span>
+      <div class="multi-work-row"><span></span>${slot("work-tens","Tierplads i mellemregningen")}${slot("work-ones","Enerplads i mellemregningen")}</div>
+      ${task.stepIndex>=6?`<div class="multi-work-row"><span class="multi-work-sign">+</span><span></span>${slot("work-carry","Mente under mellemregningen")}</div>`:""}
+      ${task.stepIndex>=8?`<div class="multi-work-rule" aria-hidden="true"></div><div class="multi-work-row"><span class="multi-work-sign">=</span>${slot("work-sum-tens","Tierplads i mellemregningens sum")}${slot("work-sum-ones","Enerplads i mellemregningens sum")}</div>`:""}
     </div>`;
   }
   function renderColumnMultiplicationInstruction(task) {
@@ -1465,7 +1468,7 @@ function columnMultiplicationSteps(task) {
       <section class="multi-card">
         <header class="multi-card-head"><div><span class="question-number">Opgave ${state.questionNumber}</span><strong>${task.a} × ${task.b}</strong></div><span>Trin ${stepNumber} / 15</span></header>
         <div class="multi-progress" role="progressbar" aria-valuemin="0" aria-valuemax="15" aria-valuenow="${stepNumber}" aria-label="Øvelsens trin"><span style="width:${stepNumber/15*100}%"></span></div>
-        <div class="multi-layout"><div class="multi-figure">${renderColumnMultiplicationFigure(task)}</div><div class="multi-controls">${renderColumnMultiplicationInstruction(task)}<p class="multi-error" role="alert">${escapeHtml(task.stepError||"")}</p></div></div>
+        <div class="multi-layout"><div class="multi-figure">${renderColumnMultiplicationFigure(task)}</div><div class="multi-controls">${renderColumnMultiplicationInstruction(task)}${renderColumnMultiplicationWork(task)}<p class="multi-error" role="alert">${escapeHtml(task.stepError||"")}</p></div></div>
       </section>
     </div>`;
   }
