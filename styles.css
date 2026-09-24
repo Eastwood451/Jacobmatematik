@@ -104,6 +104,10 @@ h1,h2,h3,p { margin-top:0; }
 .question-main { margin:26px 0 10px; }
 .question-main.with-history { display:grid; grid-template-columns:42px minmax(0,auto) 42px; align-items:center; justify-content:center; gap:12px; }
 .expression { grid-column:2; font:700 clamp(48px,10vw,86px)/1.15 Georgia,serif; letter-spacing:-.045em; }
+.basics-fraction { display:inline-flex; flex-direction:column; align-items:center; vertical-align:middle; font-size:.72em; line-height:1; letter-spacing:0; }
+.basics-fraction > span { display:block; min-width:1.5em; padding:.03em .12em; text-align:center; }
+.basics-fraction > span:first-child { border-bottom:.065em solid currentColor; padding-bottom:.1em; }
+.basics-fraction > span:last-child { padding-top:.1em; }
 .question-main:not(.with-history) .expression { grid-column:auto; }
 .counting-field { grid-column:2; width:min(500px,64vw); min-height:190px; margin:0 auto; padding:22px; display:grid; grid-template-columns:repeat(3,1fr); place-items:center; gap:16px; border:3px solid var(--ink); border-radius:22px; background:#fff; box-shadow:inset 0 0 0 6px #f1eee6; }
 .counting-field .count-shape:last-child:nth-child(3n + 1) { grid-column:2; }
