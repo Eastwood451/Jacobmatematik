@@ -1392,14 +1392,15 @@ function columnMultiplicationSteps(task) {
       { title:`Hvad er ${topOnes} + 0?`, hint:"Begynd additionen i højre side.", targets:[["result-ones",topOnes,"palette"]] },
       { title:`Hvad er ${topTens} + ${first%10}?`, hint:"Placer resultatets tier og menten i hver sin plads.", targets:[["result-tens",add%10,"palette"],["carry-add",addCarry,"palette"]] },
       { title:`Hvad er ${addCarry} + ${sum%10}?`, hint:"Find pladsen i det endelige resultat.", targets:[["result-hundreds",sum%10+addCarry,"palette"]] },
-      { title:"Sidste træk!", hint:"Flyt det sidste ciffer fra andet delprodukt ned i resultatet.", targets:[["result-thousands",Math.floor(sum/10),"second-thousands"]] },
+      { title:"Sidste træk!", hint:"Flyt det sidste ciffer fra andet delprodukt eller vælg det i Cifre til regnestykket.", targets:[["result-thousands",Math.floor(sum/10),["second-thousands","palette"]]] },
     ];
   }
   function columnMultiplicationStep(task) { return columnMultiplicationSteps(task)[task.stepIndex] || null; }
   function columnMultiplicationSourceValue(task, key) { return key.startsWith("palette:") ? Number(key.slice(8)) : task.placed[key]; }
+  function columnMultiplicationTargetAllows(target, source) { return Array.isArray(target[2]) ? target[2].includes(source) : target[2]===source; }
   function columnMultiplicationSourceAllowed(task, key) {
     const kind=key.startsWith("palette:") ? "palette" : key;
-    return Boolean(columnMultiplicationStep(task)?.targets.some(t=>!task.stageDone[t[0]] && t[2]===kind)) &&
+    return Boolean(columnMultiplicationStep(task)?.targets.some(t=>!task.stageDone[t[0]] && columnMultiplicationTargetAllows(t,kind))) &&
       (kind==="palette" || task.placed[key]!==undefined);
   }
   function columnMultiplicationOperandIds(task) {
@@ -1423,7 +1424,7 @@ function columnMultiplicationSteps(task) {
   function columnMultiplicationSlot(task, id, label) {
     const step=columnMultiplicationStep(task), value=task.placed[id], filled=value!==undefined;
     const target=!state.answered && !filled && Boolean(step?.targets.length);
-    const source=!state.answered && filled && step?.targets.some(t=>t[2]===id && !task.stageDone[t[0]]);
+    const source=!state.answered && filled && step?.targets.some(t=>columnMultiplicationTargetAllows(t,id) && !task.stageDone[t[0]]);
     const tag=target||source?"button":"span";
     const attrs=(tag==="button"?' type="button"':"")+(target?` data-multiply-target="${id}"`:"")+(source?` data-multiply-source="${id}" aria-grabbed="false"`:"");
     return `<${tag} class="multi-slot ${filled?"filled":""} ${filled&&columnMultiplicationOperandIds(task).includes(id)?"multi-operand":""} ${source?"source":""} ${task.selectedSource===id?"selected":""}"${attrs} aria-label="${label}${filled?`: ${value}`:""}">${filled?value:""}</${tag}>`;
@@ -1446,7 +1447,7 @@ function columnMultiplicationSteps(task) {
     const activeOperands=new Set(columnMultiplicationOperandIds(task));
     const digit=(value,id)=>`<span class="multi-digit ${activeOperands.has(id)?"multi-operand":""}">${value}</span>`;
     const row=(sign,cells,extra="")=>`<div class="multi-row ${extra}"><span class="multi-sign">${sign}</span>${cells.join("")}</div>`;
-    const step=columnMultiplicationStep(task), paletteEnabled=!state.answered && Boolean(step?.targets.some(t=>t[2]==="palette"));
+    const step=columnMultiplicationStep(task), paletteEnabled=!state.answered && Boolean(step?.targets.some(t=>columnMultiplicationTargetAllows(t,"palette")));
     const palette=SINGLE_DIGITS.map(n=>`<button type="button" class="multi-palette-digit ${task.selectedSource===`palette:${n}`?"selected":""}" data-multiply-source="palette:${n}" aria-label="Ciffer ${n}" aria-grabbed="false" ${paletteEnabled?"":"disabled"}>${n}</button>`).join("");
     return `<div class="multi-board">
       <div class="multi-calculation" role="group" aria-label="${task.a} gange ${task.b} med delprodukter nedenunder">
@@ -1517,7 +1518,7 @@ function columnMultiplicationSteps(task) {
     const step=columnMultiplicationStep(task);
     const target=step?.targets.find(item=>item[0]===targetId && !task.stageDone[item[0]]);
     const value=columnMultiplicationSourceValue(task,sourceKey), kind=sourceKey.startsWith("palette:")?"palette":sourceKey;
-    if (!target || target[2]!==kind || value!==target[1]) {
+    if (!target || !columnMultiplicationTargetAllows(target,kind) || value!==target[1]) {
       task.mistakes++; task.selectedSource=null;
       task.stepError="Prøv igen. Vælg det rigtige ciffer og den rigtige plads.";
       renderColumnMultiplication(); return;
