@@ -13,7 +13,7 @@
     additionColumn: { name: "Plusstykker", icon: "34 + 25", description: "Læg tal sammen lodret trin for trin" },
     subtractionBorrowing: { name: "Minusstykker", icon: "81 − 37", description: "Lån en tier og træk fra trin for trin" },
     subtractionDrill: { name: "Minus-drill", icon: "92 − 7", description: "Minusstykker uden negative svar" },
-    basics: { name: "Basisregler", icon: "0 · 1", description: "Regneregler med 0 og 1" },
+    basics: { name: "Når 0 og 1 forvirrer", icon: "0 · 1", description: "Regneregler med 0 og 1" },
     multiplication: { name: "Lille tabel", icon: "7 × 8", description: "Gangestykker fra 0×0 til 10×10" },
     multiplicationColumn: { name: "Gangestykker", icon: "31 × 56", description: "Gang tocifrede tal med delprodukter og mente" },
     tableDrill: { name: "Gange-drill", icon: "3 × 4", description: "Udfyld hele 1–9-tabellen på tid" },
