@@ -680,7 +680,7 @@ multiplicationColumn: {
     document.body.classList.add("site-authenticated");
     const userLabel = isFractionTester() && jacobFrontend ? "Jacob · Front-end" : state.user.role === "teacher" ? "Lærer" : isGuest() ? "Gæst" : `${escapeHtml(state.user.name)} · Elev`;
     const passwordButton = state.user.role === "student" ? `<button class="btn ghost" data-action="change-password">Skift adgangskode</button>` : "";
-    return `<header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions"><span class="user-pill">${userLabel}</span>${passwordButton}${jacobViewButton()}<button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
+    return `<header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions"><button type="button" class="btn secondary" data-install-app>Installer som app</button><span class="user-pill">${userLabel}</span>${passwordButton}${jacobViewButton()}<button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
   }
   function stopErlingAudio() {
     if (activeErlingAudio) {
@@ -792,6 +792,7 @@ multiplicationColumn: {
             <div class="login-divider"><span>eller</span></div>
             ${registrationEnabled ? `<button class="btn secondary full" type="button" data-action="${signup ? "show-login" : "show-signup"}">${signup ? "Tilbage til login" : "Opret bruger"}</button>` : ""}
             ${signup ? "" : `<button class="btn guest-login full" type="button" data-action="guest-login">Gæst</button><small class="guest-login-note">Ingen resultater gemmes.</small>`}
+            <button type="button" class="btn secondary full" data-install-app>Installer som app</button>
             <p class="login-card-quote">SMÅ<br>FREMSKRIDT<br>STORE DRØMME</p>
           </form>
           <div class="login-poster-tagline" aria-hidden="true">BEDRE<br>MATEMATIK<br>EN LYSERE<br>FREMTID</div>

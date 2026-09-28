@@ -1,0 +1,8 @@
+.app-installed [data-install-app] { display: none !important; }
+#install-app-dialog { box-sizing: border-box; width: min(440px, calc(100% - 32px)); max-height: calc(100dvh - 32px); overflow: auto; padding: 24px; border: 2px solid #bd8fdf; border-radius: 20px; background: #291448; color: #fff5df; box-shadow: 0 18px 80px #0008; font: 1rem/1.55 system-ui, sans-serif; }
+#install-app-dialog::backdrop { background: #10071dc9; }
+#install-app-dialog h2 { font-size: 1.4rem; line-height: 1.2; color: #ffd077; margin: 0 0 16px; }
+#install-app-dialog ol { padding-left: 24px; }
+#install-app-dialog li { margin-block: 12px; }
+#install-app-dialog .btn { min-height: 44px; background: #ffd077; color: #291448; border: 0; border-radius: 10px; padding: 10px 24px; font: inherit; font-weight: 700; cursor: pointer; }
+#install-app-dialog .btn:focus-visible { outline: 3px solid white; outline-offset: 3px; }
