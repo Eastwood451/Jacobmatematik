@@ -1345,7 +1345,6 @@ function additionColumnTokenPresentation(token, current, task) {
       </div>
       ${tokenTray}
       ${task.phase !== "answer" && !state.answered ? `<p class="column-addition-placement-note">Træk cifret til den rigtige plads. Du kan også trykke på cifret og derefter på en plads.</p>` : ""}
-      ${task.phase === "answer" && !state.answered ? `<p class="column-addition-placeholders" aria-hidden="true">${task.resultDigits.map(() => "□").join(" ")}</p>` : ""}
       <span class="column-addition-current" aria-hidden="true">${current.column === "ones" ? "enerkolonne" : "tierkolonne"}</span>
     </div>`;
   }
