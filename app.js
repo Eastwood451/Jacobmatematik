@@ -120,7 +120,7 @@
     letter,
     word,
     image:`assets/letters/${file}`,
-    audio:`assets/letters/audio/${file.replace(/\.webp$/, ".mp3")}`,
+    audio:`assets/letters/audio/${file.replace(/\.webp$/, ["L","N"].includes(letter) ? "-v2.mp3" : ".mp3")}`,
   }));
   const LETTER_KEYS = LETTER_ITEMS.map(item => item.letter);
   let activeLetterAudio = null;
@@ -269,9 +269,9 @@
         const levelIndex=subtractionDrillLevelIndex(learner);
         if (levelIndex < 2) {
           const currentLevel=SUBTRACTION_DRILL_LEVELS[levelIndex];
-          const grouped=levelIndex === 0 ? subtractionDrillPairStats(learner) : subtractionDrillExactPairStats(learner);
+          const grouped=subtractionDrillPairStats(learner);
           const fact=weightedPick(currentLevel.facts, candidate => {
-            const mastery=drillMastery(grouped.get(`${candidate.minuend}-${candidate.subtrahend}`) || []);
+            const mastery=drillMastery(grouped.get(levelIndex === 0 ? `${candidate.minuend}-${candidate.subtrahend}` : `ones:${candidate.minuend % 10}-${candidate.subtrahend}`) || []);
             return mastery.learned ? .15 : mastery.streak ? 1.4 : 4;
           });
           return makeTask("subtractionDrill", `${fact.minuend} − ${fact.subtrahend}`, fact.minuend - fact.subtrahend, currentLevel.hint, { ...fact, subtractionDrillLevel:levelIndex });
@@ -884,12 +884,12 @@ multiplicationColumn: {
         art += `<g class="math-tower-addition-${brick.learned ? "brick" : "hole"}" data-pair="${brick.left}+${brick.right}"><rect x="${x+.8}" y="${y+.8}" width="${width-1.6}" height="${height-1.6}" rx=".7" fill="${brick.learned ? granite : holeFill}"/>${brick.learned ? `<path d="M${x+2} ${y+height-2}H${x+width-2}V${y+2}" fill="none" stroke="#59666b" stroke-width="1.1"/><path d="M${x+2} ${y+2}H${x+width-2}" stroke="#e3e8e6" stroke-opacity=".7" stroke-width=".8"/><circle cx="${x+5+(r%3)*2}" cy="${y+5+(c%2)*2}" r=".7" fill="#657176"/>` : ''}</g>`;
       }));
     } else if (subtractionStones) {
-      // One upright stone for the one-digit set and each two-digit tens group.
+      // One stone for single-digit subtraction and one for shared ones patterns.
       const width=276/subtractionStones.stones.length;
       art = `<rect x="12" y="2" width="276" height="120" fill="${holeBackdrop}"/>`;
       subtractionStones.stones.forEach((stone, column) => {
         const x=12+column*width, granite=['#aeb7ba','#939fa4','#c0c7c8'][column%3];
-        art += `<g class="math-tower-subtraction-${stone.learned ? "stone" : "hole"}" data-range="${stone.label}"><rect x="${x+.9}" y="2.8" width="${width-1.8}" height="118.4" rx="1" fill="${stone.learned ? granite : holeFill}"/>${stone.learned ? `<path d="M${x+2.2} 118.5H${x+width-2.2}V4.5" fill="none" stroke="#59666b" stroke-width="1.2"/><path d="M${x+2.2} 4.5H${x+width-2.2}" stroke="#e3e8e6" stroke-opacity=".7" stroke-width=".8"/><circle cx="${x+5+(column%3)*2}" cy="${16+(column%5)*12}" r=".9" fill="#657176"/><text x="${x+width/2}" y="67" text-anchor="middle" fill="#3b474d" font-family="Georgia,serif" font-size="8" font-weight="900">${column ? `${column}0s` : '0–9'}</text>` : ''}</g>`;
+        art += `<g class="math-tower-subtraction-${stone.learned ? "stone" : "hole"}" data-range="${stone.label}"><rect x="${x+.9}" y="2.8" width="${width-1.8}" height="118.4" rx="1" fill="${stone.learned ? granite : holeFill}"/>${stone.learned ? `<path d="M${x+2.2} 118.5H${x+width-2.2}V4.5" fill="none" stroke="#59666b" stroke-width="1.2"/><path d="M${x+2.2} 4.5H${x+width-2.2}" stroke="#e3e8e6" stroke-opacity=".7" stroke-width=".8"/><circle cx="${x+5+(column%3)*2}" cy="${16+(column%5)*12}" r=".9" fill="#657176"/><text x="${x+width/2}" y="67" text-anchor="middle" fill="#3b474d" font-family="Georgia,serif" font-size="8" font-weight="900">${escapeHtml(stone.label)}</text>` : ''}</g>`;
       });
     } else if (numberStones) {
       // One upright foundation stone for each number from 0 to 10.
@@ -940,7 +940,7 @@ multiplicationColumn: {
           const additionBricks = level.topics.includes("addition") ? mathTowerAdditionBricks(state.user) : null;
           const subtractionStones = level.topics.includes("subtractionDrill") ? mathTowerSubtractionStones(state.user) : null;
           const score = heatmap ? heatmap.bricks / (TABLE_DRILL_VALUES.length ** 2) * 100 : numberStones ? numberStones.built / numberStones.stones.length * 100 : additionBricks ? additionBricks.built : subtractionStones ? subtractionStones.built / subtractionStones.stones.length * 100 : mathTowerScore(state.user, level.topics);
-          const stage = heatmap ? { key:"heatmap", name:`${heatmap.bricks}/81 mursten` } : numberStones ? { key:"number-stones", name:`${numberStones.built}/11 granit` } : additionBricks ? { key:"addition-bricks", name:`${additionBricks.built}/100 mursten` } : subtractionStones ? { key:"subtraction-stones", name:`${subtractionStones.built}/10 granit` } : mathTowerStage(score);
+          const stage = heatmap ? { key:"heatmap", name:`${heatmap.bricks}/81 mursten` } : numberStones ? { key:"number-stones", name:`${numberStones.built}/11 granit` } : additionBricks ? { key:"addition-bricks", name:`${additionBricks.built}/100 mursten` } : subtractionStones ? { key:"subtraction-stones", name:`${subtractionStones.built}/${subtractionStones.stones.length} granit` } : mathTowerStage(score);
           const topic = level.topics.find(key => availableTopics.includes(key));
           const percentage = Math.floor(score + 1e-9);
           const description = `${level.label}: ${percentage} %, ${stage.name}. ${level.topics.map(key => TOPICS[key].name).join(" og ")}.`;
@@ -2760,8 +2760,8 @@ function finishColumnAdditionDrag(event, cancelled = false) {
   function subtractionDrillLevelProgress(user, index) {
     const level=SUBTRACTION_DRILL_LEVELS[index];
     if (!level?.facts) return { learned:0, total:0, complete:true };
-    const grouped=index === 0 ? subtractionDrillPairStats(user) : subtractionDrillExactPairStats(user);
-    const learned=level.facts.filter(fact => drillMastery(grouped.get(`${fact.minuend}-${fact.subtrahend}`) || []).learned).length;
+    const grouped=subtractionDrillPairStats(user);
+    const learned=level.facts.filter(fact => drillMastery(grouped.get(index === 0 ? `${fact.minuend}-${fact.subtrahend}` : `ones:${fact.minuend % 10}-${fact.subtrahend}`) || []).learned).length;
     return { learned, total:level.facts.length, complete:learned === level.facts.length };
   }
 
@@ -3130,8 +3130,9 @@ function finishColumnAdditionDrag(event, cancelled = false) {
           </article>
         </section>`;
       studentDetail = `
-        <section class="student-profile-head"><div class="student-name"><span class="avatar large">${escapeHtml(selected.name.slice(0,1))}</span><div><span class="eyebrow">Elevprofil</span><h2>${escapeHtml(selected.name)}</h2><p>${summaryFor(selected)}</p></div></div><div class="student-profile-actions"><span class="progress-badge ${progress.direction}">${progress.direction==="up"?"↗":progress.direction==="down"?"↘":"→"} ${progressCopy}</span><label>Klasse<select data-student-class="${selected.id}">${selected.classId == null ? '<option value="" selected disabled>Uden klasse — vælg klasse</option>' : ""}${classes.map(item => `<option value="${item.id}" ${item.id===selected.classId?"selected":""}>${escapeHtml(item.name)}</option>`).join("")}</select></label></div><form id="student-profile-form" class="student-profile-editor" data-student-id="${escapeHtml(selected.id)}"><input type="hidden" name="studentId" value="${escapeHtml(selected.id)}"><div class="field"><label for="profile-student-name">Elevens navn</label><input id="profile-student-name" name="studentName" maxlength="60" value="${escapeHtml(selected.name)}" autocomplete="off" required></div><div class="field"><label for="profile-student-username">Brugernavn</label><input id="profile-student-username" name="studentUsername" maxlength="40" value="${escapeHtml(selected.username)}" autocomplete="off" autocapitalize="none" required></div><div class="field"><label for="profile-student-password">Adgangskode</label><input id="profile-student-password" name="studentPassword" type="password" maxlength="60" autocomplete="new-password" placeholder="Lad stå tomt for at beholde den nuværende"></div><button class="btn" type="submit">Gem elev</button><p id="student-profile-message" class="student-profile-message ${state.studentProfileNotice ? "success" : ""}" role="status">${escapeHtml(state.studentProfileNotice)}</p></form></section>
+        <section class="student-profile-head"><div class="student-name"><span class="avatar large">${escapeHtml(selected.name.slice(0,1))}</span><div><span class="eyebrow">Elevprofil</span><h2>${escapeHtml(selected.name)}</h2><p>${selected.selfRegistered ? "Selvoprettet konto · resultater gemmes kun på elevens enhed." : summaryFor(selected)}</p></div></div><div class="student-profile-actions"><span class="progress-badge ${progress.direction}">${progress.direction==="up"?"↗":progress.direction==="down"?"↘":"→"} ${progressCopy}</span><label>Klasse<select data-student-class="${selected.id}">${selected.classId == null ? '<option value="" selected disabled>Uden klasse — vælg klasse</option>' : ""}${classes.map(item => `<option value="${item.id}" ${item.id===selected.classId?"selected":""}>${escapeHtml(item.name)}</option>`).join("")}</select></label></div><form id="student-profile-form" class="student-profile-editor" data-student-id="${escapeHtml(selected.id)}"><input type="hidden" name="studentId" value="${escapeHtml(selected.id)}"><div class="field"><label for="profile-student-name">Elevens navn</label><input id="profile-student-name" name="studentName" maxlength="60" value="${escapeHtml(selected.name)}" autocomplete="off" required></div><div class="field"><label for="profile-student-username">Brugernavn</label><input id="profile-student-username" name="studentUsername" maxlength="40" value="${escapeHtml(selected.username)}" autocomplete="off" autocapitalize="none" required></div><div class="field"><label for="profile-student-password">Adgangskode</label><input id="profile-student-password" name="studentPassword" type="password" maxlength="60" autocomplete="new-password" placeholder="Lad stå tomt for at beholde den nuværende"></div><button class="btn" type="submit">Gem elev</button><p id="student-profile-message" class="student-profile-message ${state.studentProfileNotice ? "success" : ""}" role="status">${escapeHtml(state.studentProfileNotice)}</p></form></section>
 
+        ${selected.selfRegistered ? `<section class="local-data-panel" role="note"><strong>Kun lokal resultatlagring</strong><p>Denne konto er selvoprettet. Resultaterne kan derfor ikke ses her eller på klassens leaderboard — heller ikke når kontoen er placeret i en klasse. Brug en elevkonto oprettet via “Tilføj elev”, hvis du skal følge elevens arbejde.</p></section>` : ""}
         ${studentInsights}
         ${state.teacherTopicDetail === "tableDrill" ? renderTableDrillHistory(selected) : ""}
         ${state.teacherTopicDetail === "divisionDrill" ? renderDivisionDrillHistory(selected) : ""}
