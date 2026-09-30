@@ -1,11 +1,55 @@
 (() => {
   "use strict";
 
-  // Paused at Jacob's request on 2026-09-22. Re-enable only on his explicit request.
-  const selfRegistrationEnabled = false;
+  // Self-registration reopened with device-only progress and explicit consent.
+  const selfRegistrationEnabled = true;
   const config = window.JACOBMATEMATIK_SUPABASE || {};
   const configured = Boolean(config.url && config.publishableKey && window.supabase?.createClient);
   const client = configured ? window.supabase.createClient(config.url, config.publishableKey) : null;
+  let activeProfile = null;
+  const consentVersion = "2026-09-30";
+  const progressKey = id => `jm-local-progress-v1:${id}`;
+  const consentKey = id => `jm-local-consent-v1:${id}`;
+  const usesLocalResults = () => activeProfile?.role === "student" && activeProfile.self_registered === true;
+  const isOwnLocalProgressKey = key => usesLocalResults() && key === progressKey(activeProfile.id);
+  function hasLocalConsent() {
+    try { return Boolean(activeProfile && localStorage.getItem(consentKey(activeProfile.id)) === consentVersion); }
+    catch { return false; }
+  }
+  function grantLocalConsent() {
+    if (!usesLocalResults()) throw new Error("Ingen lokal elevprofil.");
+    localStorage.setItem(consentKey(activeProfile.id), consentVersion);
+  }
+  function readLocalProgress() {
+    if (!usesLocalResults() || !hasLocalConsent()) return { results:[], fpsBest:0 };
+    const raw = localStorage.getItem(progressKey(activeProfile.id));
+    const data = raw ? JSON.parse(raw) : {};
+    return { results:Array.isArray(data.results) ? data.results : [], fpsBest:Math.max(0, Number(data.fpsBest) || 0) };
+  }
+  function writeLocalProgress(data) {
+    if (!usesLocalResults() || !hasLocalConsent()) throw new Error("Giv samtykke til lokal lagring først.");
+    try { localStorage.setItem(progressKey(activeProfile.id), JSON.stringify(data)); }
+    catch { throw new Error("Resultatet kunne ikke gemmes på denne enhed. Kontrollér browserens lagerplads."); }
+  }
+  function clearLocalProgress() {
+    if (!usesLocalResults()) throw new Error("Denne konto bruger ikke lokal resultatlagring.");
+    localStorage.removeItem(progressKey(activeProfile.id));
+  }
+  async function getResultStorageForSession() {
+    const { data:{ user }, error } = await client.auth.getUser();
+    if (error || !user) { activeProfile = null; return "none"; }
+    const response = await client.from("profiles").select("id,role,self_registered").eq("id", user.id).single();
+    throwIfError(response);
+    activeProfile = response.data;
+    return usesLocalResults() ? "local" : activeProfile?.role === "student" && activeProfile.self_registered === false ? "server" : "none";
+  }
+  function saveLocalFpsScore(score) {
+    const data = readLocalProgress();
+    const previous = data.fpsBest;
+    data.fpsBest = Math.max(previous, Number(score) || 0);
+    writeLocalProgress(data);
+    return { best_score:data.fpsBest, improved:data.fpsBest > previous };
+  }
   const normalizeUsername = value => String(value || "").trim().normalize("NFC").toLowerCase();
   async function emailForUsername(value) {
     const username = normalizeUsername(value);
@@ -47,8 +91,11 @@
     return loadDatabase();
   }
 
-  async function signUp(username, password) {
+  async function signUp(username, password, localConsent = false) {
     if (!selfRegistrationEnabled) throw new Error("Brugeroprettelse er midlertidigt lukket.");
+    if (localConsent !== true) throw new Error("Du skal give samtykke til lokal lagring for at oprette dig.");
+    // Verify storage is available before creating an account.
+    localStorage.setItem("jm-storage-check", "1"); localStorage.removeItem("jm-storage-check");
     username = normalizeUsername(username);
     if (!/^[a-zæøå0-9._-]{1,40}$/.test(username)) throw new Error("Brug 1–40 tegn: a–z, æ, ø, å, tal, punktum, bindestreg eller understregning.");
     if (password.length < 6) throw new Error("Adgangskoden skal have mindst 6 tegn.");
@@ -56,7 +103,7 @@
     if (enabled.error || enabled.data !== true) throw new Error("Oprettelse af brugere er ikke aktiveret endnu. Prøv igen senere.");
     const response = await client.auth.signUp({
       email:await emailForUsername(username), password,
-      options:{ data:{ username, registration_source:"self" } },
+      options:{ data:{ username, registration_source:"self", local_results_consent:consentVersion } },
     });
     if (response.error) {
       if (["user_already_exists", "email_exists"].includes(response.error.code)) throw new Error("Brugernavnet er allerede i brug. Vælg et andet.");
@@ -64,6 +111,7 @@
       if (response.error.code === "weak_password") throw new Error("Vælg en stærkere adgangskode med mindst 6 tegn.");
       throw new Error("Brugeren kunne ikke oprettes. Prøv et andet brugernavn eller prøv igen senere.");
     }
+    if (response.data?.user?.id) localStorage.setItem(consentKey(response.data.user.id), consentVersion);
     if (!response.data?.session) throw new Error("Kontoen afventer aktivering. Kontakt Jacob, før du prøver at oprette den igen.");
   }
 
@@ -136,15 +184,20 @@
   }
 
   async function signOut() {
+    activeProfile = null;
     if (client) await client.auth.signOut();
   }
 
   async function loadDatabase() {
     const { data:{ user }, error:userError } = await client.auth.getUser();
     if (userError || !user) throw userError || new Error("Ingen aktiv session.");
-    const profileResponse = await client.from("profiles").select("id,teacher_id,role,username,name").eq("id", user.id).single();
+    const profileResponse = await client.from("profiles").select("id,teacher_id,role,username,name,self_registered").eq("id", user.id).single();
     throwIfError(profileResponse);
     const profile = profileResponse.data;
+    activeProfile = profile;
+    if (usesLocalResults()) {
+      return { database:{ classes:[], users:[{ ...profile, selfRegistered:true, resultStorage:"local", classId:null, results:readLocalProgress().results }] }, currentUserId:profile.id };
+    }
     const teacherId = profile.role === "teacher" ? profile.id : profile.teacher_id;
     const stateResponse = profile.role === "teacher"
       ? await client.from("school_state").select("data").eq("teacher_id", teacherId).single()
@@ -158,6 +211,7 @@
     const ownUser = users.find(item => item.id === profile.id);
     // Always use the server profile for authorization, never a school JSON flag.
     ownUser.role = profile.role;
+    ownUser.resultStorage = profile.role === "student" && profile.self_registered === false ? "server" : "none";
     ownUser.canManageRegistrations = false;
     if (profile.role === "teacher") {
       const permission = await client.rpc("can_manage_self_registered");
@@ -194,6 +248,15 @@
   }
 
   async function appendResult(studentId, result) {
+    if (!activeProfile || activeProfile.id !== studentId) throw new Error("Resultatet tilhører ikke den aktive bruger.");
+    if (usesLocalResults()) {
+      const progress = readLocalProgress();
+      const { remoteId, ...localResult } = result;
+      progress.results.push(localResult);
+      writeLocalProgress(progress);
+      return null;
+    }
+    if (activeProfile.role !== "student" || activeProfile.self_registered !== false) throw new Error("Kun læreroprettede elever kan gemme fælles resultater.");
     const { remoteId, ...data } = result;
     const response = await client.from("results").insert({ student_id:studentId, data }).select("id").single();
     throwIfError(response);
@@ -231,6 +294,8 @@
 
   window.JacobBackend = {
     configured,
+    usesLocalResults, isOwnLocalProgressKey, hasLocalConsent, grantLocalConsent, readLocalProgress, clearLocalProgress,
+    getResultStorageForSession, saveLocalFpsScore,
     selfRegistrationEnabled,
     // Share the existing authenticated client with ephemeral game rooms.
     realtimeClient:client,

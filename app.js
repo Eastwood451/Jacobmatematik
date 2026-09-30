@@ -517,7 +517,7 @@ multiplicationColumn: {
     if (isGuest()) return null; // Guest sessions are memory-only and must never reach Supabase.
     if (isFractionTester()) return null; // Teacher preview is session-only; never impersonate a student.
     const remoteId=await backend.appendResult(state.user.id, result);
-    if (result?.correct === true && TOPICS[result?.topic]) {
+    if (!isLocalStudent() && result?.correct === true && TOPICS[result?.topic]) {
       window.setTimeout(() => refreshPracticeLeaderboard({ prompt:true }), 0);
     }
     return remoteId;
@@ -546,6 +546,7 @@ multiplicationColumn: {
 
   const GUEST_TOPICS = new Set(Object.keys(TOPICS));
   const isGuest = () => state.user?.role === "guest";
+  const isLocalStudent = () => state.user?.resultStorage === "local";
   const createGuest = () => ({
     id:`guest-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`,
     role:"guest", username:"guest", name:"Gæst", results:[],
@@ -783,11 +784,12 @@ multiplicationColumn: {
           <form class="login-card" id="${signup ? "signup-form" : "login-form"}">
             <div class="login-brand"><span class="brand-mark" aria-hidden="true">∑</span><span>jacobmatematik</span></div>
             <h2>${signup ? "Opret bruger" : "Godt at se dig"}</h2>
-            <p>${signup ? "Vælg et brugernavn og en adgangskode. Dine fremskridt bliver gemt." : "Log ind som elev eller lærer for at fortsætte."}</p>
+            <p>${signup ? "Vælg et brugernavn og en adgangskode. Dine resultater gemmes kun i denne browser på denne enhed." : "Log ind som elev eller lærer for at fortsætte."}</p>
             <div class="field login-username-field"><label for="username">Brugernavn</label><input id="username" name="username" maxlength="40" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="fx alma7" required></div>
             <div class="field login-password-field"><label for="password">Adgangskode</label><input id="password" name="password" type="password" ${signup ? 'minlength="6" maxlength="72"' : ""} autocomplete="${signup ? "new-password" : "current-password"}" placeholder="${signup ? "Mindst 6 tegn" : "Din adgangskode"}" required></div>
-            ${signup ? '<small>Husk dit brugernavn og din adgangskode. Din lærer kan senere placere dig i en klasse.</small>' : ""}
+            ${signup ? '<small>Din konto gemmes til login. Dine resultater sendes ikke til læreren eller vores server. De følger ikke med til andre enheder.</small>' : ""}
             <p id="login-error" class="error" role="alert"></p>
+            ${signup ? '<label class="local-consent"><input type="checkbox" name="localConsent" required><span>Jeg giver samtykke til, at mine resultater gemmes lokalt på denne enhed. Jeg kan slette dem med “Slet data” under tårnet.</span></label>' : ""}
             <button class="btn full" type="submit">${signup ? "Opret bruger" : 'Log ind <span aria-hidden="true">→</span>'}</button>
             <div class="login-divider"><span>eller</span></div>
             ${registrationEnabled ? `<button class="btn secondary full" type="button" data-action="${signup ? "show-login" : "show-signup"}">${signup ? "Tilbage til login" : "Opret bruger"}</button>` : ""}
@@ -951,13 +953,14 @@ multiplicationColumn: {
       <div class="math-tower-foundation">Et solidt fundament</div>
       <div class="math-tower-legend" aria-label="Tårnets byggestadier"><span><i class="legend-frame"></i>0 % · Rammeværk</span><span><i class="legend-wood"></i>30 % · Træ</span><span><i class="legend-timber"></i>60 % · Bindingsværk</span><span><i class="legend-granite"></i>95 % · Granit</span></div>
       <details class="math-tower-help"><summary>Hvordan bygges tårnet?</summary><p>Vælg en etage for at øve. Gange-etagen viser dit bedste Gange-drill-heatmap, og Division-etagen viser dit bedste Division-drill-heatmap: sessionen med flest grønne felter (korrekt på højst 4 sekunder). Ved lighed bruges den nyeste session. Hvert grønt felt bliver en granitmursten, og alle andre felter er sorte huller. Plus-etagen har alle 100 ordnede étcifrede pluspar, så 5 + 9 og 9 + 5 er hver sin mursten. Minus-etagen har to lodrette sten: étcifrede minusstykker og ét-mønstre for tocifrede tal — fordi fx X5 − 7 virker ens uanset om det er 15, 25 eller 65. Tælle-etagen har én lodret sten for hvert tal fra 0 til 10. Sten og mursten bliver granit, når opgaven er lært.</p><p>På de øvrige etager følger materialet din score: andelen af rigtige blandt dine seneste 20 svar i hvert tilknyttet modul. Har etagen flere moduler, bruges gennemsnittet; moduler uden svar tæller som 0 %. Scoren kan både stige og falde.</p></details>
+      ${isLocalStudent() ? `<section class="local-data-panel" aria-label="Dine lokale data"><strong>Gemmes kun på denne enhed</strong><p>Dine resultater og din highscore er private og gemmes i denne browser.</p><button class="btn danger full" type="button" data-action="delete-local-results">Slet data</button><p id="local-data-status" role="status"></p></section>` : ""}
     </aside>`;
   }
   function leaderboardMedal(rank) {
     return rank === 1 ? "🥇" : rank === 2 ? "🥈" : rank === 3 ? "🥉" : `#${rank}`;
   }
   function exerciseLeaderboardLink(topic) {
-    const canShow=!isGuest() && TOPICS[topic] && ["student","teacher"].includes(state.user?.role);
+    const canShow=!isGuest() && !isLocalStudent() && TOPICS[topic] && ["student","teacher"].includes(state.user?.role);
     if (!canShow) return "";
     return `<button type="button" class="btn secondary exercise-leaderboard-link" data-action="exercise-leaderboard" data-leaderboard-topic="${escapeHtml(topic)}">🏆 Leaderboard</button>`;
   }
@@ -965,7 +968,7 @@ multiplicationColumn: {
     document.getElementById("exercise-leaderboard-dialog")?.remove();
   }
   async function openExerciseLeaderboard(topic) {
-    if (!TOPICS[topic]) return;
+    if (!TOPICS[topic] || isLocalStudent()) return;
     if (!usingCentralDatabase) {
       closeExerciseLeaderboard();
       document.body.insertAdjacentHTML("beforeend", `<div class="leaderboard-dialog-backdrop" id="exercise-leaderboard-dialog"><section class="leaderboard-dialog exercise-leaderboard-dialog" role="dialog" aria-modal="true"><button type="button" class="exercise-leaderboard-close" data-action="close-exercise-leaderboard" aria-label="Luk leaderboard">×</button><div class="leaderboard-dialog-medal">🏆</div><h2>Leaderboard</h2><p>Leaderboardet kræver forbindelse til databasen.</p></section></div>`);
@@ -996,7 +999,7 @@ multiplicationColumn: {
     }
   }
   function renderPracticeLeaderboardCard() {
-    if (!usingCentralDatabase || isGuest() || state.user?.role !== "student") return "";
+    if (!usingCentralDatabase || isGuest() || isLocalStudent() || state.user?.role !== "student") return "";
     const status=practiceLeaderboard.status;
     const rows=practiceLeaderboard.rows;
     const meRow=rows.find(row => row.isMe);
@@ -1034,7 +1037,7 @@ multiplicationColumn: {
     document.querySelector('[data-action="leaderboard-join"]')?.focus();
   }
   async function refreshPracticeLeaderboard({ prompt=false } = {}) {
-    if (!usingCentralDatabase || isGuest() || state.user?.role !== "student" || !backend?.getPracticeLeaderboard) return;
+    if (!usingCentralDatabase || isGuest() || isLocalStudent() || state.user?.role !== "student" || !backend?.getPracticeLeaderboard) return;
     const userId=state.user.id;
     const request=++practiceLeaderboard.request;
     practiceLeaderboard.loading=true;
@@ -1179,7 +1182,7 @@ multiplicationColumn: {
     const marker={topic:sessionTopic,recordType:sessionTopic,problem:`${TOPICS[drill.topic].name} session`,correct:true,responseTime:0,timestamp:new Date(endedAt).toISOString(),drillSessionId:drill.sessionId,drillStartedAt:new Date(drill.startedAt).toISOString(),drillEndedAt:new Date(endedAt).toISOString(),drillStatus:status,drillExpectedCells:drill.pairs.length,drillTroubleRound:drill.troubleRound,drillType:drill.topic};
     if (drill.topic === "divisionDrill") marker.divisionDrillLayout=divisionDrillLayoutData(drill.layout);
     try {
-      if (usingCentralDatabase) marker.remoteId=await appendCurrentPracticeResult(marker);
+      if (usingCentralDatabase) { marker.remoteId=await appendCurrentPracticeResult(marker); state.user.results.push(marker); }
       else { state.user.results.push(marker); await save(); }
     } catch (error) {
       drill.finalizedAt=null;
@@ -3067,7 +3070,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     </form>`).join("");
     return `<section id="self-registered-panel" class="class-manager registrations-panel" aria-label="Selvoprettede brugere">
       <div class="class-manager-title"><div><span class="eyebrow">Brugeroversigt</span><h2>Selvoprettede brugere</h2></div><button class="btn secondary" type="button" data-action="toggle-registrations" aria-expanded="${registrations.open}" ${disabled}>${registrations.open ? "Luk oversigt" : "Åbn oversigt"}</button></div>
-      ${registrations.open ? `<p>Åbn elevkortet for at se statistik og redigere brugeren. Du kan også placere brugeren i en klasse.</p>
+      ${registrations.open ? `<p>Selvoprettede brugere gemmer kun resultater på deres egen enhed. Du kan redigere kontoen og placere den i en klasse; det ændrer ikke resultatlagringen.</p>
         <form id="registration-search-form" class="registration-search"><label class="sr-only" for="registration-search">Søg efter brugernavn eller navn</label><input id="registration-search" name="search" type="search" maxlength="40" placeholder="Søg efter brugernavn eller navn" value="${escapeHtml(registrations.search)}" ${disabled}><button class="btn secondary" type="submit" ${disabled}>Søg</button><button class="btn secondary" type="button" data-action="refresh-registrations" ${disabled}>Opdatér</button></form>
         <p role="status">${registrations.loading ? "Henter brugere…" : escapeHtml(registrations.notice)}</p><p class="error" role="alert">${escapeHtml(registrations.error)}</p>
         ${rows || (!registrations.loading && !registrations.error ? '<p class="empty">Ingen selvoprettede brugere fundet.</p>' : "")}
@@ -3204,10 +3207,19 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     </div>`;
     startTeacherLiveUpdates();
   }
-  function render() { if (state.view !== "learn-fractions") leaveFractionLesson(); if (!state.user) renderLogin(); else if (state.view==="learn-fractions") renderFractionLesson(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
+  function renderLocalConsent() {
+    app.innerHTML = `${header()}<div class="page"><section class="class-manager local-consent-card"><h1>Gem dine resultater på denne enhed</h1><p>Din bruger er selvoprettet. Dine resultater gemmes kun i denne browser, så du kan fortsætte næste gang. De sendes ikke til læreren eller vores server og følger ikke med til andre enheder.</p><p>Du kan slette resultaterne med “Slet data” under tårnet. De forsvinder også, hvis browserens webstedsdata slettes.</p><form id="local-consent-form"><label class="local-consent"><input type="checkbox" name="localConsent" required><span>Jeg giver samtykke til lokal lagring af mine resultater på denne enhed.</span></label><p id="local-consent-error" role="alert"></p><button class="btn" type="submit">Gem på denne enhed og fortsæt</button><button class="btn secondary" type="button" data-action="logout">Log ud</button></form></section></div>`;
+  }
+  function render() { if (isLocalStudent() && !backend.hasLocalConsent()) { renderLocalConsent(); return; } if (state.view !== "learn-fractions") leaveFractionLesson(); if (!state.user) renderLogin(); else if (state.view==="learn-fractions") renderFractionLesson(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
 
   document.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (event.target.id === "local-consent-form") {
+      if (!isLocalStudent() || new FormData(event.target).get("localConsent") !== "on") return;
+      try { backend.grantLocalConsent(); state.user.results = backend.readLocalProgress().results; render(); }
+      catch { document.getElementById("local-consent-error").textContent = "Browseren tillader ikke lokal lagring. Aktivér lagring for siden og prøv igen."; }
+      return;
+    }
     if (event.target.id === "signup-form") {
       if (signupBusy || state.user) return;
       if (backend?.selfRegistrationEnabled !== true) {
@@ -3223,7 +3235,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       error.textContent = "";
       let created = false;
       try {
-        await backend.signUp(username, password);
+        await backend.signUp(username, password, data.get("localConsent") === "on");
         created = true;
         // Clear the password as soon as Auth has accepted the account.
         event.target.reset();
@@ -3262,7 +3274,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
         db = normalizeDatabase(loaded.database, false);
         state.user = db.users.find(user => user.id === loaded.currentUserId);
         state.activeClassId = classId; state.expandedStudent = studentId; state.teacherTopicDetail = null;
-        registrations.notice = "Brugeren er placeret i klassen. Tidligere resultater er bevaret.";
+        registrations.notice = "Brugeren er placeret i klassen. Resultater gemmes fortsat kun på elevens egen enhed.";
         registrations.offset = 0;
       } catch {
         if (request !== registrations.request) return;
@@ -3502,6 +3514,17 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       render(); window.scrollTo(0,0); return;
     }
     if (["logout", "home", "change-password"].includes(action)) leaveFoodtruck();
+    if (action === "delete-local-results") {
+      if (!isLocalStudent() || !window.confirm("Vil du slette alle dine resultater, tårnets fremskridt og din Erling-highscore fra denne enhed? Det kan ikke fortrydes. Din konto beholdes.")) return;
+      try {
+        backend.clearLocalProgress();
+        Object.assign(state.user, { results:[] });
+        Object.assign(state, { task:null, matrixDrill:null, subtractionDrillTroubles:null, sessionAnswers:[], sessionCorrect:0, questionNumber:1 });
+        renderStudentHome();
+        document.getElementById("local-data-status").textContent = "Dine resultater er slettet fra denne enhed.";
+      } catch { document.getElementById("local-data-status").textContent = "Data kunne ikke slettes. Prøv igen."; }
+      return;
+    }
     if (action === "guest-login" && !state.user && !signupBusy) {
       stopErlingAudio(); stopKaptajnAudio(); stopLuigiAudio(); stopLetterLearningAudio();
       state.user=createGuest();
@@ -3755,6 +3778,12 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     if (event.key === "-") handleKeypad("minus");
     if (event.key === "Backspace") handleKeypad("delete");
     if (event.key === "Enter") handleKeypad("enter");
+  });
+  window.addEventListener("storage", event => {
+    if (isLocalStudent() && backend.isOwnLocalProgressKey(event.key) && event.newValue === null) {
+      state.matrixDrill=null; state.task=null;
+      window.location.reload();
+    }
   });
   window.addEventListener("pagehide", () => {
     leaveFractionLesson();

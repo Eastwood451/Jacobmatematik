@@ -11,6 +11,7 @@
 
   let client = null;
   let authenticated = false;
+  let resultStorage = "none";
   let persistedBest = 0;
   let currentScore = 0;
   let leaderboard = [];
@@ -19,6 +20,7 @@
   let queuedScore = 0;
   let panelOpen = false;
   let initialized = false;
+  let localProgressDeleted = false;
 
   const soloScoreEligible = () => document.getElementById("online-hud")?.hidden !== false;
 
@@ -129,6 +131,14 @@
     pill.classList.toggle("is-record", authenticated && eligibleCurrent > persistedBest);
     list.replaceChildren();
 
+    if (resultStorage === "local") {
+      const empty = document.createElement("div");
+      empty.className = "fps-leaderboard-empty";
+      empty.textContent = "Din highscore gemmes kun på denne enhed og vises ikke på det fælles leaderboard.";
+      list.appendChild(empty);
+      lock.textContent = window.JacobBackend.hasLocalConsent() ? "Slet din highscore med ‘Slet data’ under tårnet." : "Giv samtykke til lokal lagring på forsiden for at gemme din highscore.";
+      return;
+    }
     if (!authenticated) {
       const empty = document.createElement("div");
       empty.className = "fps-leaderboard-empty";
@@ -189,13 +199,14 @@
     try {
       const { data, error } = await client.auth.getUser();
       if (error || !data?.user) {
-        authenticated = false;
+        authenticated = false; resultStorage = "none";
         return client;
       }
-      authenticated = true;
+      resultStorage = await window.JacobBackend.getResultStorageForSession();
+      authenticated = resultStorage !== "none";
       return client;
     } catch {
-      authenticated = false;
+      authenticated = false; resultStorage = "none";
       return client;
     }
   }
@@ -208,6 +219,11 @@
       leaderboard = [];
       render();
       return { highscore:0, leaderboard:[] };
+    }
+    if (resultStorage === "local") {
+      persistedBest = window.JacobBackend.readLocalProgress().fpsBest;
+      leaderboard = []; render();
+      return { highscore:persistedBest, leaderboard:[] };
     }
     try {
       const [mine, leaders] = await Promise.all([
@@ -228,6 +244,7 @@
   }
 
   async function submit(score, { force = false } = {}) {
+    if (localProgressDeleted) return null;
     const candidate = Math.max(0, Math.floor(Number(score) || 0));
     if (!soloScoreEligible()) return null;
     currentScore = candidate;
@@ -241,6 +258,12 @@
     }
     submitting = true;
     try {
+      if (resultStorage === "local") {
+        if (!window.JacobBackend.hasLocalConsent()) return null;
+        const result = window.JacobBackend.saveLocalFpsScore(candidate);
+        persistedBest = result.best_score; render();
+        return result;
+      }
       const response = await activeClient.rpc("submit_fps_score", { p_score:candidate });
       if (response.error) throw response.error;
       const result = Array.isArray(response.data) ? response.data[0] : response.data;
@@ -262,6 +285,7 @@
   }
 
   function setCurrentScore(score) {
+    if (localProgressDeleted) return;
     currentScore = Math.max(0, Math.floor(Number(score) || 0));
     render();
     if (!soloScoreEligible() || !authenticated || currentScore <= persistedBest) return;
@@ -287,6 +311,14 @@
   }
 
   window.FpsLeaderboard = { refresh, submit, setCurrentScore, open:() => setPanelOpen(true) };
+  window.addEventListener("storage", event => {
+    if (window.JacobBackend?.isOwnLocalProgressKey(event.key) && event.newValue === null) {
+      localProgressDeleted = true;
+      clearTimeout(submitTimer);
+      queuedScore = 0;
+      window.location.reload();
+    }
+  });
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", init, { once:true });
   else void init();
 })();
