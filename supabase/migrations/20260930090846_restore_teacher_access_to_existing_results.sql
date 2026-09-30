@@ -1,0 +1,1 @@
+alter policy "Only teacher-created results are visible" on public.results using (exists (select 1 from public.profiles p where p.id=results.student_id and p.role='student' and p.teacher_id is not null and (not p.self_registered or p.teacher_id=(select auth.uid()))));

@@ -10,7 +10,7 @@
   const consentVersion = "2026-09-30";
   const progressKey = id => `jm-local-progress-v1:${id}`;
   const consentKey = id => `jm-local-consent-v1:${id}`;
-  const usesLocalResults = () => activeProfile?.role === "student" && activeProfile.self_registered === true;
+  const usesLocalResults = () => activeProfile?.role === "student" && activeProfile.local_results_only === true;
   const isOwnLocalProgressKey = key => usesLocalResults() && key === progressKey(activeProfile.id);
   function hasLocalConsent() {
     try { return Boolean(activeProfile && localStorage.getItem(consentKey(activeProfile.id)) === consentVersion); }
@@ -38,10 +38,10 @@
   async function getResultStorageForSession() {
     const { data:{ user }, error } = await client.auth.getUser();
     if (error || !user) { activeProfile = null; return "none"; }
-    const response = await client.from("profiles").select("id,role,self_registered").eq("id", user.id).single();
+    const response = await client.from("profiles").select("id,role,self_registered,local_results_only").eq("id", user.id).single();
     throwIfError(response);
     activeProfile = response.data;
-    return usesLocalResults() ? "local" : activeProfile?.role === "student" && activeProfile.self_registered === false ? "server" : "none";
+    return usesLocalResults() ? "local" : activeProfile?.role === "student" && activeProfile.local_results_only === false ? "server" : "none";
   }
   function saveLocalFpsScore(score) {
     const data = readLocalProgress();
@@ -191,7 +191,7 @@
   async function loadDatabase() {
     const { data:{ user }, error:userError } = await client.auth.getUser();
     if (userError || !user) throw userError || new Error("Ingen aktiv session.");
-    const profileResponse = await client.from("profiles").select("id,teacher_id,role,username,name,self_registered").eq("id", user.id).single();
+    const profileResponse = await client.from("profiles").select("id,teacher_id,role,username,name,self_registered,local_results_only").eq("id", user.id).single();
     throwIfError(profileResponse);
     const profile = profileResponse.data;
     activeProfile = profile;
@@ -211,7 +211,7 @@
     const ownUser = users.find(item => item.id === profile.id);
     // Always use the server profile for authorization, never a school JSON flag.
     ownUser.role = profile.role;
-    ownUser.resultStorage = profile.role === "student" && profile.self_registered === false ? "server" : "none";
+    ownUser.resultStorage = profile.role === "student" && profile.local_results_only === false ? "server" : "none";
     ownUser.canManageRegistrations = false;
     if (profile.role === "teacher") {
       const permission = await client.rpc("can_manage_self_registered");
@@ -256,7 +256,7 @@
       writeLocalProgress(progress);
       return null;
     }
-    if (activeProfile.role !== "student" || activeProfile.self_registered !== false) throw new Error("Kun læreroprettede elever kan gemme fælles resultater.");
+    if (activeProfile.role !== "student" || activeProfile.local_results_only !== false) throw new Error("Denne elevprofil kan ikke gemme fælles resultater.");
     const { remoteId, ...data } = result;
     const response = await client.from("results").insert({ student_id:studentId, data }).select("id").single();
     throwIfError(response);
@@ -319,3 +319,4 @@
     changeOwnPassword,
   };
 })();
+

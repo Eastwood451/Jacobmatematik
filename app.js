@@ -3070,7 +3070,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     </form>`).join("");
     return `<section id="self-registered-panel" class="class-manager registrations-panel" aria-label="Selvoprettede brugere">
       <div class="class-manager-title"><div><span class="eyebrow">Brugeroversigt</span><h2>Selvoprettede brugere</h2></div><button class="btn secondary" type="button" data-action="toggle-registrations" aria-expanded="${registrations.open}" ${disabled}>${registrations.open ? "Luk oversigt" : "Åbn oversigt"}</button></div>
-      ${registrations.open ? `<p>Selvoprettede brugere gemmer kun resultater på deres egen enhed. Du kan redigere kontoen og placere den i en klasse; det ændrer ikke resultatlagringen.</p>
+      ${registrations.open ? `<p>Nye selvoprettede brugere gemmer kun resultater på deres egen enhed. Eksisterende klasseelever beholder deres fælles resultater. Du kan redigere kontoen og placere den i en klasse; det ændrer ikke resultatlagringen.</p>
         <form id="registration-search-form" class="registration-search"><label class="sr-only" for="registration-search">Søg efter brugernavn eller navn</label><input id="registration-search" name="search" type="search" maxlength="40" placeholder="Søg efter brugernavn eller navn" value="${escapeHtml(registrations.search)}" ${disabled}><button class="btn secondary" type="submit" ${disabled}>Søg</button><button class="btn secondary" type="button" data-action="refresh-registrations" ${disabled}>Opdatér</button></form>
         <p role="status">${registrations.loading ? "Henter brugere…" : escapeHtml(registrations.notice)}</p><p class="error" role="alert">${escapeHtml(registrations.error)}</p>
         ${rows || (!registrations.loading && !registrations.error ? '<p class="empty">Ingen selvoprettede brugere fundet.</p>' : "")}
@@ -3275,7 +3275,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
         db = normalizeDatabase(loaded.database, false);
         state.user = db.users.find(user => user.id === loaded.currentUserId);
         state.activeClassId = classId; state.expandedStudent = studentId; state.teacherTopicDetail = null;
-        registrations.notice = "Brugeren er placeret i klassen. Resultater gemmes fortsat kun på elevens egen enhed.";
+        registrations.notice = "Brugeren er placeret i klassen. Kontoens resultatlagring er uændret.";
         registrations.offset = 0;
       } catch {
         if (request !== registrations.request) return;
@@ -3812,3 +3812,4 @@ function finishColumnAdditionDrag(event, cancelled = false) {
   }
   start();
 })();
+
