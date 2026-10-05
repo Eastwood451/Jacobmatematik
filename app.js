@@ -513,6 +513,7 @@ multiplicationColumn: {
   let jacobFrontend = false;
   let switchingJacobView = false;
   let disposeFractionLesson = null;
+  let disposeMarley = null;
   const appendCurrentPracticeResult = async result => {
     if (isGuest()) return null; // Guest sessions are memory-only and must never reach Supabase.
     if (isFractionTester()) return null; // Teacher preview is session-only; never impersonate a student.
@@ -535,10 +536,15 @@ multiplicationColumn: {
       onExit() { leaveFractionLesson(); state.view=state.user?.role === "teacher" && !jacobFrontend ? "teacher" : "student"; render(); window.scrollTo(0,0); },
     });
   }
+  function renderMarley() {
+    disposeMarley?.();
+    app.innerHTML = `${header()}<div id="marley-root"></div>`;
+    disposeMarley = window.MarleyMath.mount(document.getElementById("marley-root"), {onExit() { disposeMarley?.(); disposeMarley=null; state.view="teacher"; render(); }});
+  }
   function jacobViewButton() {
     const lessonLink=canLearnFractions() && state.user?.role === "teacher" && state.view === "teacher" ? `<button type="button" class="btn secondary fraction-pilot-link" data-action="learn-fractions">Lær brøkregning</button>` : "";
     if (!isFractionTester()) return lessonLink;
-    return `<button type="button" class="jacob-view-switch" data-action="toggle-jacob-view" role="switch" aria-checked="${jacobFrontend}" aria-label="Front-end" title="Skift mellem front-end og back-end"><span class="${jacobFrontend ? "active" : ""}">Front-end</span><span class="${!jacobFrontend ? "active" : ""}">Back-end</span></button>${lessonLink}`;
+    return `<button type="button" class="btn secondary" data-action="marley">🐶 Marley</button><button type="button" class="jacob-view-switch" data-action="toggle-jacob-view" role="switch" aria-checked="${jacobFrontend}" aria-label="Front-end" title="Skift mellem front-end og back-end"><span class="${jacobFrontend ? "active" : ""}">Front-end</span><span class="${!jacobFrontend ? "active" : ""}">Back-end</span></button>${lessonLink}`;
   }
   function fractionPilotCard() {
     return canLearnFractions() ? `<button type="button" class="topic-card fraction-pilot-card" data-action="learn-fractions"><span class="topic-icon">½ : ¾</span><strong>Lær brøkregning</strong><small>Find regnearten, og vælg den rigtige regneregel.</small></button>` : "";
@@ -3211,7 +3217,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
   function renderLocalConsent() {
     app.innerHTML = `${header()}<div class="page"><section class="class-manager local-consent-card"><h1>Gem dine resultater på denne enhed</h1><p>Din bruger er selvoprettet. Dine resultater gemmes kun i denne browser, så du kan fortsætte næste gang. De sendes ikke til læreren eller vores server og følger ikke med til andre enheder.</p><p>Du kan slette resultaterne med “Slet data” under tårnet. De forsvinder også, hvis browserens webstedsdata slettes.</p><form id="local-consent-form"><label class="local-consent"><input type="checkbox" name="localConsent" required><span>Jeg giver samtykke til lokal lagring af mine resultater på denne enhed.</span></label><p id="local-consent-error" role="alert"></p><button class="btn" type="submit">Gem på denne enhed og fortsæt</button><button class="btn secondary" type="button" data-action="logout">Log ud</button></form></section></div>`;
   }
-  function render() { if (isLocalStudent() && !backend.hasLocalConsent()) { renderLocalConsent(); return; } if (state.view !== "learn-fractions") leaveFractionLesson(); if (!state.user) renderLogin(); else if (state.view==="learn-fractions") renderFractionLesson(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
+  function render() { if (isLocalStudent() && !backend.hasLocalConsent()) { renderLocalConsent(); return; } if (state.view !== "learn-fractions") leaveFractionLesson(); if (!state.user) renderLogin(); else if (state.view==="learn-fractions") renderFractionLesson(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="marley") renderMarley(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
 
   document.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -3481,6 +3487,11 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       return;
     }
 
+    if (action === "marley") {
+      if (!isFractionTester() || !window.MarleyMath) return;
+      leaveFractionLesson(); leaveFoodtruck(); stopTeacherLiveUpdates();
+      state.view="marley"; renderMarley(); window.scrollTo(0,0); return;
+    }
     if (["toggle-jacob-view", "learn-fractions"].includes(action)) {
       event.preventDefault();
       const allowed=() => action === "learn-fractions" ? canLearnFractions() : isFractionTester();
@@ -3490,7 +3501,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       try {
         if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned");
         if (state.user?.id !== userId || !allowed()) return;
-        leaveFractionLesson(); leaveFoodtruck(); stopMatrixDrillTimer(); stopTeacherLiveUpdates();
+        leaveFractionLesson(); leaveFoodtruck(); disposeMarley?.(); disposeMarley=null; stopMatrixDrillTimer(); stopTeacherLiveUpdates();
         stopErlingAudio(); stopKaptajnAudio(); stopLuigiAudio(); stopLetterLearningAudio();
         clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); clearColumnAdditionDrag(); clearColumnMultiplicationDrag();
         state.task=null; state.matrixDrill=null;
@@ -3500,7 +3511,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       } finally { switchingJacobView=false; }
       return;
     }
-    if (["logout", "home", "change-password", "foodtruck", "foodtruck-home"].includes(action)) leaveFractionLesson();
+    if (["logout", "home", "change-password", "foodtruck", "foodtruck-home"].includes(action)) { leaveFractionLesson(); disposeMarley?.(); disposeMarley=null; }
     if (action === "logout") jacobFrontend=false;
     if (action === "foodtruck") {
       event.preventDefault();
