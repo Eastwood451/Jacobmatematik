@@ -9,7 +9,7 @@ const sandbox={window:{}};vm.runInNewContext(source,sandbox);
 const id='c8b8e1c4-3264-40e9-a43d-0eb6214a0183';
 assert.equal(sandbox.window.LuigiTenFriends.isEnabled({id,role:'teacher'}),true);
 for(const user of [null,{}, {id,role:'student'}, {id:'other',role:'teacher'}])assert.equal(sandbox.window.LuigiTenFriends.isEnabled(user),false);
-for(let n=1;n<=9;n++)assert.equal((sandbox.window.LuigiTenFriends.pizza(n).match(/<path /g)||[]).length,10);
+for(let n=1;n<=9;n++){assert.equal((sandbox.window.LuigiTenFriends.pizza(n).match(/<path /g)||[]).length,10);assert.equal((sandbox.window.LuigiTenFriends.heldPizza(n).match(/fill="#ffd05b"/g)||[]).length,n);}
 const app=fs.readFileSync('app.js','utf8');
 const css=['styles.css','cinematic-theme.css','pizza-friends.css'].map(f=>fs.readFileSync(f,'utf8')).join('\n');
 const out='test-results/pizza-friends';fs.mkdirSync(out,{recursive:true});
@@ -52,6 +52,7 @@ const out='test-results/pizza-friends';fs.mkdirSync(out,{recursive:true});
   const seen=[];
   for(let i=0;i<9;i++){
    const n=await page.locator('.pf-equation>span').first().innerText().then(Number);seen.push(n);
+   assert.equal(await page.locator("#pf-question").innerText(),`Hvem er ${n}'s gode ven?`);
    assert.equal(await page.locator('.pf-pizza path').count(),10);
    const wrong=(10-n)%9+1;
    await page.locator(`[data-pf-answer="${wrong}"]`).click();
