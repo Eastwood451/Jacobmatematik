@@ -514,6 +514,21 @@ multiplicationColumn: {
   let switchingJacobView = false;
   let disposeFractionLesson = null;
   let disposeMarley = null;
+  let disposeTenFriends = null;
+  const canPlayTenFriends = () => window.LuigiTenFriends?.isEnabled(state.user) === true;
+  function leaveTenFriends() { disposeTenFriends?.(); disposeTenFriends = null; }
+  function renderTenFriends() {
+    leaveTenFriends();
+    if (!canPlayTenFriends()) { state.view=state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
+    app.innerHTML=`${header()}<div id="pizza-friends-root"></div>`;
+    disposeTenFriends=window.LuigiTenFriends.mount(document.getElementById("pizza-friends-root"), {
+      user:state.user,
+      onExit() { leaveTenFriends(); state.view=jacobFrontend ? "student" : "teacher"; render(); window.scrollTo(0,0); }
+    });
+  }
+  function tenFriendsCard() {
+    return canPlayTenFriends() ? `<button type="button" class="pf-home-card" data-action="ten-friends"><img src="assets/figurer/luigi-laekkermat-cutout.webp" alt="" width="66" height="80"><span><strong>Luigis 10’er-venner</strong><small>Find pizzamakkeren · testversion</small></span></button>` : "";
+  }
   const appendCurrentPracticeResult = async result => {
     if (isGuest()) return null; // Guest sessions are memory-only and must never reach Supabase.
     if (isFractionTester()) return null; // Teacher preview is session-only; never impersonate a student.
@@ -544,7 +559,7 @@ multiplicationColumn: {
   function jacobViewButton() {
     const lessonLink=canLearnFractions() && state.user?.role === "teacher" && state.view === "teacher" ? `<button type="button" class="btn secondary fraction-pilot-link" data-action="learn-fractions">Lær brøkregning</button>` : "";
     if (!isFractionTester()) return lessonLink;
-    return `<button type="button" class="btn secondary" data-action="marley">🐶 Marley</button><button type="button" class="jacob-view-switch" data-action="toggle-jacob-view" role="switch" aria-checked="${jacobFrontend}" aria-label="Front-end" title="Skift mellem front-end og back-end"><span class="${jacobFrontend ? "active" : ""}">Front-end</span><span class="${!jacobFrontend ? "active" : ""}">Back-end</span></button>${lessonLink}`;
+    return `<button type="button" class="btn secondary" data-action="marley">🐶 Marley</button>${canPlayTenFriends() && state.view === "teacher" ? `<button type="button" class="btn secondary" data-action="ten-friends">Luigis 10’er-venner · test</button>` : ""}<button type="button" class="jacob-view-switch" data-action="toggle-jacob-view" role="switch" aria-checked="${jacobFrontend}" aria-label="Front-end" title="Skift mellem front-end og back-end"><span class="${jacobFrontend ? "active" : ""}">Front-end</span><span class="${!jacobFrontend ? "active" : ""}">Back-end</span></button>${lessonLink}`;
   }
   function fractionPilotCard() {
     return canLearnFractions() ? `<button type="button" class="topic-card fraction-pilot-card" data-action="learn-fractions"><span class="topic-icon">½ : ¾</span><strong>Lær brøkregning</strong><small>Find regnearten, og vælg den rigtige regneregel.</small></button>` : "";
@@ -763,7 +778,7 @@ multiplicationColumn: {
   }
   function renderLogin() {
     document.body.classList.remove("site-authenticated");
-    leaveFractionLesson(); jacobFrontend=false;
+    leaveTenFriends(); leaveFractionLesson(); jacobFrontend=false;
     leaveFoodtruck();
     const registrationEnabled = backend?.selfRegistrationEnabled === true;
     const signup = registrationEnabled && state.view === "signup";
@@ -1106,7 +1121,7 @@ multiplicationColumn: {
     const stats = availableTopics.map(topic => ({ topic, ...getStats(state.user, topic) }));
     const total = practiceResults(state.user).length;
     const guestCopy = isGuest() ? `<p class="guest-session-note">Din træning er midlertidig og slettes, når du forlader siden.</p>` : "";
-    app.innerHTML = `${header()}<div class="page student-home-layout">${renderMathTower(availableTopics)}<div class="student-home-content"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section>${renderPracticeLeaderboardCard()}${isGuest() ? "" : `<nav class="home-game-links" aria-label="Matematikspil"><a class="fps-trial-entry home-fps-card" href="fps.html" aria-label="Spil Erling FPS"><div class="fps-trial-entry-copy"><h3>ERLING FPS</h3><p>Regn. Tjen blyanter. Vind over haterne.</p><span class="fps-trial-entry-cta">SPIL NU ✎</span></div><div class="fps-trial-entry-scene" aria-hidden="true"><img class="fps-trial-entry-erling" src="assets/figurer/erling-aergerlig.webp" alt=""></div></a><a class="foodtruck-card" href="#foodtruck" data-action="foodtruck"><img src="assets/figurer/luigi-laekkermat-cutout.webp" alt="" width="78" height="94"><span><strong>Luigis Foodtruck</strong><small>Del råvarerne med brøker, og byg din egen burger.</small></span><span aria-hidden="true">→</span></a></nav>`}<h2 class="section-label">Vælg et område</h2>${renderTopicTower(availableTopics)}<h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div></div>`;
+    app.innerHTML = `${header()}<div class="page student-home-layout">${renderMathTower(availableTopics)}<div class="student-home-content"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section>${renderPracticeLeaderboardCard()}${tenFriendsCard()}${isGuest() ? "" : `<nav class="home-game-links" aria-label="Matematikspil"><a class="fps-trial-entry home-fps-card" href="fps.html" aria-label="Spil Erling FPS"><div class="fps-trial-entry-copy"><h3>ERLING FPS</h3><p>Regn. Tjen blyanter. Vind over haterne.</p><span class="fps-trial-entry-cta">SPIL NU ✎</span></div><div class="fps-trial-entry-scene" aria-hidden="true"><img class="fps-trial-entry-erling" src="assets/figurer/erling-aergerlig.webp" alt=""></div></a><a class="foodtruck-card" href="#foodtruck" data-action="foodtruck"><img src="assets/figurer/luigi-laekkermat-cutout.webp" alt="" width="78" height="94"><span><strong>Luigis Foodtruck</strong><small>Del råvarerne med brøker, og byg din egen burger.</small></span><span aria-hidden="true">→</span></a></nav>`}<h2 class="section-label">Vælg et område</h2>${renderTopicTower(availableTopics)}<h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div></div>`;
     if (usingCentralDatabase && !isGuest()) void refreshPracticeLeaderboard({ prompt:true });
   }
   function renderStudentPassword() {
@@ -3217,7 +3232,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
   function renderLocalConsent() {
     app.innerHTML = `${header()}<div class="page"><section class="class-manager local-consent-card"><h1>Gem dine resultater på denne enhed</h1><p>Din bruger er selvoprettet. Dine resultater gemmes kun i denne browser, så du kan fortsætte næste gang. De sendes ikke til læreren eller vores server og følger ikke med til andre enheder.</p><p>Du kan slette resultaterne med “Slet data” under tårnet. De forsvinder også, hvis browserens webstedsdata slettes.</p><form id="local-consent-form"><label class="local-consent"><input type="checkbox" name="localConsent" required><span>Jeg giver samtykke til lokal lagring af mine resultater på denne enhed.</span></label><p id="local-consent-error" role="alert"></p><button class="btn" type="submit">Gem på denne enhed og fortsæt</button><button class="btn secondary" type="button" data-action="logout">Log ud</button></form></section></div>`;
   }
-  function render() { if (isLocalStudent() && !backend.hasLocalConsent()) { renderLocalConsent(); return; } if (state.view !== "learn-fractions") leaveFractionLesson(); if (!state.user) renderLogin(); else if (state.view==="learn-fractions") renderFractionLesson(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="marley") renderMarley(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
+  function render() { if (isLocalStudent() && !backend.hasLocalConsent()) { renderLocalConsent(); return; } if (state.view !== "ten-friends") leaveTenFriends(); if (state.view !== "learn-fractions") leaveFractionLesson(); if (!state.user) renderLogin(); else if (state.view==="ten-friends") renderTenFriends(); else if (state.view==="learn-fractions") renderFractionLesson(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="marley") renderMarley(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
 
   document.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -3489,9 +3504,26 @@ function finishColumnAdditionDrag(event, cancelled = false) {
 
     if (action === "marley") {
       if (!isFractionTester() || !window.MarleyMath) return;
-      leaveFractionLesson(); leaveFoodtruck(); stopTeacherLiveUpdates();
+      leaveTenFriends(); leaveFractionLesson(); leaveFoodtruck(); stopTeacherLiveUpdates();
       state.view="marley"; renderMarley(); window.scrollTo(0,0); return;
     }
+    if (action === "ten-friends") {
+      event.preventDefault();
+      if (!canPlayTenFriends() || state.view === "ten-friends" || switchingJacobView) return;
+      switchingJacobView=true;
+      const userId=state.user.id;
+      try {
+        if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned");
+        if (state.user?.id !== userId || !canPlayTenFriends()) return;
+        leaveFractionLesson(); leaveFoodtruck(); disposeMarley?.(); disposeMarley=null; stopMatrixDrillTimer(); stopTeacherLiveUpdates();
+        stopErlingAudio(); stopKaptajnAudio(); stopLuigiAudio(); stopLetterLearningAudio();
+        clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); clearColumnAdditionDrag(); clearColumnMultiplicationDrag();
+        state.task=null; state.matrixDrill=null; state.view="ten-friends";
+        render(); window.scrollTo(0,0);
+      } finally { switchingJacobView=false; }
+      return;
+    }
+    if (["logout", "home", "change-password", "foodtruck", "learn-fractions", "toggle-jacob-view"].includes(action)) leaveTenFriends();
     if (["toggle-jacob-view", "learn-fractions"].includes(action)) {
       event.preventDefault();
       const allowed=() => action === "learn-fractions" ? canLearnFractions() : isFractionTester();
