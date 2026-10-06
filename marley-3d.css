@@ -1,0 +1,9 @@
+@import url("marley.css?v=20261005-frames3");
+.marley-scene-3d{height:420px;min-height:0;display:block;position:relative;background:radial-gradient(ellipse at 50% 40%,#fff0d7,#efbf86 60%,#c58361)}
+.marley-scene-3d canvas{display:block;width:100%;height:100%;outline:none}
+.marley-loading{position:absolute;inset:0;display:grid;place-items:center;margin:0;color:#422943;font-weight:800}
+.marley-actions button[aria-pressed="true"]{background:#ffd68e;box-shadow:inset 0 0 0 2px #c87325}
+.marley-actions button:disabled{opacity:.5;cursor:wait}
+.marley-wardrobe{min-height:44px;margin-top:14px;text-align:center;font-size:2rem}
+@media(max-width:780px){.marley-scene-3d{height:350px}}
+@media(max-width:420px){.marley-play,.marley-shop{padding:14px}.marley-scene-3d{height:320px}.marley-actions{gap:6px}.marley-actions button{padding:9px}}
