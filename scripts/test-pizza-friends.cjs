@@ -142,7 +142,7 @@ const out='test-results/pizza-friends';fs.mkdirSync(out,{recursive:true});
    await p.locator('[data-pf-exit]').click();
    await p.waitForSelector(kind==='other'?'.teacher-layout':'.student-home-layout');
    if(kind!=='other'){
-    assert.equal(await p.locator('.math-tower-level[data-action="ten-friends"] .math-tower-score').innerText(),'100\n%');
+    assert.equal((await p.locator('.math-tower-level[data-action="ten-friends"] .math-tower-score').innerText()).replace(/\s/g,''),'100%');
     assert.equal(await p.locator('.math-tower-level[data-action="ten-friends"]').getAttribute('class'),'math-tower-level tower-granite');
     await p.locator('.pf-friends-card').click();await p.waitForSelector('.pf-roster');
    }
