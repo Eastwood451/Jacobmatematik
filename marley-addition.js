@@ -40,7 +40,7 @@
       if(disposed)return;
       const c=counts(),ok=ready(),locked=!editable();
       $('#ma-answer').textContent=answer||'?';
-      $('.ma-game').classList.toggle('ma-ready',ok);
+      $('.ma-game').classList.toggle('ma-ready',ok||phase!=='play');
       $('[data-ma-add="bone"]').disabled=locked||c.bone>=9;
       $('[data-ma-add="bite"]').disabled=locked||c.bite>=9;
       root.querySelectorAll('[data-ma-digit], [data-ma-delete]').forEach(b=>{b.disabled=locked||!ok;});
@@ -51,7 +51,7 @@
       $('[data-ma-clear]').disabled=locked||!items.length;
       root.querySelectorAll('[data-ma-item]').forEach(b=>{b.disabled=locked;});
       $('.ma-empty').hidden=items.length>0||phase!=='play';
-      $('#ma-instruction').textContent=ok ? 'Tæl godbidderne. Skriv svaret.' : `Læg ${task().a} kødben og ${task().b} hapser i skålen.`;
+      $('#ma-instruction').textContent=phase!=='play' ? 'Marley er glad. Godt talt!' : ok ? 'Tæl godbidderne. Skriv svaret.' : `Læg ${task().a} kødben og ${task().b} hapser i skålen.`;
       $('.ma-score').textContent=`${solved} ${solved===1?'måltid':'måltider'} til Marley`;
     }
     function paintItems() {
@@ -84,11 +84,11 @@
       });
       $('.ma-game').classList.add('ma-happy');
       if(task().a+task().b>0)$('.ma-game').classList.add('ma-feeding');
-      $('.ma-dog').setAttribute('aria-label','Marley spiser godbidderne og er glad');
+      $('.ma-dog').setAttribute('aria-label',task().a+task().b===0?'Marley logrer og er glad':'Marley spiser godbidderne og er glad');
       $('#ma-dog-message').textContent=task().a+task().b===0?'Ingen godbidder denne gang. Men masser af kærlighed!':'Mums! Tak for mine godbidder!';
       feedback(`Sådan! ${task().a} + ${task().b} = ${task().a+task().b}. Marley er glad!`,'success');
       update();
-      later(()=>{clearFlights();phase='done';$('.ma-game').classList.remove('ma-feeding');update();},2500);
+      later(()=>{clearFlights();phase='done';items=[];$('.ma-game').classList.remove('ma-feeding');paintItems();},2500);
     }
     async function submit() {
       if(!editable()||!ready()||answer==='')return;

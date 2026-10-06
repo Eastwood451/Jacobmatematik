@@ -31,6 +31,7 @@ jobs:
         run: |
           node scripts/test-local-results.cjs
           node scripts/test-marley-addition.cjs
+          node scripts/test-pizza-friends.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

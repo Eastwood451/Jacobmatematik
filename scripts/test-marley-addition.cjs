@@ -88,7 +88,7 @@ const out='test-results/marley-addition';fs.mkdirSync(out,{recursive:true});
   assert.match(await p.locator('.ma-dog').evaluate(el=>getComputedStyle(el).backgroundImage),/marley-eat-frames/);
   assert.equal(await p.locator('[data-ma-next]').isVisible(),false);
   await p.screenshot({path:`${out}/desktop-feeding.png`,fullPage:true});
-  await p.waitForSelector('[data-ma-next]:visible');assert.match(await p.locator('#ma-feedback').innerText(),/2 \+ 8 = 10/);
+  await p.waitForSelector('[data-ma-next]:visible');assert.equal(await p.locator('.ma-treat').count(),0);assert.match(await p.locator('#ma-feedback').innerText(),/2 \+ 8 = 10/);
   await p.locator('[data-ma-next]').click();assert.equal(await p.locator('.ma-treat').count(),0);
   await p.locator('[data-ma-exit]').click();await p.waitForSelector('.student-home-layout');
   await p.keyboard.type('10');assert.equal(await p.locator('.ma-game').count(),0);await p.close();
