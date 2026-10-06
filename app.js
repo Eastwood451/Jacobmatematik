@@ -11,6 +11,7 @@
     numbers: { name: "Tallene", icon: "● ● ●", description: "Tæl figurer og fingre fra 0 til 10" },
     addition: { name: "Plus-drill", icon: "4 + 5", description: "Plus med etcifrede tal" },
     additionColumn: { name: "Plusstykker", icon: "34 + 25", description: "Læg tal sammen lodret trin for trin" },
+    marleyAddition: { name: "Godbidder til Marley", icon: "2 + 8", description: "Træk, tæl og læg godbidder sammen med Marley" },
     tenFriends: { name: "Luigis 10’er-venner", icon: "6 + 4", description: "Find pizzamakkerne, der tilsammen har 10 slices" },
     subtractionBorrowing: { name: "Minusstykker", icon: "81 − 37", description: "Lån en tier og træk fra trin for trin" },
     subtractionDrill: { name: "Minus-drill", icon: "92 − 7", description: "Minusstykker uden negative svar" },
@@ -518,6 +519,32 @@ multiplicationColumn: {
   let disposeTenFriends = null;
   const canPlayTenFriends = () => window.LuigiTenFriends?.isEnabled(state.user) === true;
   function leaveTenFriends() { disposeTenFriends?.(); disposeTenFriends = null; }
+  let disposeMarleyAddition = null;
+  const canPlayMarleyAddition = () => window.MarleyAddition?.isEnabled(state.user) === true;
+  function leaveMarleyAddition() { disposeMarleyAddition?.(); disposeMarleyAddition = null; }
+  function renderMarleyAddition() {
+    leaveMarleyAddition();
+    if (!canPlayMarleyAddition()) { state.view=state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
+    app.innerHTML=`${header()}<div id="marley-addition-root"></div>`;
+    const learner=state.user;
+    disposeMarleyAddition=window.MarleyAddition.mount(document.getElementById("marley-addition-root"), {
+      user:learner,
+      async onResult(result) {
+        if(state.user!==learner) throw new Error("Brugeren er skiftet.");
+        learner.results.push(result);
+        try {
+          if(learner.role==='teacher'||learner.role==='guest') return;
+          if(usingCentralDatabase) result.remoteId=await appendCurrentPracticeResult(result);
+          else await save();
+        } catch(error) {
+          const index=learner.results.indexOf(result);
+          if(index>=0)learner.results.splice(index,1);
+          throw error;
+        }
+      },
+      onExit() { leaveMarleyAddition(); state.view=state.user?.role==='teacher'&&!jacobFrontend ? "teacher" : "student"; render(); window.scrollTo(0,0); }
+    });
+  }
   function renderTenFriends() {
     leaveTenFriends();
     if (!canPlayTenFriends()) { state.view=state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
@@ -543,6 +570,9 @@ multiplicationColumn: {
   }
   function tenFriendsCard() {
     return canPlayTenFriends() ? `<button type="button" class="topic-card pf-friends-card" data-action="ten-friends"><span class="topic-icon">6 + 4 = 10</span><strong>Luigis 10’er-venner</strong><small>Find pizzamakkerne, og bær pizzaen sammen.</small></button>` : "";
+  }
+  function marleyAdditionCard() {
+    return canPlayMarleyAddition() ? `<button type="button" class="topic-card ma-addition-card" data-action="marley-addition"><span class="topic-icon">2 + 8</span><strong>Godbidder til Marley</strong><small>Træk kødben og hapser. Tæl dem, og gør Marley glad!</small><img src="assets/figurer/marley-alive.webp" alt="" width="125" height="125" loading="lazy"></button>` : "";
   }
   const appendCurrentPracticeResult = async result => {
     if (isGuest()) return null; // Guest sessions are memory-only and must never reach Supabase.
@@ -574,8 +604,9 @@ multiplicationColumn: {
   function jacobViewButton() {
     const lessonLink=canLearnFractions() && state.user?.role === "teacher" && state.view === "teacher" ? `<button type="button" class="btn secondary fraction-pilot-link" data-action="learn-fractions">Lær brøkregning</button>` : "";
     const friendsLink=canPlayTenFriends() && state.view === "teacher" ? `<button type="button" class="btn secondary" data-action="ten-friends">Luigis 10’er-venner</button>` : "";
-    if (!isFractionTester()) return friendsLink+lessonLink;
-    return `<button type="button" class="btn secondary" data-action="marley">🐶 Marley</button>${friendsLink}<button type="button" class="jacob-view-switch" data-action="toggle-jacob-view" role="switch" aria-checked="${jacobFrontend}" aria-label="Front-end" title="Skift mellem front-end og back-end"><span class="${jacobFrontend ? "active" : ""}">Front-end</span><span class="${!jacobFrontend ? "active" : ""}">Back-end</span></button>${lessonLink}`;
+    const marleyLink=canPlayMarleyAddition() && state.view === "teacher" ? `<button type="button" class="btn secondary" data-action="marley-addition">Godbidder til Marley</button>` : "";
+    if (!isFractionTester()) return marleyLink+friendsLink+lessonLink;
+    return `<button type="button" class="btn secondary" data-action="marley">🐶 Marley</button>${friendsLink}${marleyLink}<button type="button" class="jacob-view-switch" data-action="toggle-jacob-view" role="switch" aria-checked="${jacobFrontend}" aria-label="Front-end" title="Skift mellem front-end og back-end"><span class="${jacobFrontend ? "active" : ""}">Front-end</span><span class="${!jacobFrontend ? "active" : ""}">Back-end</span></button>${lessonLink}`;
   }
   function fractionPilotCard() {
     return canLearnFractions() ? `<button type="button" class="topic-card fraction-pilot-card" data-action="learn-fractions"><span class="topic-icon">½ : ¾</span><strong>Lær brøkregning</strong><small>Find regnearten, og vælg den rigtige regneregel.</small></button>` : "";
@@ -794,7 +825,7 @@ multiplicationColumn: {
   }
   function renderLogin() {
     document.body.classList.remove("site-authenticated");
-    leaveTenFriends(); leaveFractionLesson(); jacobFrontend=false;
+    leaveMarleyAddition(); leaveTenFriends(); leaveFractionLesson(); jacobFrontend=false;
     leaveFoodtruck();
     const registrationEnabled = backend?.selfRegistrationEnabled === true;
     const signup = registrationEnabled && state.view === "signup";
@@ -1113,11 +1144,13 @@ multiplicationColumn: {
       ["subtractionDrill", "subtractionBorrowing"],
       ["tenFriends"],
       ["addition", "additionColumn"],
+      ["marleyAddition"],
       ["numbers"],
     ];
     const card = key => {
       const topic = TOPICS[key];
       if (key === "tenFriends") return tenFriendsCard();
+      if (key === "marleyAddition") return marleyAdditionCard();
       if (key === "numbers") return `<button type="button" class="topic-card numbers-banner" data-topic="numbers"><span class="numbers-banner-copy"><span class="topic-icon">${topic.icon}</span><strong>${topic.name}</strong><small>${topic.description}</small></span><span class="numbers-banner-art" aria-hidden="true"><img src="assets/figurer/tallene-talvenner.webp" width="2172" height="724" alt="" loading="lazy" decoding="async"></span></button>`;
       return `<button type="button" class="topic-card" data-topic="${key}"><span class="topic-icon">${topic.icon}</span><strong>${topic.name}</strong><small>${topic.description}</small></button>`;
     };
@@ -2694,6 +2727,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     return {
       numbers:"Øv små mængder først. Lad eleven pege på hver figur én gang, mens der tælles højt.",
       addition:"Træn korte serier med de valgte tal. Brug konkrete materialer, hvis et bestemt pluspar bliver ved med at drille.",
+      marleyAddition:"Lad eleven flytte ét kødben eller én hapser ad gangen og tælle alle godbidderne i skålen, før summen tastes.",
       tenFriends:"Lad eleven tælle pizzaens tomme pladser og finde makkeren, så de to tal tilsammen giver 10.",
       additionColumn:"Arbejd fra højre mod venstre. Lad eleven sige hver kolonne højt, før cifrene trækkes på plads.",
       basics:"Øv reglerne med 0 og 1 i korte serier. Tal især om, hvorfor division med 0 ikke kan beregnes.",
@@ -3252,7 +3286,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
   function renderLocalConsent() {
     app.innerHTML = `${header()}<div class="page"><section class="class-manager local-consent-card"><h1>Gem dine resultater på denne enhed</h1><p>Din bruger er selvoprettet. Dine resultater gemmes kun i denne browser, så du kan fortsætte næste gang. De sendes ikke til læreren eller vores server og følger ikke med til andre enheder.</p><p>Du kan slette resultaterne med “Slet data” under tårnet. De forsvinder også, hvis browserens webstedsdata slettes.</p><form id="local-consent-form"><label class="local-consent"><input type="checkbox" name="localConsent" required><span>Jeg giver samtykke til lokal lagring af mine resultater på denne enhed.</span></label><p id="local-consent-error" role="alert"></p><button class="btn" type="submit">Gem på denne enhed og fortsæt</button><button class="btn secondary" type="button" data-action="logout">Log ud</button></form></section></div>`;
   }
-  function render() { if (isLocalStudent() && !backend.hasLocalConsent()) { renderLocalConsent(); return; } if (state.view !== "ten-friends") leaveTenFriends(); if (state.view !== "learn-fractions") leaveFractionLesson(); if (!state.user) renderLogin(); else if (state.view==="ten-friends") renderTenFriends(); else if (state.view==="learn-fractions") renderFractionLesson(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="marley") renderMarley(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
+  function render() { if (isLocalStudent() && !backend.hasLocalConsent()) { renderLocalConsent(); return; } if (state.view !== "marley-addition") leaveMarleyAddition(); if (state.view !== "ten-friends") leaveTenFriends(); if (state.view !== "learn-fractions") leaveFractionLesson(); if (!state.user) renderLogin(); else if (state.view==="marley-addition") renderMarleyAddition(); else if (state.view==="ten-friends") renderTenFriends(); else if (state.view==="learn-fractions") renderFractionLesson(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="marley") renderMarley(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
 
   document.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -3524,26 +3558,27 @@ function finishColumnAdditionDrag(event, cancelled = false) {
 
     if (action === "marley") {
       if (!isFractionTester() || !window.MarleyMath) return;
-      leaveTenFriends(); leaveFractionLesson(); leaveFoodtruck(); stopTeacherLiveUpdates();
+      leaveMarleyAddition(); leaveTenFriends(); leaveFractionLesson(); leaveFoodtruck(); stopTeacherLiveUpdates();
       state.view="marley"; renderMarley(); window.scrollTo(0,0); return;
     }
-    if (action === "ten-friends") {
+    if (["ten-friends", "marley-addition"].includes(action)) {
       event.preventDefault();
-      if (!canPlayTenFriends() || state.view === "ten-friends" || switchingJacobView) return;
+      const allowed=action === "marley-addition" ? canPlayMarleyAddition : canPlayTenFriends;
+      if (!allowed() || state.view === action || switchingJacobView) return;
       switchingJacobView=true;
       const userId=state.user.id;
       try {
         if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned");
-        if (state.user?.id !== userId || !canPlayTenFriends()) return;
+        if (state.user?.id !== userId || !allowed()) return;
         leaveFractionLesson(); leaveFoodtruck(); disposeMarley?.(); disposeMarley=null; stopMatrixDrillTimer(); stopTeacherLiveUpdates();
         stopErlingAudio(); stopKaptajnAudio(); stopLuigiAudio(); stopLetterLearningAudio();
         clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); clearColumnAdditionDrag(); clearColumnMultiplicationDrag();
-        state.task=null; state.matrixDrill=null; state.view="ten-friends";
+        state.task=null; state.matrixDrill=null; state.view=action;
         render(); window.scrollTo(0,0);
       } finally { switchingJacobView=false; }
       return;
     }
-    if (["logout", "home", "change-password", "foodtruck", "learn-fractions", "toggle-jacob-view"].includes(action)) leaveTenFriends();
+    if (["logout", "home", "change-password", "foodtruck", "learn-fractions", "toggle-jacob-view"].includes(action)) { leaveMarleyAddition(); leaveTenFriends(); }
     if (["toggle-jacob-view", "learn-fractions"].includes(action)) {
       event.preventDefault();
       const allowed=() => action === "learn-fractions" ? canLearnFractions() : isFractionTester();
@@ -3850,6 +3885,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     }
   });
   window.addEventListener("pagehide", () => {
+    leaveMarleyAddition();
     leaveTenFriends();
     leaveFractionLesson();
     stopErlingAudio();

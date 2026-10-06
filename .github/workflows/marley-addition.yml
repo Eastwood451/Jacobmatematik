@@ -1,0 +1,39 @@
+name: Marley addition
+on:
+  push:
+    branches: [main, 'feature/marley-addition-20261006']
+    paths: ['app.js', 'index.html', 'marley-addition.*', 'assets/figurer/marley*', 'scripts/test-marley-addition.cjs', '.github/workflows/marley-addition.yml']
+  pull_request:
+    paths: ['app.js', 'index.html', 'marley-addition.*', 'assets/figurer/marley*', 'scripts/test-marley-addition.cjs', '.github/workflows/marley-addition.yml']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax checks
+        run: |
+          node --check app.js
+          node --check marley-addition.js
+          node --check scripts/test-marley-addition.cjs
+      - name: Install browser test dependencies
+        run: |
+          npm install --no-save --package-lock=false playwright@1.57.0
+          npx playwright install --with-deps chromium
+      - name: Check exercise and storage using fake users
+        run: |
+          node scripts/test-local-results.cjs
+          node scripts/test-marley-addition.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: marley-addition-review
+          path: test-results/marley-addition/
+          retention-days: 7
