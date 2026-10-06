@@ -234,8 +234,8 @@
       head.rotation.z=Math.sin(time*2.8)*.035*(1-lie)+(state==="smile"?.12:0);
       for(const leg of legs){
         const phase=gait+(leg.side===1?Math.PI:0)+(leg.front?0:Math.PI);
-        leg.hip.rotation.x=Math.sin(phase)*.72*run+lie*(leg.front?-1.05:1.15)+eating*(leg.front?-.3:.15);
-        leg.shin.rotation.x=Math.max(0,-Math.sin(phase))*.9*run+lie*(leg.front?.8:-1.15)+eating*(leg.front?.45:0);
+        leg.hip.rotation.x=Math.sin(phase)*.72*run+lie*(leg.front?-1.6:1.6)+eating*(leg.front?-.3:.15);
+        leg.shin.rotation.x=Math.max(0,-Math.sin(phase))*.9*run+lie*(leg.front?2.8:-2.8)+eating*(leg.front?.45:0);
         leg.hip.position.y=.815-lie*.04;
       }
       const wagSpeed=state==="smile"?11:7;
