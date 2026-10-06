@@ -20,6 +20,7 @@
     if(!enginePromise)enginePromise=(async()=>{
       if(!window.THREE)await loadScript("assets/vendor/three-r158.min.js");
       if(!window.MarleyScene)await loadScript("marley-scene.js?v=20261005-3d1");
+      if(!window.MarleyVideoScene)await loadScript("marley-video.js?v=20261006-video1");
     })().catch(error=>{enginePromise=null;throw error;});
     return enginePromise;
   }
@@ -60,11 +61,13 @@
     next();update();
     engine().then(()=>{
       if(disposed)return;
-      scene=window.MarleyScene.create(host,name=>{
+      const changed=name=>{
         action=name;
         if(name==="sleep")feedback=messages.sleep;
         update();
-      });
+      };
+      try { scene=window.MarleyScene.create(host,changed); }
+      catch(error) { host.querySelectorAll("canvas").forEach(canvas=>canvas.remove()); scene=window.MarleyVideoScene.create(host,changed); }
       q(".marley-loading")?.remove();
       scene.play("wag");update();
     }).catch(error=>{
