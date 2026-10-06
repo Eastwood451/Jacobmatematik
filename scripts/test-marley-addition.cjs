@@ -49,6 +49,7 @@ const out='test-results/marley-addition';fs.mkdirSync(out,{recursive:true});
   for(let i=0;i<b;i++)await page.locator('[data-ma-add="bite"]').click();
  }
  async function drag(page,source,target){
+  await page.locator('.ma-stage').evaluate(el=>el.scrollIntoView({block:'center'}));
   const a=await page.locator(source).boundingBox(),b=await page.locator(target).boundingBox();
   await page.mouse.move(a.x+a.width/2,a.y+a.height/2);await page.mouse.down();
   await page.mouse.move(b.x+b.width/2,b.y+b.height/2,{steps:10});await page.mouse.up();
@@ -66,10 +67,7 @@ const out='test-results/marley-addition';fs.mkdirSync(out,{recursive:true});
   assert.equal(await p.locator('[data-ma-submit]').isDisabled(),true);
   await p.keyboard.type('10');assert.equal(await p.locator('#ma-answer').innerText(),'?');
   await drag(p,'[data-ma-add="bone"]','.ma-bowl');assert.equal(await p.locator('.ma-treat').count(),1);
-  await p.screenshot({path:`${out}/drag-before.png`,fullPage:true});
-  await p.evaluate(()=>{window.__pointerLog=[];['pointerdown','pointerup','pointercancel'].forEach(type=>document.addEventListener(type,e=>__pointerLog.push({type,x:e.clientX,y:e.clientY,target:e.target.outerHTML.slice(0,180)}),true))});
-  console.log('drag boxes',await p.locator('.ma-treat').boundingBox(),await p.locator('[data-ma-add="bone"]').boundingBox());
-  await drag(p,'.ma-treat','[data-ma-add="bone"]');console.log('drag log',await p.evaluate(()=>__pointerLog));assert.equal(await p.locator('.ma-treat').count(),0);
+  await drag(p,'.ma-treat','[data-ma-add="bone"]');assert.equal(await p.locator('.ma-treat').count(),0);
   await fill(p);assert.equal(await p.locator('.ma-treat').count(),10);
   await p.locator('.ma-treat').first().click();assert.equal(await p.locator('.ma-counted').count(),1);
   await p.locator('[data-ma-add="bone"]').click();assert.equal(await p.locator('[data-ma-submit]').isDisabled(),true);
@@ -134,6 +132,7 @@ const out='test-results/marley-addition';fs.mkdirSync(out,{recursive:true});
   }
   // Native touch input exercises pointer capture and the same drop target.
   const touch=await mount('guest',390);await touch.locator('.ma-addition-card').click();
+  await touch.locator('.ma-stage').evaluate(el=>el.scrollIntoView({block:'center'}));
   const cdp=await touch.context().newCDPSession(touch);
   const a=await touch.locator('[data-ma-add="bone"]').boundingBox(),b=await touch.locator('.ma-bowl').boundingBox();
   await cdp.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[{x:a.x+a.width/2,y:a.y+a.height/2}]});
