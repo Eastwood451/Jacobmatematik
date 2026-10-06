@@ -128,6 +128,7 @@ const out='test-results/marley-addition';fs.mkdirSync(out,{recursive:true});
    await page.locator('[data-ma-digit="1"]').click();await page.locator('[data-ma-digit="0"]').click();assert.equal(await page.locator('#ma-answer').innerText(),'10');
    await page.locator('[data-ma-delete]').click();assert.equal(await page.locator('#ma-answer').innerText(),'1');await page.locator('[data-ma-digit="0"]').click();
    await page.screenshot({path:`${out}/play-${width}.png`,fullPage:true});await page.locator('[data-ma-submit]').click();await page.waitForSelector('.ma-happy');
+   assert.ok(await page.locator('.ma-dog').evaluate(el=>{const b=el.getBoundingClientRect();return b.top>=0&&b.bottom<=innerHeight}),`Marley must be visible after feeding at ${width}`);
    await page.locator('[data-action="logout"]').click();await page.waitForSelector('.login-wrap');assert.equal(await page.locator('.ma-flight').count(),0);await page.close();
   }
   // Native touch input exercises pointer capture and the same drop target.

@@ -25,13 +25,13 @@
     root.innerHTML=`<section class="ma-game" aria-label="Matematik-Marley: plus med godbidder">
       <nav class="ma-nav"><button type="button" data-ma-exit>← Tilbage</button><span class="ma-score">0 måltider til Marley</span></nav>
       <header class="ma-heading"><span class="ma-eyebrow">Tæl · læg sammen · giv godbidder</span><h1>Godbidder til Marley</h1><p>To slags godbidder. Én glad matematik-hund!</p></header>
-      <div class="ma-pet-scene"><div class="ma-dog" role="img" aria-label="Marley, en sød orange hund, der logrer"></div><div class="ma-hearts" aria-hidden="true"><span>♥</span><span>♥</span><span>♥</span><span>♥</span></div><div class="ma-speech"><span>Matematik-Marley</span><strong id="ma-dog-message">Vil du tælle mine godbidder?</strong><small>Du må også trykke på kasserne.</small></div></div>
+      <div class="ma-pet-scene"><div class="ma-dog" role="img" aria-label="Marley, en sød orange hund, der logrer"></div><div class="ma-hearts" aria-hidden="true"><span>♥</span><span>♥</span><span>♥</span><span>♥</span></div><div class="ma-speech"><span>Matematik-Marley</span><strong id="ma-dog-message">Vil du tælle mine godbidder?</strong><small>Du må også trykke på kasserne.</small><button type="button" class="ma-next" data-ma-next hidden>Næste plusstykke →</button></div></div>
       <div class="ma-equation" aria-label="Plusstykke"><span class="ma-term ma-bones-term"><b id="ma-a"></b>${bone}</span><span>+</span><span class="ma-term ma-bites-term"><b id="ma-b"></b>${bite}</span><span>=</span><output id="ma-answer" aria-label="Dit svar">?</output></div>
       <div class="ma-workspace"><section class="ma-counting"><h2 id="ma-instruction"></h2><div class="ma-stage">
         <div class="ma-crates"><button type="button" class="ma-crate ma-bone-crate" data-ma-add="bone" aria-label="Læg et kødben i skålen">${bone}<strong>Kødben</strong><small>Træk eller tryk</small></button><button type="button" class="ma-crate ma-bite-crate" data-ma-add="bite" aria-label="Læg en hapser i skålen">${bite}<strong>Hapser</strong><small>Træk eller tryk</small></button></div>
         <div class="ma-bowl" aria-label="Marleys skål. Slip godbidderne her."><span class="ma-bowl-label">MARLEYS SKÅL</span><div class="ma-treats"></div><span class="ma-empty">Slip godbidderne her ↓</span></div>
       </div><div class="ma-count-actions"><button type="button" data-ma-undo>↶ Fortryd én</button><button type="button" data-ma-clear>Tøm skålen</button></div><p class="ma-count-tip">Tryk på godbidderne i skålen, når du tæller. Træk dem tilbage, hvis der er for mange.</p></section>
-      <section class="ma-numbers" aria-label="Skriv summen"><h2>Hvor mange i alt?</h2><p>Tæl alle kødben og hapser.</p><div class="ma-keypad">${[1,2,3,4,5,6,7,8,9,0].map(n=>`<button type="button" data-ma-digit="${n}">${n}</button>`).join('')}<button type="button" data-ma-delete aria-label="Slet sidste tal">⌫</button></div><button type="button" class="ma-submit" data-ma-submit>Giv Marley godbidderne ♥</button><button type="button" class="ma-next" data-ma-next hidden>Næste plusstykke →</button></section></div>
+      <section class="ma-numbers" aria-label="Skriv summen"><h2>Hvor mange i alt?</h2><p>Tæl alle kødben og hapser.</p><div class="ma-keypad">${[1,2,3,4,5,6,7,8,9,0].map(n=>`<button type="button" data-ma-digit="${n}">${n}</button>`).join('')}<button type="button" data-ma-delete aria-label="Slet sidste tal">⌫</button></div><button type="button" class="ma-submit" data-ma-submit>Giv Marley godbidderne ♥</button></section></div>
       <p class="ma-feedback" id="ma-feedback" role="status" aria-live="polite"></p>
     </section>`;
     const $=selector=>root.querySelector(selector);
@@ -47,6 +47,7 @@
       $('[data-ma-submit]').disabled=locked||!ok||answer==='';
       $('[data-ma-submit]').hidden=phase!=='play';
       $('[data-ma-next]').hidden=phase!=='done';
+      $('.ma-speech small').hidden=phase!=='play';
       $('[data-ma-undo]').disabled=locked||!items.length;
       $('[data-ma-clear]').disabled=locked||!items.length;
       root.querySelectorAll('[data-ma-item]').forEach(b=>{b.disabled=locked;});
@@ -71,10 +72,13 @@
       $('.ma-dog').setAttribute('aria-label','Marley, en sød orange hund, der logrer');
       $('#ma-dog-message').textContent='Vil du tælle mine godbidder?';
       $('#ma-a').textContent=task().a;$('#ma-b').textContent=task().b;
+      $('.ma-pet-scene').scrollIntoView({block:'center',behavior:'instant'});
       paintItems();feedback(ready()?'Skålen er tom. Hvor mange godbidder er der?':'Træk godbidderne fra kasserne til skålen.');
     }
     function feed() {
       phase='feeding';solved++;
+      const petBox=$('.ma-pet-scene').getBoundingClientRect();
+      if(petBox.top<80||petBox.bottom>innerHeight)$('.ma-pet-scene').scrollIntoView({block:'center',behavior:'instant'});
       const dog=$('.ma-dog').getBoundingClientRect();
       root.querySelectorAll('.ma-treat').forEach((el,n)=>{
         const box=el.getBoundingClientRect(),fly=document.createElement('div');
