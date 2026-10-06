@@ -4,6 +4,12 @@
   const PILOT_ID = 'c8b8e1c4-3264-40e9-a43d-0eb6214a0183';
   const TRAYS = {"1":{"x":37.12,"y":47.267,"w":45.543,"h":18.672},"2":{"x":25.576,"y":48.318,"w":44.206,"h":18.125},"3":{"x":18.938,"y":48.178,"w":45.543,"h":18.672},"4":{"x":30.633,"y":48.697,"w":49.079,"h":20.69},"5":{"x":26.018,"y":49.193,"w":45.532,"h":19.009},"6":{"x":16.311,"y":47.945,"w":49.805,"h":21.276},"7":{"x":38.296,"y":42.944,"w":44.725,"h":18.671},"8":{"x":25.054,"y":43.595,"w":44.29,"h":19.54},"9":{"x":24.356,"y":43.595,"w":44.725,"h":18.671}}; // Filled from the sprite atlas crop coordinates.
   const numbers = [1,2,3,4,5,6,7,8,9];
+  const customers = [
+    {name:'Øbbe Øvdig',image:'assets/figurer/obbe-ovdig.png',thanks:'Tak, pizzavenner! Stærkt samarbejde!'},
+    {name:'Kaptajn Kvadratrod',image:'assets/figurer/kaptajn-kvadratrod.webp',thanks:'En hel pizza! I er et superhold!'},
+    {name:'Matematikhunden Marley',image:'assets/figurer/marley.webp',thanks:'Vuf! Tak, mine gode pizzavenner!'},
+    {name:'Divisions-Dennis',image:'assets/figurer/divisions-dennis.webp',thanks:'Tak! Alle 10 slices er med!'}
+  ];
   const isEnabled = user => user?.id === PILOT_ID && user.role === 'teacher';
   const shuffle = values => {
     const result = [...values];
@@ -30,9 +36,30 @@
       return `<path d="M100 100 L${point(a)} A78 78 0 0 1 ${point(b)} Z" fill="${i<n?'#ffb64f':complete?'#b6a0ed':'#fff8e7'}" stroke="${filled?'#92552d':'#c6b7a0'}" stroke-width="2" ${filled?'':'stroke-dasharray="4 3"'}/>${filled?`<circle cx="${(100+48*Math.cos((a+b)/2)).toFixed(2)}" cy="${(100+48*Math.sin((a+b)/2)).toFixed(2)}" r="6" fill="${i<n?'#e5633c':'#7660ae'}"/>`:''}`;
     }).join('')}</svg>`;
   }
+  // One foreground tray hides both individual trays. Both couriers grip its rim.
+  // Reuse the same numeral characters, while exact SVG geometry keeps ten slices.
+  function carryingPair(n) {
+    const m=10-n;
+    return `<svg class="pf-carrying-pair" viewBox="0 0 420 250" role="img" aria-label="${n} og ${m} står sammen og bærer én fælles pizzabakke med en hel pizza delt i 10 slices">
+      <ellipse cx="210" cy="232" rx="177" ry="11" fill="#302044" opacity=".12"/>
+      <image href="assets/pizza-friends/courier-${n}-v2.webp" x="0" y="0" width="230" height="230"/>
+      <image href="assets/pizza-friends/courier-${m}-v2.webp" x="190" y="0" width="230" height="230"/>
+      <g class="pf-shared-tray">
+        <ellipse cx="210" cy="145" rx="195" ry="58" fill="#626568" stroke="#33363a" stroke-width="4"/>
+        <ellipse cx="210" cy="138" rx="192" ry="54" fill="#c6c9ca" stroke="#f4f5f5" stroke-width="4"/>
+        <g transform="translate(70 82) scale(1.4 .53)">${pizza(n,true).replace(/<svg[^>]*>/,'').replace('</svg>','')}</g>
+        <path d="M35 148 C23 134 9 139 12 153 C2 148 0 162 10 170 C9 183 28 186 41 174 L49 164 C54 154 45 151 35 158 Z" fill="#fff" stroke="#34343c" stroke-width="3"/>
+        <path d="M385 148 C397 134 411 139 408 153 C418 148 420 162 410 170 C411 183 392 186 379 174 L371 164 C366 154 375 151 385 158 Z" fill="#fff" stroke="#34343c" stroke-width="3"/>
+        <path d="M15 157 L27 169 M405 157 L393 169" fill="none" stroke="#a9afb3" stroke-width="3" stroke-linecap="round"/>
+      </g>
+    </svg>`;
+  }
+  function customerCard(customer) {
+    return `<div class="pf-customer"><img src="${customer.image}" alt="${customer.name}" width="160" height="160"><strong>${customer.name}</strong></div>`;
+  }
   function mount(root,{user,onExit}={}) {
     if (!isEnabled(user)) { root.replaceChildren(); return ()=>{}; }
-    let active=true,phase='intro',order=[],index=0,locked=false,misses=0,hinted=false,firstTry=0;
+    let active=true,phase='intro',order=[],index=0,locked=false,misses=0,hinted=false,firstTry=0,deliveryTimer=null;
     const q = selector => root.querySelector(selector);
     function layout(content) {
       root.innerHTML=`<section class="pf-page"><nav class="pf-nav"><button type="button" class="pf-back" data-pf-exit>← Tilbage</button><span class="pf-pilot">Testversion · Jacob</span></nav><div class="pf-heading"><span class="pf-eyebrow">LUIGIS PIZZERIA</span><h1>10’er-vennerne</h1><p>Find tallenes gode venner.</p></div>${content}</section>`;
@@ -68,31 +95,50 @@
       root.querySelectorAll('[data-pf-answer],[data-pf-hint]').forEach(el=>el.disabled=true);
       feedback.className='pf-feedback pf-success';
       feedback.textContent=`Sådan! ${n} og ${value} er gode venner. Sammen har de en hel pizza!`;
-      q('#pf-next').innerHTML=`<div class="pf-pair">${character(n,true)}<span>+</span>${character(value,true)}</div><button type="button" class="pf-primary" data-pf-next>${index===8?'Se alle pizzamakkerne':'Levér pizzaen →'}</button>`;
+      const customer=customers[index%customers.length];
+      q('#pf-next').innerHTML=`<div class="pf-pair">${carryingPair(n)}</div><p class="pf-carry-caption">${n} og ${value} hjælper hinanden med at bære!</p><button type="button" class="pf-primary" data-pf-next>Levér til ${customer.name} →</button>`;
       q('[data-pf-next]').focus({preventScroll:true});
+    }
+    function deliver() {
+      if(!active||phase!=='play'||!locked)return;
+      phase='delivering';
+      const n=order[index],customer=customers[index%customers.length];
+      layout(`<section class="pf-delivery"><span class="pf-eyebrow">PIZZA ${index+1} AF 9</span><h2>Pizza på vej til ${customer.name}!</h2><p>${n} og ${10-n} bærer pizzabakken sammen.</p><div class="pf-delivery-scene is-delivering"><div class="pf-delivery-team">${carryingPair(n)}</div>${customerCard(customer)}<div class="pf-delivered-tray" hidden>${pizza(n,true)}</div></div><div class="pf-delivery-status" role="status" aria-live="polite">Her kommer jeres pizza!</div><div id="pf-delivery-next"></div></section>`);
+      deliveryTimer=setTimeout(()=>{
+        deliveryTimer=null;
+        if(!active||phase!=='delivering')return;
+        phase='delivered';
+        q('.pf-delivery-scene').classList.replace('is-delivering','is-delivered');
+        q('.pf-delivered-tray').hidden=false;
+        q('.pf-delivery h2').textContent=`Pizzaen er leveret til ${customer.name}!`;
+        q('.pf-delivery-status').textContent=customer.thanks;
+        q('#pf-delivery-next').innerHTML=`<button type="button" class="pf-primary" data-pf-continue>${index===8?'Se alle pizzamakkerne':'Find næste pizzamakker →'}</button>`;
+        q('[data-pf-continue]').focus({preventScroll:true});
+      },1800);
     }
     function finish() {
       phase='done'; locked=true;
-      layout(`<section class="pf-finish"><img class="pf-luigi" src="assets/figurer/luigi-laekkermat-cutout.webp" alt="Luigi Lækkermat" width="160" height="192"><span class="pf-eyebrow">9 PIZZAER LEVERET</span><h2>Perfetto! Du fandt alle makkerne.</h2><p>${firstTry} af 9 fundet uden hjælp eller ekstra forsøg.</p><div class="pf-pairs">${[1,2,3,4,5].map(n=>`<div>${character(n,true)}<strong>${n} + ${10-n} = 10</strong>${character(10-n,true)}</div>`).join('')}</div><button type="button" class="pf-primary" data-pf-start>Øv pizzamakkerne igen ↻</button><button type="button" class="pf-back" data-pf-exit>Tilbage</button></section>`);
+      layout(`<section class="pf-finish"><img class="pf-luigi" src="assets/figurer/luigi-laekkermat-cutout.webp" alt="Luigi Lækkermat" width="160" height="192"><span class="pf-eyebrow">9 PIZZAER LEVERET</span><h2>Perfetto! Du fandt alle makkerne.</h2><p>${firstTry} af 9 fundet uden hjælp eller ekstra forsøg.</p><p>I bar pizzaerne sammen til Øbbe Øvdig, Kaptajn Kvadratrod, Matematikhunden Marley og Divisions-Dennis!</p><div class="pf-pairs">${[1,2,3,4,5].map(n=>`<div>${carryingPair(n)}<strong>${n} + ${10-n} = 10</strong></div>`).join('')}</div><button type="button" class="pf-primary" data-pf-start>Øv pizzamakkerne igen ↻</button><button type="button" class="pf-back" data-pf-exit>Tilbage</button></section>`);
       q('[data-pf-start]').focus({preventScroll:true});
     }
     function click(event) {
       if(event.target.closest('[data-pf-exit]')) { onExit?.(); return; }
-      if(event.target.closest('[data-pf-start]')&&phase!=='play') { start(); return; }
+      if(event.target.closest('[data-pf-start]')&&(phase==='intro'||phase==='done')) { start(); return; }
       const choice=event.target.closest('[data-pf-answer]');
       if(choice)answer(Number(choice.dataset.pfAnswer));
       if(event.target.closest('[data-pf-hint]')&&phase==='play'&&!locked) {
         hinted=true;const n=order[index];
         q('#pf-feedback').textContent=`Tæl videre fra ${n}: ${Array.from({length:10-n},(_,i)=>n+i+1).join(', ')}. Du talte ${10-n} videre. Find buddet med ${10-n} slices.`;
       }
-      if(event.target.closest('[data-pf-next]')&&phase==='play'&&locked) { index++;if(index===9)finish();else task(true); }
+      if(event.target.closest('[data-pf-next]')) { deliver(); return; }
+      if(event.target.closest('[data-pf-continue]')&&phase==='delivered') { index++;if(index===9)finish();else task(true); }
     }
     function key(event) {
       if(event.ctrlKey||event.metaKey||event.altKey||event.repeat||/INPUT|TEXTAREA|SELECT/.test(event.target.tagName))return;
       if(/^[1-9]$/.test(event.key)&&phase==='play'&&!locked) { event.preventDefault();answer(Number(event.key)); }
     }
     root.addEventListener('click',click);document.addEventListener('keydown',key);intro();
-    return ()=>{active=false;root.removeEventListener('click',click);document.removeEventListener('keydown',key);};
+    return ()=>{active=false;clearTimeout(deliveryTimer);root.removeEventListener('click',click);document.removeEventListener('keydown',key);};
   }
-  window.LuigiTenFriends={isEnabled,mount,pizza,heldPizza};
+  window.LuigiTenFriends={isEnabled,mount,pizza,heldPizza,carryingPair};
 })();
