@@ -11,6 +11,7 @@
     numbers: { name: "Tallene", icon: "● ● ●", description: "Tæl figurer og fingre fra 0 til 10" },
     addition: { name: "Plus-drill", icon: "4 + 5", description: "Plus med etcifrede tal" },
     additionColumn: { name: "Plusstykker", icon: "34 + 25", description: "Læg tal sammen lodret trin for trin" },
+    tenFriends: { name: "Luigis 10’er-venner", icon: "6 + 4", description: "Find pizzamakkerne, der tilsammen har 10 slices" },
     subtractionBorrowing: { name: "Minusstykker", icon: "81 − 37", description: "Lån en tier og træk fra trin for trin" },
     subtractionDrill: { name: "Minus-drill", icon: "92 − 7", description: "Minusstykker uden negative svar" },
     basics: { name: "Når 0 og 1 forvirrer", icon: "0 · 1", description: "Regneregler med 0 og 1" },
@@ -436,7 +437,7 @@ multiplicationColumn: {
     const additionExamples = [[4,5],[5,4],[7,2],[2,7],[6,3],[3,6],[8,1],[1,8],[5,3],[3,5]];
     const multiplicationExamples = [[7,9],[9,7],[6,8],[8,6],[4,7],[7,4],[3,9],[9,3],[5,8],[8,5],[2,6],[6,2]];
     const negativeExamples = [[3,"+",4],[3,"+",-4],[-3,"+",4],[-3,"+",-4],[5,"−",2],[5,"−",-2],[-5,"−",2],[-5,"−",-2],[3,"×",4],[3,"×",-4],[-3,"×",4],[-3,"×",-4]];
-    Object.keys(TOPICS).forEach((topic, topicIndex) => {
+    Object.keys(TOPICS).filter(topic=>MathModules[topic]).forEach((topic, topicIndex) => {
       const p = patterns[profile[topic] || "steady"];
       const sampleCount = topic === "negatives" ? negativeExamples.length : 8 + topicIndex;
       for (let i = 0; i < sampleCount; i++) {
@@ -521,13 +522,27 @@ multiplicationColumn: {
     leaveTenFriends();
     if (!canPlayTenFriends()) { state.view=state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
     app.innerHTML=`${header()}<div id="pizza-friends-root"></div>`;
+    const learner=state.user;
     disposeTenFriends=window.LuigiTenFriends.mount(document.getElementById("pizza-friends-root"), {
-      user:state.user,
-      onExit() { leaveTenFriends(); state.view=jacobFrontend ? "student" : "teacher"; render(); window.scrollTo(0,0); }
+      user:learner,
+      async onResult(result) {
+        if(state.user!==learner) throw new Error("Brugeren er skiftet.");
+        learner.results.push(result);
+        try {
+          if(learner.role==='teacher'||learner.role==='guest') return;
+          if(usingCentralDatabase) result.remoteId=await appendCurrentPracticeResult(result);
+          else await save();
+        } catch(error) {
+          const index=learner.results.indexOf(result);
+          if(index>=0)learner.results.splice(index,1);
+          throw error;
+        }
+      },
+      onExit() { leaveTenFriends(); state.view=state.user?.role==='teacher'&&!jacobFrontend ? "teacher" : "student"; render(); window.scrollTo(0,0); }
     });
   }
   function tenFriendsCard() {
-    return canPlayTenFriends() ? `<button type="button" class="pf-home-card" data-action="ten-friends"><img src="assets/figurer/luigi-laekkermat-cutout.webp" alt="" width="66" height="80"><span><strong>Luigis 10’er-venner</strong><small>Find pizzamakkeren · testversion</small></span></button>` : "";
+    return canPlayTenFriends() ? `<button type="button" class="topic-card pf-friends-card" data-action="ten-friends"><span class="topic-icon">6 + 4 = 10</span><strong>Luigis 10’er-venner</strong><small>Find pizzamakkerne, og bær pizzaen sammen.</small></button>` : "";
   }
   const appendCurrentPracticeResult = async result => {
     if (isGuest()) return null; // Guest sessions are memory-only and must never reach Supabase.
@@ -558,8 +573,9 @@ multiplicationColumn: {
   }
   function jacobViewButton() {
     const lessonLink=canLearnFractions() && state.user?.role === "teacher" && state.view === "teacher" ? `<button type="button" class="btn secondary fraction-pilot-link" data-action="learn-fractions">Lær brøkregning</button>` : "";
-    if (!isFractionTester()) return lessonLink;
-    return `<button type="button" class="btn secondary" data-action="marley">🐶 Marley</button>${canPlayTenFriends() && state.view === "teacher" ? `<button type="button" class="btn secondary" data-action="ten-friends">Luigis 10’er-venner · test</button>` : ""}<button type="button" class="jacob-view-switch" data-action="toggle-jacob-view" role="switch" aria-checked="${jacobFrontend}" aria-label="Front-end" title="Skift mellem front-end og back-end"><span class="${jacobFrontend ? "active" : ""}">Front-end</span><span class="${!jacobFrontend ? "active" : ""}">Back-end</span></button>${lessonLink}`;
+    const friendsLink=canPlayTenFriends() && state.view === "teacher" ? `<button type="button" class="btn secondary" data-action="ten-friends">Luigis 10’er-venner</button>` : "";
+    if (!isFractionTester()) return friendsLink+lessonLink;
+    return `<button type="button" class="btn secondary" data-action="marley">🐶 Marley</button>${friendsLink}<button type="button" class="jacob-view-switch" data-action="toggle-jacob-view" role="switch" aria-checked="${jacobFrontend}" aria-label="Front-end" title="Skift mellem front-end og back-end"><span class="${jacobFrontend ? "active" : ""}">Front-end</span><span class="${!jacobFrontend ? "active" : ""}">Back-end</span></button>${lessonLink}`;
   }
   function fractionPilotCard() {
     return canLearnFractions() ? `<button type="button" class="topic-card fraction-pilot-card" data-action="learn-fractions"><span class="topic-icon">½ : ¾</span><strong>Lær brøkregning</strong><small>Find regnearten, og vælg den rigtige regneregel.</small></button>` : "";
@@ -680,7 +696,7 @@ multiplicationColumn: {
     return { count:items.length, accuracy, avgTime, level:2, weight:1.1, status:"medium" };
   }
   function chooseWeightedTopic(user) {
-    const pool = Object.keys(TOPICS).filter(topic => !MATRIX_DRILL_TOPICS.has(topic)).map(topic => ({ topic, weight:getStats(user, topic).weight }));
+    const pool = Object.keys(TOPICS).filter(topic => MathModules[topic] && !MATRIX_DRILL_TOPICS.has(topic)).map(topic => ({ topic, weight:getStats(user, topic).weight }));
     let pointer = Math.random() * pool.reduce((sum, item) => sum + item.weight, 0);
     for (const item of pool) { pointer -= item.weight; if (pointer <= 0) return item.topic; }
     return pool[0].topic;
@@ -830,6 +846,7 @@ multiplicationColumn: {
     { label:"Division", symbol:":", topics:["divisionLollipops", "divisionDrill"] },
     { label:"Gange", symbol:"·", topics:["multiplication", "tableDrill"] },
     { label:"Minus", symbol:"−", topics:["subtractionDrill", "subtractionBorrowing"] },
+    { label:"10’er-venner", symbol:"🍕", topics:["tenFriends"] },
     { label:"Plus", symbol:"+", topics:["addition"] },
     { label:"Tælle", symbol:"1 2 3", topics:["numbers"] },
   ];
@@ -965,7 +982,7 @@ multiplicationColumn: {
           const topic = level.topics.find(key => availableTopics.includes(key));
           const percentage = Math.floor(score + 1e-9);
           const description = `${level.label}: ${percentage} %, ${stage.name}. ${level.topics.map(key => TOPICS[key].name).join(" og ")}.`;
-          return `<button type="button" class="math-tower-level tower-${stage.key}" style="--floor:${index}" ${topic ? `data-topic="${topic}"` : "disabled"} aria-label="${description}${topic ? " Klik for at øve." : " Log ind for at øve."}" title="${description}">
+          return `<button type="button" class="math-tower-level tower-${stage.key}" style="--floor:${index}" ${topic ? topic==='tenFriends' ? 'data-action="ten-friends"' : `data-topic="${topic}"` : "disabled"} aria-label="${description}${topic ? " Klik for at øve." : " Log ind for at øve."}" title="${description}">
             ${mathTowerFloorArt(stage.key, index, heatmap, numberStones, additionBricks, subtractionStones)}
             <span class="math-tower-plaque"><span class="math-tower-symbol" aria-hidden="true">${level.symbol}</span><span class="math-tower-name">${level.label}<small>${stage.name}</small></span><span class="math-tower-score">${percentage}<small>%</small></span></span>
           </button>`;
@@ -1094,11 +1111,13 @@ multiplicationColumn: {
       ["multiplicationColumn"],
       ["tableDrill", "multiplication"],
       ["subtractionDrill", "subtractionBorrowing"],
+      ["tenFriends"],
       ["addition", "additionColumn"],
       ["numbers"],
     ];
     const card = key => {
       const topic = TOPICS[key];
+      if (key === "tenFriends") return tenFriendsCard();
       if (key === "numbers") return `<button type="button" class="topic-card numbers-banner" data-topic="numbers"><span class="numbers-banner-copy"><span class="topic-icon">${topic.icon}</span><strong>${topic.name}</strong><small>${topic.description}</small></span><span class="numbers-banner-art" aria-hidden="true"><img src="assets/figurer/tallene-talvenner.webp" width="2172" height="724" alt="" loading="lazy" decoding="async"></span></button>`;
       return `<button type="button" class="topic-card" data-topic="${key}"><span class="topic-icon">${topic.icon}</span><strong>${topic.name}</strong><small>${topic.description}</small></button>`;
     };
@@ -1121,7 +1140,7 @@ multiplicationColumn: {
     const stats = availableTopics.map(topic => ({ topic, ...getStats(state.user, topic) }));
     const total = practiceResults(state.user).length;
     const guestCopy = isGuest() ? `<p class="guest-session-note">Din træning er midlertidig og slettes, når du forlader siden.</p>` : "";
-    app.innerHTML = `${header()}<div class="page student-home-layout">${renderMathTower(availableTopics)}<div class="student-home-content"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section>${renderPracticeLeaderboardCard()}${tenFriendsCard()}${isGuest() ? "" : `<nav class="home-game-links" aria-label="Matematikspil"><a class="fps-trial-entry home-fps-card" href="fps.html" aria-label="Spil Erling FPS"><div class="fps-trial-entry-copy"><h3>ERLING FPS</h3><p>Regn. Tjen blyanter. Vind over haterne.</p><span class="fps-trial-entry-cta">SPIL NU ✎</span></div><div class="fps-trial-entry-scene" aria-hidden="true"><img class="fps-trial-entry-erling" src="assets/figurer/erling-aergerlig.webp" alt=""></div></a><a class="foodtruck-card" href="#foodtruck" data-action="foodtruck"><img src="assets/figurer/luigi-laekkermat-cutout.webp" alt="" width="78" height="94"><span><strong>Luigis Foodtruck</strong><small>Del råvarerne med brøker, og byg din egen burger.</small></span><span aria-hidden="true">→</span></a></nav>`}<h2 class="section-label">Vælg et område</h2>${renderTopicTower(availableTopics)}<h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div></div>`;
+    app.innerHTML = `${header()}<div class="page student-home-layout">${renderMathTower(availableTopics)}<div class="student-home-content"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section>${renderPracticeLeaderboardCard()}${isGuest() ? "" : `<nav class="home-game-links" aria-label="Matematikspil"><a class="fps-trial-entry home-fps-card" href="fps.html" aria-label="Spil Erling FPS"><div class="fps-trial-entry-copy"><h3>ERLING FPS</h3><p>Regn. Tjen blyanter. Vind over haterne.</p><span class="fps-trial-entry-cta">SPIL NU ✎</span></div><div class="fps-trial-entry-scene" aria-hidden="true"><img class="fps-trial-entry-erling" src="assets/figurer/erling-aergerlig.webp" alt=""></div></a><a class="foodtruck-card" href="#foodtruck" data-action="foodtruck"><img src="assets/figurer/luigi-laekkermat-cutout.webp" alt="" width="78" height="94"><span><strong>Luigis Foodtruck</strong><small>Del råvarerne med brøker, og byg din egen burger.</small></span><span aria-hidden="true">→</span></a></nav>`}<h2 class="section-label">Vælg et område</h2>${renderTopicTower(availableTopics)}<h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div></div>`;
     if (usingCentralDatabase && !isGuest()) void refreshPracticeLeaderboard({ prompt:true });
   }
   function renderStudentPassword() {
@@ -2675,6 +2694,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     return {
       numbers:"Øv små mængder først. Lad eleven pege på hver figur én gang, mens der tælles højt.",
       addition:"Træn korte serier med de valgte tal. Brug konkrete materialer, hvis et bestemt pluspar bliver ved med at drille.",
+      tenFriends:"Lad eleven tælle pizzaens tomme pladser og finde makkeren, så de to tal tilsammen giver 10.",
       additionColumn:"Arbejd fra højre mod venstre. Lad eleven sige hver kolonne højt, før cifrene trækkes på plads.",
       basics:"Øv reglerne med 0 og 1 i korte serier. Tal især om, hvorfor division med 0 ikke kan beregnes.",
       multiplication:"Træn korte serier i de tabeller, hvor svartiden er højest. Stop, mens sikkerheden stadig er god.",
@@ -3830,6 +3850,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     }
   });
   window.addEventListener("pagehide", () => {
+    leaveTenFriends();
     leaveFractionLesson();
     stopErlingAudio();
     stopKaptajnAudio();
