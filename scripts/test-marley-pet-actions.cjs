@@ -149,6 +149,10 @@ function loadPet(reduced) {
   const host = makeHost();
   const scene = await Scene.create(host, () => {});
 
+  assert.strictEqual(Scene.CACHE, "20261007-act2", "CACHE act2");
+  assert(/wag-a\.png/.test(Scene.POSES.wagA), "POSES.wagA");
+  assert(/wag-b\.png/.test(Scene.POSES.wagB), "POSES.wagB");
+
   FakeEl.srcs = [];
   for (let i = 0; i < 30; i++) tick(20);
   assert(
@@ -158,9 +162,9 @@ function loadPet(reduced) {
 
   FakeEl.srcs = [];
   scene.play("wag");
-  assert(FakeEl.srcs.some((u) => /walk-a/.test(u)), "wag → walk-a");
+  assert(FakeEl.srcs.some((u) => /wag-a/.test(u)), "wag → wag-a");
   for (let i = 0; i < 40; i++) tick(20);
-  assert(FakeEl.srcs.some((u) => /walk-b/.test(u)), "wag → walk-b");
+  assert(FakeEl.srcs.some((u) => /wag-b/.test(u)), "wag → wag-b");
 
   FakeEl.srcs = [];
   scene.play("smile");
@@ -185,7 +189,7 @@ function loadPet(reduced) {
   scene.play("wag");
   FakeEl.srcs = [];
   for (let i = 0; i < 25; i++) tick(20);
-  assert(FakeEl.srcs.some((u) => /walk-[ab]/.test(u)), "wag never no-op");
+  assert(FakeEl.srcs.some((u) => /wag-[ab]/.test(u)), "wag never no-op");
 
   const SceneR = loadPet(true);
   const hostR = makeHost();
@@ -195,8 +199,16 @@ function loadPet(reduced) {
   sceneR.play("wag");
   for (let i = 0; i < 20; i++) tick(140);
   assert(
+    FakeEl.srcs.some((u) => /wag-a/.test(u)) && FakeEl.srcs.some((u) => /wag-b/.test(u)),
+    "reduced wag swaps wag-a/b"
+  );
+
+  FakeEl.srcs = [];
+  sceneR.play("run");
+  for (let i = 0; i < 30; i++) tick(110);
+  assert(
     FakeEl.srcs.some((u) => /walk-a/.test(u)) && FakeEl.srcs.some((u) => /walk-b/.test(u)),
-    "reduced wag swaps"
+    "reduced run swaps walk-a/b"
   );
 
   console.log("PASS: marley pet actions (wag/smile/run/bed/pause + reduced)");

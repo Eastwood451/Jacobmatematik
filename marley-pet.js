@@ -2,12 +2,14 @@
 (() => {
   "use strict";
 
-  const CACHE = "20261007-act1";
+  const CACHE = "20261007-act2";
   const BASE = "assets/figurer/marley-pet/";
   const POSES = {
     stand: BASE + "stand.png?v=" + CACHE,
     walkA: BASE + "walk-a.png?v=" + CACHE,
     walkB: BASE + "walk-b.png?v=" + CACHE,
+    wagA: BASE + "wag-a.png?v=" + CACHE,
+    wagB: BASE + "wag-b.png?v=" + CACHE,
     sit: BASE + "sit.png?v=" + CACHE,
     lie: BASE + "lie.png?v=" + CACHE
   };
@@ -205,6 +207,9 @@
     function poseSrc(p, walking) {
       if (p === "sit" || p === "bed") return POSES.sit;
       if (p === "lie" || p === "sleep") return POSES.lie;
+      if (p === "wag") {
+        return walkFrame % 2 === 0 ? POSES.wagA : POSES.wagB;
+      }
       if (walking || p === "walk") {
         return walkFrame % 2 === 0 ? POSES.walkA : POSES.walkB;
       }
@@ -333,6 +338,15 @@
         pose = "walk";
         scale = 1;
         tilt = 0;
+      } else if (pose === "wag" || seg.pose === "wag") {
+        if (now - walkFrameAt >= WAG_FRAME_MS) {
+          walkFrame = (walkFrame + 1) % 2;
+          walkFrameAt = now;
+        }
+        bob = 16 * Math.sin(((now - segStart) / 140) * Math.PI);
+        tilt = Math.sin(((now - segStart) / 160) * Math.PI) * 6;
+        pose = "wag";
+        scale = 1;
       } else {
         bob = 0;
       }
@@ -349,9 +363,14 @@
       } else {
         const hx = seg.hold ? seg.hold.x : x;
         const hy = seg.hold ? seg.hold.y : y;
-        x = clamp(hx, X_MIN, X_MAX);
+        // Idle wag hold: slight x sway so it never reads as a still photo
+        if (pose === "wag" || seg.pose === "wag") {
+          x = clamp(hx + Math.sin(((now - segStart) / 280) * Math.PI) * 36, X_MIN, X_MAX);
+        } else {
+          x = clamp(hx, X_MIN, X_MAX);
+        }
         y = hy;
-        tilt = typeof seg.tilt === "number" ? seg.tilt : 0;
+        tilt = typeof seg.tilt === "number" ? seg.tilt : tilt;
         pose = seg.pose || (seg.name === "sniff" ? "sniff" : pose);
         if (seg.face) face = seg.face;
         scale = 1;
@@ -379,12 +398,12 @@
         x = HOME.x;
         y = HOME.y;
         face = 1;
-        pose = "walk";
+        pose = "wag";
         scale = 1;
         tilt = 0;
         walkFrame = 0;
         walkFrameAt = performance.now();
-        setSprite(POSES.walkA);
+        setSprite(POSES.wagA);
       } else if (kind === "celebrate") {
         x = HOME.x;
         y = HOME.y;
@@ -479,8 +498,7 @@
 
       if (r.kind === "wag") {
         if (elapsed < 2400) {
-          const frameMs = WAG_FRAME_MS;
-          if (now - walkFrameAt >= frameMs) {
+          if (now - walkFrameAt >= WAG_FRAME_MS) {
             walkFrame = (walkFrame + 1) % 2;
             walkFrameAt = now;
           }
@@ -488,8 +506,8 @@
           tilt = Math.sin(((now - r.t0) / 140) * Math.PI) * 10;
           x = HOME.x + Math.sin(((now - r.t0) / 220) * Math.PI) * 70;
           y = HOME.y;
-          pose = "walk";
-          setSprite(poseSrc("walk", true));
+          pose = "wag";
+          setSprite(poseSrc("wag", false));
         } else {
           endReactionToRoam();
         }
@@ -563,17 +581,17 @@
       if (r.kind === "run") {
         if (elapsed < 3200) {
           const u = elapsed / 3200;
-          // Full oval lap — clear left/right travel on small screens
+          // Full oval lap — clear left/right travel (walk alone feels still)
           const ang = u * Math.PI * 2;
-          x = clamp(HOME.x + Math.cos(ang) * 200, X_MIN, X_MAX);
-          y = HOME.y + Math.sin(ang) * 48;
-          face = Math.sin(ang) >= 0 ? 1 : -1;
+          x = clamp(HOME.x + Math.cos(ang) * 240, X_MIN, X_MAX);
+          y = HOME.y + Math.sin(ang) * 56;
+          face = Math.cos(ang) >= 0 ? 1 : -1;
           pose = "walk";
           if (now - walkFrameAt >= RUN_FRAME_MS) {
             walkFrame = (walkFrame + 1) % 2;
             walkFrameAt = now;
           }
-          bob = 14 * Math.sin(((now - r.t0) / 110) * Math.PI);
+          bob = 16 * Math.sin(((now - r.t0) / 100) * Math.PI);
           setSprite(poseSrc("walk", true));
         } else {
           endReactionToRoam();
@@ -707,7 +725,7 @@
         return;
       }
 
-      // Logre: always restart a visible wag (walk-a/b + bob) — never a no-op
+      // Logre: always restart visible wag (wag-a/b + bob + x sway) — never a no-op
       if (n === "wag") {
         interruptTo("wag");
         return;
@@ -788,21 +806,53 @@
         }
       }
 
-      function startWalkSwap(ms, duration, doneState) {
+      function startPoseSwap(opts) {
         clearPoseTimer();
+        const ms = opts.ms;
+        const duration = opts.duration;
+        const doneState = opts.doneState || "wag";
+        const srcA = opts.srcA;
+        const srcB = opts.srcB;
+        const poseName = opts.pose || "walk";
+        const travel = !!opts.travel;
+        const sway = !!opts.sway;
         let f = 0;
-        pose = "walk";
-        setSprite(POSES.walkA);
+        let step = 0;
+        pose = poseName;
+        x = HOME.x;
+        y = HOME.y;
+        bob = 0;
+        tilt = 0;
+        setSprite(srcA);
         applyTransform();
         const t0 = Date.now();
         poseTimer = setInterval(() => {
           if (disposed || paused) return;
           f = 1 - f;
-          setSprite(f ? POSES.walkB : POSES.walkA);
-          if (Date.now() - t0 >= duration) {
+          step++;
+          setSprite(f ? srcB : srcA);
+          const elapsed = Date.now() - t0;
+          if (travel) {
+            // Reduced-motion still needs visible x-travel on Løb
+            const ang = (elapsed / duration) * Math.PI * 2;
+            x = clamp(HOME.x + Math.cos(ang) * 180, X_MIN, X_MAX);
+            y = HOME.y + Math.sin(ang) * 36;
+            face = Math.cos(ang) >= 0 ? 1 : -1;
+            bob = 10 * Math.sin(step * 0.9);
+          } else if (sway) {
+            x = HOME.x + Math.sin(elapsed / 220) * 50;
+            bob = 14 * Math.sin(step * 0.8);
+            tilt = Math.sin(step * 0.7) * 8;
+          }
+          applyTransform();
+          if (elapsed >= duration) {
             clearPoseTimer();
-            state = doneState || "wag";
+            state = doneState;
             pose = "stand";
+            x = HOME.x;
+            y = HOME.y;
+            bob = 0;
+            tilt = 0;
             setSprite(POSES.stand);
             setLabel(state === "wag" ? "wag" : state);
             applyTransform();
@@ -827,12 +877,28 @@
           state = n === "roam" ? "wag" : n;
           setLabel(n === "roam" ? "wag" : n === "celebrate" ? "celebrate" : n);
           if (n === "wag" || n === "roam") {
-            startWalkSwap(WAG_FRAME_MS, 2400, "wag");
+            startPoseSwap({
+              ms: WAG_FRAME_MS,
+              duration: 2400,
+              doneState: "wag",
+              srcA: POSES.wagA,
+              srcB: POSES.wagB,
+              pose: "wag",
+              sway: true
+            });
             emit("wag");
             return;
           }
           if (n === "run") {
-            startWalkSwap(RUN_FRAME_MS, 3200, "wag");
+            startPoseSwap({
+              ms: RUN_FRAME_MS,
+              duration: 3200,
+              doneState: "wag",
+              srcA: POSES.walkA,
+              srcB: POSES.walkB,
+              pose: "walk",
+              travel: true
+            });
             emit("run");
             return;
           }
