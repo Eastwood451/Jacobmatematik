@@ -34,3 +34,5 @@
 }
 @media(max-width:780px){.marley-scene{min-height:290px}.marley-dog{max-width:270px}.marley-actions button{font-size:.9rem}}
 @media(prefers-reduced-motion:reduce){.marley-portrait,.marley-dog.is-run{animation:none}.marley-portrait[data-action="bed"],.marley-portrait[data-action="eat"]{background-position:100% 100%}}
+
+.marley-dog.is-paused,.marley-dog.is-paused .marley-portrait{animation-play-state:paused}
