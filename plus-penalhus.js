@@ -18,7 +18,7 @@
   // Every cel is a complete drawing of the original character, not a body-part rig.
   const CEL_COLS = 4;
   const CEL_ROWS = 3;
-  const CEL_FPS = 20;
+  const CEL_FPS = 40;
   const CEL_MS = 1000 / CEL_FPS;
   // Consecutive poses: one planted stance and one throwing arm per character.
   const THROW_CELS = {
@@ -27,8 +27,8 @@
   };
   const IDLE_CEL = { obbe: 0, luigi: 11 };
   const RELEASE_STEP = { obbe: 7, luigi: 4 };
-  const THROW_MS = 1500; // From an accepted click, including the windup.
-  const AUDIO_BASE = 'assets/figurer/plus-penalhus/audio/';
+  const THROW_MS = 750; // From an accepted click, including the windup.
+  const AUDIO_BASE = 'assets/figurer/plus-penalhus/audio-v2/';
   const CEL_ASSETS = {
     obbe: 'assets/figurer/plus-penalhus/obbe-cartoon-v5.webp',
     luigi: 'assets/figurer/plus-penalhus/luigi-cartoon-v5.webp',
@@ -106,12 +106,14 @@
     const voice = new Audio();
     voice.preload = 'auto';
     let voiceQueue = [];
+    let currentVoice = null;
     let speaking = false;
     let voiceToken = 0;
 
     function stopVoice() {
       voiceToken++;
       voiceQueue = [];
+      currentVoice = null;
       speaking = false;
       voice.pause();
       voice.removeAttribute('src');
@@ -122,24 +124,28 @@
       if (disposed || speaking || !voiceQueue.length) return;
       speaking = true;
       const token = ++voiceToken;
-      voice.src = AUDIO_BASE + voiceQueue.shift() + '.mp3';
+      currentVoice = voiceQueue.shift();
+      voice.src = AUDIO_BASE + currentVoice.clip + '.mp3';
       voice.play().catch(() => {
         if (token !== voiceToken || disposed) return;
-        speaking = false;
-        playNextVoice();
+        voiceFinished();
       });
     }
 
     function voiceFinished() {
+      if (!speaking) return;
+      const finished = currentVoice;
+      currentVoice = null;
       speaking = false;
+      finished?.onEnd?.();
       playNextVoice();
     }
     voice.addEventListener('ended', voiceFinished);
     voice.addEventListener('error', voiceFinished);
 
-    function say(clip, replace = false) {
+    function say(clip, replace = false, onEnd = null) {
       if (replace) stopVoice();
-      voiceQueue.push(clip);
+      voiceQueue.push({ clip, onEnd });
       playNextVoice();
     }
 
@@ -486,7 +492,7 @@
       clearThrowClasses(charBtn);
       charBtn.classList.add('pp-busy');
       setHandItem(charBtn, itemEmoji);
-      actor.throw = { start: performance.now(), celMs: prefersReducedMotion() ? 80 : CEL_MS,
+      actor.throw = { start: performance.now(), celMs: prefersReducedMotion() ? 40 : CEL_MS,
         released: false, onRelease };
       paintCel(who, THROW_CELS[who][0]);
       update();
@@ -507,7 +513,18 @@
       const charBtn = $(`[data-pp-throw="${who}"]`);
 
       updateProgress();
-      say(`count-${who === 'obbe' ? obbeClicks : luigiClicks}`);
+      item.voiceDone = false;
+      item.released = false;
+      const unlock = () => {
+        if (disposed || token !== actionToken || !item.voiceDone || !item.released) return;
+        busy[who] = false;
+        clearThrowClasses(charBtn);
+        update();
+      };
+      say(`count-${who === 'obbe' ? obbeClicks : luigiClicks}`, false, () => {
+        item.voiceDone = true;
+        unlock();
+      });
 
       later(() => {
         if (token !== actionToken) return;
@@ -517,15 +534,15 @@
           activeFlights.delete(item.flight);
         }
         items.push(item);
-        busy[who] = false;
-        clearThrowClasses(charBtn);
         paintItems(item.id);
         maybeEnterAnswerPhase();
       }, Math.max(0, item.deadline - performance.now()));
 
       runThrowPose(charBtn, who, item.emoji, () => {
         if (disposed || token !== actionToken || items.includes(item)) return;
+        item.released = true;
         spawnFlight(who, item, charBtn);
+        unlock();
       });
     }
 

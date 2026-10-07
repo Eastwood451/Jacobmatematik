@@ -1,11 +1,12 @@
-"""Build prerecorded Danish counting and equations; no TTS runs in-game.
+"""Generate complete, independent Danish utterances. Never cut at word timestamps.
 
-Christel is the Danish female Edge voice. Generate in one narration and split at
-word boundaries so even short counts (en/to) receive complete audio reliably.
-pip install edge-tts imageio-ffmpeg; python scripts/generate_plus_penalhus_audio.py
+pip install edge-tts imageio-ffmpeg
+python scripts/generate_plus_penalhus_audio.py
+Only leading/trailing silence is trimmed, retaining 60ms around all speech.
 """
 import asyncio
 import os
+import re
 import subprocess
 import tempfile
 from pathlib import Path
@@ -17,7 +18,7 @@ import edge_tts
 import imageio_ffmpeg
 
 ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "assets/figurer/plus-penalhus/audio"
+OUTPUT = ROOT / "assets/figurer/plus-penalhus/audio-v2"
 VOICE = "da-DK-ChristelNeural"
 NUMBERS = "nul en to tre fire fem seks syv otte ni ti elleve tolv tretten fjorten femten seksten sytten atten".split()
 
@@ -27,50 +28,48 @@ async def main():
     lines = [(f"count-{n}", NUMBERS[n].capitalize() + ".") for n in range(1, 19)]
     lines += [(f"sum-{a}-{b}", f"{NUMBERS[a].capitalize()} plus {NUMBERS[b]} giver {NUMBERS[a+b]}.")
               for a in range(10) for b in range(10)]
-    if all((OUTPUT / f"{stem}.mp3").exists() for stem, _ in lines):
-        return
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
-    with tempfile.TemporaryDirectory(prefix="plus-penalhus-audio-") as tmp:
-        raw = Path(tmp) / "narration.mp3"
-        # Batches keep service requests short and can retry without losing earlier clips.
-        for at in range(0, len(lines), 20):
-            batch = lines[at:at + 20]
-            if all((OUTPUT / f"{stem}.mp3").exists() for stem, _ in batch):
-                continue
-            for attempt in range(6):
-                boundaries = []
-                try:
-                    with raw.open("wb") as audio:
-                        async for chunk in edge_tts.Communicate(
-                            " ".join(text for _, text in batch), VOICE,
-                            rate="-10%", boundary="WordBoundary"
-                        ).stream():
-                            if chunk["type"] == "audio":
-                                audio.write(chunk["data"])
-                            elif chunk["type"] == "WordBoundary":
-                                boundaries.append(chunk)
-                    expected = [word.strip(".").lower() for _, text in batch for word in text.split()]
-                    actual = [b["text"].strip(".").lower() for b in boundaries]
-                    assert actual == expected, (actual, expected)
-                    break
-                except Exception:
-                    if attempt == 5:
-                        raise
-                    await asyncio.sleep(2 + attempt)
-            cursor = 0
-            for stem, text in batch:
-                words = len(text.split())
-                first, last = boundaries[cursor], boundaries[cursor + words - 1]
-                cursor += words
-                start = max(0, first["offset"] / 10_000_000 - .035)
-                end = (last["offset"] + last["duration"]) / 10_000_000 + .09
-                final = OUTPUT / f"{stem}.mp3"
-                subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(raw),
-                                "-ss", str(start), "-t", str(end - start),
-                                "-af", "loudnorm=I=-16:TP=-1.5:LRA=7",
+    limit = asyncio.Semaphore(2)
+
+    async def generate(stem, text):
+        final = OUTPUT / f"{stem}.mp3"
+        if final.exists() and final.stat().st_size > 1000:
+            return
+        async with limit:
+            with tempfile.TemporaryDirectory(prefix="plus-whole-voice-") as tmp:
+                raw = Path(tmp) / "whole.mp3"
+                repeated = False
+                for attempt in range(8):
+                    # Some very short utterances are rejected by the service.
+                    # Repeat them if necessary, then split only at an actual silent gap.
+                    repeated = stem.startswith("count-") and attempt >= 3
+                    try:
+                        await edge_tts.Communicate(text + (" " + text if repeated else ""),
+                                                   VOICE, rate="-10%", boundary="WordBoundary").save(str(raw))
+                        break
+                    except Exception:
+                        if attempt == 7:
+                            raise
+                        await asyncio.sleep(2 + attempt)
+                trim = []
+                if repeated:
+                    result = subprocess.run([ffmpeg, "-i", str(raw), "-af",
+                                             "silencedetect=noise=-55dB:d=0.25", "-f", "null", "-"],
+                                            capture_output=True, text=True, check=True)
+                    gaps = re.findall(r"silence_start: ([0-9.]+).*?silence_end: ([0-9.]+)",
+                                      result.stderr, flags=re.S)
+                    gaps = [(float(a), float(b)) for a, b in gaps if float(a) > .15]
+                    if not gaps:
+                        raise RuntimeError(f"No safe silent gap in repeated {stem}")
+                    trim = ["-t", str(gaps[0][0] + .12)]
+                subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(raw), *trim,
+                                "-af", "silenceremove=start_periods=1:start_threshold=-55dB:start_silence=0.06,"
+                                "areverse,silenceremove=start_periods=1:start_threshold=-55dB:start_silence=0.06,"
+                                "areverse,loudnorm=I=-16:TP=-1.5:LRA=7",
                                 "-codec:a", "libmp3lame", "-b:a", "64k", str(final)], check=True)
                 subprocess.run([ffmpeg, "-v", "error", "-i", str(final), "-f", "null", "-"], check=True)
-                print(f"Created {stem}: {text}", flush=True)
+                print(f"Created {stem}: {text} (complete utterance)", flush=True)
+    await asyncio.gather(*(generate(stem, text) for stem, text in lines))
 
 
 if __name__ == "__main__":

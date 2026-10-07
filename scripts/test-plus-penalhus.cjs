@@ -37,7 +37,7 @@ for (const clip of [
   ...Array.from({ length: 18 }, (_, i) => `count-${i + 1}`),
   ...Array.from({ length: 100 }, (_, i) => `sum-${Math.floor(i / 10)}-${i % 10}`),
 ]) {
-  const file = path.join('assets/figurer/plus-penalhus/audio', `${clip}.mp3`);
+  const file = path.join('assets/figurer/plus-penalhus/audio-v2', `${clip}.mp3`);
   assert.ok(fs.existsSync(file) && fs.statSync(file).size > 1000, `${clip} must ship with the game`);
 }
 
@@ -81,7 +81,7 @@ try { playwright = require('playwright'); } catch { playwright = null; }
       // Deterministic audio completion: test queue order, not CI audio hardware.
       HTMLMediaElement.prototype.play = function () {
         __speech.push(this.src.split('/').pop());
-        setTimeout(() => this.dispatchEvent(new Event('ended')), 80);
+        setTimeout(() => this.dispatchEvent(new Event('ended')), 320);
         return Promise.resolve();
       };
       window.__timings = { clicks: [], landed: {} };
@@ -100,7 +100,7 @@ try { playwright = require('playwright'); } catch { playwright = null; }
       assert.ok(timings.clicks.length > 0);
       timings.clicks.forEach((time, i) => {
         const elapsed = timings.landed[i + 1] - time;
-        assert.ok(elapsed >= 1490 && elapsed < 1700, `Click ${i + 1} landed after ${elapsed}ms`);
+        assert.ok(elapsed >= 740 && elapsed < 900, `Click ${i + 1} landed after ${elapsed}ms`);
       });
     }
     async function verifyLayout() {
@@ -132,7 +132,7 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     const idlePixels = await cel.evaluate(el => el.toDataURL());
     await page.evaluate(() => {
       window.__heads = [];
-      const end = performance.now() + 1100;
+      const end = performance.now() + 550;
       const sample = () => {
         const canvas = document.querySelector('[data-pp-cel="obbe"]');
         const pixels = canvas.getContext('2d').getImageData(70, 0, 120, 125).data;
@@ -148,19 +148,21 @@ try { playwright = require('playwright'); } catch { playwright = null; }
       requestAnimationFrame(sample);
     });
     await page.locator('[data-pp-throw="obbe"]').click({ timeout: 15000 });
-    await page.waitForTimeout(260);
+    await page.waitForTimeout(130);
     assert.notEqual(await cel.evaluate(el => el.toDataURL()), idlePixels);
     assert.equal(await page.locator('.pp-flight').count(), 0, 'Nothing flies before the hand releases');
     await page.waitForSelector('.pp-flight');
     assert.equal(await page.locator('#pp-answer-panel').isHidden(), true);
     await page.screenshot({ path: `${out}/obbe-throw-mid.png`, fullPage: true });
-    await page.waitForTimeout(700);
+    await page.waitForTimeout(350);
     const heads = await page.evaluate(() => __heads);
     const base = heads[0];
     assert.ok(heads.length > 8);
     assert.ok(heads.every(h => Math.hypot(h.x - base.x, h.y - base.y) < 3),
       'Head stays registered instead of jumping when the arm extends');
     assert.ok(heads.every(h => h.mass > base.mass * .9), 'Cel interpolation does not flash transparent');
+    // Audio has finished while the first item is still in flight.
+    // Use a separate task below to assert this, without changing head sampling.
     for (let i = 0; i < 1; i++) await page.locator('[data-pp-throw="obbe"]').click({ timeout: 15000 });
     for (let i = 0; i < 3; i++) await page.locator('[data-pp-throw="luigi"]').click({ timeout: 15000 });
     await page.waitForSelector('#pp-answer-panel:not([hidden])', { timeout: 20000 });
@@ -191,7 +193,7 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     await page.setViewportSize({ width: 390, height: 844 });
     await page.locator('[data-pp-throw="obbe"]').click();
     await page.locator('[data-pp-throw="luigi"]').click();
-    await page.waitForTimeout(600);
+    await page.waitForTimeout(300);
     assert.equal(await page.locator('#pp-answer-panel').isHidden(), true, 'Wait for both items to land');
     await page.waitForSelector('#pp-answer-panel:not([hidden])');
     assert.equal(await page.locator('.pp-item').count(), 2);
@@ -217,14 +219,14 @@ try { playwright = require('playwright'); } catch { playwright = null; }
       const before = await actorCel.evaluate(el => el.toDataURL());
       const landed = await page.locator('.pp-item').count();
       await page.locator(`[data-pp-throw="${who}"]`).click();
-      await page.waitForTimeout(240);
+      await page.waitForTimeout(120);
       assert.notEqual(await actorCel.evaluate(el => el.toDataURL()), before, `${who} winds up with reduced motion`);
       assert.equal(await page.locator('.pp-hand-loaded').count(), 1);
       assert.equal(await page.locator('.pp-item').count(), landed, 'No instant landing');
       assert.equal(await page.locator('.pp-flight').count(), 0, 'Windup precedes release');
       await page.waitForSelector('.pp-flight');
       const from = await page.locator('.pp-flight').evaluate(el => el.getBoundingClientRect().toJSON());
-      await page.waitForTimeout(250);
+      await page.waitForTimeout(125);
       const to = await page.locator('.pp-flight').evaluate(el => el.getBoundingClientRect().toJSON());
       assert.ok(Math.hypot(to.x - from.x, to.y - from.y) > 10, `${who}'s item visibly travels`);
       assert.equal(await page.locator('.pp-item').count(), landed, 'Count only landed objects');
@@ -234,6 +236,26 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     }
     await page.waitForSelector('#pp-answer-panel:not([hidden])');
     await verifyTiming();
+    await page.evaluate(() => __dispose());
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.evaluate(() => {
+      window.__timings = { clicks: [], landed: {} };
+      window.__dispose = PlusPenalhus.mount(document.getElementById('root'), {
+        user: { id: 'guest', role: 'guest' }, tasks: [{ a: 2, b: 0 }],
+      });
+    });
+    await page.locator('[data-pp-throw="obbe"]').click();
+    await page.waitForTimeout(360);
+    assert.equal(await page.locator('.pp-item').count(), 0);
+    assert.equal(await page.locator('.pp-flight').count(), 1);
+    assert.equal(await page.locator('[data-pp-throw="obbe"]').isEnabled(), true,
+      'Next throw unlocks after its count ends, before the previous landing');
+    await page.locator('[data-pp-throw="obbe"]').click();
+    await page.waitForTimeout(220);
+    assert.equal(await page.locator('.pp-flight').count(), 2, 'Two same-actor items fly together');
+    await page.waitForSelector('#pp-answer-panel:not([hidden])');
+    await verifyTiming();
+    await verifyLayout();
     await page.evaluate(() => __dispose());
     // Maximum supported sum. Both actors may throw together; slots are reserved
     // in accepted-click order rather than whichever flight happens to finish first.
@@ -278,19 +300,21 @@ try { playwright = require('playwright'); } catch { playwright = null; }
         return promise;
       };
       window.__dispose = PlusPenalhus.mount(document.getElementById('root'), {
-        user: { id: 'guest', role: 'guest' }, tasks: [{ a: 1, b: 0 }],
+        user: { id: 'guest', role: 'guest' }, tasks: [{ a: 5, b: 3 }],
       });
     });
     await page.locator('[data-pp-throw="obbe"]').click();
-    await page.waitForFunction(() => __played.includes('count-1.mp3'));
+    for (let i = 1; i < 5; i++) await page.locator('[data-pp-throw="obbe"]').click();
+    for (let i = 0; i < 3; i++) await page.locator('[data-pp-throw="luigi"]').click();
+    await page.waitForFunction(() => __played.includes('count-4.mp3') && __played.includes('count-5.mp3'));
     await page.waitForSelector('#pp-answer-panel:not([hidden])');
-    await page.locator('[data-pp-digit="1"]').click();
+    await page.locator('[data-pp-digit="8"]').click();
     await page.locator('[data-pp-submit]').click();
-    await page.waitForFunction(() => __played.includes('sum-1-0.mp3'));
+    await page.waitForFunction(() => __played.includes('sum-5-3.mp3'));
     assert.deepEqual(await page.evaluate(() => __audioErrors), []);
     await page.evaluate(() => __dispose());
     assert.deepEqual(errors, []);
-    console.log('PASS: 1500ms throws in normal/reduced motion, no overlaps at 320–1280px, Danish counting/equations, quotas, answers, cleanup.');
+    console.log('PASS: 750ms throws in normal/reduced motion, no overlaps at 320–1280px, Danish counting/equations, quotas, answers, cleanup.');
   } finally {
     await browser.close();
   }
