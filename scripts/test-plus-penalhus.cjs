@@ -30,7 +30,7 @@ assert.match(fs.readFileSync('module-loader.js', 'utf8'), /plus-penalhus\.css/);
 assert.doesNotMatch(fs.readFileSync('index.html', 'utf8'), /src=["']plus-penalhus\.js/);
 
 for (const who of ['obbe', 'luigi']) {
-  assert.ok(fs.existsSync(path.join('assets/figurer/plus-penalhus', `${who}-cartoon-v3.webp`)));
+  assert.ok(fs.existsSync(path.join('assets/figurer/plus-penalhus', `${who}-cartoon-v5.webp`)));
 }
 assert.doesNotMatch(source, /pp-puppet|pp-arm-svg|OBBE_POSES/);
 
@@ -53,7 +53,8 @@ try { playwright = require('playwright'); } catch { playwright = null; }
   });
   const errors = [];
   try {
-    const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+    const page = await browser.newPage({ viewport: { width: 1280, height: 900 },
+      recordVideo: { dir: `${out}/video`, size: { width: 960, height: 675 } } });
     page.on('pageerror', e => errors.push(e.message));
     await page.route('**/*', route => {
       const url = new URL(route.request().url());
@@ -82,6 +83,23 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     assert.equal(await page.locator('[data-pp-cel]').count(), 2);
     const cel = page.locator('[data-pp-cel="obbe"]');
     const idlePixels = await cel.evaluate(el => el.toDataURL());
+    await page.evaluate(() => {
+      window.__heads = [];
+      const end = performance.now() + 1100;
+      const sample = () => {
+        const canvas = document.querySelector('[data-pp-cel="obbe"]');
+        const pixels = canvas.getContext('2d').getImageData(70, 0, 120, 125).data;
+        let mass = 0, x = 0, y = 0;
+        for (let i = 3; i < pixels.length; i += 4) {
+          const alpha = pixels[i];
+          mass += alpha; x += ((i - 3) / 4 % 120) * alpha;
+          y += Math.floor((i - 3) / 4 / 120) * alpha;
+        }
+        __heads.push({ x: x / mass, y: y / mass, mass });
+        if (performance.now() < end) requestAnimationFrame(sample);
+      };
+      requestAnimationFrame(sample);
+    });
     await page.locator('[data-pp-throw="obbe"]').click({ timeout: 15000 });
     await page.waitForTimeout(260);
     assert.notEqual(await cel.evaluate(el => el.toDataURL()), idlePixels);
@@ -90,6 +108,12 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     assert.equal(await page.locator('#pp-answer-panel').isHidden(), true);
     await page.screenshot({ path: `${out}/obbe-throw-mid.png`, fullPage: true });
     await page.waitForTimeout(700);
+    const heads = await page.evaluate(() => __heads);
+    const base = heads[0];
+    assert.ok(heads.length > 8);
+    assert.ok(heads.every(h => Math.hypot(h.x - base.x, h.y - base.y) < 3),
+      'Head stays registered instead of jumping when the arm extends');
+    assert.ok(heads.every(h => h.mass > base.mass * .9), 'Cel interpolation does not flash transparent');
     for (let i = 0; i < 1; i++) await page.locator('[data-pp-throw="obbe"]').click({ timeout: 15000 });
     for (let i = 0; i < 3; i++) await page.locator('[data-pp-throw="luigi"]').click({ timeout: 15000 });
     await page.waitForSelector('#pp-answer-panel:not([hidden])', { timeout: 20000 });

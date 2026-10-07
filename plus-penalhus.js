@@ -16,25 +16,24 @@
   ];
 
   // Every cel is a complete drawing of the original character, not a body-part rig.
-  const CEL_COLS = 6;
-  const CEL_ROWS = 4;
-  const CEL_FPS = 16;
+  const CEL_COLS = 4;
+  const CEL_ROWS = 3;
+  const CEL_FPS = 20;
   const CEL_MS = 1000 / CEL_FPS;
+  // Consecutive poses: one planted stance and one throwing arm per character.
   const THROW_CELS = {
-    obbe: [19, 4, 6, 7, 11, 9, 5, 12, 8, 10, 13, 14, 15, 17, 18, 19],
-    luigi: [19, 4, 5, 13, 16, 8, 6, 9, 10, 7, 11, 12, 14, 15, 18, 19],
+    obbe: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 0],
+    luigi: [11, 1, 2, 5, 7, 8, 9, 10, 11],
   };
-  const RELEASE_STEP = 10;
+  const IDLE_CEL = { obbe: 0, luigi: 11 };
+  const RELEASE_STEP = { obbe: 7, luigi: 4 };
   const FLIGHT_MS = 800;
   const CEL_ASSETS = {
-    obbe: 'assets/figurer/plus-penalhus/obbe-cartoon-v3.webp',
-    luigi: 'assets/figurer/plus-penalhus/luigi-cartoon-v3.webp',
+    obbe: 'assets/figurer/plus-penalhus/obbe-cartoon-v5.webp',
+    luigi: 'assets/figurer/plus-penalhus/luigi-cartoon-v5.webp',
   };
-  // Palm positions in normalized cell coordinates, following the drawn hand.
-  const CEL_HANDS = {
-    obbe: [[0.766,0.66],[0.773,0.667],[0.766,0.667],[0.763,0.667],[0.465,0.752],[0.752,0.663],[0.217,0.646],[0.198,0.682],[0.746,0.717],[0.835,0.566],[0.756,0.594],[0.199,0.54],[0.824,0.55],[0.784,0.437],[0.841,0.36],[0.877,0.377],[0.747,0.615],[0.711,0.632],[0.756,0.658],[0.766,0.658]],
-    luigi: [[0.347,0.69],[0.344,0.687],[0.502,0.611],[0.355,0.682],[0.228,0.681],[0.264,0.671],[0.174,0.653],[0.17,0.594],[0.199,0.725],[0.158,0.575],[0.241,0.63],[0.25,0.565],[0.115,0.551],[0.481,0.691],[0.117,0.332],[0.148,0.382],[0.576,0.679],[0.258,0.47],[0.325,0.639],[0.343,0.656]],
-  };
+  // Palms registered with the complete drawings, anchored by the boot soles.
+  const CEL_HANDS = {"obbe":[[0.3034,0.6145],[0.3034,0.6145],[0.1822,0.6079],[0.1223,0.5926],[0.5889,0.6149],[0.648,0.5755],[0.7464,0.499],[0.8809,0.418],[0.8908,0.355],[0.648,0.5956],[0.2936,0.6171],[0.2936,0.6197]],"luigi":[[0.2328,0.65],[0.2922,0.6953],[0.2906,0.6734],[0.2547,0.6729],[0.6187,0.6828],[0.3375,0.6453],[0.6891,0.5953],[0.2586,0.5297],[0.2656,0.4781],[0.3352,0.6297],[0.3102,0.6901],[0.257,0.6667]]};
   function prefersReducedMotion() {
     return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
@@ -188,16 +187,31 @@
       btn.classList.remove('pp-windup', 'pp-throwing', 'pp-follow', 'pp-busy');
     }
 
-    function paintCel(who, frame) {
+    function paintCel(who, frame, nextFrame = frame, mix = 0) {
       const actor = actors[who];
-      if (!actor?.image || actor.frame === frame) return;
+      if (!actor?.image || (actor.frame === frame && actor.nextFrame === nextFrame && actor.mix === mix)) return;
       actor.frame = frame;
+      actor.nextFrame = nextFrame;
+      actor.mix = mix;
       const w = actor.image.naturalWidth / CEL_COLS;
       const h = actor.image.naturalHeight / CEL_ROWS;
       actor.context.clearRect(0, 0, 256, 384);
-      actor.context.drawImage(actor.image, (frame % CEL_COLS) * w,
-        Math.floor(frame / CEL_COLS) * h, w, h, 0, 0, 256, 384);
-      const hand = CEL_HANDS[who][frame] || CEL_HANDS[who][0];
+      const draw = (cel, alpha) => {
+        actor.context.globalAlpha = alpha;
+        actor.context.drawImage(actor.image, (cel % CEL_COLS) * w,
+          Math.floor(cel / CEL_COLS) * h, w, h, 0, 0, 256, 384);
+      };
+      // Brief whole-drawing dissolves soften cel changes without a body-part rig.
+      draw(frame, 1 - mix);
+      if (mix > 0) {
+        actor.context.globalCompositeOperation = 'lighter';
+        draw(nextFrame, mix);
+        actor.context.globalCompositeOperation = 'source-over';
+      }
+      actor.context.globalAlpha = 1;
+      const from = CEL_HANDS[who][frame];
+      const to = CEL_HANDS[who][nextFrame];
+      const hand = from.map((v, axis) => v + (to[axis] - v) * mix);
       const grip = $(`[data-pp-hand="${who}"]`);
       grip.style.left = `${hand[0] * 100}%`;
       grip.style.top = `${hand[1] * 100}%`;
@@ -205,7 +219,6 @@
 
     function animate(now) {
       if (disposed) return;
-      const reduced = prefersReducedMotion();
       for (const who of ['obbe', 'luigi']) {
         const actor = actors[who];
         if (!actor?.image) continue;
@@ -213,18 +226,18 @@
           const t = actor.throw;
           const step = Math.max(0, Math.floor((now - t.start) / t.celMs));
           const cels = THROW_CELS[who];
-          paintCel(who, cels[Math.min(cels.length - 1, step)]);
-          if (!t.released && step >= RELEASE_STEP) {
+          const at = Math.min(cels.length - 1, step);
+          const next = Math.min(cels.length - 1, at + 1);
+          const mix = next === at ? 0 : ((now - t.start) / t.celMs) % 1;
+          paintCel(who, cels[at], cels[next], mix);
+          if (!t.released && step >= RELEASE_STEP[who]) {
             t.released = true;
             setHandItem(actor.button, '');
             t.onRelease();
           }
           if (step >= cels.length) actor.throw = null;
-        } else if (phase === 'done' || actor.cheerUntil > now) {
-          paintCel(who, reduced ? 20 : 20 + Math.floor(now / 140) % 4);
         } else {
-          const idle = [0, 1, 3, 1];
-          paintCel(who, reduced ? 0 : idle[Math.floor(now / 180) % idle.length]);
+          paintCel(who, IDLE_CEL[who]);
         }
       }
       for (const [el, flight] of activeFlights) {
@@ -249,7 +262,7 @@
         img.onload = () => {
           if (disposed) return resolve();
           actor.image = img;
-          paintCel(who, 0);
+          paintCel(who, IDLE_CEL[who]);
           resolve();
         };
         img.onerror = () => reject(new Error(`Animationen for ${who} kunne ikke hentes.`));
@@ -524,7 +537,7 @@
         if (actors[who]) {
           actors[who].throw = null;
           actors[who].cheerUntil = 0;
-          paintCel(who, 0);
+          paintCel(who, IDLE_CEL[who]);
         }
       }
       activeFlights.clear();
