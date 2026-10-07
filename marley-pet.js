@@ -2,7 +2,7 @@
 (() => {
   "use strict";
 
-  const CACHE = "20261007-cut1";
+  const CACHE = "20261007-act1";
   const BASE = "assets/figurer/marley-pet/";
   const POSES = {
     stand: BASE + "stand.png?v=" + CACHE,
@@ -20,7 +20,9 @@
   const EAT_THROTTLE_MS = 90_000;
   const CROSSFADE_MS = 200;
   const FADE_OUT_MS = 120;
-  const WALK_FRAME_MS = 200;
+  const WALK_FRAME_MS = 160;
+  const WAG_FRAME_MS = 140;
+  const RUN_FRAME_MS = 110;
 
   const LABELS = {
     roam: "Marley går rundt",
@@ -34,7 +36,7 @@
     sleep: "Marley sover i kurven"
   };
 
-  const ALIAS = { wag: "roam", smile: "celebrate", run: "run" };
+  const ALIAS = { smile: "celebrate" };
 
   const GEAR = {
     glasses: { slot: "eyes", emoji: "🕶️", className: "eyes", persist: true },
@@ -264,11 +266,12 @@
 
     function setLabel(name) {
       room.setAttribute("aria-label", LABELS[name] || LABELS.roam);
-      host.dataset.action = name === "roam" ? "wag" : name === "celebrate" ? "smile" : name;
+      host.dataset.action =
+        name === "roam" || name === "wag" ? "wag" : name === "celebrate" ? "smile" : name;
     }
 
     function emit(name) {
-      onChange(name === "roam" ? "wag" : name === "celebrate" ? "smile" : name);
+      onChange(name === "roam" || name === "wag" ? "wag" : name === "celebrate" ? "smile" : name);
     }
 
     function startPath(index, fromCenter) {
@@ -326,7 +329,7 @@
           walkFrame = (walkFrame + 1) % 2;
           walkFrameAt = now;
         }
-        bob = 6 * Math.sin(((now - segStart) / 180) * Math.PI);
+        bob = 10 * Math.sin(((now - segStart) / 150) * Math.PI);
         pose = "walk";
         scale = 1;
         tilt = 0;
@@ -362,6 +365,7 @@
       reaction = { kind, t0: performance.now(), phase: "start" };
       opacity = 1;
       bob = 0;
+      fade = null;
       if (kind === "eat") {
         treat.classList.add("is-visible");
         x = HOME.x;
@@ -371,13 +375,24 @@
         face = 1;
         pose = "notice";
         setSprite(POSES.stand);
+      } else if (kind === "wag") {
+        x = HOME.x;
+        y = HOME.y;
+        face = 1;
+        pose = "walk";
+        scale = 1;
+        tilt = 0;
+        walkFrame = 0;
+        walkFrameAt = performance.now();
+        setSprite(POSES.walkA);
       } else if (kind === "celebrate") {
         x = HOME.x;
         y = HOME.y;
         face = 1;
-        pose = "celebrate";
+        pose = "sit";
         scale = 1;
-        setSprite(POSES.stand);
+        tilt = 0;
+        setSprite(POSES.sit);
         fx.textContent = "✨";
         fx.classList.add("is-on");
       } else if (kind === "outfit") {
@@ -393,6 +408,7 @@
         pose = "bed";
         x = HOME.x;
         y = HOME.y + 5;
+        tilt = 0;
         setSprite(POSES.sit);
       } else if (kind === "sleep") {
         pose = "sleep";
@@ -403,8 +419,11 @@
       } else if (kind === "run") {
         pose = "walk";
         face = 1;
+        x = HOME.x;
+        y = HOME.y;
         walkFrame = 0;
         walkFrameAt = performance.now();
+        setSprite(POSES.walkA);
       }
     }
 
@@ -458,13 +477,32 @@
         return;
       }
 
+      if (r.kind === "wag") {
+        if (elapsed < 2400) {
+          const frameMs = WAG_FRAME_MS;
+          if (now - walkFrameAt >= frameMs) {
+            walkFrame = (walkFrame + 1) % 2;
+            walkFrameAt = now;
+          }
+          bob = 22 * Math.sin(((now - r.t0) / 120) * Math.PI);
+          tilt = Math.sin(((now - r.t0) / 140) * Math.PI) * 10;
+          x = HOME.x + Math.sin(((now - r.t0) / 220) * Math.PI) * 70;
+          y = HOME.y;
+          pose = "walk";
+          setSprite(poseSrc("walk", true));
+        } else {
+          endReactionToRoam();
+        }
+        return;
+      }
+
       if (r.kind === "celebrate") {
-        if (elapsed < 1600) {
-          const u = elapsed / 1600;
-          bob = 12 * Math.sin(u * Math.PI * 3);
-          tilt = Math.sin(u * Math.PI * 3) * 4;
-          pose = "celebrate";
-          setSprite(POSES.stand);
+        if (elapsed < 1800) {
+          const u = elapsed / 1800;
+          bob = 14 * Math.sin(u * Math.PI * 3);
+          tilt = Math.sin(u * Math.PI * 3) * 5;
+          pose = "sit";
+          setSprite(POSES.sit);
         } else {
           fx.classList.remove("is-on");
           fx.textContent = "";
@@ -525,21 +563,17 @@
       if (r.kind === "run") {
         if (elapsed < 3200) {
           const u = elapsed / 3200;
-          const p = quadAt(
-            { x: HOME.x, y: HOME.y },
-            { x: 620, y: 700 },
-            { x: HOME.x, y: HOME.y },
-            easeInOut(u)
-          );
-          x = clamp(p.x, X_MIN, X_MAX);
-          y = p.y;
-          face = u < 0.5 ? 1 : -1;
+          // Full oval lap — clear left/right travel on small screens
+          const ang = u * Math.PI * 2;
+          x = clamp(HOME.x + Math.cos(ang) * 200, X_MIN, X_MAX);
+          y = HOME.y + Math.sin(ang) * 48;
+          face = Math.sin(ang) >= 0 ? 1 : -1;
           pose = "walk";
-          if (now - walkFrameAt >= WALK_FRAME_MS) {
+          if (now - walkFrameAt >= RUN_FRAME_MS) {
             walkFrame = (walkFrame + 1) % 2;
             walkFrameAt = now;
           }
-          bob = 7 * Math.sin(((now - r.t0) / 160) * Math.PI);
+          bob = 14 * Math.sin(((now - r.t0) / 110) * Math.PI);
           setSprite(poseSrc("walk", true));
         } else {
           endReactionToRoam();
@@ -611,12 +645,13 @@
     function frame(now) {
       if (disposed) return;
       raf = requestAnimationFrame(frame);
+      // Keep crossfades moving while paused so Smil/Logre never stick mid-fade.
+      tickFade(now);
       if (paused) {
         applyTransform();
         return;
       }
-      tickFade(now);
-      if (state === "roam" && !reaction) tickRoam(now);
+      if ((state === "roam" || state === "wag") && !reaction) tickRoam(now);
       else if (reaction) tickReaction(now);
       applyTransform();
     }
@@ -663,10 +698,7 @@
       }
 
       if (n === "sleep") {
-        state = "sleep";
-        setLabel("sleep");
-        beginReaction("sleep");
-        emit("sleep");
+        interruptTo("sleep");
         return;
       }
 
@@ -675,11 +707,13 @@
         return;
       }
 
-      if (state === "sleep" || state === "bed") {
-        interruptTo("roam");
+      // Logre: always restart a visible wag (walk-a/b + bob) — never a no-op
+      if (n === "wag") {
+        interruptTo("wag");
         return;
       }
-      if (state === "roam" && !reaction) return;
+
+      // Idle roam path (auto / wake from bed)
       interruptTo("roam");
     }
 
@@ -694,23 +728,35 @@
           scale = 1;
           tilt = 0;
           bob = 0;
-          setSprite(POSES.stand);
+          opacity = 1;
+          pose = "walk";
+          walkFrame = 0;
+          walkFrameAt = performance.now();
+          setSprite(POSES.walkA);
           startPath(0, true);
           emit("wag");
+          applyTransform();
+          return;
+        }
+        if (kind === "sleep") {
+          reaction = null;
+          state = "sleep";
+          setLabel("sleep");
+          beginReaction("sleep");
+          emit("sleep");
+          applyTransform();
           return;
         }
         state = kind;
         setLabel(kind);
         beginReaction(kind);
-        emit(kind === "celebrate" ? "smile" : kind === "roam" ? "wag" : kind);
-      };
-      if (reduced) {
-        go();
-        opacity = 1;
+        emit(kind === "celebrate" ? "smile" : kind === "wag" ? "wag" : kind);
         applyTransform();
-        return;
-      }
-      fadeThen(go);
+      };
+      // Instant sprite change on button press — no fade delay
+      fade = null;
+      opacity = 1;
+      go();
     }
 
     function setEquipment(eq) {
@@ -722,15 +768,49 @@
 
     renderGear();
     if (reduced) {
+      // Still swap poses on every button — no continuous roam travel
       host.dataset.placeholder = "1";
       x = HOME.x;
       y = HOME.y;
       pose = "stand";
-      state = "roam";
-      setLabel("roam");
+      state = "wag";
+      let poseTimer = 0;
+      setLabel("wag");
       setSprite(POSES.stand);
       applyTransform();
       emit("wag");
+
+      function clearPoseTimer() {
+        if (poseTimer) {
+          clearInterval(poseTimer);
+          clearTimeout(poseTimer);
+          poseTimer = 0;
+        }
+      }
+
+      function startWalkSwap(ms, duration, doneState) {
+        clearPoseTimer();
+        let f = 0;
+        pose = "walk";
+        setSprite(POSES.walkA);
+        applyTransform();
+        const t0 = Date.now();
+        poseTimer = setInterval(() => {
+          if (disposed || paused) return;
+          f = 1 - f;
+          setSprite(f ? POSES.walkB : POSES.walkA);
+          if (Date.now() - t0 >= duration) {
+            clearPoseTimer();
+            state = doneState || "wag";
+            pose = "stand";
+            setSprite(POSES.stand);
+            setLabel(state === "wag" ? "wag" : state);
+            applyTransform();
+            emit(state === "celebrate" ? "smile" : state);
+          }
+        }, ms);
+      }
+
       return {
         play(name) {
           if (disposed) return;
@@ -743,12 +823,64 @@
             }
             lastEatAt = now;
           }
-          state = n === "roam" ? "roam" : n;
-          setLabel(n === "roam" ? "roam" : n);
-          pose = n === "sleep" || n === "bed" ? "sleep" : n === "eat" ? "eat" : "stand";
-          setSprite(pose === "sleep" ? POSES.lie : n === "bed" ? POSES.sit : POSES.stand);
+          clearPoseTimer();
+          state = n === "roam" ? "wag" : n;
+          setLabel(n === "roam" ? "wag" : n === "celebrate" ? "celebrate" : n);
+          if (n === "wag" || n === "roam") {
+            startWalkSwap(WAG_FRAME_MS, 2400, "wag");
+            emit("wag");
+            return;
+          }
+          if (n === "run") {
+            startWalkSwap(RUN_FRAME_MS, 3200, "wag");
+            emit("run");
+            return;
+          }
+          if (n === "celebrate" || n === "smile") {
+            pose = "sit";
+            setSprite(POSES.sit);
+            applyTransform();
+            emit("smile");
+            poseTimer = setTimeout(() => {
+              poseTimer = 0;
+              if (disposed) return;
+              pose = "stand";
+              state = "wag";
+              setSprite(POSES.stand);
+              setLabel("wag");
+              applyTransform();
+              emit("wag");
+            }, 1800);
+            return;
+          }
+          if (n === "bed") {
+            pose = "bed";
+            setSprite(POSES.sit);
+            applyTransform();
+            emit("bed");
+            poseTimer = setTimeout(() => {
+              poseTimer = 0;
+              if (disposed) return;
+              state = "sleep";
+              pose = "sleep";
+              setSprite(POSES.lie);
+              setLabel("sleep");
+              applyTransform();
+              emit("sleep");
+            }, 2400);
+            return;
+          }
+          if (n === "sleep") {
+            pose = "sleep";
+            setSprite(POSES.lie);
+            applyTransform();
+            emit("sleep");
+            return;
+          }
+          pose = n === "eat" ? "eat" : "stand";
+          setSprite(n === "eat" ? POSES.sit : POSES.stand);
           applyTransform();
-          emit(n === "roam" ? "wag" : n === "celebrate" ? "smile" : n);
+          emit(n === "celebrate" ? "smile" : n);
         },
         pause(force) {
           if (disposed) return paused;
@@ -762,6 +894,7 @@
         },
         destroy() {
           disposed = true;
+          clearPoseTimer();
           clearHost(host);
         }
       };
@@ -785,7 +918,7 @@
       },
       setEquipment,
       getState() {
-        return state === "roam" ? "wag" : state === "celebrate" ? "smile" : state;
+        return state === "roam" || state === "wag" ? "wag" : state === "celebrate" ? "smile" : state;
       },
       destroy() {
         disposed = true;
