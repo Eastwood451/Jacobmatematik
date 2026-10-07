@@ -2,8 +2,8 @@
 (() => {
   "use strict";
 
-  const CACHE = "20261007-clips2";
-  const STILL_SRC = "assets/figurer/marley-improved-still.webp?v=" + CACHE;
+  const CACHE = "20261007-pet1";
+  const STILL_SRC = "assets/figurer/marley-canon.png?v=" + CACHE;
   const VIDEO_DIR = "assets/figurer/marley-premium/";
   const LABELS = {
     wag: "Marley logrer",
@@ -201,7 +201,7 @@
 
   /**
    * Primary: premium WebM/MP4 under marley-premium/.
-   * Fallback: marley-improved-still.webp only (never sprites/gif/old webp).
+   * Fallback: marley-canon.png only (never sprites/gif/old webp).
    * prefers-reduced-motion → still.
    * @returns {Promise<{play,pause,setEquipment,getState,destroy}>}
    */
