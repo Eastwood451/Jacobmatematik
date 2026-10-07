@@ -1,15 +1,15 @@
 /* Complete drawn Marley performances, encoded as 60 fps films. */
 (() => {
   "use strict";
-  const CACHE = "20261007-cartoon2";
+  const CACHE = "20261007-calm-wardrobe1";
   const BASE = "assets/figurer/marley-cartoon/";
-  const LABELS = {wag:"Marley logrer",smile:"Marley smiler",run:"Marley løber i cirkler",eat:"Marley spiser en godbid",bed:"Marley lægger sig i kurven",sleep:"Marley sover i kurven"};
-  const GEAR = {hat:["head","🎉"],cap:["head","🧢"],glasses:["eyes","🕶️"],bee:["body","🐝"],shoes:["feet","👟"],skate:["board","🛹"],ball:["toy","🎾"],bone:["toy","🦴"]};
+  const LABELS = {wag:"Marley logrer",smile:"Marley smiler",run:"Marley løber i cirkler",eat:"Marley spiser en godbid",bed:"Marley lægger sig i kurven",sleep:"Marley sover i kurven",bone:"Marley gumler på sit kødben",ball:"Marley leger med sin bold",skate:"Marley kører på skateboard"};
+
 
   async function create(host, onChange = () => {}) {
     const room = document.createElement("div");
     room.className = "marley-cartoon-room";
-    room.setAttribute("role", "img");
+    room.setAttribute("role", "group");
     const videos = [0,1].map(() => {
       const v = document.createElement("video");
       v.className = "marley-cartoon-film";
@@ -18,34 +18,37 @@
       v.setAttribute("aria-hidden", "true");
       return v;
     });
-    const gear = document.createElement("div");
-    gear.className = "marley-cartoon-gear";
-    gear.setAttribute("aria-hidden", "true");
-    room.append(...videos,gear);
+    room.append(...videos);
     host.replaceChildren(room);
     host.dataset.renderer = "cartoon";
     let state = "wag", active = -1, version = 0, paused = false, disposed = false;
-    let queuedSmile = false, equipment = {}, pendingCleanup = null;
-    videos[0].classList.add("is-active");
-
-    function renderEquipment() {
-      gear.replaceChildren();
-      // The illustrated props remain attached during the standing reactions.
-      // Running and reclining films have different head/body positions.
-      gear.hidden = !["wag","smile"].includes(state);
-      for (const id of Object.values(equipment)) {
-        if (!GEAR[id]) continue;
-        const [slot,icon] = GEAR[id];
-        const span = document.createElement("span");
-        span.className = "marley-cartoon-wear " + slot;
-        span.textContent = icon; gear.append(span);
-      }
+    let queuedSmile = false, pendingCleanup = null, restTimer = null, resting = false, raf = null;
+    const wardrobe = window.MarleyWardrobe.create(room, name => { if (!paused) play(name); });
+    function track() {
+      if (disposed) return;
+      const v = videos[active];
+      wardrobe.frame(v?.dataset.clip || "wag", v?.duration ? v.currentTime/v.duration : 0, state, paused);
+      raf = requestAnimationFrame(track);
     }
+    raf = requestAnimationFrame(track);
+    function rest() {
+      resting = true;
+      if (active >= 0) videos[active].pause();
+      clearTimeout(restTimer);
+      if (!paused) restTimer = setTimeout(() => {
+        if (disposed || paused || state !== "wag") return;
+        resting = false;
+        videos[active].play().catch(() => { paused=true; onChange(state); });
+      }, 8000);
+    }
+    videos[0].classList.add("is-active");
 
     function play(requested) {
       if (disposed) return;
       const name = requested === "roam" ? "wag" : requested === "outfit" ? "smile" : requested;
       if (!LABELS[name]) return;
+      clearTimeout(restTimer); resting = false;
+      const clip = ({bone:"eat",ball:"run",skate:"run"})[name] || name;
       if (name === "smile" && state === "eat") { queuedSmile = true; return; }
       if (name !== "smile") queuedSmile = false;
       pendingCleanup?.(); pendingCleanup = null;
@@ -53,11 +56,12 @@
       state = name;
       host.dataset.action = name;
       room.setAttribute("aria-label", LABELS[name]);
-      renderEquipment(); onChange(name);
+      onChange(name);
       const index = active === 0 ? 1 : 0;
       const next = videos[index];
       next.pause();
-      next.loop = name === "wag" || name === "sleep";
+      next.loop = name === "sleep";
+      next.playbackRate = name === "wag" ? 0.4 : name === "smile" ? 0.7 : 0.85;
       const ready = () => {
         if (disposed || version !== token) return;
         next.removeEventListener("loadeddata", ready);
@@ -93,7 +97,7 @@
         state = active >= 0 ? videos[active].dataset.action : "wag";
         host.dataset.action = state;
         room.setAttribute("aria-label", LABELS[state]);
-        renderEquipment(); onChange(state);
+        onChange(state);
       };
       next.addEventListener("loadeddata", ready);
       next.addEventListener("error", failed);
@@ -102,13 +106,15 @@
         next.removeEventListener("error", failed);
       };
       next.dataset.action = name;
+      next.dataset.clip = clip;
       host.dataset.loading = name;
-      next.src = BASE + name + ".mp4?v=" + CACHE;
+      next.src = BASE + clip + ".mp4?v=" + CACHE;
       next.load();
     }
 
     const ended = (event) => {
       if (disposed || event.target !== videos[active] || paused || host.dataset.loading) return;
+      if (state === "wag") { videos[active].currentTime = 0; rest(); return; }
       if (state === "bed") { play("sleep"); return; }
       if (state === "eat" && queuedSmile) {
         queuedSmile = false;
@@ -124,15 +130,16 @@
       pause(force) {
         if (disposed) return paused;
         paused = typeof force === "boolean" ? force : !paused;
-        if (paused) videos.forEach(v => v.pause());
+        if (paused) { clearTimeout(restTimer); videos.forEach(v => v.pause()); }
+        else if (resting) rest();
         else if (active >= 0) videos[active].play().catch(() => { paused = true; onChange(state); });
         return paused;
       },
-      setEquipment(value) { equipment = value && typeof value === "object" ? {...value} : {}; renderEquipment(); },
+      setEquipment(value) { wardrobe.set(value); },
       getState() { return state; },
       isPaused() { return paused; },
       destroy() {
-        disposed = true; version++; pendingCleanup?.();
+        disposed = true; version++; pendingCleanup?.(); clearTimeout(restTimer); cancelAnimationFrame(raf); wardrobe.destroy();
         videos.forEach(v => { v.pause(); v.removeEventListener("ended",ended); v.removeAttribute("src"); v.load(); });
         host.replaceChildren(); delete host.dataset.renderer; delete host.dataset.loading;
       }
@@ -141,3 +148,4 @@
   }
   window.MarleyCartoonScene = {create,CACHE};
 })();
+
