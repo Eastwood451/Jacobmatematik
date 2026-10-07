@@ -25,8 +25,9 @@ assert.match(app, /plusPenalhus:\s*\{\s*name:\s*"Plus-penalhus"/);
 assert.match(app, /data-action="plus-penalhus"/);
 assert.match(app, /window\.PlusPenalhus\.mount/);
 assert.match(app, /state\.view==="plus-penalhus"/);
-assert.match(fs.readFileSync('index.html', 'utf8'), /plus-penalhus\.js/);
-assert.match(fs.readFileSync('index.html', 'utf8'), /plus-penalhus\.css/);
+assert.match(fs.readFileSync('module-loader.js', 'utf8'), /plus-penalhus\.js/);
+assert.match(fs.readFileSync('module-loader.js', 'utf8'), /plus-penalhus\.css/);
+assert.doesNotMatch(fs.readFileSync('index.html', 'utf8'), /src=["']plus-penalhus\.js/);
 
 for (const who of ['obbe', 'luigi']) {
   assert.ok(fs.existsSync(path.join('assets/figurer/plus-penalhus', `${who}-cartoon-v5.webp`)));
