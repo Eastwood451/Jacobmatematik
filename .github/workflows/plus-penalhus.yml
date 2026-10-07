@@ -10,7 +10,7 @@ permissions:
 jobs:
   browser:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
         with:
@@ -25,13 +25,22 @@ jobs:
       - name: Install browser test dependencies
         run: |
           npm install --no-save --package-lock=false playwright@1.57.0
-          npx playwright install --with-deps chromium
+          if command -v google-chrome >/dev/null; then
+            echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+            npx playwright install ffmpeg
+          else
+            npx playwright install --with-deps chromium
+          fi
       - name: Build missing Danish voice clips
         run: |
-          if [ ! -f assets/figurer/plus-penalhus/audio/sum-9-9.mp3 ]; then
+          if [ ! -f assets/figurer/plus-penalhus/audio-v2/count-4.mp3 ] || [ ! -f assets/figurer/plus-penalhus/audio-v2/sum-9-9.mp3 ]; then
             pip install edge-tts==7.2.8 imageio-ffmpeg==0.6.0
             python scripts/generate_plus_penalhus_audio.py
           fi
+      - name: Check actual Danish pronunciation
+        run: |
+          pip install faster-whisper==1.2.1 imageio-ffmpeg==0.6.0
+          python scripts/check_plus_penalhus_pronunciation.py
       - name: Exercise with fake users
         if: always()
         run: node scripts/test-plus-penalhus.cjs
@@ -41,6 +50,6 @@ jobs:
           name: plus-penalhus-review
           path: |
             test-results/plus-penalhus/
-            assets/figurer/plus-penalhus/audio/
+            assets/figurer/plus-penalhus/audio-v2/
           retention-days: 7
 
