@@ -2,7 +2,7 @@
 (() => {
   "use strict";
 
-  const CACHE = "20261007-wag1";
+  const CACHE = "20261007-wag2";
   const STILL_SRC = "assets/figurer/marley-improved-still.webp?v=" + CACHE;
   const VIDEO_DIR = "assets/figurer/marley-premium/";
   const LABELS = {
