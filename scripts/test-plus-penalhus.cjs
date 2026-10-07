@@ -33,6 +33,13 @@ for (const who of ['obbe', 'luigi']) {
   assert.ok(fs.existsSync(path.join('assets/figurer/plus-penalhus', `${who}-cartoon-v5.webp`)));
 }
 assert.doesNotMatch(source, /pp-puppet|pp-arm-svg|OBBE_POSES/);
+for (const clip of [
+  ...Array.from({ length: 18 }, (_, i) => `count-${i + 1}`),
+  ...Array.from({ length: 100 }, (_, i) => `sum-${Math.floor(i / 10)}-${i % 10}`),
+]) {
+  const file = path.join('assets/figurer/plus-penalhus/audio', `${clip}.mp3`);
+  assert.ok(fs.existsSync(file) && fs.statSync(file).size > 1000, `${clip} must ship with the game`);
+}
 
 let playwright;
 try { playwright = require('playwright'); } catch { playwright = null; }
@@ -70,6 +77,7 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     await page.addScriptTag({ content: source });
     await page.evaluate(() => {
       window.__speech = [];
+      window.__nativePlay = HTMLMediaElement.prototype.play;
       // Deterministic audio completion: test queue order, not CI audio hardware.
       HTMLMediaElement.prototype.play = function () {
         __speech.push(this.src.split('/').pop());
@@ -257,6 +265,29 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     await page.waitForSelector('[data-pp-next]:visible');
     assert.equal(await page.evaluate(() => __speech.at(-1)), 'sum-9-9.mp3');
     await verifyLayout();
+    await page.evaluate(() => __dispose());
+    // Verify the shipped MP3s actually decode and finish in Chromium too.
+    await page.evaluate(() => {
+      window.__played = [];
+      window.__audioErrors = [];
+      HTMLMediaElement.prototype.play = function () {
+        const clip = this.src.split('/').pop();
+        this.addEventListener('ended', () => __played.push(clip), { once: true });
+        const promise = __nativePlay.call(this);
+        promise.catch(error => __audioErrors.push(error.message));
+        return promise;
+      };
+      window.__dispose = PlusPenalhus.mount(document.getElementById('root'), {
+        user: { id: 'guest', role: 'guest' }, tasks: [{ a: 1, b: 0 }],
+      });
+    });
+    await page.locator('[data-pp-throw="obbe"]').click();
+    await page.waitForFunction(() => __played.includes('count-1.mp3'));
+    await page.waitForSelector('#pp-answer-panel:not([hidden])');
+    await page.locator('[data-pp-digit="1"]').click();
+    await page.locator('[data-pp-submit]').click();
+    await page.waitForFunction(() => __played.includes('sum-1-0.mp3'));
+    assert.deepEqual(await page.evaluate(() => __audioErrors), []);
     await page.evaluate(() => __dispose());
     assert.deepEqual(errors, []);
     console.log('PASS: 1500ms throws in normal/reduced motion, no overlaps at 320–1280px, Danish counting/equations, quotas, answers, cleanup.');

@@ -121,7 +121,7 @@
     function playNextVoice() {
       if (disposed || speaking || !voiceQueue.length) return;
       speaking = true;
-      const token = voiceToken;
+      const token = ++voiceToken;
       voice.src = AUDIO_BASE + voiceQueue.shift() + '.mp3';
       voice.play().catch(() => {
         if (token !== voiceToken || disposed) return;
