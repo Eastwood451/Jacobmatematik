@@ -158,9 +158,13 @@ try { playwright = require('playwright'); } catch { playwright = null; }
       requestAnimationFrame(sample);
     });
     await page.locator('[data-pp-throw="obbe"]').click({ timeout: 15000 });
-    await page.waitForTimeout(260);
-    assert.notEqual(await cel.evaluate(el => el.toDataURL()), idlePixels);
-    assert.equal(await page.locator('.pp-flight').count(), 0, 'Nothing flies before the hand releases');
+    const windup = await page.evaluate(async () => {
+      await new Promise(resolve => setTimeout(resolve, 150));
+      return { flights: document.querySelectorAll('.pp-flight').length,
+        pixels: document.querySelector('[data-pp-cel="obbe"]').toDataURL() };
+    });
+    assert.notEqual(windup.pixels, idlePixels);
+    assert.equal(windup.flights, 0, 'Nothing flies before the hand releases');
     await page.waitForSelector('.pp-flight');
     assert.equal(await page.locator('#pp-answer-panel').isHidden(), true);
     await page.screenshot({ path: `${out}/obbe-throw-mid.png`, fullPage: true });
@@ -229,11 +233,17 @@ try { playwright = require('playwright'); } catch { playwright = null; }
       const before = await actorCel.evaluate(el => el.toDataURL());
       const landed = await page.locator('.pp-item').count();
       await page.locator(`[data-pp-throw="${who}"]`).click();
-      await page.waitForTimeout(240);
-      assert.notEqual(await actorCel.evaluate(el => el.toDataURL()), before, `${who} winds up with reduced motion`);
-      assert.equal(await page.locator('.pp-hand-loaded').count(), 1);
-      assert.equal(await page.locator('.pp-item').count(), landed, 'No instant landing');
-      assert.equal(await page.locator('.pp-flight').count(), 0, 'Windup precedes release');
+      const windup = await page.evaluate(async who => {
+        await new Promise(resolve => setTimeout(resolve, 150));
+        return { hands: document.querySelectorAll('.pp-hand-loaded').length,
+          items: document.querySelectorAll('.pp-item').length,
+          flights: document.querySelectorAll('.pp-flight').length,
+          pixels: document.querySelector(`[data-pp-cel="${who}"]`).toDataURL() };
+      }, who);
+      assert.notEqual(windup.pixels, before, `${who} winds up with reduced motion`);
+      assert.equal(windup.hands, 1);
+      assert.equal(windup.items, landed, 'No instant landing');
+      assert.equal(windup.flights, 0, 'Windup precedes release');
       // Sample the brief flight in one browser call so CI round trips cannot
       // consume its whole lifetime between finding it and reading its position.
       const { from, to, landedDuringFlight } = await page.evaluate(async () => {
@@ -265,14 +275,25 @@ try { playwright = require('playwright'); } catch { playwright = null; }
       });
     });
     await page.locator('[data-pp-throw="obbe"]').click();
-    await page.waitForTimeout(360);
-    assert.equal(await page.locator('.pp-item').count(), 0);
-    assert.equal(await page.locator('.pp-flight').count(), 1);
-    assert.equal(await page.locator('[data-pp-throw="obbe"]').isEnabled(), true,
-      'Next throw unlocks after its count ends, before the previous landing');
-    await page.locator('[data-pp-throw="obbe"]').click();
-    await page.waitForTimeout(380);
-    assert.equal(await page.locator('.pp-flight').count(), 2, 'Two same-actor items fly together');
+    const overlap = await page.evaluate(async () => {
+      const button = document.querySelector('[data-pp-throw="obbe"]');
+      const started = performance.now();
+      while (button.disabled) {
+        if (performance.now() - started > 3000) throw Error('Next throw stayed locked');
+        await new Promise(requestAnimationFrame);
+      }
+      const firstFlights = document.querySelectorAll('.pp-flight').length;
+      const firstItems = document.querySelectorAll('.pp-item').length;
+      button.click();
+      while (document.querySelectorAll('.pp-flight').length < 2) {
+        if (performance.now() - started > 3000) throw Error('Throws never overlapped');
+        await new Promise(requestAnimationFrame);
+      }
+      return { firstFlights, firstItems, flights: document.querySelectorAll('.pp-flight').length };
+    });
+    assert.equal(overlap.firstItems, 0);
+    assert.equal(overlap.firstFlights, 1, 'Next throw unlocks before the previous landing');
+    assert.equal(overlap.flights, 2, 'Two same-actor items fly together');
     await page.waitForSelector('#pp-answer-panel:not([hidden])');
     await verifyTiming();
     await verifyLayout();
