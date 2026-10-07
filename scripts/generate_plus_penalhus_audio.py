@@ -25,7 +25,8 @@ NUMBERS = "nul en to tre fire fem seks syv otte ni ti elleve tolv tretten fjorte
 
 async def main():
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    lines = [(f"count-{n}", NUMBERS[n].capitalize() + ".") for n in range(1, 19)]
+    # Numeric cardinal input avoids the voice treating "Fem." as an abbreviation.
+    lines = [(f"count-{n}", f"{n}!") for n in range(1, 19)]
     lines += [(f"sum-{a}-{b}", f"{NUMBERS[a].capitalize()} plus {NUMBERS[b]} giver {NUMBERS[a+b]}.")
               for a in range(10) for b in range(10)]
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()

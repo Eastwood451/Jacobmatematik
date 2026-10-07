@@ -28,7 +28,7 @@ jobs:
           npx playwright install --with-deps chromium
       - name: Build missing Danish voice clips
         run: |
-          if [ ! -f assets/figurer/plus-penalhus/audio-v2/sum-9-9.mp3 ]; then
+          if [ ! -f assets/figurer/plus-penalhus/audio-v2/count-4.mp3 ] || [ ! -f assets/figurer/plus-penalhus/audio-v2/sum-9-9.mp3 ]; then
             pip install edge-tts==7.2.8 imageio-ffmpeg==0.6.0
             python scripts/generate_plus_penalhus_audio.py
           fi
