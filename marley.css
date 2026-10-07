@@ -173,6 +173,15 @@
   user-select:none;pointer-events:none;z-index:1;
   background:transparent !important;
 }
+.marley-pet-video{
+  display:block;position:absolute;inset:0;
+  width:100%;height:100%;object-fit:contain;object-position:50% 100%;
+  filter:drop-shadow(0 2px 4px #1a0f2e33);
+  user-select:none;pointer-events:none;z-index:1;
+  background:transparent !important;
+}
+.marley-pet-sprite[hidden],
+.marley-pet-video[hidden]{display:none !important}
 /* Sunglasses overlay ~28% down subject (canon head region) */
 .marley-pet-sunglasses{
   position:absolute;left:50%;top:28%;
@@ -198,6 +207,7 @@
 .marley-pet-fx.is-on{opacity:1;animation:marley-pet-sparkle 600ms ease-in-out infinite}
 
 .marley-pet-actor.is-paused .marley-pet-sprite,
+.marley-pet-actor.is-paused .marley-pet-video,
 .marley-pet-room.is-paused .marley-pet-fx{animation-play-state:paused !important}
 
 @keyframes marley-pet-sparkle{

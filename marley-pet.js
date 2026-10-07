@@ -1,8 +1,8 @@
-/* Marley living pet-scene M2a: transparent cutout + room + pose swaps. No floating photo card. */
+/* Marley living pet-scene: room + cutout; prefers WebM loops when present; PNG pose-swap is degraded fallback. */
 (() => {
   "use strict";
 
-  const CACHE = "20261007-act2";
+  const CACHE = "20261007-premium1";
   const BASE = "assets/figurer/marley-pet/";
   const POSES = {
     stand: BASE + "stand.png?v=" + CACHE,
@@ -15,6 +15,47 @@
   };
   const CUTOUT = "assets/figurer/marley-cutout.png?v=" + CACHE;
   const SUNGLASSES = BASE + "sunglasses.png?v=" + CACHE;
+  // G&M Imagine loops first (wag-loop / walk-loop). Alias plan short names under assets/marley-premium/.
+  // Do NOT probe assets/figurer/marley-premium/* (soft-ffmpeg archive — Jacob FAIL).
+  const LOOP_CANDIDATES = {
+    wag: [
+      BASE + "wag-loop.webm",
+      BASE + "wag-loop.mp4",
+      "assets/marley-premium/wag-loop.webm",
+      "assets/marley-premium/wag-loop.mp4",
+      "assets/marley-premium/wag.webm",
+      "assets/marley-premium/wag.mp4"
+    ],
+    walk: [
+      BASE + "walk-loop.webm",
+      BASE + "walk-loop.mp4",
+      "assets/marley-premium/walk-loop.webm",
+      "assets/marley-premium/walk-loop.mp4",
+      "assets/marley-premium/walk.webm",
+      "assets/marley-premium/walk.mp4"
+    ]
+  };
+
+  function probe(url) {
+    if (typeof fetch !== "function") return Promise.resolve(false);
+    return fetch(url, { method: "HEAD", cache: "no-cache" })
+      .then((r) => r.ok)
+      .catch(() => false);
+  }
+
+  async function resolveLoops() {
+    const out = {};
+    for (const name of Object.keys(LOOP_CANDIDATES)) {
+      for (const base of LOOP_CANDIDATES[name]) {
+        const url = base + (base.indexOf("?") >= 0 ? "&" : "?") + "v=" + CACHE;
+        if (await probe(url)) {
+          out[name] = url;
+          break;
+        }
+      }
+    }
+    return out;
+  }
   const ART = 900;
   const HOME = { x: 450, y: 710 };
   const X_MIN = 160;
@@ -143,6 +184,7 @@
     actor.className = "marley-pet-actor";
     const shadow = document.createElement("div");
     shadow.className = "marley-pet-shadow";
+    const clips = opts.clips && typeof opts.clips === "object" ? { ...opts.clips } : {};
     const sprite = document.createElement("img");
     sprite.className = "marley-pet-sprite";
     sprite.src = POSES.stand;
@@ -152,6 +194,27 @@
     sprite.onerror = () => {
       if (sprite.src.indexOf("marley-cutout") === -1) sprite.src = CUTOUT;
     };
+    let video = null;
+    let plate = "sprite"; // sprite | wag | walk
+    if (clips.wag || clips.walk) {
+      video = document.createElement("video");
+      video.className = "marley-pet-video";
+      video.muted = true;
+      video.defaultMuted = true;
+      video.playsInline = true;
+      video.loop = true;
+      video.preload = "metadata";
+      video.setAttribute("playsinline", "");
+      video.setAttribute("muted", "");
+      video.setAttribute("aria-hidden", "true");
+      video.hidden = true;
+      video.onerror = () => {
+        const key = video.dataset.clip;
+        if (key && clips[key]) delete clips[key];
+        setPlate("sprite");
+        setSprite(poseSrc(pose, pose === "walk"));
+      };
+    }
     const glassesImg = document.createElement("img");
     glassesImg.className = "marley-pet-sunglasses";
     glassesImg.src = SUNGLASSES;
@@ -170,7 +233,8 @@
     treat.setAttribute("aria-hidden", "true");
     treat.textContent = "🍪";
 
-    actor.append(shadow, sprite, glassesImg, gear, fx);
+    if (video) actor.append(shadow, sprite, video, glassesImg, gear, fx);
+    else actor.append(shadow, sprite, glassesImg, gear, fx);
     room.append(wall, windowEl, floor, rug, basket, treat, actor);
     host.append(room);
 
@@ -220,6 +284,42 @@
       if (src === currentSrc) return;
       currentSrc = src;
       sprite.src = src;
+    }
+
+    function resumeVideo() {
+      if (!video || video.hidden || paused) return;
+      const p = video.play();
+      if (p) p.catch(() => {});
+    }
+
+    function setPlate(mode) {
+      if (mode !== "sprite" && video && clips[mode]) {
+        if (video.dataset.clip !== mode) {
+          video.dataset.clip = mode;
+          video.src = clips[mode];
+          video.loop = true;
+        }
+        sprite.hidden = true;
+        video.hidden = false;
+        plate = mode;
+        resumeVideo();
+        return true;
+      }
+      if (video) {
+        video.pause();
+        video.hidden = true;
+      }
+      sprite.hidden = false;
+      plate = "sprite";
+      return false;
+    }
+
+    /** Prefer WebM loop plate; PNG pose-swap only when clip missing. */
+    function applyCharacterVisual(p, walking) {
+      if (p === "wag" && clips.wag && setPlate("wag")) return;
+      if ((walking || p === "walk") && clips.walk && setPlate("walk")) return;
+      setPlate("sprite");
+      setSprite(poseSrc(p, walking));
     }
 
     function applyTransform() {
@@ -330,21 +430,21 @@
       const walking = !!(seg.quad || (seg.from && seg.to) || (seg.name && seg.name.indexOf("walk") === 0) || seg.name === "arc");
 
       if (walking) {
-        if (now - walkFrameAt >= WALK_FRAME_MS) {
+        if (!clips.walk && now - walkFrameAt >= WALK_FRAME_MS) {
           walkFrame = (walkFrame + 1) % 2;
           walkFrameAt = now;
         }
-        bob = 10 * Math.sin(((now - segStart) / 150) * Math.PI);
+        bob = (clips.walk ? 4 : 10) * Math.sin(((now - segStart) / 150) * Math.PI);
         pose = "walk";
         scale = 1;
         tilt = 0;
       } else if (pose === "wag" || seg.pose === "wag") {
-        if (now - walkFrameAt >= WAG_FRAME_MS) {
+        if (!clips.wag && now - walkFrameAt >= WAG_FRAME_MS) {
           walkFrame = (walkFrame + 1) % 2;
           walkFrameAt = now;
         }
-        bob = 16 * Math.sin(((now - segStart) / 140) * Math.PI);
-        tilt = Math.sin(((now - segStart) / 160) * Math.PI) * 6;
+        bob = (clips.wag ? 3 : 16) * Math.sin(((now - segStart) / 140) * Math.PI);
+        tilt = clips.wag ? 0 : Math.sin(((now - segStart) / 160) * Math.PI) * 6;
         pose = "wag";
         scale = 1;
       } else {
@@ -376,7 +476,7 @@
         scale = 1;
       }
 
-      setSprite(poseSrc(pose, walking));
+      applyCharacterVisual(pose, walking);
       if (t >= 1) advanceSegment();
     }
 
@@ -393,6 +493,7 @@
         tilt = 0;
         face = 1;
         pose = "notice";
+        setPlate("sprite");
         setSprite(POSES.stand);
       } else if (kind === "wag") {
         x = HOME.x;
@@ -403,7 +504,7 @@
         tilt = 0;
         walkFrame = 0;
         walkFrameAt = performance.now();
-        setSprite(POSES.wagA);
+        applyCharacterVisual("wag", false);
       } else if (kind === "celebrate") {
         x = HOME.x;
         y = HOME.y;
@@ -411,6 +512,7 @@
         pose = "sit";
         scale = 1;
         tilt = 0;
+        setPlate("sprite");
         setSprite(POSES.sit);
         fx.textContent = "✨";
         fx.classList.add("is-on");
@@ -419,6 +521,7 @@
         y = HOME.y;
         face = 1;
         pose = "outfit";
+        setPlate("sprite");
         setSprite(POSES.stand);
         fx.textContent = "✨😎";
         fx.classList.add("is-on");
@@ -428,12 +531,14 @@
         x = HOME.x;
         y = HOME.y + 5;
         tilt = 0;
+        setPlate("sprite");
         setSprite(POSES.sit);
       } else if (kind === "sleep") {
         pose = "sleep";
         x = HOME.x;
         y = HOME.y + 10;
         tilt = -4;
+        setPlate("sprite");
         setSprite(POSES.lie);
       } else if (kind === "run") {
         pose = "walk";
@@ -442,7 +547,7 @@
         y = HOME.y;
         walkFrame = 0;
         walkFrameAt = performance.now();
-        setSprite(POSES.walkA);
+        applyCharacterVisual("walk", true);
       }
     }
 
@@ -459,6 +564,7 @@
           scale = 1;
           treat.style.left = "62%";
           treat.style.top = "58%";
+          setPlate("sprite");
           setSprite(POSES.stand);
         } else if (elapsed < 1600) {
           r.phase = "approach";
@@ -470,6 +576,7 @@
           treat.style.left = 62 - 14 * u + "%";
           treat.style.top = 58 + 6 * u + "%";
           tilt = -6 * u;
+          setPlate("sprite");
           setSprite(POSES.stand);
         } else if (elapsed < 2800) {
           r.phase = "happy";
@@ -478,7 +585,8 @@
           bob = 10 * Math.sin(u * Math.PI * 5);
           tilt = Math.sin(u * Math.PI * 4) * 3;
           treat.style.opacity = String(1 - u);
-          setSprite(POSES.stand);
+          // happy wag phase prefers loop if G&M delivered it
+          applyCharacterVisual("wag", false);
         } else if (elapsed < 3500) {
           r.phase = "return";
           pose = "stand";
@@ -489,6 +597,7 @@
           y = HOME.y;
           treat.classList.remove("is-visible");
           treat.style.opacity = "1";
+          setPlate("sprite");
           setSprite(POSES.stand);
         } else {
           endReactionToRoam();
@@ -498,16 +607,16 @@
 
       if (r.kind === "wag") {
         if (elapsed < 2400) {
-          if (now - walkFrameAt >= WAG_FRAME_MS) {
+          if (!clips.wag && now - walkFrameAt >= WAG_FRAME_MS) {
             walkFrame = (walkFrame + 1) % 2;
             walkFrameAt = now;
           }
-          bob = 22 * Math.sin(((now - r.t0) / 120) * Math.PI);
-          tilt = Math.sin(((now - r.t0) / 140) * Math.PI) * 10;
-          x = HOME.x + Math.sin(((now - r.t0) / 220) * Math.PI) * 70;
+          bob = (clips.wag ? 4 : 22) * Math.sin(((now - r.t0) / 120) * Math.PI);
+          tilt = clips.wag ? 0 : Math.sin(((now - r.t0) / 140) * Math.PI) * 10;
+          x = HOME.x + Math.sin(((now - r.t0) / 220) * Math.PI) * (clips.wag ? 24 : 70);
           y = HOME.y;
           pose = "wag";
-          setSprite(poseSrc("wag", false));
+          applyCharacterVisual("wag", false);
         } else {
           endReactionToRoam();
         }
@@ -520,6 +629,7 @@
           bob = 14 * Math.sin(u * Math.PI * 3);
           tilt = Math.sin(u * Math.PI * 3) * 5;
           pose = "sit";
+          setPlate("sprite");
           setSprite(POSES.sit);
         } else {
           fx.classList.remove("is-on");
@@ -559,6 +669,7 @@
         if (elapsed < 2400) {
           pose = "bed";
           y = HOME.y + 5;
+          setPlate("sprite");
           setSprite(POSES.sit);
         } else {
           reaction = null;
@@ -574,6 +685,7 @@
         pose = "sleep";
         y = HOME.y + 10;
         tilt = -4 + Math.sin(elapsed / 900) * 1.2;
+        setPlate("sprite");
         setSprite(POSES.lie);
         return;
       }
@@ -587,12 +699,12 @@
           y = HOME.y + Math.sin(ang) * 56;
           face = Math.cos(ang) >= 0 ? 1 : -1;
           pose = "walk";
-          if (now - walkFrameAt >= RUN_FRAME_MS) {
+          if (!clips.walk && now - walkFrameAt >= RUN_FRAME_MS) {
             walkFrame = (walkFrame + 1) % 2;
             walkFrameAt = now;
           }
-          bob = 16 * Math.sin(((now - r.t0) / 100) * Math.PI);
-          setSprite(poseSrc("walk", true));
+          bob = (clips.walk ? 5 : 16) * Math.sin(((now - r.t0) / 100) * Math.PI);
+          applyCharacterVisual("walk", true);
         } else {
           endReactionToRoam();
         }
@@ -613,7 +725,7 @@
       pose = "stand";
       state = "roam";
       setLabel("roam");
-      setSprite(POSES.stand);
+      applyCharacterVisual("stand", false);
       startPath(0, true);
       emit("wag");
       if (queuedCelebrate) {
@@ -750,7 +862,7 @@
           pose = "walk";
           walkFrame = 0;
           walkFrameAt = performance.now();
-          setSprite(POSES.walkA);
+          applyCharacterVisual("walk", true);
           startPath(0, true);
           emit("wag");
           applyTransform();
@@ -980,6 +1092,10 @@
         paused = typeof force === "boolean" ? !!force : !paused;
         actor.classList.toggle("is-paused", paused);
         room.classList.toggle("is-paused", paused);
+        if (video) {
+          if (paused) video.pause();
+          else resumeVideo();
+        }
         return paused;
       },
       setEquipment,
@@ -989,6 +1105,11 @@
       destroy() {
         disposed = true;
         cancelAnimationFrame(raf);
+        if (video) {
+          video.pause();
+          video.removeAttribute("src");
+          try { video.load(); } catch (_) {}
+        }
         clearHost(host);
       }
     };
@@ -996,11 +1117,23 @@
 
   async function create(host, onChange = () => {}, opts = {}) {
     if (!host) throw new Error("MarleyPetScene kræver en host");
+    const reduced = prefersReducedMotion();
+    const clips = reduced ? {} : await resolveLoops();
     return createPet(host, onChange, {
-      reduced: prefersReducedMotion(),
+      reduced,
+      clips,
       onThrottled: opts.onThrottled
     });
   }
 
-  window.MarleyPetScene = { create, HOME, PLAYLIST, POSES, CUTOUT, CACHE };
+  window.MarleyPetScene = {
+    create,
+    HOME,
+    PLAYLIST,
+    POSES,
+    CUTOUT,
+    CACHE,
+    LOOP_CANDIDATES,
+    resolveLoops
+  };
 })();
