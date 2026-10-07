@@ -24,7 +24,7 @@
   };
   const OBBE_HAPPY = 'assets/figurer/obbe-techno.webp';
   const OBBE_IDLE_MS = 800;
-  const OBBE_CACHE = '20261007-obbe1';
+  const OBBE_CACHE = '20261007-obbe2';
 
   // Milestone A beat sheet (FULLSTACK-OBBE-A.md)
   const THROW_WINDUP_MS = 180;
@@ -145,7 +145,6 @@
             </span>
             <strong>Øbbe</strong>
             <span class="pp-progress" id="pp-obbe-progress" aria-live="polite">0/5</span>
-          </button>
           </button>
           <div class="pp-canvas-wrap">
             <div class="pp-canvas" id="pp-canvas" aria-label="Penalhus-ting på bordet"></div>
