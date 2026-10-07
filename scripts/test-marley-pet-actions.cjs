@@ -64,6 +64,18 @@ class FakeEl {
   get hidden() {
     return this._hidden;
   }
+  play() {
+    this._playing = true;
+    return Promise.resolve();
+  }
+  pause() {
+    this._playing = false;
+  }
+  load() {}
+  removeAttribute(k) {
+    delete this.attrs[k];
+    if (k === "src") this._src = "";
+  }
 }
 FakeEl.srcs = [];
 
@@ -102,7 +114,7 @@ function makeHost() {
   };
 }
 
-function loadPet(reduced) {
+function loadPet(reduced, fetchImpl) {
   now = 0;
   rafCbs = [];
   intervals = [];
@@ -134,11 +146,15 @@ function loadPet(reduced) {
       timeouts = timeouts.filter((x) => x !== id);
     },
     document: { createElement: (t) => new FakeEl(t) },
+    fetch:
+      fetchImpl ||
+      (() => Promise.resolve({ ok: false })),
     Date,
     Math,
     Set,
     Object,
-    Error
+    Error,
+    Promise
   };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../marley-pet.js"), "utf8"), ctx);
   return ctx.window.MarleyPetScene;
@@ -149,7 +165,7 @@ function loadPet(reduced) {
   const host = makeHost();
   const scene = await Scene.create(host, () => {});
 
-  assert.strictEqual(Scene.CACHE, "20261007-act2", "CACHE act2");
+  assert.strictEqual(Scene.CACHE, "20261007-premium1", "CACHE premium1");
   assert(/wag-a\.png/.test(Scene.POSES.wagA), "POSES.wagA");
   assert(/wag-b\.png/.test(Scene.POSES.wagB), "POSES.wagB");
 
@@ -211,7 +227,36 @@ function loadPet(reduced) {
     "reduced run swaps walk-a/b"
   );
 
-  console.log("PASS: marley pet actions (wag/smile/run/bed/pause + reduced)");
+  // Video loops preferred when HEAD probe succeeds (G&M wag-loop / walk-loop)
+  const okUrls = new Set([
+    "assets/figurer/marley-pet/wag-loop.webm?v=20261007-premium1",
+    "assets/figurer/marley-pet/walk-loop.webm?v=20261007-premium1"
+  ]);
+  const SceneV = loadPet(false, (url) =>
+    Promise.resolve({ ok: okUrls.has(String(url).split("#")[0]) })
+  );
+  assert(SceneV.LOOP_CANDIDATES.wag[0].includes("wag-loop.webm"), "loop candidates");
+  const hostV = makeHost();
+  const sceneV = await SceneV.create(hostV, () => {});
+  function findVideo(node, acc = []) {
+    if (!node) return acc;
+    if (node.tag === "video") acc.push(node);
+    (node.children || []).forEach((c) => findVideo(c, acc));
+    return acc;
+  }
+  const vids = findVideo({ children: hostV.children });
+  assert.strictEqual(vids.length, 1, "video plate mounted when loops probe OK");
+  FakeEl.srcs = [];
+  sceneV.play("wag");
+  for (let i = 0; i < 10; i++) tick(20);
+  assert.strictEqual(vids[0].hidden, false, "wag shows video");
+  assert(/wag-loop/.test(vids[0].src || vids[0].attrs.src || ""), "wag-loop src");
+  assert(
+    !FakeEl.srcs.some((u) => /wag-[ab]\.png/.test(u)),
+    "no PNG wag swap when video present"
+  );
+
+  console.log("PASS: marley pet actions (wag/smile/run/bed/pause + reduced + webm prefer)");
 })().catch((e) => {
   console.error(e);
   process.exit(1);
