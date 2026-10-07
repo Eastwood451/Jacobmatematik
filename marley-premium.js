@@ -1,4 +1,4 @@
-/* Marley premium clip player: WebM (+ MP4) → marley.webp still. No sprites, no gif, no Three.js. */
+/* Marley premium clip player: WebM (+ MP4) → marley-canon.png still. No sprites, no gif, no Three.js. */
 (() => {
   "use strict";
 
@@ -201,7 +201,7 @@
 
   /**
    * Primary: premium WebM/MP4 under marley-premium/.
-   * Fallback: calm marley.webp still (never sprites/gif).
+   * Fallback: canon marley-canon.png still only (never sprites/gif/old webp).
    * prefers-reduced-motion → still.
    * @returns {Promise<{play,pause,setEquipment,getState,destroy}>}
    */
