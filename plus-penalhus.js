@@ -15,23 +15,26 @@
     { id: 'tusch', label: 'Tusch', emoji: '🖊️' },
   ];
 
-  const OBBE_POSES = {
-    idleA: 'assets/figurer/plus-penalhus/obbe-idle-a.png',
-    idleB: 'assets/figurer/plus-penalhus/obbe-idle-b.png',
-    windup: 'assets/figurer/plus-penalhus/obbe-windup.png',
-    throw: 'assets/figurer/plus-penalhus/obbe-throw.png',
-    follow: 'assets/figurer/plus-penalhus/obbe-follow.png',
+  // Every cel is a complete drawing of the original character, not a body-part rig.
+  const CEL_COLS = 6;
+  const CEL_ROWS = 4;
+  const CEL_FPS = 24;
+  const CEL_MS = 1000 / CEL_FPS;
+  const THROW_CELS = {
+    obbe: [19, 4, 6, 7, 11, 9, 5, 12, 8, 10, 13, 14, 15, 17, 18, 19],
+    luigi: [19, 4, 5, 13, 16, 8, 6, 9, 10, 7, 11, 12, 14, 15, 18, 19],
   };
-  const OBBE_HAPPY = 'assets/figurer/obbe-techno.webp';
-  const OBBE_IDLE_MS = 800;
-  const OBBE_CACHE = '20261007-obbe2';
-
-  // Milestone A beat sheet (FULLSTACK-OBBE-A.md)
-  const THROW_WINDUP_MS = 180;
-  const THROW_RELEASE_MS = 240;
-  const THROW_FOLLOW_MS = 230;
+  const RELEASE_STEP = 10;
   const FLIGHT_MS = 620;
-  const FLIGHT_RELEASE_AT = THROW_WINDUP_MS + 90; // mid-throw release
+  const CEL_ASSETS = {
+    obbe: 'assets/figurer/plus-penalhus/obbe-cartoon-v3.webp',
+    luigi: 'assets/figurer/plus-penalhus/luigi-cartoon-v3.webp',
+  };
+  // Palm positions in normalized cell coordinates, following the drawn hand.
+  const CEL_HANDS = {
+    obbe: [[0.766,0.66],[0.773,0.667],[0.766,0.667],[0.763,0.667],[0.465,0.752],[0.752,0.663],[0.217,0.646],[0.198,0.682],[0.746,0.717],[0.835,0.566],[0.756,0.594],[0.199,0.54],[0.824,0.55],[0.784,0.437],[0.841,0.36],[0.877,0.377],[0.747,0.615],[0.711,0.632],[0.756,0.658],[0.766,0.658]],
+    luigi: [[0.347,0.69],[0.344,0.687],[0.502,0.611],[0.355,0.682],[0.228,0.681],[0.264,0.671],[0.174,0.653],[0.17,0.594],[0.199,0.725],[0.158,0.575],[0.241,0.63],[0.25,0.565],[0.115,0.551],[0.481,0.691],[0.117,0.332],[0.148,0.382],[0.576,0.679],[0.258,0.47],[0.325,0.639],[0.343,0.656]],
+  };
   function prefersReducedMotion() {
     return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
@@ -100,8 +103,10 @@
     const flights = new Set();
     const busy = { obbe: false, luigi: false };
     let actionToken = 0;
-    let obbeIdleFlip = false;
-    let obbeIdleTimer = null;
+    let assetsReady = false;
+    let animationFrame = null;
+    const actors = {};
+    const activeFlights = new Map();
 
 
     const later = (fn, ms) => {
@@ -115,7 +120,7 @@
 
     const task = () => sequence[index];
     const quotasFilled = () => obbeClicks >= task().a && luigiClicks >= task().b;
-    const editable = () => !disposed && !pending && phase === 'throw';
+    const editable = () => assetsReady && !disposed && !pending && phase === 'throw';
     const answerable = () => !disposed && !pending && phase === 'answer';
 
     root.innerHTML = `<section class="pp-game" aria-label="Plus-penalhus: Øbbe og Luigi">
@@ -139,8 +144,7 @@
         <div class="pp-characters">
           <button type="button" class="pp-char pp-obbe pp-pose-char" data-pp-throw="obbe" aria-label="Øbbe Øvdig">
             <span class="pp-char-body">
-              <img class="pp-pose" data-pp-pose="obbe" src="${OBBE_POSES.idleA}?v=${OBBE_CACHE}" alt="" width="160" height="200" decoding="async">
-              <img class="pp-char-happy" src="${OBBE_HAPPY}" alt="" width="160" height="160" decoding="async" hidden>
+              <canvas class="pp-cel" data-pp-cel="obbe" width="256" height="384" aria-hidden="true"></canvas>
               <span class="pp-hand-grip" data-pp-hand="obbe" aria-hidden="true"></span>
             </span>
             <strong>Øbbe</strong>
@@ -152,77 +156,8 @@
           </div>
           <button type="button" class="pp-char pp-luigi" data-pp-throw="luigi" aria-label="Luigi Lækkermat">
             <span class="pp-char-body">
-              <span class="pp-puppet" data-pp-puppet="luigi">
-                <span class="pp-puppet-torso">
-                  <svg class="pp-body-svg" viewBox="0 0 160 200" width="160" height="200" aria-hidden="true">
-  <!-- boots -->
-  <ellipse cx="58" cy="188" rx="22" ry="10" fill="#6b4226"/>
-  <ellipse cx="102" cy="188" rx="22" ry="10" fill="#6b4226"/>
-  <rect x="40" y="176" width="36" height="14" rx="4" fill="#8b5a2b"/>
-  <rect x="84" y="176" width="36" height="14" rx="4" fill="#8b5a2b"/>
-  <!-- legs -->
-  <rect x="44" y="128" width="34" height="52" rx="10" fill="#2f6b4f"/>
-  <rect x="82" y="128" width="34" height="52" rx="10" fill="#2f6b4f"/>
-  <path d="M44 170 h34 v8 h-34z" fill="#4a9a72"/>
-  <path d="M82 170 h34 v8 h-34z" fill="#4a9a72"/>
-  <!-- torso / chef jacket -->
-  <rect x="40" y="70" width="80" height="64" rx="16" fill="#f7f7f2"/>
-  <circle cx="62" cy="90" r="5" fill="#c4a060"/>
-  <circle cx="98" cy="90" r="5" fill="#c4a060"/>
-  <circle cx="62" cy="108" r="5" fill="#c4a060"/>
-  <circle cx="98" cy="108" r="5" fill="#c4a060"/>
-  <circle cx="62" cy="124" r="5" fill="#c4a060"/>
-  <circle cx="98" cy="124" r="5" fill="#c4a060"/>
-  <!-- red scarf -->
-  <path d="M55 70 Q80 88 105 70 L100 78 Q80 92 60 78 Z" fill="#c62828"/>
-  <!-- neck -->
-  <rect x="70" y="58" width="20" height="16" fill="#c9956c"/>
-  <!-- head -->
-  <ellipse cx="80" cy="42" rx="30" ry="28" fill="#c9956c"/>
-  <!-- hair -->
-  <path d="M52 36 Q50 18 66 14 Q80 8 94 14 Q110 18 108 36 Q100 28 80 26 Q60 28 52 36Z" fill="#3a2818"/>
-  <!-- chef hat -->
-  <ellipse cx="80" cy="12" rx="36" ry="14" fill="#ffffff" stroke="#ddd" stroke-width="1"/>
-  <rect x="58" y="-8" width="44" height="28" rx="14" fill="#ffffff" stroke="#eee" stroke-width="1"/>
-  <!-- happy closed eyes + mustache -->
-  <path d="M62 42 Q68 38 74 42" fill="none" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round"/>
-  <path d="M86 42 Q92 38 98 42" fill="none" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round"/>
-  <ellipse cx="72" cy="52" rx="5" ry="3" fill="#e8a090"/>
-  <ellipse cx="88" cy="52" rx="5" ry="3" fill="#e8a090"/>
-  <path d="M58 54 Q80 66 102 54 Q92 62 80 64 Q68 62 58 54Z" fill="#3a2818"/>
-  <!-- smile under mustache -->
-  <path d="M70 62 Q80 70 90 62" fill="none" stroke="#8a4030" stroke-width="2" stroke-linecap="round"/>
-  <!-- non-throw pizza hand (right side, decorative) -->
-  <g transform="translate(118,86)">
-    <circle cx="16" cy="16" r="20" fill="#e8c070"/>
-    <circle cx="16" cy="16" r="16" fill="#e85a3a"/>
-    <circle cx="16" cy="16" r="10" fill="#f5d76e"/>
-    <text x="10" y="20" font-size="10" font-weight="900" fill="#fff" font-family="system-ui,sans-serif">π</text>
-  </g>
-</svg>
-                </span>
-                <span class="pp-puppet-arm" data-pp-arm="luigi" aria-hidden="true">
-                  <svg class="pp-arm-svg" viewBox="0 0 110 150" width="110" height="150" aria-hidden="true">
-  <g class="pp-arm-upper">
-    <line x1="90" y1="20" x2="55" y2="62" stroke="#e8e8e0" stroke-width="26" stroke-linecap="round"/>
-    <line x1="90" y1="20" x2="55" y2="62" stroke="#ffffff" stroke-width="16" stroke-linecap="round"/>
-    <circle cx="90" cy="20" r="15" fill="#ffffff" stroke="#c8c8c0" stroke-width="2.5"/>
-  </g>
-  <g class="pp-arm-fore" style="transform-origin:55px 62px">
-    <line x1="55" y1="62" x2="22" y2="108" stroke="#a87850" stroke-width="22" stroke-linecap="round"/>
-    <line x1="55" y1="62" x2="22" y2="108" stroke="#c9956c" stroke-width="12" stroke-linecap="round"/>
-    <circle cx="55" cy="62" r="12" fill="#c9956c" stroke="#8a6040" stroke-width="2"/>
-    <g class="pp-fist" transform="translate(22,108)">
-      <ellipse cx="0" cy="0" rx="17" ry="15" fill="#b8845a" stroke="#8a6040" stroke-width="2" transform="rotate(-28)"/>
-      <circle cx="-10" cy="-6" r="4" fill="#9a6d48"/>
-      <circle cx="-13" cy="2" r="3.8" fill="#9a6d48"/>
-      <circle cx="-9" cy="9" r="3.5" fill="#9a6d48"/>
-    </g>
-  </g>
-</svg>
-                  <span class="pp-hand-grip" data-pp-hand="luigi"></span>
-                </span>
-              </span>
+              <canvas class="pp-cel" data-pp-cel="luigi" width="256" height="384" aria-hidden="true"></canvas>
+              <span class="pp-hand-grip" data-pp-hand="luigi" aria-hidden="true"></span>
             </span>
             <strong>Luigi</strong>
             <span class="pp-progress" id="pp-luigi-progress" aria-live="polite">0/4</span>
@@ -253,38 +188,80 @@
       btn.classList.remove('pp-windup', 'pp-throwing', 'pp-follow', 'pp-busy');
     }
 
-    function setObbePose(key) {
-      const img = $('[data-pp-pose="obbe"]');
-      if (!img) return;
-      const src = OBBE_POSES[key];
-      if (!src) return;
-      img.src = src + '?v=' + OBBE_CACHE;
+    function paintCel(who, frame) {
+      const actor = actors[who];
+      if (!actor?.image || actor.frame === frame) return;
+      actor.frame = frame;
+      const w = actor.image.naturalWidth / CEL_COLS;
+      const h = actor.image.naturalHeight / CEL_ROWS;
+      actor.context.clearRect(0, 0, 256, 384);
+      actor.context.drawImage(actor.image, (frame % CEL_COLS) * w,
+        Math.floor(frame / CEL_COLS) * h, w, h, 0, 0, 256, 384);
+      const hand = CEL_HANDS[who][frame] || CEL_HANDS[who][0];
+      const grip = $(`[data-pp-hand="${who}"]`);
+      grip.style.left = `${hand[0] * 100}%`;
+      grip.style.top = `${hand[1] * 100}%`;
     }
 
-    function stopObbeIdle() {
-      if (obbeIdleTimer != null) {
-        clearInterval(obbeIdleTimer);
-        timers.delete(obbeIdleTimer);
-        obbeIdleTimer = null;
-      }
-    }
-
-    function startObbeIdle() {
-      stopObbeIdle();
+    function animate(now) {
       if (disposed) return;
-      obbeIdleFlip = false;
-      setObbePose('idleA');
-      if (prefersReducedMotion()) return;
-      obbeIdleTimer = setInterval(() => {
-        if (disposed || busy.obbe || phase === 'done') return;
-        const btn = $('[data-pp-throw="obbe"]');
-        if (!btn || btn.classList.contains('pp-busy') || btn.classList.contains('pp-celebrate')) return;
-        const happy = $('.pp-obbe .pp-char-happy');
-        if (happy && !happy.hidden) return;
-        obbeIdleFlip = !obbeIdleFlip;
-        setObbePose(obbeIdleFlip ? 'idleB' : 'idleA');
-      }, OBBE_IDLE_MS);
-      timers.add(obbeIdleTimer);
+      const reduced = prefersReducedMotion();
+      for (const who of ['obbe', 'luigi']) {
+        const actor = actors[who];
+        if (!actor?.image) continue;
+        if (actor.throw) {
+          const t = actor.throw;
+          const step = Math.max(0, Math.floor((now - t.start) / CEL_MS));
+          const cels = THROW_CELS[who];
+          paintCel(who, cels[Math.min(cels.length - 1, step)]);
+          if (!t.released && step >= RELEASE_STEP) {
+            t.released = true;
+            setHandItem(actor.button, '');
+            t.onRelease();
+          }
+          if (step >= cels.length) actor.throw = null;
+        } else if (phase === 'done' || actor.cheerUntil > now) {
+          paintCel(who, reduced ? 20 : 20 + Math.floor(now / 140) % 4);
+        } else {
+          const idle = [0, 1, 3, 1];
+          paintCel(who, reduced ? 0 : idle[Math.floor(now / 180) % idle.length]);
+        }
+      }
+      for (const [el, flight] of activeFlights) {
+        const t = Math.min(1, Math.max(0, (now - flight.start) / FLIGHT_MS));
+        const x = flight.x + (flight.targetX - flight.x) * t;
+        const y = flight.y + (flight.targetY - flight.y) * t - 4 * flight.arc * t * (1 - t);
+        el.style.left = `${x}px`;
+        el.style.top = `${y}px`;
+        el.style.transform = `translate(-50%,-50%) rotate(${(flight.who === 'obbe' ? 1 : -1) * t * 300}deg)`;
+      }
+      animationFrame = requestAnimationFrame(animate);
+    }
+
+    function loadActor(who) {
+      const canvas = $(`[data-pp-cel="${who}"]`);
+      const actor = actors[who] = {
+        button: $(`[data-pp-throw="${who}"]`),
+        context: canvas.getContext('2d'), frame: -1, image: null, throw: null,
+      };
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => {
+          if (disposed) return resolve();
+          actor.image = img;
+          paintCel(who, 0);
+          resolve();
+        };
+        img.onerror = () => reject(new Error(`Animationen for ${who} kunne ikke hentes.`));
+        img.src = CEL_ASSETS[who];
+      });
+    }
+
+    function maybeEnterAnswerPhase() {
+      // Quotas count clicks; only the landed objects are available to count.
+      if (phase === 'throw' && quotasFilled() && items.length === task().a + task().b) {
+        enterAnswerPhase();
+      }
     }
 
     function updateProgress() {
@@ -356,14 +333,7 @@
     }
 
     function celebrateQuota() {
-      const obbeBtn = $('[data-pp-throw="obbe"]');
-      const luigiBtn = $('[data-pp-throw="luigi"]');
-      obbeBtn.classList.add('pp-celebrate');
-      luigiBtn.classList.add('pp-celebrate');
-      later(() => {
-        obbeBtn.classList.remove('pp-celebrate');
-        luigiBtn.classList.remove('pp-celebrate');
-      }, 1400);
+      for (const who of ['obbe', 'luigi']) if (actors[who]) actors[who].cheerUntil = performance.now() + 900;
     }
 
     function enterAnswerPhase() {
@@ -380,7 +350,6 @@
     function spawnFlight(who, item, charBtn, canvas) {
       const token = actionToken;
       const reduced = prefersReducedMotion();
-      const charBox = charBtn.getBoundingClientRect();
       const canvasBox = canvas.getBoundingClientRect();
       const hand = charBtn.querySelector('[data-pp-hand]') || charBtn.querySelector('.pp-hand-grip');
       const body = charBtn.querySelector('.pp-char-body') || charBtn;
@@ -403,9 +372,11 @@
       if (reduced) {
         if (token !== actionToken) return;
         items.push(item);
+        busy[who] = false;
+        clearThrowClasses(charBtn);
         paintItems(item.id);
-        if (quotasFilled() && phase === 'throw') enterAnswerPhase();
-        else update();
+        maybeEnterAnswerPhase();
+        update();
         return;
       }
 
@@ -414,21 +385,22 @@
       fly.innerHTML = `<span aria-hidden="true">${item.emoji}</span>`;
       fly.style.left = `${startX}px`;
       fly.style.top = `${startY}px`;
-      fly.style.setProperty('--pp-dx', `${targetLeft - startX}px`);
-      fly.style.setProperty('--pp-dy', `${targetTop - startY}px`);
-      fly.style.setProperty('--pp-arc', `${arc}px`);
-      fly.style.setProperty('--pp-land-rot', `${item.rot}deg`);
       document.body.append(fly);
       flights.add(fly);
+      activeFlights.set(fly, { start: performance.now(), x: startX, y: startY,
+        targetX: targetLeft, targetY: targetTop, arc, who });
 
       later(() => {
         fly.remove();
         flights.delete(fly);
+        activeFlights.delete(fly);
         if (disposed || token !== actionToken) return;
         items.push(item);
+        busy[who] = false;
+        clearThrowClasses(charBtn);
         paintItems(item.id);
-        if (quotasFilled() && phase === 'throw') enterAnswerPhase();
-        else update();
+        maybeEnterAnswerPhase();
+        update();
       }, FLIGHT_MS);
     }
 
@@ -445,59 +417,20 @@
     }
 
     function runThrowPose(charBtn, who, itemEmoji, onRelease) {
-      const reduced = prefersReducedMotion();
-      const token = actionToken;
+      const actor = actors[who];
       busy[who] = true;
       clearThrowClasses(charBtn);
       charBtn.classList.add('pp-busy');
       setHandItem(charBtn, itemEmoji);
-      if (who === 'obbe') {
-        stopObbeIdle();
-        setObbePose('windup');
+      if (prefersReducedMotion()) {
+        paintCel(who, THROW_CELS[who][RELEASE_STEP]);
+        setHandItem(charBtn, '');
+        onRelease();
+      } else {
+        actor.throw = { start: performance.now(), released: false, onRelease };
+        paintCel(who, THROW_CELS[who][0]);
       }
       update();
-
-      if (reduced) {
-        setHandItem(charBtn, '');
-        onRelease();
-        if (token === actionToken) {
-          busy[who] = false;
-          clearThrowClasses(charBtn);
-          if (who === 'obbe') startObbeIdle();
-          update();
-        }
-        return;
-      }
-
-      charBtn.classList.add('pp-windup');
-      later(() => {
-        if (disposed || token !== actionToken) return;
-        charBtn.classList.remove('pp-windup');
-        charBtn.classList.add('pp-throwing');
-        if (who === 'obbe') setObbePose('throw');
-      }, THROW_WINDUP_MS);
-
-      later(() => {
-        if (disposed || token !== actionToken) return;
-        setHandItem(charBtn, '');
-        onRelease();
-      }, FLIGHT_RELEASE_AT);
-
-      later(() => {
-        if (disposed || token !== actionToken) return;
-        charBtn.classList.remove('pp-throwing');
-        charBtn.classList.add('pp-follow');
-        if (who === 'obbe') setObbePose('follow');
-      }, THROW_WINDUP_MS + THROW_RELEASE_MS);
-
-      later(() => {
-        if (disposed || token !== actionToken) return;
-        busy[who] = false;
-        clearThrowClasses(charBtn);
-        setHandItem(charBtn, '');
-        if (who === 'obbe') startObbeIdle();
-        update();
-      }, THROW_WINDUP_MS + THROW_RELEASE_MS + THROW_FOLLOW_MS);
     }
 
     function throwItem(who) {
@@ -532,13 +465,6 @@
       phase = 'done';
       solved++;
       const { a, b } = task();
-      stopObbeIdle();
-      const pose = $('.pp-obbe .pp-pose');
-      const happy = $('.pp-obbe .pp-char-happy');
-      if (pose) pose.hidden = true;
-      if (happy) happy.hidden = false;
-      $('[data-pp-throw="obbe"]').classList.add('pp-celebrate');
-      $('[data-pp-throw="luigi"]').classList.add('pp-celebrate');
       feedback(`Sådan! ${a} + ${b} = ${a + b}. Der er ${a + b} ting i alt!`, 'success');
       update();
       later(() => {
@@ -606,11 +532,14 @@
       setHandItem(obbeBtn, '');
       setHandItem(luigiBtn, '');
 
-      const happy = $('.pp-obbe .pp-char-happy');
-      const pose = $('.pp-obbe .pp-pose');
-      if (happy) happy.hidden = true;
-      if (pose) pose.hidden = false;
-      startObbeIdle();
+      for (const who of ['obbe', 'luigi']) {
+        if (actors[who]) {
+          actors[who].throw = null;
+          actors[who].cheerUntil = 0;
+          paintCel(who, 0);
+        }
+      }
+      activeFlights.clear();
 
       const { a, b } = task();
       $('#pp-a').textContent = a;
@@ -676,10 +605,22 @@
     root.addEventListener('click', click);
     document.addEventListener('keydown', keydown);
     startTask();
+    feedback('Øbbe og Luigi gør sig klar …');
+    Promise.all(['obbe', 'luigi'].map(loadActor)).then(() => {
+      if (disposed) return;
+      assetsReady = true;
+      animationFrame = requestAnimationFrame(animate);
+      update();
+      maybeEnterAnswerPhase();
+      if (phase === 'throw') feedback(`Klik ${task().a} gange på Øbbe og ${task().b} gange på Luigi.`);
+    }).catch(() => {
+      if (!disposed) feedback('Animationerne kunne ikke hentes. Prøv at åbne øvelsen igen.', 'error');
+    });
 
     return () => {
       disposed = true;
-      stopObbeIdle();
+      if (animationFrame != null) cancelAnimationFrame(animationFrame);
+      activeFlights.clear();
       timers.forEach(id => {
         clearTimeout(id);
         clearInterval(id);

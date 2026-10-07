@@ -1,0 +1,36 @@
+name: Plus-penalhus cartoon
+on:
+  push:
+    branches: [main, 'fix/plus-penalhus-cartoon-20261007']
+    paths: ['index.html', 'plus-penalhus.*', 'assets/figurer/plus-penalhus/**', 'scripts/test-plus-penalhus.cjs', '.github/workflows/plus-penalhus.yml']
+  pull_request:
+    paths: ['plus-penalhus.*', 'assets/figurer/plus-penalhus/**', 'scripts/test-plus-penalhus.cjs', '.github/workflows/plus-penalhus.yml']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax checks
+        run: |
+          node --check plus-penalhus.js
+          node --check scripts/test-plus-penalhus.cjs
+      - name: Install browser test dependencies
+        run: |
+          npm install --no-save --package-lock=false playwright@1.57.0
+          npx playwright install --with-deps chromium
+      - name: Exercise with fake users
+        run: node scripts/test-plus-penalhus.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: plus-penalhus-review
+          path: test-results/plus-penalhus/
+          retention-days: 7
