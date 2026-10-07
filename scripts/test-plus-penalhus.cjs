@@ -28,27 +28,51 @@ assert.match(app, /state\.view==="plus-penalhus"/);
 assert.match(fs.readFileSync('index.html', 'utf8'), /plus-penalhus\.js/);
 assert.match(fs.readFileSync('index.html', 'utf8'), /plus-penalhus\.css/);
 
-assert.match(source, /pp-puppet-arm/);
-assert.match(source, /data-pp-arm=/);
+// Milestone A: Øbbe PNG poses (not SVG arm)
+for (const file of [
+  'obbe-idle-a.png',
+  'obbe-idle-b.png',
+  'obbe-windup.png',
+  'obbe-throw.png',
+  'obbe-follow.png',
+]) {
+  assert.ok(fs.existsSync(path.join('assets/figurer/plus-penalhus', file)), file);
+}
+assert.match(source, /OBBE_POSES/);
+assert.match(source, /data-pp-pose="obbe"/);
+assert.match(source, /obbe-throw\.png/);
+assert.match(source, /OBBE_IDLE_MS\s*=\s*800/);
+assert.match(source, /THROW_WINDUP_MS\s*=\s*180/);
+assert.match(source, /THROW_RELEASE_MS\s*=\s*240/);
+assert.match(source, /THROW_FOLLOW_MS\s*=\s*230/);
+assert.doesNotMatch(source, /data-pp-puppet="obbe"/);
+assert.doesNotMatch(source, /data-pp-arm="obbe"/);
+
+// Luigi still SVG puppet (Milestone B)
+assert.match(source, /data-pp-puppet="luigi"/);
+assert.match(source, /data-pp-arm="luigi"/);
 assert.match(source, /pp-arm-svg/);
-assert.match(source, /pp-body-svg/);
-assert.match(source, /pp-arm-fore/);
-assert.match(fs.readFileSync('plus-penalhus.css', 'utf8'), /pp-arm-windup-obbe/);
-assert.match(fs.readFileSync('plus-penalhus.css', 'utf8'), /transform-origin/);
+assert.match(fs.readFileSync('plus-penalhus.css', 'utf8'), /pp-arm-windup-luigi/);
+assert.match(fs.readFileSync('plus-penalhus.css', 'utf8'), /\.pp-pose\{/);
+assert.doesNotMatch(fs.readFileSync('plus-penalhus.css', 'utf8'), /\.pp-obbe\.pp-windup\s+\.pp-puppet-arm/);
 
 let playwright;
 try { playwright = require('playwright'); } catch { playwright = null; }
 
 (async () => {
   if (!playwright) {
-    console.log('PASS: deck, isEnabled, app wiring (no playwright — skip browser smoke).');
+    console.log('PASS: deck, isEnabled, app wiring, Øbbe pose assets (no playwright — skip browser smoke).');
     return;
   }
   const { chromium } = playwright;
   const css = ['styles.css', 'cinematic-theme.css', 'plus-penalhus.css'].map(f => fs.readFileSync(f, 'utf8')).join('\n');
   const out = 'test-results/plus-penalhus';
   fs.mkdirSync(out, { recursive: true });
-  const browser = await chromium.launch({ headless: true, executablePath: process.env.CHROME_PATH || undefined, args: ['--no-sandbox', '--disable-gpu'] });
+  const browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome-stable',
+    args: ['--no-sandbox', '--disable-gpu'],
+  });
   const errors = [];
   try {
     const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
@@ -76,12 +100,18 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     assert.equal(await page.locator('#pp-a').innerText(), '2');
     assert.equal(await page.locator('#pp-b').innerText(), '3');
     assert.equal(await page.locator('#pp-answer-panel').isHidden(), true);
-    assert.equal(await page.locator('[data-pp-arm="obbe"]').count(), 1);
+    assert.equal(await page.locator('[data-pp-pose="obbe"]').count(), 1);
+    assert.equal(await page.locator('[data-pp-arm="obbe"]').count(), 0);
     assert.equal(await page.locator('[data-pp-arm="luigi"]').count(), 1);
-    // Capture arm mid-throw (wind-up → release)
+    const idleSrc = await page.locator('[data-pp-pose="obbe"]').getAttribute('src');
+    assert.match(idleSrc || '', /obbe-idle-a\.png/);
+
+    // Mid-throw: after windup (180) into throw phase — src must contain obbe-throw
     await page.locator('[data-pp-throw="obbe"]').click({ timeout: 15000 });
-    await page.waitForTimeout(260);
-    await page.screenshot({ path: `${out}/throw-arm-mid.png`, fullPage: true });
+    await page.waitForTimeout(220);
+    const midSrc = await page.locator('[data-pp-pose="obbe"]').getAttribute('src');
+    assert.match(midSrc || '', /obbe-throw/);
+    await page.screenshot({ path: `${out}/obbe-throw-mid.png`, fullPage: true });
     await page.waitForTimeout(700);
     for (let i = 0; i < 1; i++) await page.locator('[data-pp-throw="obbe"]').click({ timeout: 15000 });
     for (let i = 0; i < 3; i++) await page.locator('[data-pp-throw="luigi"]').click({ timeout: 15000 });
@@ -103,7 +133,7 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     await page.evaluate(() => __dispose());
     assert.equal(await page.locator('.pp-game').count(), 0);
     assert.deepEqual(errors, []);
-    console.log('PASS: deck, wiring, throw quotas, wrong/correct answer, cleanup.');
+    console.log('PASS: deck, Øbbe pose-swap, Luigi SVG, throw quotas, wrong/correct answer, cleanup.');
   } finally {
     await browser.close();
   }
