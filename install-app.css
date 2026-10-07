@@ -6,3 +6,7 @@
 #install-app-dialog li { margin-block: 12px; }
 #install-app-dialog .btn { min-height: 44px; background: #ffd077; color: #291448; border: 0; border-radius: 10px; padding: 10px 24px; font: inherit; font-weight: 700; cursor: pointer; }
 #install-app-dialog .btn:focus-visible { outline: 3px solid white; outline-offset: 3px; }
+
+/* Landing screen: navigation is handled by the app once loaded. */
+.seo-landing .seo-cta-row,
+.seo-landing .seo-loading { display: none !important; }
