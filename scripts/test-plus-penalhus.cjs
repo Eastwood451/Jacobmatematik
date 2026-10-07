@@ -28,40 +28,17 @@ assert.match(app, /state\.view==="plus-penalhus"/);
 assert.match(fs.readFileSync('index.html', 'utf8'), /plus-penalhus\.js/);
 assert.match(fs.readFileSync('index.html', 'utf8'), /plus-penalhus\.css/);
 
-// Milestone A: Øbbe PNG poses (not SVG arm)
-for (const file of [
-  'obbe-idle-a.png',
-  'obbe-idle-b.png',
-  'obbe-windup.png',
-  'obbe-throw.png',
-  'obbe-follow.png',
-]) {
-  assert.ok(fs.existsSync(path.join('assets/figurer/plus-penalhus', file)), file);
+for (const who of ['obbe', 'luigi']) {
+  assert.ok(fs.existsSync(path.join('assets/figurer/plus-penalhus', `${who}-cartoon-v3.webp`)));
 }
-assert.match(source, /OBBE_POSES/);
-assert.match(source, /data-pp-pose="obbe"/);
-assert.match(source, /obbe-throw\.png/);
-assert.match(source, /OBBE_IDLE_MS\s*=\s*800/);
-assert.match(source, /THROW_WINDUP_MS\s*=\s*180/);
-assert.match(source, /THROW_RELEASE_MS\s*=\s*240/);
-assert.match(source, /THROW_FOLLOW_MS\s*=\s*230/);
-assert.doesNotMatch(source, /data-pp-puppet="obbe"/);
-assert.doesNotMatch(source, /data-pp-arm="obbe"/);
-
-// Luigi still SVG puppet (Milestone B)
-assert.match(source, /data-pp-puppet="luigi"/);
-assert.match(source, /data-pp-arm="luigi"/);
-assert.match(source, /pp-arm-svg/);
-assert.match(fs.readFileSync('plus-penalhus.css', 'utf8'), /pp-arm-windup-luigi/);
-assert.match(fs.readFileSync('plus-penalhus.css', 'utf8'), /\.pp-pose\{/);
-assert.doesNotMatch(fs.readFileSync('plus-penalhus.css', 'utf8'), /\.pp-obbe\.pp-windup\s+\.pp-puppet-arm/);
+assert.doesNotMatch(source, /pp-puppet|pp-arm-svg|OBBE_POSES/);
 
 let playwright;
 try { playwright = require('playwright'); } catch { playwright = null; }
 
 (async () => {
   if (!playwright) {
-    console.log('PASS: deck, isEnabled, app wiring, Øbbe pose assets (no playwright — skip browser smoke).');
+    console.log('PASS: deck, permissions, app wiring, cartoon atlases (browser unavailable).');
     return;
   }
   const { chromium } = playwright;
@@ -70,7 +47,7 @@ try { playwright = require('playwright'); } catch { playwright = null; }
   fs.mkdirSync(out, { recursive: true });
   const browser = await chromium.launch({
     headless: true,
-    executablePath: process.env.CHROME_PATH || '/usr/bin/google-chrome-stable',
+    executablePath: process.env.CHROME_PATH || chromium.executablePath(),
     args: ['--no-sandbox', '--disable-gpu'],
   });
   const errors = [];
@@ -100,17 +77,16 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     assert.equal(await page.locator('#pp-a').innerText(), '2');
     assert.equal(await page.locator('#pp-b').innerText(), '3');
     assert.equal(await page.locator('#pp-answer-panel').isHidden(), true);
-    assert.equal(await page.locator('[data-pp-pose="obbe"]').count(), 1);
-    assert.equal(await page.locator('[data-pp-arm="obbe"]').count(), 0);
-    assert.equal(await page.locator('[data-pp-arm="luigi"]').count(), 1);
-    const idleSrc = await page.locator('[data-pp-pose="obbe"]').getAttribute('src');
-    assert.match(idleSrc || '', /obbe-idle-a\.png/);
-
-    // Mid-throw: after windup (180) into throw phase — src must contain obbe-throw
+    await page.waitForFunction(() => !document.querySelector('[data-pp-throw="obbe"]').disabled);
+    assert.equal(await page.locator('[data-pp-cel]').count(), 2);
+    const cel = page.locator('[data-pp-cel="obbe"]');
+    const idlePixels = await cel.evaluate(el => el.toDataURL());
     await page.locator('[data-pp-throw="obbe"]').click({ timeout: 15000 });
-    await page.waitForTimeout(220);
-    const midSrc = await page.locator('[data-pp-pose="obbe"]').getAttribute('src');
-    assert.match(midSrc || '', /obbe-throw/);
+    await page.waitForTimeout(260);
+    assert.notEqual(await cel.evaluate(el => el.toDataURL()), idlePixels);
+    assert.equal(await page.locator('.pp-flight').count(), 0, 'Nothing flies before the hand releases');
+    await page.waitForSelector('.pp-flight');
+    assert.equal(await page.locator('#pp-answer-panel').isHidden(), true);
     await page.screenshot({ path: `${out}/obbe-throw-mid.png`, fullPage: true });
     await page.waitForTimeout(700);
     for (let i = 0; i < 1; i++) await page.locator('[data-pp-throw="obbe"]').click({ timeout: 15000 });
@@ -130,10 +106,19 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     await page.screenshot({ path: `${out}/desktop-done.png`, fullPage: true });
     await page.locator('[data-pp-next]').click();
     assert.equal(await page.locator('#pp-a').innerText(), '1');
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.locator('[data-pp-throw="obbe"]').click();
+    await page.locator('[data-pp-throw="luigi"]').click();
+    await page.waitForTimeout(600);
+    assert.equal(await page.locator('#pp-answer-panel').isHidden(), true, 'Wait for both items to land');
+    await page.waitForSelector('#pp-answer-panel:not([hidden])');
+    assert.equal(await page.locator('.pp-item').count(), 2);
+    assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    await page.screenshot({ path: `${out}/mobile-count.png`, fullPage: true });
     await page.evaluate(() => __dispose());
     assert.equal(await page.locator('.pp-game').count(), 0);
     assert.deepEqual(errors, []);
-    console.log('PASS: deck, Øbbe pose-swap, Luigi SVG, throw quotas, wrong/correct answer, cleanup.');
+    console.log('PASS: cartoon animation, hand release, throw quotas, wrong/correct answer, cleanup.');
   } finally {
     await browser.close();
   }
