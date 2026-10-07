@@ -15,15 +15,13 @@
     { id: 'tusch', label: 'Tusch', emoji: '🖊️' },
   ];
 
-  const OBBE_SRC = 'assets/figurer/obbe-ovdig.png';
   const OBBE_HAPPY = 'assets/figurer/obbe-techno.webp';
-  const LUIGI_SRC = 'assets/figurer/luigi-laekkermat-cutout.webp';
 
-  const THROW_WINDUP_MS = 160;
-  const THROW_RELEASE_MS = 220;
-  const THROW_FOLLOW_MS = 280;
-  const FLIGHT_MS = 580;
-  const FLIGHT_RELEASE_AT = THROW_WINDUP_MS + 90;
+  const THROW_WINDUP_MS = 220;
+  const THROW_RELEASE_MS = 280;
+  const THROW_FOLLOW_MS = 320;
+  const FLIGHT_MS = 620;
+  const FLIGHT_RELEASE_AT = THROW_WINDUP_MS + 140;
   function prefersReducedMotion() {
     return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
@@ -128,8 +126,71 @@
         <div class="pp-characters">
           <button type="button" class="pp-char pp-obbe" data-pp-throw="obbe" aria-label="Øbbe Øvdig">
             <span class="pp-char-body">
-              <img class="pp-char-img" src="${OBBE_SRC}" alt="" width="160" height="160" decoding="async">
-              <img class="pp-char-happy" src="${OBBE_HAPPY}" alt="" width="160" height="160" decoding="async" hidden>
+              <span class="pp-puppet" data-pp-puppet="obbe">
+                <span class="pp-puppet-torso">
+                  <svg class="pp-body-svg" viewBox="0 0 160 200" width="160" height="200" aria-hidden="true">
+  <!-- boots -->
+  <ellipse cx="58" cy="188" rx="22" ry="10" fill="#1a1a1a"/>
+  <ellipse cx="102" cy="188" rx="22" ry="10" fill="#1a1a1a"/>
+  <!-- legs -->
+  <rect x="42" y="128" width="36" height="58" rx="10" fill="#4a5c28"/>
+  <rect x="82" y="128" width="36" height="58" rx="10" fill="#4a5c28"/>
+  <text x="50" y="158" font-size="7" font-weight="800" fill="#2a3415" font-family="system-ui,sans-serif">PRACTICE</text>
+  <!-- torso -->
+  <rect x="38" y="72" width="84" height="62" rx="14" fill="#c4a060"/>
+  <rect x="46" y="80" width="28" height="18" rx="4" fill="#2a2a2a"/>
+  <text x="49" y="92" font-size="7" font-weight="900" fill="#f5d76e" font-family="system-ui,sans-serif">MATH</text>
+  <!-- belt -->
+  <rect x="38" y="124" width="84" height="12" rx="3" fill="#1a1a1a"/>
+  <rect x="68" y="122" width="24" height="16" rx="3" fill="#e6b422"/>
+  <text x="74" y="134" font-size="11" font-weight="900" fill="#1a1a1a" font-family="system-ui,sans-serif">Σ</text>
+  <!-- neck -->
+  <rect x="70" y="62" width="20" height="14" fill="#5c3d2e"/>
+  <!-- head -->
+  <ellipse cx="80" cy="44" rx="32" ry="30" fill="#5c3d2e"/>
+  <!-- campaign hat -->
+  <ellipse cx="80" cy="22" rx="40" ry="10" fill="#3d4a20"/>
+  <rect x="55" y="4" width="50" height="22" rx="6" fill="#4a5c28"/>
+  <circle cx="80" cy="14" r="8" fill="#e6b422"/>
+  <text x="75" y="18" font-size="11" font-weight="900" fill="#1a1a1a" font-family="system-ui,sans-serif">Σ</text>
+  <!-- face: fierce brows + open mouth -->
+  <path d="M58 36 L72 40" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round"/>
+  <path d="M102 36 L88 40" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="68" cy="46" r="4" fill="#1a1a1a"/>
+  <circle cx="92" cy="46" r="4" fill="#1a1a1a"/>
+  <ellipse cx="80" cy="58" rx="10" ry="7" fill="#2a1a14"/>
+  <ellipse cx="80" cy="56" rx="7" ry="3" fill="#c45c4a"/>
+  <!-- clipboard arm (non-throwing, left) -->
+  <g transform="translate(18,78)">
+    <rect x="0" y="0" width="22" height="48" rx="4" fill="#5c3d2e"/>
+    <rect x="2" y="8" width="18" height="28" rx="2" fill="#e8dcc0"/>
+    <text x="4" y="20" font-size="5" font-weight="800" fill="#302044" font-family="system-ui,sans-serif">WORK!</text>
+  </g>
+</svg>
+                  <img class="pp-char-happy" src="${OBBE_HAPPY}" alt="" width="160" height="160" decoding="async" hidden>
+                </span>
+                <span class="pp-puppet-arm" data-pp-arm="obbe" aria-hidden="true">
+                  <svg class="pp-arm-svg" viewBox="0 0 110 150" width="110" height="150" aria-hidden="true">
+  <g class="pp-arm-upper">
+    <line x1="20" y1="20" x2="55" y2="62" stroke="#b8924e" stroke-width="26" stroke-linecap="round"/>
+    <line x1="20" y1="20" x2="55" y2="62" stroke="#d4b06a" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="20" cy="20" r="15" fill="#d4b06a" stroke="#8a7040" stroke-width="2.5"/>
+  </g>
+  <g class="pp-arm-fore" style="transform-origin:55px 62px">
+    <line x1="55" y1="62" x2="88" y2="108" stroke="#4a3124" stroke-width="22" stroke-linecap="round"/>
+    <line x1="55" y1="62" x2="88" y2="108" stroke="#5c3d2e" stroke-width="12" stroke-linecap="round"/>
+    <circle cx="55" cy="62" r="12" fill="#5c3d2e" stroke="#3a261c" stroke-width="2"/>
+    <g class="pp-fist" transform="translate(88,108)">
+      <ellipse cx="0" cy="0" rx="17" ry="15" fill="#4a3124" stroke="#2a1a14" stroke-width="2" transform="rotate(28)"/>
+      <circle cx="10" cy="-6" r="4" fill="#3a261c"/>
+      <circle cx="13" cy="2" r="3.8" fill="#3a261c"/>
+      <circle cx="9" cy="9" r="3.5" fill="#3a261c"/>
+    </g>
+  </g>
+</svg>
+                  <span class="pp-hand-grip" data-pp-hand="obbe"></span>
+                </span>
+              </span>
             </span>
             <strong>Øbbe</strong>
             <span class="pp-progress" id="pp-obbe-progress" aria-live="polite">0/5</span>
@@ -140,7 +201,77 @@
           </div>
           <button type="button" class="pp-char pp-luigi" data-pp-throw="luigi" aria-label="Luigi Lækkermat">
             <span class="pp-char-body">
-              <img class="pp-char-img" src="${LUIGI_SRC}" alt="" width="160" height="192" decoding="async">
+              <span class="pp-puppet" data-pp-puppet="luigi">
+                <span class="pp-puppet-torso">
+                  <svg class="pp-body-svg" viewBox="0 0 160 200" width="160" height="200" aria-hidden="true">
+  <!-- boots -->
+  <ellipse cx="58" cy="188" rx="22" ry="10" fill="#6b4226"/>
+  <ellipse cx="102" cy="188" rx="22" ry="10" fill="#6b4226"/>
+  <rect x="40" y="176" width="36" height="14" rx="4" fill="#8b5a2b"/>
+  <rect x="84" y="176" width="36" height="14" rx="4" fill="#8b5a2b"/>
+  <!-- legs -->
+  <rect x="44" y="128" width="34" height="52" rx="10" fill="#2f6b4f"/>
+  <rect x="82" y="128" width="34" height="52" rx="10" fill="#2f6b4f"/>
+  <path d="M44 170 h34 v8 h-34z" fill="#4a9a72"/>
+  <path d="M82 170 h34 v8 h-34z" fill="#4a9a72"/>
+  <!-- torso / chef jacket -->
+  <rect x="40" y="70" width="80" height="64" rx="16" fill="#f7f7f2"/>
+  <circle cx="62" cy="90" r="5" fill="#c4a060"/>
+  <circle cx="98" cy="90" r="5" fill="#c4a060"/>
+  <circle cx="62" cy="108" r="5" fill="#c4a060"/>
+  <circle cx="98" cy="108" r="5" fill="#c4a060"/>
+  <circle cx="62" cy="124" r="5" fill="#c4a060"/>
+  <circle cx="98" cy="124" r="5" fill="#c4a060"/>
+  <!-- red scarf -->
+  <path d="M55 70 Q80 88 105 70 L100 78 Q80 92 60 78 Z" fill="#c62828"/>
+  <!-- neck -->
+  <rect x="70" y="58" width="20" height="16" fill="#c9956c"/>
+  <!-- head -->
+  <ellipse cx="80" cy="42" rx="30" ry="28" fill="#c9956c"/>
+  <!-- hair -->
+  <path d="M52 36 Q50 18 66 14 Q80 8 94 14 Q110 18 108 36 Q100 28 80 26 Q60 28 52 36Z" fill="#3a2818"/>
+  <!-- chef hat -->
+  <ellipse cx="80" cy="12" rx="36" ry="14" fill="#ffffff" stroke="#ddd" stroke-width="1"/>
+  <rect x="58" y="-8" width="44" height="28" rx="14" fill="#ffffff" stroke="#eee" stroke-width="1"/>
+  <!-- happy closed eyes + mustache -->
+  <path d="M62 42 Q68 38 74 42" fill="none" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round"/>
+  <path d="M86 42 Q92 38 98 42" fill="none" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round"/>
+  <ellipse cx="72" cy="52" rx="5" ry="3" fill="#e8a090"/>
+  <ellipse cx="88" cy="52" rx="5" ry="3" fill="#e8a090"/>
+  <path d="M58 54 Q80 66 102 54 Q92 62 80 64 Q68 62 58 54Z" fill="#3a2818"/>
+  <!-- smile under mustache -->
+  <path d="M70 62 Q80 70 90 62" fill="none" stroke="#8a4030" stroke-width="2" stroke-linecap="round"/>
+  <!-- non-throw pizza hand (right side, decorative) -->
+  <g transform="translate(118,86)">
+    <circle cx="16" cy="16" r="20" fill="#e8c070"/>
+    <circle cx="16" cy="16" r="16" fill="#e85a3a"/>
+    <circle cx="16" cy="16" r="10" fill="#f5d76e"/>
+    <text x="10" y="20" font-size="10" font-weight="900" fill="#fff" font-family="system-ui,sans-serif">π</text>
+  </g>
+</svg>
+                </span>
+                <span class="pp-puppet-arm" data-pp-arm="luigi" aria-hidden="true">
+                  <svg class="pp-arm-svg" viewBox="0 0 110 150" width="110" height="150" aria-hidden="true">
+  <g class="pp-arm-upper">
+    <line x1="90" y1="20" x2="55" y2="62" stroke="#e8e8e0" stroke-width="26" stroke-linecap="round"/>
+    <line x1="90" y1="20" x2="55" y2="62" stroke="#ffffff" stroke-width="16" stroke-linecap="round"/>
+    <circle cx="90" cy="20" r="15" fill="#ffffff" stroke="#c8c8c0" stroke-width="2.5"/>
+  </g>
+  <g class="pp-arm-fore" style="transform-origin:55px 62px">
+    <line x1="55" y1="62" x2="22" y2="108" stroke="#a87850" stroke-width="22" stroke-linecap="round"/>
+    <line x1="55" y1="62" x2="22" y2="108" stroke="#c9956c" stroke-width="12" stroke-linecap="round"/>
+    <circle cx="55" cy="62" r="12" fill="#c9956c" stroke="#8a6040" stroke-width="2"/>
+    <g class="pp-fist" transform="translate(22,108)">
+      <ellipse cx="0" cy="0" rx="17" ry="15" fill="#b8845a" stroke="#8a6040" stroke-width="2" transform="rotate(-28)"/>
+      <circle cx="-10" cy="-6" r="4" fill="#9a6d48"/>
+      <circle cx="-13" cy="2" r="3.8" fill="#9a6d48"/>
+      <circle cx="-9" cy="9" r="3.5" fill="#9a6d48"/>
+    </g>
+  </g>
+</svg>
+                  <span class="pp-hand-grip" data-pp-hand="luigi"></span>
+                </span>
+              </span>
             </span>
             <strong>Luigi</strong>
             <span class="pp-progress" id="pp-luigi-progress" aria-live="polite">0/4</span>
@@ -266,13 +397,20 @@
       const reduced = prefersReducedMotion();
       const charBox = charBtn.getBoundingClientRect();
       const canvasBox = canvas.getBoundingClientRect();
+      const hand = charBtn.querySelector('[data-pp-hand]') || charBtn.querySelector('.pp-hand-grip');
       const body = charBtn.querySelector('.pp-char-body') || charBtn;
-      const bodyBox = body.getBoundingClientRect();
-
-      // Start near "hand" — upper-inner corner toward canvas
-      const towardCanvas = who === 'obbe' ? 0.72 : 0.28;
-      const startX = bodyBox.left + bodyBox.width * towardCanvas;
-      const startY = bodyBox.top + bodyBox.height * 0.38;
+      let startX;
+      let startY;
+      if (hand) {
+        const handBox = hand.getBoundingClientRect();
+        startX = handBox.left + handBox.width / 2;
+        startY = handBox.top + handBox.height / 2;
+      } else {
+        const bodyBox = body.getBoundingClientRect();
+        const towardCanvas = who === 'obbe' ? 0.78 : 0.22;
+        startX = bodyBox.left + bodyBox.width * towardCanvas;
+        startY = bodyBox.top + bodyBox.height * 0.42;
+      }
       const targetLeft = canvasBox.left + (item.left / 100) * canvasBox.width;
       const targetTop = canvasBox.top + (item.top / 100) * canvasBox.height;
       const arc = 48 + (Math.abs(targetLeft - startX) * 0.12) + ((item.id * 7) % 28);
@@ -309,15 +447,29 @@
       }, FLIGHT_MS);
     }
 
-    function runThrowPose(charBtn, who, onRelease) {
+    function setHandItem(charBtn, emoji) {
+      const grip = charBtn.querySelector('[data-pp-hand]');
+      if (!grip) return;
+      if (emoji) {
+        grip.innerHTML = `<span class="pp-hand-emoji" aria-hidden="true">${emoji}</span>`;
+        grip.classList.add('pp-hand-loaded');
+      } else {
+        grip.innerHTML = '';
+        grip.classList.remove('pp-hand-loaded');
+      }
+    }
+
+    function runThrowPose(charBtn, who, itemEmoji, onRelease) {
       const reduced = prefersReducedMotion();
       const token = actionToken;
       busy[who] = true;
       clearThrowClasses(charBtn);
       charBtn.classList.add('pp-busy');
+      setHandItem(charBtn, itemEmoji);
       update();
 
       if (reduced) {
+        setHandItem(charBtn, '');
         onRelease();
         if (token === actionToken) {
           busy[who] = false;
@@ -336,6 +488,7 @@
 
       later(() => {
         if (disposed || token !== actionToken) return;
+        setHandItem(charBtn, '');
         onRelease();
       }, FLIGHT_RELEASE_AT);
 
@@ -349,6 +502,7 @@
         if (disposed || token !== actionToken) return;
         busy[who] = false;
         clearThrowClasses(charBtn);
+        setHandItem(charBtn, '');
         update();
       }, THROW_WINDUP_MS + THROW_RELEASE_MS + THROW_FOLLOW_MS);
     }
@@ -368,7 +522,7 @@
 
       updateProgress();
 
-      runThrowPose(charBtn, who, () => {
+      runThrowPose(charBtn, who, item.emoji, () => {
         if (disposed) return;
         spawnFlight(who, item, charBtn, canvas);
       });
@@ -385,8 +539,10 @@
       phase = 'done';
       solved++;
       const { a, b } = task();
-      $('.pp-obbe .pp-char-img').hidden = true;
-      $('.pp-obbe .pp-char-happy').hidden = false;
+      const torsoSvg = $('.pp-obbe .pp-body-svg');
+      const happy = $('.pp-obbe .pp-char-happy');
+      if (torsoSvg) torsoSvg.hidden = true;
+      if (happy) happy.hidden = false;
       $('[data-pp-throw="obbe"]').classList.add('pp-celebrate');
       $('[data-pp-throw="luigi"]').classList.add('pp-celebrate');
       feedback(`Sådan! ${a} + ${b} = ${a + b}. Der er ${a + b} ting i alt!`, 'success');
@@ -453,11 +609,13 @@
       clearThrowClasses(luigiBtn);
       obbeBtn.classList.remove('pp-celebrate', 'pp-complete');
       luigiBtn.classList.remove('pp-celebrate', 'pp-complete');
+      setHandItem(obbeBtn, '');
+      setHandItem(luigiBtn, '');
 
       const happy = $('.pp-obbe .pp-char-happy');
-      const normal = $('.pp-obbe .pp-char-img');
+      const torsoSvg = $('.pp-obbe .pp-body-svg');
       if (happy) happy.hidden = true;
-      if (normal) normal.hidden = false;
+      if (torsoSvg) torsoSvg.hidden = false;
 
       const { a, b } = task();
       $('#pp-a').textContent = a;

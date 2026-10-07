@@ -20,7 +20,7 @@
 .pp-equation output{min-width:100px;text-align:center;background:#fff;border:3px dashed #b99ed1;border-radius:18px;padding:7px 12px;line-height:1.5}
 .pp-ready .pp-equation output{border-style:solid;border-color:#76569f}
 .pp-stage{margin:0 auto 18px}
-.pp-characters{display:grid;grid-template-columns:minmax(110px,160px) minmax(0,1fr) minmax(110px,160px);gap:14px;align-items:end}
+.pp-characters{display:grid;grid-template-columns:minmax(140px,190px) minmax(0,1fr) minmax(140px,190px);gap:14px;align-items:end}
 .pp-char{display:flex;flex-direction:column;align-items:center;gap:6px;background:#fff;border:2px solid #e2d4bf;border-radius:22px;padding:12px 8px 14px;box-shadow:0 5px 0 #e8dcc8;transition:box-shadow .15s,border-color .15s,background .15s,opacity .2s;touch-action:manipulation;user-select:none;-webkit-user-select:none;position:relative;overflow:visible}
 .pp-char:not(:disabled):hover{border-color:#c9a86a;background:#fff8ec}
 .pp-obbe{border-color:#e9c27e;background:#fff7e8}
@@ -28,32 +28,70 @@
 .pp-char.pp-complete{opacity:.9;border-style:dashed}
 .pp-char.pp-busy{opacity:1}
 .pp-char.pp-windup{box-shadow:0 7px 0 #e8dcc8}
-.pp-char.pp-throwing{box-shadow:0 2px 0 #e8dcc8;transform:translateY(4px)}
+.pp-char.pp-throwing{box-shadow:0 2px 0 #e8dcc8;transform:translateY(3px)}
 .pp-char.pp-follow{box-shadow:0 5px 0 #e8dcc8}
-.pp-char-body{display:block;position:relative;width:120px;height:140px;transform-origin:50% 90%;will-change:transform;filter:drop-shadow(0 8px 6px #32204918)}
-.pp-char-img,.pp-char-happy{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none}
-.pp-char strong{font-size:16px;position:relative;z-index:1}
-.pp-progress{font-size:14px;font-weight:800;color:#69557b;background:#f3ebe0;border-radius:999px;padding:4px 12px;min-width:3.5em;text-align:center;position:relative;z-index:1}
+.pp-char strong{font-size:16px;position:relative;z-index:2}
+.pp-progress{font-size:14px;font-weight:800;color:#69557b;background:#f3ebe0;border-radius:999px;padding:4px 12px;min-width:3.5em;text-align:center;position:relative;z-index:2}
 .pp-obbe .pp-progress{background:#ffe9c4;color:#8a5a20}
 .pp-luigi .pp-progress{background:#d8f0e4;color:#2f6b4f}
 
-/* Idle life — subtle bob + sway while waiting */
-.pp-char:not(:disabled):not(.pp-busy) .pp-char-body{animation:pp-idle-bob 2.4s ease-in-out infinite}
-.pp-luigi:not(:disabled):not(.pp-busy) .pp-char-body{animation-name:pp-idle-bob-luigi;animation-delay:.35s}
-.pp-char:not(:disabled):not(.pp-busy):hover .pp-char-body{animation:pp-anticipation .55s ease-in-out infinite}
-.pp-luigi:not(:disabled):not(.pp-busy):hover .pp-char-body{animation-name:pp-anticipation-luigi}
+/* ===== Layered cartoon puppet (SVG body + separate arm) ===== */
+.pp-char-body{display:block;position:relative;width:150px;height:190px;overflow:visible;filter:drop-shadow(0 8px 6px #32204918)}
+.pp-puppet{display:block;position:relative;width:100%;height:100%;overflow:visible}
+.pp-puppet-torso{display:block;position:absolute;left:0;right:0;top:0;bottom:0;transform-origin:50% 88%;will-change:transform;overflow:visible}
+.pp-body-svg{display:block;width:100%;height:100%;overflow:visible;pointer-events:none}
+.pp-char-happy{position:absolute;inset:8% 10% 18%;width:80%;height:auto;object-fit:contain;pointer-events:none;border-radius:12px}
 
-/* Throw sequence: wind-up → release → follow-through */
-.pp-obbe.pp-windup .pp-char-body{animation:pp-windup-obbe .16s ease-out forwards}
-.pp-obbe.pp-throwing .pp-char-body{animation:pp-release-obbe .22s cubic-bezier(.2,.8,.3,1) forwards}
-.pp-obbe.pp-follow .pp-char-body{animation:pp-follow-obbe .28s ease-out forwards}
-.pp-luigi.pp-windup .pp-char-body{animation:pp-windup-luigi .16s ease-out forwards}
-.pp-luigi.pp-throwing .pp-char-body{animation:pp-release-luigi .22s cubic-bezier(.2,.8,.3,1) forwards}
-.pp-luigi.pp-follow .pp-char-body{animation:pp-follow-luigi .28s ease-out forwards}
+/* Throwing arm — separate layer, shoulder pivot toward canvas */
+.pp-puppet-arm{position:absolute;top:28%;width:58%;height:62%;z-index:5;pointer-events:none;will-change:transform;filter:drop-shadow(0 2px 1px #32204933)}
+.pp-obbe .pp-puppet-arm{left:48%;transform-origin:14% 12%}
+.pp-luigi .pp-puppet-arm{right:48%;left:auto;transform-origin:86% 12%}
+.pp-arm-svg{display:block;width:100%;height:100%;overflow:visible}
+.pp-hand-grip{position:absolute;width:30px;height:30px;display:grid;place-items:center;z-index:6;pointer-events:none}
+.pp-obbe .pp-hand-grip{right:-4%;bottom:0%}
+.pp-luigi .pp-hand-grip{left:-4%;bottom:0%}
+.pp-hand-emoji{font-size:24px;line-height:1;display:block;filter:drop-shadow(0 2px 1px #32204944);animation:pp-hand-wiggle .35s ease-in-out infinite alternate}
+.pp-hand-loaded .pp-hand-emoji{opacity:1}
 
-/* Celebrate when quota filled or correct answer */
-.pp-char.pp-celebrate .pp-char-body{animation:pp-celebrate .7s ease-in-out 2}
-.pp-done .pp-obbe .pp-char-body,.pp-done .pp-luigi .pp-char-body{animation:pp-celebrate .7s ease-in-out 2}
+/* Idle: torso breathes, arm gently swings — separate layers */
+.pp-char:not(:disabled):not(.pp-busy) .pp-puppet-torso{animation:pp-torso-breathe 2.6s ease-in-out infinite}
+.pp-luigi:not(:disabled):not(.pp-busy) .pp-puppet-torso{animation-delay:.4s}
+.pp-char:not(:disabled):not(.pp-busy) .pp-puppet-arm{animation:pp-arm-idle-obbe 2.6s ease-in-out infinite}
+.pp-luigi:not(:disabled):not(.pp-busy) .pp-puppet-arm{animation-name:pp-arm-idle-luigi;animation-delay:.4s}
+.pp-char:not(:disabled):not(.pp-busy):hover .pp-puppet-arm{animation:pp-arm-ready-obbe .5s ease-in-out infinite}
+.pp-luigi:not(:disabled):not(.pp-busy):hover .pp-puppet-arm{animation-name:pp-arm-ready-luigi}
+.pp-char:not(:disabled):not(.pp-busy):hover .pp-puppet-torso{animation:pp-torso-ready .5s ease-in-out infinite}
+
+/* THROW: arm rotates at shoulder — tegnefilm wind-up → swing → follow */
+.pp-obbe.pp-windup .pp-puppet-arm{animation:pp-arm-windup-obbe .22s ease-out forwards}
+.pp-obbe.pp-throwing .pp-puppet-arm{animation:pp-arm-release-obbe .28s cubic-bezier(.15,.85,.35,1) forwards}
+.pp-obbe.pp-follow .pp-puppet-arm{animation:pp-arm-follow-obbe .32s ease-out forwards}
+.pp-luigi.pp-windup .pp-puppet-arm{animation:pp-arm-windup-luigi .22s ease-out forwards}
+.pp-luigi.pp-throwing .pp-puppet-arm{animation:pp-arm-release-luigi .28s cubic-bezier(.15,.85,.35,1) forwards}
+.pp-luigi.pp-follow .pp-puppet-arm{animation:pp-arm-follow-luigi .32s ease-out forwards}
+
+
+/* Elbow bend — nested forearm flex during throw (tegnefilm squash) */
+.pp-arm-fore{transform-box:fill-box;transform-origin:center;transition:none}
+.pp-obbe.pp-windup .pp-arm-fore{animation:pp-elbow-windup-obbe .22s ease-out forwards}
+.pp-obbe.pp-throwing .pp-arm-fore{animation:pp-elbow-release-obbe .28s cubic-bezier(.15,.85,.35,1) forwards}
+.pp-obbe.pp-follow .pp-arm-fore{animation:pp-elbow-follow-obbe .32s ease-out forwards}
+.pp-luigi.pp-windup .pp-arm-fore{animation:pp-elbow-windup-luigi .22s ease-out forwards}
+.pp-luigi.pp-throwing .pp-arm-fore{animation:pp-elbow-release-luigi .28s cubic-bezier(.15,.85,.35,1) forwards}
+.pp-luigi.pp-follow .pp-arm-fore{animation:pp-elbow-follow-luigi .32s ease-out forwards}
+
+/* Body lean accompanies arm (secondary motion) */
+.pp-obbe.pp-windup .pp-puppet-torso{animation:pp-torso-windup-obbe .22s ease-out forwards}
+.pp-obbe.pp-throwing .pp-puppet-torso{animation:pp-torso-release-obbe .28s cubic-bezier(.15,.85,.35,1) forwards}
+.pp-obbe.pp-follow .pp-puppet-torso{animation:pp-torso-follow-obbe .32s ease-out forwards}
+.pp-luigi.pp-windup .pp-puppet-torso{animation:pp-torso-windup-luigi .22s ease-out forwards}
+.pp-luigi.pp-throwing .pp-puppet-torso{animation:pp-torso-release-luigi .28s cubic-bezier(.15,.85,.35,1) forwards}
+.pp-luigi.pp-follow .pp-puppet-torso{animation:pp-torso-follow-luigi .32s ease-out forwards}
+
+/* Celebrate */
+.pp-char.pp-celebrate .pp-puppet-torso,.pp-done .pp-obbe .pp-puppet-torso,.pp-done .pp-luigi .pp-puppet-torso{animation:pp-torso-celebrate .7s ease-in-out 2}
+.pp-char.pp-celebrate .pp-puppet-arm,.pp-done .pp-obbe .pp-puppet-arm,.pp-done .pp-luigi .pp-puppet-arm{animation:pp-arm-celebrate-obbe .7s ease-in-out 2}
+.pp-luigi.pp-celebrate .pp-puppet-arm,.pp-done .pp-luigi .pp-puppet-arm{animation-name:pp-arm-celebrate-luigi}
 
 .pp-canvas-wrap{position:relative;min-height:220px}
 .pp-canvas{position:relative;height:220px;border:3px solid #cbb8e0;border-radius:24px;background:linear-gradient(180deg,#f7f1ff,#fffaf0 70%);box-shadow:inset 0 6px 0 #ebe3f6;overflow:hidden}
@@ -79,67 +117,152 @@
 .pp-feedback[data-tone="success"]{background:#e3f1d9;color:#386036}
 .pp-feedback[data-tone="error"]{background:#fff1db;color:#815120}
 
-/* Flying school supplies — arc from hand to canvas */
-.pp-flight{position:fixed;z-index:9998;pointer-events:none;width:48px;height:48px;margin:0;display:grid;place-items:center;transform:translate(-50%,-50%);animation:pp-throw-arc .58s cubic-bezier(.35,.05,.45,1) forwards;filter:drop-shadow(0 8px 6px #32204944)}
+.pp-flight{position:fixed;z-index:9998;pointer-events:none;width:48px;height:48px;margin:0;display:grid;place-items:center;transform:translate(-50%,-50%);animation:pp-throw-arc .62s cubic-bezier(.35,.05,.45,1) forwards;filter:drop-shadow(0 8px 6px #32204944)}
 .pp-flight span{font-size:34px;line-height:1;display:block;transform-origin:50% 50%}
-.pp-flight-obbe span{animation:pp-spin-flight .58s linear forwards}
-.pp-flight-luigi span{animation:pp-spin-flight-rev .58s linear forwards}
+.pp-flight-obbe span{animation:pp-spin-flight .62s linear forwards}
+.pp-flight-luigi span{animation:pp-spin-flight-rev .62s linear forwards}
 .pp-penalhus-card{position:relative;overflow:hidden;background:linear-gradient(110deg,#fff2d5,#e8f7ef)!important;min-height:130px;padding-right:150px!important}
 .pp-penalhus-card .pp-card-art{position:absolute;right:8px;bottom:0;display:flex;align-items:flex-end;gap:0;pointer-events:none}
 .pp-penalhus-card .pp-card-art img{height:118px;width:auto;object-fit:contain}
 .pp-penalhus-card .pp-card-art img:first-child{height:110px;margin-right:-18px}
 .pp-penalhus-card .topic-icon{color:#83559e}
 
-@keyframes pp-idle-bob{
-  0%,100%{transform:translateY(0) rotate(-2.5deg) scale(1)}
-  50%{transform:translateY(-9px) rotate(3deg) scale(1.035)}
+/* ---- Keyframes: torso ---- */
+@keyframes pp-torso-breathe{
+  0%,100%{transform:translateY(0) scale(1,1)}
+  50%{transform:translateY(-5px) scale(1.02,1.035)}
 }
-@keyframes pp-idle-bob-luigi{
-  0%,100%{transform:translateY(0) rotate(2.5deg) scale(1)}
-  50%{transform:translateY(-9px) rotate(-3deg) scale(1.035)}
+@keyframes pp-torso-ready{
+  0%,100%{transform:translateY(0) scale(1.02)}
+  50%{transform:translateY(-4px) scale(1.04)}
 }
-@keyframes pp-anticipation{
-  0%,100%{transform:translate(3px,0) rotate(6deg) scale(1.04)}
-  50%{transform:translate(8px,-5px) rotate(11deg) scale(1.07)}
+@keyframes pp-torso-windup-obbe{
+  0%{transform:rotate(0) translate(0,0)}
+  100%{transform:rotate(-8deg) translate(-6px,4px)}
 }
-@keyframes pp-anticipation-luigi{
-  0%,100%{transform:translate(-3px,0) rotate(-6deg) scale(1.04)}
-  50%{transform:translate(-8px,-5px) rotate(-11deg) scale(1.07)}
+@keyframes pp-torso-release-obbe{
+  0%{transform:rotate(-8deg) translate(-6px,4px)}
+  45%{transform:rotate(10deg) translate(10px,-6px)}
+  100%{transform:rotate(4deg) translate(4px,-2px)}
 }
-@keyframes pp-windup-obbe{
-  0%{transform:translate(0,0) rotate(0) scale(1)}
-  100%{transform:translate(-22px,8px) rotate(-28deg) scale(.9)}
+@keyframes pp-torso-follow-obbe{
+  0%{transform:rotate(4deg) translate(4px,-2px)}
+  40%{transform:rotate(-3deg) translate(-2px,3px)}
+  100%{transform:rotate(0) translate(0,0)}
 }
-@keyframes pp-release-obbe{
-  0%{transform:translate(-22px,8px) rotate(-28deg) scale(.9)}
-  40%{transform:translate(28px,-18px) rotate(28deg) scale(1.14)}
-  100%{transform:translate(14px,-6px) rotate(14deg) scale(1.04)}
+@keyframes pp-torso-windup-luigi{
+  0%{transform:rotate(0) translate(0,0)}
+  100%{transform:rotate(8deg) translate(6px,4px)}
 }
-@keyframes pp-follow-obbe{
-  0%{transform:translate(14px,-6px) rotate(14deg) scale(1.04)}
-  35%{transform:translate(-4px,6px) rotate(-8deg) scale(.94)}
-  100%{transform:translate(0,0) rotate(0) scale(1)}
+@keyframes pp-torso-release-luigi{
+  0%{transform:rotate(8deg) translate(6px,4px)}
+  45%{transform:rotate(-10deg) translate(-10px,-6px)}
+  100%{transform:rotate(-4deg) translate(-4px,-2px)}
 }
-@keyframes pp-windup-luigi{
-  0%{transform:translate(0,0) rotate(0) scale(1)}
-  100%{transform:translate(22px,8px) rotate(28deg) scale(.9)}
+@keyframes pp-torso-follow-luigi{
+  0%{transform:rotate(-4deg) translate(-4px,-2px)}
+  40%{transform:rotate(3deg) translate(2px,3px)}
+  100%{transform:rotate(0) translate(0,0)}
 }
-@keyframes pp-release-luigi{
-  0%{transform:translate(22px,8px) rotate(28deg) scale(.9)}
-  40%{transform:translate(-28px,-18px) rotate(-28deg) scale(1.14)}
-  100%{transform:translate(-14px,-6px) rotate(-14deg) scale(1.04)}
-}
-@keyframes pp-follow-luigi{
-  0%{transform:translate(-14px,-6px) rotate(-14deg) scale(1.04)}
-  35%{transform:translate(4px,6px) rotate(8deg) scale(.94)}
-  100%{transform:translate(0,0) rotate(0) scale(1)}
-}
-@keyframes pp-celebrate{
+@keyframes pp-torso-celebrate{
   0%,100%{transform:translateY(0) rotate(0) scale(1)}
-  25%{transform:translateY(-20px) rotate(-12deg) scale(1.12)}
-  50%{transform:translateY(-6px) rotate(10deg) scale(1.06)}
-  75%{transform:translateY(-16px) rotate(-6deg) scale(1.1)}
+  25%{transform:translateY(-14px) rotate(-6deg) scale(1.06)}
+  50%{transform:translateY(-4px) rotate(5deg) scale(1.03)}
+  75%{transform:translateY(-12px) rotate(-3deg) scale(1.05)}
 }
+
+/* ---- Keyframes: ARM (the tegnefilm throw) ---- */
+@keyframes pp-arm-idle-obbe{
+  0%,100%{transform:rotate(-12deg)}
+  50%{transform:rotate(-4deg)}
+}
+@keyframes pp-arm-idle-luigi{
+  0%,100%{transform:rotate(12deg)}
+  50%{transform:rotate(4deg)}
+}
+@keyframes pp-arm-ready-obbe{
+  0%,100%{transform:rotate(-28deg) scale(1.02)}
+  50%{transform:rotate(-36deg) scale(1.04)}
+}
+@keyframes pp-arm-ready-luigi{
+  0%,100%{transform:rotate(28deg) scale(1.02)}
+  50%{transform:rotate(36deg) scale(1.04)}
+}
+/* Wind-up: arm pulls BACK away from canvas */
+@keyframes pp-arm-windup-obbe{
+  0%{transform:rotate(-8deg)}
+  100%{transform:rotate(-95deg) scale(.94)}
+}
+/* Release: arm swings FORWARD toward canvas — big readable arc */
+@keyframes pp-arm-release-obbe{
+  0%{transform:rotate(-95deg) scale(.94)}
+  50%{transform:rotate(68deg) scale(1.1)}
+  100%{transform:rotate(48deg) scale(1.05)}
+}
+@keyframes pp-arm-follow-obbe{
+  0%{transform:rotate(48deg) scale(1.05)}
+  45%{transform:rotate(-20deg) scale(.97)}
+  100%{transform:rotate(-10deg) scale(1)}
+}
+@keyframes pp-arm-windup-luigi{
+  0%{transform:rotate(8deg)}
+  100%{transform:rotate(95deg) scale(.94)}
+}
+@keyframes pp-arm-release-luigi{
+  0%{transform:rotate(95deg) scale(.94)}
+  50%{transform:rotate(-68deg) scale(1.1)}
+  100%{transform:rotate(-48deg) scale(1.05)}
+}
+@keyframes pp-arm-follow-luigi{
+  0%{transform:rotate(-48deg) scale(1.05)}
+  45%{transform:rotate(20deg) scale(.97)}
+  100%{transform:rotate(10deg) scale(1)}
+}
+@keyframes pp-arm-celebrate-obbe{
+  0%,100%{transform:rotate(-10deg)}
+  25%{transform:rotate(40deg)}
+  50%{transform:rotate(-25deg)}
+  75%{transform:rotate(30deg)}
+}
+@keyframes pp-arm-celebrate-luigi{
+  0%,100%{transform:rotate(10deg)}
+  25%{transform:rotate(-40deg)}
+  50%{transform:rotate(25deg)}
+  75%{transform:rotate(-30deg)}
+}
+
+@keyframes pp-elbow-windup-obbe{
+  0%{transform:rotate(0deg)}
+  100%{transform:rotate(35deg)}
+}
+@keyframes pp-elbow-release-obbe{
+  0%{transform:rotate(35deg)}
+  45%{transform:rotate(-25deg)}
+  100%{transform:rotate(-10deg)}
+}
+@keyframes pp-elbow-follow-obbe{
+  0%{transform:rotate(-10deg)}
+  100%{transform:rotate(0deg)}
+}
+@keyframes pp-elbow-windup-luigi{
+  0%{transform:rotate(0deg)}
+  100%{transform:rotate(-35deg)}
+}
+@keyframes pp-elbow-release-luigi{
+  0%{transform:rotate(-35deg)}
+  45%{transform:rotate(25deg)}
+  100%{transform:rotate(10deg)}
+}
+@keyframes pp-elbow-follow-luigi{
+  0%{transform:rotate(10deg)}
+  100%{transform:rotate(0deg)}
+}
+
+@keyframes pp-hand-wiggle{
+  0%{transform:rotate(-12deg) scale(1)}
+  100%{transform:rotate(12deg) scale(1.08)}
+}
+
 @keyframes pp-throw-arc{
   0%{transform:translate(-50%,-50%) scale(.55) rotate(-30deg);opacity:1}
   28%{transform:translate(calc(-50% + var(--pp-dx) * .32),calc(-50% + var(--pp-dy) * .22 - var(--pp-arc,72px))) scale(1.22) rotate(10deg);opacity:1}
@@ -170,12 +293,13 @@
   .pp-game{margin:12px 8px 40px;padding:18px 12px;border-radius:22px}
   .pp-characters{grid-template-columns:1fr 1fr;gap:10px}
   .pp-canvas-wrap{grid-column:1 / -1;order:-1}
-  .pp-char-body{width:96px;height:112px}
+  .pp-char-body{width:120px;height:152px}
   .pp-canvas{height:180px}
   .pp-item{width:48px;height:48px}
   .pp-item-emoji{font-size:26px}
   .pp-flight{width:42px;height:42px}
   .pp-flight span{font-size:28px}
+  .pp-hand-emoji{font-size:18px}
   .pp-equation{gap:10px;font-size:30px}
   .pp-term{min-width:52px;padding:4px 10px;border-radius:13px}
   .pp-equation output{min-width:64px}
@@ -195,16 +319,25 @@
   }
 }
 @media(max-width:360px){
-  .pp-char-body{width:80px;height:96px}
+  .pp-char-body{width:104px;height:132px}
   .pp-canvas{height:160px}
   .pp-item{width:42px;height:42px}
 }
 @media(prefers-reduced-motion:reduce){
-  .pp-char:not(:disabled):not(.pp-busy) .pp-char-body,
-  .pp-char:not(:disabled):not(.pp-busy):hover .pp-char-body,
-  .pp-obbe.pp-windup .pp-char-body,.pp-obbe.pp-throwing .pp-char-body,.pp-obbe.pp-follow .pp-char-body,
-  .pp-luigi.pp-windup .pp-char-body,.pp-luigi.pp-throwing .pp-char-body,.pp-luigi.pp-follow .pp-char-body,
-  .pp-char.pp-celebrate .pp-char-body,.pp-done .pp-obbe .pp-char-body,.pp-done .pp-luigi .pp-char-body{animation:none!important;transform:none}
+  .pp-char:not(:disabled):not(.pp-busy) .pp-puppet-torso,
+  .pp-char:not(:disabled):not(.pp-busy) .pp-puppet-arm,
+  .pp-char:not(:disabled):not(.pp-busy):hover .pp-puppet-torso,
+  .pp-char:not(:disabled):not(.pp-busy):hover .pp-puppet-arm,
+  .pp-obbe.pp-windup .pp-puppet-arm,.pp-obbe.pp-throwing .pp-puppet-arm,.pp-obbe.pp-follow .pp-puppet-arm,
+  .pp-luigi.pp-windup .pp-puppet-arm,.pp-luigi.pp-throwing .pp-puppet-arm,.pp-luigi.pp-follow .pp-puppet-arm,
+  .pp-obbe.pp-windup .pp-puppet-torso,.pp-obbe.pp-throwing .pp-puppet-torso,.pp-obbe.pp-follow .pp-puppet-torso,
+  .pp-luigi.pp-windup .pp-puppet-torso,.pp-luigi.pp-throwing .pp-puppet-torso,.pp-luigi.pp-follow .pp-puppet-torso,
+  .pp-char.pp-celebrate .pp-puppet-torso,.pp-char.pp-celebrate .pp-puppet-arm,
+  .pp-done .pp-obbe .pp-puppet-torso,.pp-done .pp-luigi .pp-puppet-torso,
+  .pp-done .pp-obbe .pp-puppet-arm,.pp-done .pp-luigi .pp-puppet-arm,
+  .pp-hand-emoji,.pp-arm-fore{animation:none!important}
+  .pp-obbe:not(.pp-busy) .pp-puppet-arm{transform:rotate(-12deg)}
+  .pp-luigi:not(.pp-busy) .pp-puppet-arm{transform:rotate(12deg)}
   .pp-flight{animation:none;opacity:0}
   .pp-flight span{animation:none}
   .pp-item,.pp-item.pp-landing{animation:none}

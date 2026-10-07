@@ -28,6 +28,14 @@ assert.match(app, /state\.view==="plus-penalhus"/);
 assert.match(fs.readFileSync('index.html', 'utf8'), /plus-penalhus\.js/);
 assert.match(fs.readFileSync('index.html', 'utf8'), /plus-penalhus\.css/);
 
+assert.match(source, /pp-puppet-arm/);
+assert.match(source, /data-pp-arm=/);
+assert.match(source, /pp-arm-svg/);
+assert.match(source, /pp-body-svg/);
+assert.match(source, /pp-arm-fore/);
+assert.match(fs.readFileSync('plus-penalhus.css', 'utf8'), /pp-arm-windup-obbe/);
+assert.match(fs.readFileSync('plus-penalhus.css', 'utf8'), /transform-origin/);
+
 let playwright;
 try { playwright = require('playwright'); } catch { playwright = null; }
 
@@ -68,7 +76,14 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     assert.equal(await page.locator('#pp-a').innerText(), '2');
     assert.equal(await page.locator('#pp-b').innerText(), '3');
     assert.equal(await page.locator('#pp-answer-panel').isHidden(), true);
-    for (let i = 0; i < 2; i++) await page.locator('[data-pp-throw="obbe"]').click({ timeout: 15000 });
+    assert.equal(await page.locator('[data-pp-arm="obbe"]').count(), 1);
+    assert.equal(await page.locator('[data-pp-arm="luigi"]').count(), 1);
+    // Capture arm mid-throw (wind-up → release)
+    await page.locator('[data-pp-throw="obbe"]').click({ timeout: 15000 });
+    await page.waitForTimeout(260);
+    await page.screenshot({ path: `${out}/throw-arm-mid.png`, fullPage: true });
+    await page.waitForTimeout(700);
+    for (let i = 0; i < 1; i++) await page.locator('[data-pp-throw="obbe"]').click({ timeout: 15000 });
     for (let i = 0; i < 3; i++) await page.locator('[data-pp-throw="luigi"]').click({ timeout: 15000 });
     await page.waitForSelector('#pp-answer-panel:not([hidden])', { timeout: 20000 });
     assert.equal(await page.locator('.pp-item').count(), 5);
