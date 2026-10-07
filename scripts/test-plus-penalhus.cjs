@@ -80,7 +80,8 @@ try { playwright = require('playwright'); } catch { playwright = null; }
       window.__nativePlay = HTMLMediaElement.prototype.play;
       // Deterministic audio completion: test queue order, not CI audio hardware.
       HTMLMediaElement.prototype.play = function () {
-        __speech.push(this.src.split('/').pop());
+      __speech.push(new URL(this.src).pathname.split('/').pop());
+      if (!new URL(this.src).searchParams.get('v')) throw Error('Voice clips must bypass cached mispronunciations');
         setTimeout(() => this.dispatchEvent(new Event('ended')), 80);
         return Promise.resolve();
       };
@@ -271,7 +272,7 @@ try { playwright = require('playwright'); } catch { playwright = null; }
       window.__played = [];
       window.__audioErrors = [];
       HTMLMediaElement.prototype.play = function () {
-        const clip = this.src.split('/').pop();
+        const clip = new URL(this.src).pathname.split('/').pop();
         this.addEventListener('ended', () => __played.push(clip), { once: true });
         const promise = __nativePlay.call(this);
         promise.catch(error => __audioErrors.push(error.message));

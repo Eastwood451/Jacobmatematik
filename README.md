@@ -68,6 +68,23 @@ skærmbilleder gemmes i den ignorerede mappe `test-results/`.
 
 Se `SUPABASE_SETUP.md` for opsætning af central database og login.
 
+## Oplæsning i Plus-penalhus og Bogstavlæring
+
+Begge moduler afspiller faste danske MP3-filer med Christel-stemmen. Teksten til
+lydgenerering bruger udråbstegn til sætningsafslutning: `fem.` og `ti.` blev
+ellers udtalt som forkortelser (femininum og tirsdag). Bogstavnavne skrives med
+deres danske udtale, fx `æf`, `æl` og `æn`, så enkeltbogstaver ikke udvides til ord.
+
+Genopbyg med `python scripts/generate_plus_penalhus_audio.py --force` og
+`python scripts/generate_letter_audio.py --force` (edge-tts og imageio-ffmpeg).
+Uden `--force` bygges kun manglende klip. Alle 118 tælle-/plusklip og 29 aktive
+bogstavklip leveres med siden. Ved nye rettelser skal lydens versionsparameter
+og scriptversionerne opdateres, så gamle klip ikke bliver i browserens cache.
+`python scripts/test-learning-audio.py` kontrollerer tekster og filernes tilstedeværelse;
+`node scripts/test-plus-penalhus.cjs` kontrollerer kø, afspilning og spilforløb.
+`node scripts/test-learning-audio-browser.cjs` afprøver afspilning af alle 147 aktive
+klip i Chromium (kræver Playwright).
+
 ## Danske stemmer i Erling FPS
 
 Spillets replikker afspilles fra faste danske MP3-filer via `fps-voice.js`.

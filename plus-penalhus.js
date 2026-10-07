@@ -29,6 +29,7 @@
   const RELEASE_STEP = { obbe: 7, luigi: 4 };
   const THROW_MS = 1500; // From an accepted click, including the windup.
   const AUDIO_BASE = 'assets/figurer/plus-penalhus/audio/';
+  const AUDIO_VERSION = '20261007-pronunciation2';
   const CEL_ASSETS = {
     obbe: 'assets/figurer/plus-penalhus/obbe-cartoon-v5.webp',
     luigi: 'assets/figurer/plus-penalhus/luigi-cartoon-v5.webp',
@@ -122,7 +123,7 @@
       if (disposed || speaking || !voiceQueue.length) return;
       speaking = true;
       const token = ++voiceToken;
-      voice.src = AUDIO_BASE + voiceQueue.shift() + '.mp3';
+      voice.src = AUDIO_BASE + voiceQueue.shift() + '.mp3?v=' + AUDIO_VERSION;
       voice.play().catch(() => {
         if (token !== voiceToken || disposed) return;
         speaking = false;

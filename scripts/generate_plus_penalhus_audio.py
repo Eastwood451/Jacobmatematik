@@ -5,6 +5,7 @@ word boundaries so even short counts (en/to) receive complete audio reliably.
 pip install edge-tts imageio-ffmpeg; python scripts/generate_plus_penalhus_audio.py
 """
 import asyncio
+import argparse
 import os
 import subprocess
 import tempfile
@@ -22,12 +23,20 @@ VOICE = "da-DK-ChristelNeural"
 NUMBERS = "nul en to tre fire fem seks syv otte ni ti elleve tolv tretten fjorten femten seksten sytten atten".split()
 
 
-async def main():
-    OUTPUT.mkdir(parents=True, exist_ok=True)
-    lines = [(f"count-{n}", NUMBERS[n].capitalize() + ".") for n in range(1, 19)]
-    lines += [(f"sum-{a}-{b}", f"{NUMBERS[a].capitalize()} plus {NUMBERS[b]} giver {NUMBERS[a+b]}.")
+def narration_lines():
+    # Christel expands "fem." to femininum and "ti." to tirsdag.
+    # Exclamation marks keep sentence pauses without abbreviation expansion.
+    lines = [(f"count-{n}", NUMBERS[n].capitalize() + "!") for n in range(1, 19)]
+    lines += [(f"sum-{a}-{b}", f"{NUMBERS[a].capitalize()} plus {NUMBERS[b]} giver {NUMBERS[a+b]}!")
               for a in range(10) for b in range(10)]
-    if all((OUTPUT / f"{stem}.mp3").exists() for stem, _ in lines):
+    return lines
+
+
+async def build_clips(lines, output=OUTPUT, force=False):
+    output.mkdir(parents=True, exist_ok=True)
+    lines = [(stem, text) for stem, text in lines
+             if force or not (output / f"{stem}.mp3").exists()]
+    if not lines:
         return
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
     with tempfile.TemporaryDirectory(prefix="plus-penalhus-audio-") as tmp:
@@ -35,8 +44,6 @@ async def main():
         # Batches keep service requests short and can retry without losing earlier clips.
         for at in range(0, len(lines), 20):
             batch = lines[at:at + 20]
-            if all((OUTPUT / f"{stem}.mp3").exists() for stem, _ in batch):
-                continue
             for attempt in range(6):
                 boundaries = []
                 try:
@@ -49,8 +56,8 @@ async def main():
                                 audio.write(chunk["data"])
                             elif chunk["type"] == "WordBoundary":
                                 boundaries.append(chunk)
-                    expected = [word.strip(".").lower() for _, text in batch for word in text.split()]
-                    actual = [b["text"].strip(".").lower() for b in boundaries]
+                    expected = [word.strip(".!,").lower() for _, text in batch for word in text.split()]
+                    actual = [b["text"].strip(".!,").lower() for b in boundaries]
                     assert actual == expected, (actual, expected)
                     break
                 except Exception:
@@ -64,7 +71,7 @@ async def main():
                 cursor += words
                 start = max(0, first["offset"] / 10_000_000 - .035)
                 end = (last["offset"] + last["duration"]) / 10_000_000 + .09
-                final = OUTPUT / f"{stem}.mp3"
+                final = output / f"{stem}.mp3"
                 subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(raw),
                                 "-ss", str(start), "-t", str(end - start),
                                 "-af", "loudnorm=I=-16:TP=-1.5:LRA=7",
@@ -74,4 +81,7 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--force", action="store_true", help="Replace existing clips after narration changes")
+    args = parser.parse_args()
+    asyncio.run(build_clips(narration_lines(), force=args.force))

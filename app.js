@@ -123,7 +123,7 @@
     letter,
     word,
     image:`assets/letters/${file}`,
-    audio:`assets/letters/audio/${file.replace(/\.webp$/, ["L","N"].includes(letter) ? "-v2.mp3" : ".mp3")}`,
+    audio:`assets/letters/audio/${file.replace(/\.webp$/, ["L","N"].includes(letter) ? "-v2.mp3" : ".mp3")}?v=20261007-pronunciation2`,
   }));
   const LETTER_KEYS = LETTER_ITEMS.map(item => item.letter);
   let activeLetterAudio = null;

@@ -2,9 +2,9 @@ name: Plus-penalhus cartoon
 on:
   push:
     branches: [main, 'fix/plus-penalhus-*']
-    paths: ['index.html', 'plus-penalhus.*', 'assets/figurer/plus-penalhus/**', 'scripts/test-plus-penalhus.cjs', '.github/workflows/plus-penalhus.yml']
+    paths: ['index.html', 'app.js', 'module-loader.js', 'plus-penalhus.*', 'assets/figurer/plus-penalhus/**', 'assets/letters/audio/**', 'scripts/test-plus-penalhus.cjs', 'scripts/test-learning-audio*', 'scripts/generate_plus_penalhus_audio.py', 'scripts/generate_letter_audio.py', '.github/workflows/plus-penalhus.yml']
   pull_request:
-    paths: ['plus-penalhus.*', 'assets/figurer/plus-penalhus/**', 'scripts/test-plus-penalhus.cjs', '.github/workflows/plus-penalhus.yml']
+    paths: ['index.html', 'app.js', 'module-loader.js', 'plus-penalhus.*', 'assets/figurer/plus-penalhus/**', 'assets/letters/audio/**', 'scripts/test-plus-penalhus.cjs', 'scripts/test-learning-audio*', 'scripts/generate_plus_penalhus_audio.py', 'scripts/generate_letter_audio.py', '.github/workflows/plus-penalhus.yml']
 permissions:
   contents: read
 jobs:
@@ -26,15 +26,15 @@ jobs:
         run: |
           npm install --no-save --package-lock=false playwright@1.57.0
           npx playwright install --with-deps chromium
-      - name: Build missing Danish voice clips
+      - name: Check Danish narration text and shipped clips
         run: |
-          if [ ! -f assets/figurer/plus-penalhus/audio/sum-9-9.mp3 ]; then
-            pip install edge-tts==7.2.8 imageio-ffmpeg==0.6.0
-            python scripts/generate_plus_penalhus_audio.py
-          fi
+          pip install edge-tts==7.2.8 imageio-ffmpeg==0.6.0
+          python scripts/test-learning-audio.py
       - name: Exercise with fake users
         if: always()
-        run: node scripts/test-plus-penalhus.cjs
+        run: |
+          node scripts/test-plus-penalhus.cjs
+          node scripts/test-learning-audio-browser.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:

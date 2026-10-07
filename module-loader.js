@@ -70,7 +70,7 @@
     },
     "plus-penalhus": {
       css: ["plus-penalhus.css?v=20261007-layout-voice1"],
-      js: ["plus-penalhus.js?v=20261007-layout-voice1"],
+      js: ["plus-penalhus.js?v=20261007-pronunciation2"],
       ready: () => !!window.PlusPenalhus,
     },
     "ten-friends": {
