@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   const KEY = "jacobmatematik-marley-jacob-v1";
-  const CACHE = "20261007-clips1";
+  const CACHE = "20261007-wag1";
   const items = [
     { id: "bee", name: "Humlebikostume", price: 20, icon: "🐝", slot: "body" },
     { id: "hat", name: "Festhat", price: 8, icon: "🎉", slot: "head" },

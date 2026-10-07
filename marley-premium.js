@@ -2,8 +2,8 @@
 (() => {
   "use strict";
 
-  const CACHE = "20261007-clips1";
-  const STILL_SRC = "assets/figurer/marley-canon.png?v=" + CACHE;
+  const CACHE = "20261007-wag1";
+  const STILL_SRC = "assets/figurer/marley-improved-still.webp?v=" + CACHE;
   const VIDEO_DIR = "assets/figurer/marley-premium/";
   const LABELS = {
     wag: "Marley logrer",
@@ -50,7 +50,7 @@
     img.setAttribute("role", "img");
     const badge = document.createElement("span");
     badge.className = "marley-placeholder-badge";
-    badge.textContent = "Placeholder · still (premium clips snart)";
+    badge.textContent = "Still · wag-clip når motion er slået fra";
     wrap.append(img, badge);
     host.append(wrap);
 
@@ -201,7 +201,7 @@
 
   /**
    * Primary: premium WebM/MP4 under marley-premium/.
-   * Fallback: canon marley-canon.png still only (never sprites/gif/old webp).
+   * Fallback: marley-improved-still.webp only (never sprites/gif/old webp).
    * prefers-reduced-motion → still.
    * @returns {Promise<{play,pause,setEquipment,getState,destroy}>}
    */
