@@ -325,6 +325,9 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     await page.evaluate(() => __dispose());
     assert.deepEqual(errors, []);
     console.log('PASS: half flight time with unchanged poses in normal/reduced motion, no overlaps at 320–1280px, Danish counting/equations, quotas, answers, cleanup.');
+  } catch (error) {
+    console.error('Browser errors:', errors);
+    throw error;
   } finally {
     await browser.close();
   }

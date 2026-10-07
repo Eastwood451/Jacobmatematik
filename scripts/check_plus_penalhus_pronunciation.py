@@ -5,9 +5,10 @@ import subprocess
 import tempfile
 from pathlib import Path
 from faster_whisper import WhisperModel
+import imageio_ffmpeg
 
 ROOT = Path(__file__).resolve().parents[1]
-FFMPEG = "ffmpeg"
+FFMPEG = imageio_ffmpeg.get_ffmpeg_exe()
 OUT = ROOT / "test-results/plus-penalhus"
 OUT.mkdir(parents=True, exist_ok=True)
 model = WhisperModel("small", device="cpu", compute_type="int8", cpu_threads=4)
