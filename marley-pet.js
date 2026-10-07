@@ -1,18 +1,26 @@
-/* Marley living pet-scene M1: layered 2D roam (canon PNG + transforms). No soft-bob WebM, no FLUX/I2V. */
+/* Marley living pet-scene M2a: transparent cutout + room + pose swaps. No floating photo card. */
 (() => {
   "use strict";
 
-  const CACHE = "20261007-pet2";
-  const CANON = "assets/figurer/marley-canon.png?v=" + CACHE;
+  const CACHE = "20261007-cut1";
+  const BASE = "assets/figurer/marley-pet/";
+  const POSES = {
+    stand: BASE + "stand.png?v=" + CACHE,
+    walkA: BASE + "walk-a.png?v=" + CACHE,
+    walkB: BASE + "walk-b.png?v=" + CACHE,
+    sit: BASE + "sit.png?v=" + CACHE,
+    lie: BASE + "lie.png?v=" + CACHE
+  };
+  const CUTOUT = "assets/figurer/marley-cutout.png?v=" + CACHE;
+  const SUNGLASSES = BASE + "sunglasses.png?v=" + CACHE;
   const ART = 900;
-  const HOME = { x: 450, y: 700 };
+  const HOME = { x: 450, y: 710 };
   const X_MIN = 160;
   const X_MAX = 740;
-  const FOOT_W = 420;
-  const FOOT_H = 480;
   const EAT_THROTTLE_MS = 90_000;
   const CROSSFADE_MS = 200;
   const FADE_OUT_MS = 120;
+  const WALK_FRAME_MS = 200;
 
   const LABELS = {
     roam: "Marley går rundt",
@@ -26,12 +34,7 @@
     sleep: "Marley sover i kurven"
   };
 
-  /** Legacy UI → living-scene names */
-  const ALIAS = {
-    wag: "roam",
-    smile: "celebrate",
-    run: "run"
-  };
+  const ALIAS = { wag: "roam", smile: "celebrate", run: "run" };
 
   const GEAR = {
     glasses: { slot: "eyes", emoji: "🕶️", className: "eyes", persist: true },
@@ -68,33 +71,32 @@
     delete host.dataset.pose;
   }
 
-  // ── Path playlist (§10) ──────────────────────────────────────────
   const PATH_A = [
-    { name: "walk_l", ms: 3200, from: { x: 450, y: 700 }, to: { x: 220, y: 700 }, ease: true, face: -1 },
-    { name: "sniff", ms: 2400, hold: { x: 220, y: 700 }, tilt: -6, face: -1 },
-    { name: "walk_c", ms: 2800, from: { x: 220, y: 700 }, to: { x: 450, y: 700 }, ease: true, face: 1 },
-    { name: "wag", ms: 2200, hold: { x: 450, y: 700 }, pose: "wag", face: 1 }
+    { name: "walk_l", ms: 3200, from: { x: 450, y: 710 }, to: { x: 220, y: 710 }, ease: true, face: -1 },
+    { name: "sniff", ms: 2400, hold: { x: 220, y: 710 }, tilt: -6, face: -1 },
+    { name: "walk_c", ms: 2800, from: { x: 220, y: 710 }, to: { x: 450, y: 710 }, ease: true, face: 1 },
+    { name: "wag", ms: 2200, hold: { x: 450, y: 710 }, pose: "wag", face: 1 }
   ];
   const PATH_B = [
-    { name: "walk_r", ms: 3000, from: { x: 450, y: 700 }, to: { x: 680, y: 700 }, ease: true, face: 1 },
-    { name: "sit", ms: 2200, hold: { x: 680, y: 700 }, scale: 0.96, pose: "sit", face: 1 },
-    { name: "lie", ms: 2800, hold: { x: 680, y: 712 }, scale: 0.92, pose: "lie", face: 1 },
-    { name: "up", ms: 1600, hold: { x: 680, y: 700 }, scale: 1, pose: "stand", face: 1 },
-    { name: "walk_c", ms: 2800, from: { x: 680, y: 700 }, to: { x: 450, y: 700 }, ease: true, face: -1 },
-    { name: "look_cam", ms: 1800, hold: { x: 450, y: 700 }, pose: "look", face: 1 }
+    { name: "walk_r", ms: 3000, from: { x: 450, y: 710 }, to: { x: 680, y: 710 }, ease: true, face: 1 },
+    { name: "sit", ms: 2200, hold: { x: 680, y: 715 }, pose: "sit", face: 1 },
+    { name: "lie", ms: 2800, hold: { x: 680, y: 720 }, pose: "lie", face: 1 },
+    { name: "up", ms: 1600, hold: { x: 680, y: 710 }, pose: "stand", face: 1 },
+    { name: "walk_c", ms: 2800, from: { x: 680, y: 710 }, to: { x: 450, y: 710 }, ease: true, face: -1 },
+    { name: "look_cam", ms: 1800, hold: { x: 450, y: 710 }, pose: "look", face: 1 }
   ];
   const PATH_C = [
     {
       name: "arc",
       ms: 4500,
       quad: [
-        { x: 450, y: 700 },
-        { x: 560, y: 680 },
-        { x: 450, y: 700 }
+        { x: 450, y: 710 },
+        { x: 560, y: 700 },
+        { x: 450, y: 710 }
       ],
       face: 1
     },
-    { name: "face", ms: 2800, hold: { x: 450, y: 700 }, pose: "wag", face: 1 }
+    { name: "face", ms: 2800, hold: { x: 450, y: 710 }, pose: "wag", face: 1 }
   ];
   const PLAYLIST = [PATH_A, PATH_B, PATH_C];
 
@@ -118,14 +120,20 @@
 
     const wall = document.createElement("div");
     wall.className = "marley-pet-wall";
+    wall.setAttribute("aria-hidden", "true");
+    const windowEl = document.createElement("div");
+    windowEl.className = "marley-pet-window";
+    windowEl.setAttribute("aria-hidden", "true");
     const floor = document.createElement("div");
     floor.className = "marley-pet-floor";
-    const ground = document.createElement("div");
-    ground.className = "marley-pet-ground";
+    floor.setAttribute("aria-hidden", "true");
+    const rug = document.createElement("div");
+    rug.className = "marley-pet-rug";
+    rug.setAttribute("aria-hidden", "true");
     const basket = document.createElement("div");
     basket.className = "marley-pet-basket";
     basket.setAttribute("aria-hidden", "true");
-    basket.textContent = "🧺";
+    basket.innerHTML = '<span class="marley-pet-basket-emoji">🧺</span>';
 
     const actor = document.createElement("div");
     actor.className = "marley-pet-actor";
@@ -133,10 +141,20 @@
     shadow.className = "marley-pet-shadow";
     const sprite = document.createElement("img");
     sprite.className = "marley-pet-sprite";
-    sprite.src = CANON;
+    sprite.src = POSES.stand;
     sprite.alt = "Marley";
     sprite.decoding = "async";
     sprite.draggable = false;
+    sprite.onerror = () => {
+      if (sprite.src.indexOf("marley-cutout") === -1) sprite.src = CUTOUT;
+    };
+    const glassesImg = document.createElement("img");
+    glassesImg.className = "marley-pet-sunglasses";
+    glassesImg.src = SUNGLASSES;
+    glassesImg.alt = "";
+    glassesImg.decoding = "async";
+    glassesImg.draggable = false;
+    glassesImg.hidden = true;
     const gear = document.createElement("div");
     gear.className = "marley-pet-gear";
     gear.setAttribute("aria-hidden", "true");
@@ -148,8 +166,8 @@
     treat.setAttribute("aria-hidden", "true");
     treat.textContent = "🍪";
 
-    actor.append(shadow, sprite, gear, fx);
-    room.append(wall, floor, ground, basket, treat, actor);
+    actor.append(shadow, sprite, glassesImg, gear, fx);
+    room.append(wall, windowEl, floor, rug, basket, treat, actor);
     host.append(room);
 
     let disposed = false;
@@ -161,6 +179,7 @@
     let y = HOME.y;
     let scale = 1;
     let tilt = 0;
+    let bob = 0;
     let opacity = 1;
     let equipped = {};
     let lastEatAt = 0;
@@ -169,39 +188,54 @@
     let segIndex = 0;
     let segStart = 0;
     let segFrom = { x: HOME.x, y: HOME.y };
-    let reaction = null; // { kind, t0, duration }
+    let reaction = null;
     let raf = 0;
-    let fade = null; // { mode, t0, ms, then }
+    let fade = null;
+    let walkFrame = 0;
+    let walkFrameAt = 0;
+    let currentSrc = POSES.stand;
     const reduced = !!opts.reduced;
 
     function pct(n) {
       return (n / ART) * 100 + "%";
     }
 
+    function poseSrc(p, walking) {
+      if (p === "sit" || p === "bed") return POSES.sit;
+      if (p === "lie" || p === "sleep") return POSES.lie;
+      if (walking || p === "walk") {
+        return walkFrame % 2 === 0 ? POSES.walkA : POSES.walkB;
+      }
+      return POSES.stand;
+    }
+
+    function setSprite(src) {
+      if (src === currentSrc) return;
+      currentSrc = src;
+      sprite.src = src;
+    }
+
     function applyTransform() {
       const flip = face < 0 ? -1 : 1;
+      const shadowW = pose === "lie" || pose === "sleep" ? 0.72 : pose === "sit" || pose === "bed" ? 0.55 : 0.42;
+      const shadowH = pose === "lie" || pose === "sleep" ? 0.08 : 0.055;
       actor.style.left = pct(x);
-      actor.style.top = pct(y);
+      actor.style.top = pct(y - bob);
       actor.style.opacity = String(opacity);
       actor.style.transform =
-        "translate(-50%, -100%) scale(" +
-        flip * scale +
-        ", " +
-        scale +
-        ") rotate(" +
-        tilt +
-        "deg)";
+        "translate(-50%, -100%) scale(" + flip * scale + ", " + scale + ") rotate(" + tilt + "deg)";
       actor.dataset.pose = pose;
       actor.dataset.face = String(face);
       host.dataset.pose = pose;
-      basket.classList.toggle("is-visible", state === "bed" || state === "sleep");
+      shadow.style.width = shadowW * 100 + "%";
+      shadow.style.height = shadowH * 100 + "%";
+      shadow.style.left = (50 - shadowW * 50) + "%";
+      basket.classList.toggle("is-visible", state === "bed" || state === "sleep" || pose === "bed" || pose === "sleep");
       treat.classList.toggle("is-visible", state === "eat" && reaction && reaction.phase !== "return");
     }
 
     function renderGear() {
-      const parts = [];
       const map = equipped || {};
-      // Prefer id keys; also accept sunglasses boolean + slot map from marley.js
       const ids = new Set();
       if (map.sunglasses || map.eyes === "glasses") ids.add("glasses");
       if (map.hat || map.head === "hat") ids.add("hat");
@@ -211,11 +245,15 @@
       if (map.board === "skate") ids.add("skate");
       if (map.toy === "ball") ids.add("ball");
       if (map.toy === "bone") ids.add("bone");
-      // Direct id flags
       for (const id of Object.keys(GEAR)) {
         if (map[id] === true) ids.add(id);
       }
+      const showGlasses = ids.has("glasses");
+      glassesImg.hidden = !showGlasses;
+      glassesImg.classList.toggle("is-on", showGlasses);
+      const parts = [];
       for (const id of ids) {
+        if (id === "glasses") continue; // PNG overlay
         const g = GEAR[id];
         if (!g) continue;
         parts.push('<span class="marley-pet-wear ' + g.className + '">' + g.emoji + "</span>");
@@ -243,6 +281,7 @@
         y = HOME.y;
         scale = 1;
         tilt = 0;
+        bob = 0;
         pose = "stand";
       }
       segFrom = { x, y };
@@ -253,6 +292,7 @@
       }
       if (seg.face) face = seg.face;
       segStart = performance.now();
+      walkFrameAt = segStart;
       pose = seg.pose || (seg.name && seg.name.startsWith("walk") ? "walk" : pose);
     }
 
@@ -265,16 +305,13 @@
       }
       const seg = PLAYLIST[pathIndex][segIndex];
       segFrom = { x, y };
-      if (seg.from) {
-        // snap soft from current; prefer continuity
-        segFrom = { x, y };
-      }
       if (seg.face) face = seg.face;
-      pose = seg.pose || (seg.name && seg.name.indexOf("walk") === 0 ? "walk" : seg.name === "arc" ? "walk" : "stand");
-      if (seg.hold && !seg.from && !seg.quad) {
-        // hold starts at current; target hold pos via small settle if needed
-      }
+      pose =
+        seg.pose ||
+        (seg.name && seg.name.indexOf("walk") === 0 ? "walk" : seg.name === "arc" ? "walk" : "stand");
+      bob = 0;
       segStart = performance.now();
+      walkFrameAt = segStart;
     }
 
     function tickRoam(now) {
@@ -282,42 +319,49 @@
       const seg = path[segIndex];
       const t = clamp((now - segStart) / seg.ms, 0, 1);
       const e = seg.ease ? easeInOut(t) : t;
+      const walking = !!(seg.quad || (seg.from && seg.to) || (seg.name && seg.name.indexOf("walk") === 0) || seg.name === "arc");
+
+      if (walking) {
+        if (now - walkFrameAt >= WALK_FRAME_MS) {
+          walkFrame = (walkFrame + 1) % 2;
+          walkFrameAt = now;
+        }
+        bob = 6 * Math.sin(((now - segStart) / 180) * Math.PI);
+        pose = "walk";
+        scale = 1;
+        tilt = 0;
+      } else {
+        bob = 0;
+      }
 
       if (seg.quad) {
         const p = quadAt(seg.quad[0], seg.quad[1], seg.quad[2], e);
         x = clamp(p.x, X_MIN, X_MAX);
         y = p.y;
-        // face by tangent-ish
-        if (t < 0.5) face = 1;
-        else face = -1;
-        pose = "walk";
-        scale = 1;
-        tilt = 0;
+        face = t < 0.5 ? 1 : -1;
       } else if (seg.from && seg.to) {
         x = clamp(segFrom.x + (seg.to.x - segFrom.x) * e, X_MIN, X_MAX);
         y = segFrom.y + (seg.to.y - segFrom.y) * e;
-        pose = "walk";
-        scale = 1;
-        tilt = 0;
         if (seg.face) face = seg.face;
       } else {
         const hx = seg.hold ? seg.hold.x : x;
         const hy = seg.hold ? seg.hold.y : y;
         x = clamp(hx, X_MIN, X_MAX);
         y = hy;
-        if (typeof seg.scale === "number") scale = seg.scale;
-        else scale = 1;
         tilt = typeof seg.tilt === "number" ? seg.tilt : 0;
         pose = seg.pose || (seg.name === "sniff" ? "sniff" : pose);
         if (seg.face) face = seg.face;
+        scale = 1;
       }
 
+      setSprite(poseSrc(pose, walking));
       if (t >= 1) advanceSegment();
     }
 
     function beginReaction(kind) {
       reaction = { kind, t0: performance.now(), phase: "start" };
       opacity = 1;
+      bob = 0;
       if (kind === "eat") {
         treat.classList.add("is-visible");
         x = HOME.x;
@@ -326,12 +370,14 @@
         tilt = 0;
         face = 1;
         pose = "notice";
+        setSprite(POSES.stand);
       } else if (kind === "celebrate") {
         x = HOME.x;
         y = HOME.y;
         face = 1;
         pose = "celebrate";
         scale = 1;
+        setSprite(POSES.stand);
         fx.textContent = "✨";
         fx.classList.add("is-on");
       } else if (kind === "outfit") {
@@ -339,23 +385,26 @@
         y = HOME.y;
         face = 1;
         pose = "outfit";
+        setSprite(POSES.stand);
         fx.textContent = "✨😎";
         fx.classList.add("is-on");
         renderGear();
       } else if (kind === "bed") {
         pose = "bed";
         x = HOME.x;
-        y = HOME.y + 8;
-        scale = 0.94;
+        y = HOME.y + 5;
+        setSprite(POSES.sit);
       } else if (kind === "sleep") {
         pose = "sleep";
         x = HOME.x;
-        y = HOME.y + 16;
-        scale = 0.9;
+        y = HOME.y + 10;
         tilt = -4;
+        setSprite(POSES.lie);
       } else if (kind === "run") {
         pose = "walk";
         face = 1;
+        walkFrame = 0;
+        walkFrameAt = performance.now();
       }
     }
 
@@ -365,41 +414,44 @@
       const elapsed = now - r.t0;
 
       if (r.kind === "eat") {
-        // notice 0–0.4 → approach 0.4–1.6 → happy 1.6–2.8 → return 2.8–3.5
         if (elapsed < 400) {
           r.phase = "notice";
           pose = "notice";
           tilt = -4;
           scale = 1;
-          treat.style.left = "58%";
-          treat.style.top = "52%";
+          treat.style.left = "62%";
+          treat.style.top = "58%";
+          setSprite(POSES.stand);
         } else if (elapsed < 1600) {
           r.phase = "approach";
           pose = "eat";
           const u = (elapsed - 400) / 1200;
-          scale = 1 + 0.04 * Math.sin(u * Math.PI);
-          x = HOME.x + 20 * u;
-          treat.style.left = 58 - 12 * u + "%";
-          treat.style.top = 52 + 8 * u + "%";
-          tilt = -8 * u;
+          bob = 8 * Math.sin(u * Math.PI * 4);
+          x = HOME.x + 40 * u;
+          y = HOME.y;
+          treat.style.left = 62 - 14 * u + "%";
+          treat.style.top = 58 + 6 * u + "%";
+          tilt = -6 * u;
+          setSprite(POSES.stand);
         } else if (elapsed < 2800) {
           r.phase = "happy";
           pose = "wag";
           const u = (elapsed - 1600) / 1200;
-          scale = 1.06 + 0.04 * Math.sin(u * Math.PI * 3);
+          bob = 10 * Math.sin(u * Math.PI * 5);
           tilt = Math.sin(u * Math.PI * 4) * 3;
           treat.style.opacity = String(1 - u);
+          setSprite(POSES.stand);
         } else if (elapsed < 3500) {
           r.phase = "return";
           pose = "stand";
           const u = (elapsed - 2800) / 700;
-          scale = 1.06 + (1 - 1.06) * u;
+          bob = 0;
           tilt = 0;
           x = HOME.x;
           y = HOME.y;
-          opacity = 1;
           treat.classList.remove("is-visible");
           treat.style.opacity = "1";
+          setSprite(POSES.stand);
         } else {
           endReactionToRoam();
         }
@@ -409,9 +461,10 @@
       if (r.kind === "celebrate") {
         if (elapsed < 1600) {
           const u = elapsed / 1600;
-          scale = 1 + 0.08 * Math.sin(u * Math.PI * 2);
+          bob = 12 * Math.sin(u * Math.PI * 3);
           tilt = Math.sin(u * Math.PI * 3) * 4;
           pose = "celebrate";
+          setSprite(POSES.stand);
         } else {
           fx.classList.remove("is-on");
           fx.textContent = "";
@@ -424,22 +477,23 @@
         if (elapsed < 500) {
           r.phase = "tryon";
           pose = "outfit";
-          scale = 1.02;
-          gear.style.opacity = String(elapsed / 500);
+          glassesImg.style.opacity = String(elapsed / 500);
+          setSprite(POSES.stand);
         } else if (elapsed < 1800) {
           r.phase = "proud";
           pose = "celebrate";
           const u = (elapsed - 500) / 1300;
-          scale = 1.05 + 0.03 * Math.sin(u * Math.PI * 2);
-          gear.style.opacity = "1";
+          bob = 8 * Math.sin(u * Math.PI * 2);
+          glassesImg.style.opacity = "1";
+          setSprite(POSES.stand);
         } else if (elapsed < 2500) {
           r.phase = "settle";
-          scale = 1;
+          bob = 0;
           tilt = 0;
         } else {
           fx.classList.remove("is-on");
           fx.textContent = "";
-          gear.style.opacity = "1";
+          glassesImg.style.opacity = "1";
           endReactionToRoam();
         }
         return;
@@ -447,10 +501,9 @@
 
       if (r.kind === "bed") {
         if (elapsed < 2400) {
-          const u = elapsed / 2400;
-          scale = 1 - 0.06 * u;
-          y = HOME.y + 12 * u;
           pose = "bed";
+          y = HOME.y + 5;
+          setSprite(POSES.sit);
         } else {
           reaction = null;
           state = "sleep";
@@ -463,19 +516,18 @@
 
       if (r.kind === "sleep") {
         pose = "sleep";
-        scale = 0.9;
-        y = HOME.y + 16;
+        y = HOME.y + 10;
         tilt = -4 + Math.sin(elapsed / 900) * 1.2;
+        setSprite(POSES.lie);
         return;
       }
 
       if (r.kind === "run") {
-        // short arc-like dash ~3.2s then roam
         if (elapsed < 3200) {
           const u = elapsed / 3200;
           const p = quadAt(
             { x: HOME.x, y: HOME.y },
-            { x: 620, y: 680 },
+            { x: 620, y: 700 },
             { x: HOME.x, y: HOME.y },
             easeInOut(u)
           );
@@ -483,7 +535,12 @@
           y = p.y;
           face = u < 0.5 ? 1 : -1;
           pose = "walk";
-          scale = 1;
+          if (now - walkFrameAt >= WALK_FRAME_MS) {
+            walkFrame = (walkFrame + 1) % 2;
+            walkFrameAt = now;
+          }
+          bob = 7 * Math.sin(((now - r.t0) / 160) * Math.PI);
+          setSprite(poseSrc("walk", true));
         } else {
           endReactionToRoam();
         }
@@ -500,14 +557,15 @@
       y = HOME.y;
       scale = 1;
       tilt = 0;
+      bob = 0;
       pose = "stand";
       state = "roam";
       setLabel("roam");
+      setSprite(POSES.stand);
       startPath(0, true);
       emit("wag");
       if (queuedCelebrate) {
         queuedCelebrate = false;
-        // small delay then celebrate
         fade = {
           mode: "out",
           t0: performance.now(),
@@ -572,19 +630,14 @@
       const n = normalize(name);
       if (!LABELS[n] && n !== "roam") return;
 
-      // Eat throttle
       if (n === "eat") {
         const now = Date.now();
         if (now - lastEatAt < EAT_THROTTLE_MS && lastEatAt > 0) {
           if (typeof opts.onThrottled === "function") opts.onThrottled("eat");
           return;
         }
-        // Cut celebrate → eat
-        if (state === "celebrate") {
-          queuedCelebrate = false;
-        } else if (state === "eat" && reaction) {
-          return; // ignore stacked eat
-        }
+        if (state === "celebrate") queuedCelebrate = false;
+        else if (state === "eat" && reaction) return;
         lastEatAt = now;
         interruptTo("eat");
         return;
@@ -622,12 +675,11 @@
         return;
       }
 
-      // roam / wag
       if (state === "sleep" || state === "bed") {
         interruptTo("roam");
         return;
       }
-      if (state === "roam" && !reaction) return; // already roaming
+      if (state === "roam" && !reaction) return;
       interruptTo("roam");
     }
 
@@ -641,6 +693,8 @@
           y = HOME.y;
           scale = 1;
           tilt = 0;
+          bob = 0;
+          setSprite(POSES.stand);
           startPath(0, true);
           emit("wag");
           return;
@@ -661,14 +715,11 @@
 
     function setEquipment(eq) {
       equipped = eq && typeof eq === "object" ? { ...eq } : {};
-      // Normalize sunglasses flag from slot map
       if (equipped.eyes === "glasses") equipped.sunglasses = true;
       if (equipped.head === "hat") equipped.hat = true;
       renderGear();
-      // Outfit oneshot when glasses newly equipped is triggered by marley.js via play('outfit')
     }
 
-    // Boot
     renderGear();
     if (reduced) {
       host.dataset.placeholder = "1";
@@ -677,6 +728,7 @@
       pose = "stand";
       state = "roam";
       setLabel("roam");
+      setSprite(POSES.stand);
       applyTransform();
       emit("wag");
       return {
@@ -694,7 +746,7 @@
           state = n === "roam" ? "roam" : n;
           setLabel(n === "roam" ? "roam" : n);
           pose = n === "sleep" || n === "bed" ? "sleep" : n === "eat" ? "eat" : "stand";
-          scale = n === "sleep" || n === "bed" ? 0.92 : 1;
+          setSprite(pose === "sleep" ? POSES.lie : n === "bed" ? POSES.sit : POSES.stand);
           applyTransform();
           emit(n === "roam" ? "wag" : n === "celebrate" ? "smile" : n);
         },
@@ -743,9 +795,6 @@
     };
   }
 
-  /**
-   * @returns {Promise<{play,pause,setEquipment,getState,destroy}>}
-   */
   async function create(host, onChange = () => {}, opts = {}) {
     if (!host) throw new Error("MarleyPetScene kræver en host");
     return createPet(host, onChange, {
@@ -754,5 +803,5 @@
     });
   }
 
-  window.MarleyPetScene = { create, HOME, PLAYLIST, CANON, CACHE };
+  window.MarleyPetScene = { create, HOME, PLAYLIST, POSES, CUTOUT, CACHE };
 })();
