@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   const KEY = "jacobmatematik-marley-jacob-v1";
-  const CACHE = "20261007-clips2";
+  const CACHE = "20261007-pet1";
   const items = [
     { id: "bee", name: "Humlebikostume", price: 20, icon: "🐝", slot: "body" },
     { id: "hat", name: "Festhat", price: 8, icon: "🎉", slot: "head" },
@@ -26,7 +26,7 @@
 
   function loadScript(src) {
     return new Promise((resolve, reject) => {
-      if (window.MarleyPremiumScene || window.MarleyRiveScene) {
+      if (window.MarleyPetScene || window.MarleyPremiumScene || window.MarleyRiveScene) {
         resolve();
         return;
       }
@@ -135,9 +135,10 @@
           const treat = item.id === "treat";
           const owned = !treat && data.owned.includes(item.id);
           const worn = data.equipped[item.slot] === item.id;
+          const eatCooling = treat && data.lastEatAt && Date.now() - data.lastEatAt < 90000;
           const disabled =
             (!owned && data.coins < item.price) ||
-            (treat && (action === "eat" || paused || !scene));
+            (treat && (action === "eat" || paused || !scene || eatCooling));
           return `<button type="button" data-marley="buy" data-item="${item.id}" ${disabled ? "disabled" : ""} aria-label="${item.name}"><span class="marley-item-icon">${item.icon}</span><strong>${item.name}</strong><small>${treat ? "Giv nu · 🪙 " + item.price : owned ? (worn ? "På ✓" : "Tag på") : "🪙 " + item.price}</small></button>`;
         })
         .join("");
@@ -179,10 +180,10 @@
     next();
     update();
 
-    loadScript("marley-premium.js?v=" + CACHE)
+    loadScript("marley-pet.js?v=" + CACHE)
       .then(() => {
-        const Scene = window.MarleyPremiumScene || window.MarleyRiveScene;
-        if (disposed || !Scene) throw new Error("MarleyPremiumScene mangler");
+        const Scene = window.MarleyPetScene || window.MarleyPremiumScene || window.MarleyRiveScene;
+        if (disposed || !Scene) throw new Error("MarleyPetScene mangler");
         return Scene.create(host, (name) => {
           action = name;
           host.dataset.action = name;
@@ -190,6 +191,13 @@
           if (dog) dog.dataset.action = name;
           if (name === "sleep") feedback = messages.sleep;
           update();
+        }, {
+          onThrottled(kind) {
+            if (kind === "eat") {
+              feedback = "Marley er mæt — prøv en godbid igen om lidt.";
+              update();
+            }
+          }
         });
       })
       .then((created) => {
@@ -199,7 +207,8 @@
         }
         scene = created;
         q(".marley-loading")?.remove();
-        scene.play("wag");
+        scene.setEquipment?.(data.equipped);
+        scene.play("roam");
         action = "wag";
         update();
       })
@@ -266,10 +275,17 @@
       if (!item) return;
       if (item.id === "treat") {
         if (!scene || action === "eat" || paused || data.coins < item.price) return;
+        const now = Date.now();
+        if (data.lastEatAt && now - data.lastEatAt < 90000) {
+          feedback = "Marley er mæt — prøv en godbid igen om lidt.";
+          update();
+          return;
+        }
         data.coins -= item.price;
+        data.lastEatAt = now;
         feedback = messages.eat;
         save();
-        play("eat", 2400);
+        play("eat", 3500);
         return;
       }
       if (!data.owned.includes(item.id)) {
@@ -283,8 +299,16 @@
             ? item.name + " er taget af."
             : "Marley har " + item.name.toLowerCase() + " på!";
       }
-      data.equipped[item.slot] = data.equipped[item.slot] === item.id ? null : item.id;
+      const wasOn = data.equipped[item.slot] === item.id;
+      data.equipped[item.slot] = wasOn ? null : item.id;
       save();
+      scene?.setEquipment?.(data.equipped);
+      // Sunglasses / hat outfit oneshot when putting on
+      if (!wasOn && (item.id === "glasses" || item.id === "hat" || item.id === "cap")) {
+        if (item.id === "glasses") feedback = "Se! Marley har solbriller på! 😎";
+        play("outfit", 2500);
+        return;
+      }
       update();
     }
 
