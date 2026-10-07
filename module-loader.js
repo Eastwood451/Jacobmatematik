@@ -69,8 +69,8 @@
       ready: () => !!window.MarleyAddition,
     },
     "plus-penalhus": {
-      css: ["plus-penalhus.css?v=20261007-cartoon5"],
-      js: ["plus-penalhus.js?v=20261007-cartoon5"],
+      css: ["plus-penalhus.css?v=20261007-layout-voice1"],
+      js: ["plus-penalhus.js?v=20261007-layout-voice1"],
       ready: () => !!window.PlusPenalhus,
     },
     "ten-friends": {

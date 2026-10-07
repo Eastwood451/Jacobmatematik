@@ -27,7 +27,8 @@
   };
   const IDLE_CEL = { obbe: 0, luigi: 11 };
   const RELEASE_STEP = { obbe: 7, luigi: 4 };
-  const FLIGHT_MS = 800;
+  const THROW_MS = 1500; // From an accepted click, including the windup.
+  const AUDIO_BASE = 'assets/figurer/plus-penalhus/audio/';
   const CEL_ASSETS = {
     obbe: 'assets/figurer/plus-penalhus/obbe-cartoon-v5.webp',
     luigi: 'assets/figurer/plus-penalhus/luigi-cartoon-v5.webp',
@@ -60,18 +61,12 @@
 
   function pickItem(who, serial) {
     const kind = ITEM_KINDS[serial % ITEM_KINDS.length];
-    const left = 8 + ((serial * 37 + (who === 'obbe' ? 0 : 17)) % 74);
-    const top = 10 + ((serial * 53 + (who === 'obbe' ? 11 : 29)) % 68);
-    const rot = ((serial * 23) % 36) - 18;
     return {
       id: serial,
       who,
       kind: kind.id,
       label: kind.label,
       emoji: kind.emoji,
-      left,
-      top,
-      rot,
       counted: false,
     };
   }
@@ -106,6 +101,47 @@
     let animationFrame = null;
     const actors = {};
     const activeFlights = new Map();
+    let columns = 1;
+    let rows = 1;
+    const voice = new Audio();
+    voice.preload = 'auto';
+    let voiceQueue = [];
+    let speaking = false;
+    let voiceToken = 0;
+
+    function stopVoice() {
+      voiceToken++;
+      voiceQueue = [];
+      speaking = false;
+      voice.pause();
+      voice.removeAttribute('src');
+      voice.load();
+    }
+
+    function playNextVoice() {
+      if (disposed || speaking || !voiceQueue.length) return;
+      speaking = true;
+      const token = ++voiceToken;
+      voice.src = AUDIO_BASE + voiceQueue.shift() + '.mp3';
+      voice.play().catch(() => {
+        if (token !== voiceToken || disposed) return;
+        speaking = false;
+        playNextVoice();
+      });
+    }
+
+    function voiceFinished() {
+      speaking = false;
+      playNextVoice();
+    }
+    voice.addEventListener('ended', voiceFinished);
+    voice.addEventListener('error', voiceFinished);
+
+    function say(clip, replace = false) {
+      if (replace) stopVoice();
+      voiceQueue.push(clip);
+      playNextVoice();
+    }
 
 
     const later = (fn, ms) => {
@@ -241,6 +277,10 @@
         }
       }
       for (const [el, flight] of activeFlights) {
+        // Follow the reserved slot even if the phone rotates during a throw.
+        const target = itemTarget(flight.item);
+        flight.targetX = target.x;
+        flight.targetY = target.y;
         const t = Math.min(1, Math.max(0, (now - flight.start) / flight.duration));
         const x = flight.x + (flight.targetX - flight.x) * t;
         const y = flight.y + (flight.targetY - flight.y) * t - 4 * flight.arc * t * (1 - t);
@@ -335,12 +375,42 @@
       $('.pp-score').textContent = `${solved} ${solved === 1 ? 'rigtigt' : 'rigtige'}`;
     }
 
+    function itemPosition(item) {
+      return { left: ((item.id - 1) % columns + .5) * 100 / columns,
+        top: (Math.floor((item.id - 1) / columns) + .5) * 100 / rows };
+    }
+
+    function itemTarget(item) {
+      const canvas = $('#pp-canvas');
+      const box = canvas.getBoundingClientRect();
+      const pos = itemPosition(item);
+      return { x: box.left + canvas.clientLeft + pos.left / 100 * canvas.clientWidth,
+        y: box.top + canvas.clientTop + pos.top / 100 * canvas.clientHeight };
+    }
+
+    function layoutItems() {
+      if (disposed) return;
+      const canvas = $('#pp-canvas');
+      const total = Math.max(1, task().a + task().b);
+      // Reserve all slots up front; each 56px card has at least 20px of air.
+      columns = Math.min(total, Math.max(1, Math.floor(canvas.clientWidth / 76)));
+      rows = Math.ceil(total / columns);
+      canvas.style.height = `${Math.max(180, rows * 76 + 6)}px`;
+      canvas.querySelectorAll('[data-pp-item]').forEach(el => {
+        const pos = itemPosition({ id: Number(el.dataset.ppItem) });
+        el.style.left = `${pos.left}%`;
+        el.style.top = `${pos.top}%`;
+      });
+    }
+
     function paintItems(landingId = null) {
       const canvas = $('#pp-canvas');
+      layoutItems();
       canvas.innerHTML = items.map(item => {
+        const pos = itemPosition(item);
         const landing = item.id === landingId ? ' pp-landing' : '';
         const counted = item.counted ? ' pp-counted' : '';
-        return `<button type="button" class="pp-item pp-item-${item.who}${counted}${landing}" data-pp-item="${item.id}" style="left:${item.left}%;top:${item.top}%;--pp-rot:${item.rot}deg" aria-pressed="${item.counted ? 'true' : 'false'}" aria-label="${item.label} fra ${item.who === 'obbe' ? 'Øbbe' : 'Luigi'}${item.counted ? ', talt' : ''}"><span class="pp-item-emoji" aria-hidden="true">${item.emoji}</span></button>`;
+        return `<button type="button" class="pp-item pp-item-${item.who}${counted}${landing}" data-pp-item="${item.id}" style="left:${pos.left}%;top:${pos.top}%" aria-pressed="${item.counted ? 'true' : 'false'}" aria-label="${item.label} fra ${item.who === 'obbe' ? 'Øbbe' : 'Luigi'}${item.counted ? ', talt' : ''}"><span class="pp-item-emoji" aria-hidden="true">${item.emoji}</span></button>`;
       }).join('');
       update();
     }
@@ -360,10 +430,8 @@
       }, 50);
     }
 
-    function spawnFlight(who, item, charBtn, canvas) {
-      const token = actionToken;
+    function spawnFlight(who, item, charBtn) {
       const reduced = prefersReducedMotion();
-      const canvasBox = canvas.getBoundingClientRect();
       const hand = charBtn.querySelector('[data-pp-hand]') || charBtn.querySelector('.pp-hand-grip');
       const body = charBtn.querySelector('.pp-char-body') || charBtn;
       let startX;
@@ -378,12 +446,13 @@
         startX = bodyBox.left + bodyBox.width * towardCanvas;
         startY = bodyBox.top + bodyBox.height * 0.42;
       }
-      const targetLeft = canvasBox.left + (item.left / 100) * canvasBox.width;
-      const targetTop = canvasBox.top + (item.top / 100) * canvasBox.height;
+      const target = itemTarget(item);
+      const targetLeft = target.x;
+      const targetTop = target.y;
       // The throw explains where each counted object comes from. Keep this
       // essential movement visible, with a smaller arc and no spin in reduced motion.
       const arc = reduced ? 20 : 48 + (Math.abs(targetLeft - startX) * 0.12) + ((item.id * 7) % 28);
-      const duration = reduced ? 1000 : FLIGHT_MS;
+      const duration = Math.max(1, item.deadline - performance.now());
 
       const fly = document.createElement('div');
       fly.className = `pp-flight pp-flight-${who}`;
@@ -392,22 +461,11 @@
       fly.style.top = `${startY}px`;
       document.body.append(fly);
       flights.add(fly);
-      activeFlights.set(fly, { start: performance.now(), x: startX, y: startY,
+      item.flight = fly;
+      activeFlights.set(fly, { item, start: performance.now(), x: startX, y: startY,
         targetX: targetLeft, targetY: targetTop, arc, duration,
         spin: reduced ? 0 : (who === 'obbe' ? 300 : -300) });
 
-      later(() => {
-        fly.remove();
-        flights.delete(fly);
-        activeFlights.delete(fly);
-        if (disposed || token !== actionToken) return;
-        items.push(item);
-        busy[who] = false;
-        clearThrowClasses(charBtn);
-        paintItems(item.id);
-        maybeEnterAnswerPhase();
-        update();
-      }, duration);
     }
 
     function setHandItem(charBtn, emoji) {
@@ -444,14 +502,30 @@
       else luigiClicks++;
 
       const item = pickItem(who, ++serial);
+      item.deadline = performance.now() + THROW_MS;
+      const token = actionToken;
       const charBtn = $(`[data-pp-throw="${who}"]`);
-      const canvas = $('#pp-canvas');
 
       updateProgress();
+      say(`count-${who === 'obbe' ? obbeClicks : luigiClicks}`);
+
+      later(() => {
+        if (token !== actionToken) return;
+        if (item.flight) {
+          item.flight.remove();
+          flights.delete(item.flight);
+          activeFlights.delete(item.flight);
+        }
+        items.push(item);
+        busy[who] = false;
+        clearThrowClasses(charBtn);
+        paintItems(item.id);
+        maybeEnterAnswerPhase();
+      }, Math.max(0, item.deadline - performance.now()));
 
       runThrowPose(charBtn, who, item.emoji, () => {
-        if (disposed) return;
-        spawnFlight(who, item, charBtn, canvas);
+        if (disposed || token !== actionToken || items.includes(item)) return;
+        spawnFlight(who, item, charBtn);
       });
     }
 
@@ -466,6 +540,7 @@
       phase = 'done';
       solved++;
       const { a, b } = task();
+      say(`sum-${a}-${b}`, true);
       feedback(`Sådan! ${a} + ${b} = ${a + b}. Der er ${a + b} ting i alt!`, 'success');
       update();
       later(() => {
@@ -509,6 +584,7 @@
     }
 
     function startTask() {
+      stopVoice();
       actionToken += 1;
       flights.forEach(el => el.remove());
       flights.clear();
@@ -572,6 +648,7 @@
         const item = items.find(i => i.id === Number(button.dataset.ppItem));
         if (item) {
           item.counted = !item.counted;
+          if (item.counted) say(`count-${items.filter(i => i.counted).length}`);
           paintItems();
         }
       }
@@ -605,6 +682,8 @@
 
     root.addEventListener('click', click);
     document.addEventListener('keydown', keydown);
+    const resizeObserver = new ResizeObserver(layoutItems);
+    resizeObserver.observe($('#pp-canvas'));
     startTask();
     feedback('Øbbe og Luigi gør sig klar …');
     Promise.all(['obbe', 'luigi'].map(loadActor)).then(() => {
@@ -620,6 +699,10 @@
 
     return () => {
       disposed = true;
+      stopVoice();
+      voice.removeEventListener('ended', voiceFinished);
+      voice.removeEventListener('error', voiceFinished);
+      resizeObserver.disconnect();
       if (animationFrame != null) cancelAnimationFrame(animationFrame);
       activeFlights.clear();
       timers.forEach(id => {
