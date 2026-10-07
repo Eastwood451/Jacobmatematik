@@ -1,8 +1,8 @@
-"""Build prerecorded Danish counting and equation clips; no TTS runs in-game.
+"""Build prerecorded Danish counting and equations; no TTS runs in-game.
 
-Uses Christel, the Danish female Edge voice, for the letter-module style.
+Christel is the Danish female Edge voice. Generate in one narration and split at
+word boundaries so even short counts (en/to) receive complete audio reliably.
 pip install edge-tts imageio-ffmpeg; python scripts/generate_plus_penalhus_audio.py
-Existing clips are kept. Covers all supported addends (0..9), not only today's deck.
 """
 import asyncio
 import os
@@ -24,34 +24,53 @@ NUMBERS = "nul en to tre fire fem seks syv otte ni ti elleve tolv tretten fjorte
 
 async def main():
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    lines = [(f"count-{n}", NUMBERS[n] + ".") for n in range(1, 19)]
-    lines += [(f"sum-{a}-{b}", f"{NUMBERS[a]} plus {NUMBERS[b]} giver {NUMBERS[a+b]}.")
+    lines = [(f"count-{n}", NUMBERS[n].capitalize() + ".") for n in range(1, 19)]
+    lines += [(f"sum-{a}-{b}", f"{NUMBERS[a].capitalize()} plus {NUMBERS[b]} giver {NUMBERS[a+b]}.")
               for a in range(10) for b in range(10)]
-    limit = asyncio.Semaphore(3)
+    if all((OUTPUT / f"{stem}.mp3").exists() for stem, _ in lines):
+        return
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
-
-    async def generate(stem, text):
-        final = OUTPUT / f"{stem}.mp3"
-        if final.exists() and final.stat().st_size:
-            return
-        async with limit:
-            with tempfile.TemporaryDirectory(prefix="plus-penalhus-audio-") as tmp:
-                raw = Path(tmp) / "raw.mp3"
-                for attempt in range(3):
-                    try:
-                        await edge_tts.Communicate(text, VOICE, rate="-10%").save(str(raw))
-                        break
-                    except Exception:
-                        if attempt == 2:
-                            raise
-                        await asyncio.sleep(1 + attempt)
+    with tempfile.TemporaryDirectory(prefix="plus-penalhus-audio-") as tmp:
+        raw = Path(tmp) / "narration.mp3"
+        # Batches keep service requests short and can retry without losing earlier clips.
+        for at in range(0, len(lines), 20):
+            batch = lines[at:at + 20]
+            if all((OUTPUT / f"{stem}.mp3").exists() for stem, _ in batch):
+                continue
+            for attempt in range(6):
+                boundaries = []
+                try:
+                    with raw.open("wb") as audio:
+                        async for chunk in edge_tts.Communicate(
+                            " ".join(text for _, text in batch), VOICE,
+                            rate="-10%", boundary="WordBoundary"
+                        ).stream():
+                            if chunk["type"] == "audio":
+                                audio.write(chunk["data"])
+                            elif chunk["type"] == "WordBoundary":
+                                boundaries.append(chunk)
+                    expected = [word.strip(".").lower() for _, text in batch for word in text.split()]
+                    actual = [b["text"].strip(".").lower() for b in boundaries]
+                    assert actual == expected, (actual, expected)
+                    break
+                except Exception:
+                    if attempt == 5:
+                        raise
+                    await asyncio.sleep(2 + attempt)
+            cursor = 0
+            for stem, text in batch:
+                words = len(text.split())
+                first, last = boundaries[cursor], boundaries[cursor + words - 1]
+                cursor += words
+                start = max(0, first["offset"] / 10_000_000 - .035)
+                end = (last["offset"] + last["duration"]) / 10_000_000 + .09
+                final = OUTPUT / f"{stem}.mp3"
                 subprocess.run([ffmpeg, "-y", "-loglevel", "error", "-i", str(raw),
-                                "-af", "silenceremove=start_periods=1:start_threshold=-45dB,loudnorm=I=-16:TP=-1.5:LRA=7",
+                                "-ss", str(start), "-t", str(end - start),
+                                "-af", "loudnorm=I=-16:TP=-1.5:LRA=7",
                                 "-codec:a", "libmp3lame", "-b:a", "64k", str(final)], check=True)
                 subprocess.run([ffmpeg, "-v", "error", "-i", str(final), "-f", "null", "-"], check=True)
                 print(f"Created {stem}: {text}", flush=True)
-
-    await asyncio.gather(*(generate(stem, text) for stem, text in lines))
 
 
 if __name__ == "__main__":

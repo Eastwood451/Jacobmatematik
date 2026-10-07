@@ -77,7 +77,6 @@
 
 @keyframes pp-land{
   0%{background:#fff;border-color:#b695d7}
-  100%{background:revert-layer}
 }
 @keyframes pp-glow-pulse{
   0%,100%{filter:drop-shadow(0 0 0 transparent)}
