@@ -19,6 +19,15 @@
   const OBBE_HAPPY = 'assets/figurer/obbe-techno.webp';
   const LUIGI_SRC = 'assets/figurer/luigi-laekkermat-cutout.webp';
 
+  const THROW_WINDUP_MS = 160;
+  const THROW_RELEASE_MS = 220;
+  const THROW_FOLLOW_MS = 280;
+  const FLIGHT_MS = 580;
+  const FLIGHT_RELEASE_AT = THROW_WINDUP_MS + 90;
+  function prefersReducedMotion() {
+    return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
   function shuffle(values) {
     const result = [...values];
     for (let i = result.length - 1; i > 0; i--) {
@@ -81,6 +90,8 @@
     let started = performance.now();
     const timers = new Set();
     const flights = new Set();
+    const busy = { obbe: false, luigi: false };
+    let actionToken = 0;
 
     const later = (fn, ms) => {
       const id = setTimeout(() => {
@@ -116,8 +127,10 @@
       <div class="pp-stage">
         <div class="pp-characters">
           <button type="button" class="pp-char pp-obbe" data-pp-throw="obbe" aria-label="Øbbe Øvdig">
-            <img class="pp-char-img" src="${OBBE_SRC}" alt="" width="160" height="160" decoding="async">
-            <img class="pp-char-happy" src="${OBBE_HAPPY}" alt="" width="160" height="160" decoding="async" hidden>
+            <span class="pp-char-body">
+              <img class="pp-char-img" src="${OBBE_SRC}" alt="" width="160" height="160" decoding="async">
+              <img class="pp-char-happy" src="${OBBE_HAPPY}" alt="" width="160" height="160" decoding="async" hidden>
+            </span>
             <strong>Øbbe</strong>
             <span class="pp-progress" id="pp-obbe-progress" aria-live="polite">0/5</span>
           </button>
@@ -126,7 +139,9 @@
             <p class="pp-canvas-hint" id="pp-canvas-hint">Klik på Øbbe og Luigi</p>
           </div>
           <button type="button" class="pp-char pp-luigi" data-pp-throw="luigi" aria-label="Luigi Lækkermat">
-            <img class="pp-char-img" src="${LUIGI_SRC}" alt="" width="160" height="192" decoding="async">
+            <span class="pp-char-body">
+              <img class="pp-char-img" src="${LUIGI_SRC}" alt="" width="160" height="192" decoding="async">
+            </span>
             <strong>Luigi</strong>
             <span class="pp-progress" id="pp-luigi-progress" aria-live="polite">0/4</span>
           </button>
@@ -150,6 +165,10 @@
       const el = $('#pp-feedback');
       el.textContent = text;
       el.dataset.tone = tone;
+    }
+
+    function clearThrowClasses(btn) {
+      btn.classList.remove('pp-windup', 'pp-throwing', 'pp-follow', 'pp-busy');
     }
 
     function updateProgress() {
@@ -183,10 +202,12 @@
       $('.pp-game').classList.toggle('pp-done', phase === 'done');
       $('.pp-game').classList.toggle('pp-glow', phase === 'done');
 
-      $('[data-pp-throw="obbe"]').disabled = lockedThrow || obbeClicks >= task().a;
-      $('[data-pp-throw="luigi"]').disabled = lockedThrow || luigiClicks >= task().b;
-      $('[data-pp-throw="obbe"]').classList.toggle('pp-complete', obbeClicks >= task().a);
-      $('[data-pp-throw="luigi"]').classList.toggle('pp-complete', luigiClicks >= task().b);
+      const obbeBtn = $('[data-pp-throw="obbe"]');
+      const luigiBtn = $('[data-pp-throw="luigi"]');
+      obbeBtn.disabled = lockedThrow || busy.obbe || obbeClicks >= task().a;
+      luigiBtn.disabled = lockedThrow || busy.luigi || luigiClicks >= task().b;
+      obbeBtn.classList.toggle('pp-complete', obbeClicks >= task().a && !busy.obbe);
+      luigiBtn.classList.toggle('pp-complete', luigiClicks >= task().b && !busy.luigi);
 
       $('#pp-answer-panel').hidden = phase === 'throw';
       root.querySelectorAll('[data-pp-digit], [data-pp-delete]').forEach(btn => {
@@ -208,17 +229,31 @@
       $('.pp-score').textContent = `${solved} ${solved === 1 ? 'rigtigt' : 'rigtige'}`;
     }
 
-    function paintItems() {
+    function paintItems(landingId = null) {
       const canvas = $('#pp-canvas');
-      canvas.innerHTML = items.map(item =>
-        `<button type="button" class="pp-item pp-item-${item.who}${item.counted ? ' pp-counted' : ''}" data-pp-item="${item.id}" style="left:${item.left}%;top:${item.top}%;--pp-rot:${item.rot}deg" aria-pressed="${item.counted ? 'true' : 'false'}" aria-label="${item.label} fra ${item.who === 'obbe' ? 'Øbbe' : 'Luigi'}${item.counted ? ', talt' : ''}"><span class="pp-item-emoji" aria-hidden="true">${item.emoji}</span></button>`
-      ).join('');
+      canvas.innerHTML = items.map(item => {
+        const landing = item.id === landingId ? ' pp-landing' : '';
+        const counted = item.counted ? ' pp-counted' : '';
+        return `<button type="button" class="pp-item pp-item-${item.who}${counted}${landing}" data-pp-item="${item.id}" style="left:${item.left}%;top:${item.top}%;--pp-rot:${item.rot}deg" aria-pressed="${item.counted ? 'true' : 'false'}" aria-label="${item.label} fra ${item.who === 'obbe' ? 'Øbbe' : 'Luigi'}${item.counted ? ', talt' : ''}"><span class="pp-item-emoji" aria-hidden="true">${item.emoji}</span></button>`;
+      }).join('');
       update();
+    }
+
+    function celebrateQuota() {
+      const obbeBtn = $('[data-pp-throw="obbe"]');
+      const luigiBtn = $('[data-pp-throw="luigi"]');
+      obbeBtn.classList.add('pp-celebrate');
+      luigiBtn.classList.add('pp-celebrate');
+      later(() => {
+        obbeBtn.classList.remove('pp-celebrate');
+        luigiBtn.classList.remove('pp-celebrate');
+      }, 1400);
     }
 
     function enterAnswerPhase() {
       phase = 'answer';
       answer = '';
+      celebrateQuota();
       feedback('Hvor mange ting er der i alt? Tæl dem én ad gangen.');
       paintItems();
       later(() => {
@@ -226,8 +261,100 @@
       }, 50);
     }
 
+    function spawnFlight(who, item, charBtn, canvas) {
+      const token = actionToken;
+      const reduced = prefersReducedMotion();
+      const charBox = charBtn.getBoundingClientRect();
+      const canvasBox = canvas.getBoundingClientRect();
+      const body = charBtn.querySelector('.pp-char-body') || charBtn;
+      const bodyBox = body.getBoundingClientRect();
+
+      // Start near "hand" — upper-inner corner toward canvas
+      const towardCanvas = who === 'obbe' ? 0.72 : 0.28;
+      const startX = bodyBox.left + bodyBox.width * towardCanvas;
+      const startY = bodyBox.top + bodyBox.height * 0.38;
+      const targetLeft = canvasBox.left + (item.left / 100) * canvasBox.width;
+      const targetTop = canvasBox.top + (item.top / 100) * canvasBox.height;
+      const arc = 48 + (Math.abs(targetLeft - startX) * 0.12) + ((item.id * 7) % 28);
+
+      if (reduced) {
+        if (token !== actionToken) return;
+        items.push(item);
+        paintItems(item.id);
+        if (quotasFilled() && phase === 'throw') enterAnswerPhase();
+        else update();
+        return;
+      }
+
+      const fly = document.createElement('div');
+      fly.className = `pp-flight pp-flight-${who}`;
+      fly.innerHTML = `<span aria-hidden="true">${item.emoji}</span>`;
+      fly.style.left = `${startX}px`;
+      fly.style.top = `${startY}px`;
+      fly.style.setProperty('--pp-dx', `${targetLeft - startX}px`);
+      fly.style.setProperty('--pp-dy', `${targetTop - startY}px`);
+      fly.style.setProperty('--pp-arc', `${arc}px`);
+      fly.style.setProperty('--pp-land-rot', `${item.rot}deg`);
+      document.body.append(fly);
+      flights.add(fly);
+
+      later(() => {
+        fly.remove();
+        flights.delete(fly);
+        if (disposed || token !== actionToken) return;
+        items.push(item);
+        paintItems(item.id);
+        if (quotasFilled() && phase === 'throw') enterAnswerPhase();
+        else update();
+      }, FLIGHT_MS);
+    }
+
+    function runThrowPose(charBtn, who, onRelease) {
+      const reduced = prefersReducedMotion();
+      const token = actionToken;
+      busy[who] = true;
+      clearThrowClasses(charBtn);
+      charBtn.classList.add('pp-busy');
+      update();
+
+      if (reduced) {
+        onRelease();
+        if (token === actionToken) {
+          busy[who] = false;
+          clearThrowClasses(charBtn);
+          update();
+        }
+        return;
+      }
+
+      charBtn.classList.add('pp-windup');
+      later(() => {
+        if (disposed || token !== actionToken) return;
+        charBtn.classList.remove('pp-windup');
+        charBtn.classList.add('pp-throwing');
+      }, THROW_WINDUP_MS);
+
+      later(() => {
+        if (disposed || token !== actionToken) return;
+        onRelease();
+      }, FLIGHT_RELEASE_AT);
+
+      later(() => {
+        if (disposed || token !== actionToken) return;
+        charBtn.classList.remove('pp-throwing');
+        charBtn.classList.add('pp-follow');
+      }, THROW_WINDUP_MS + THROW_RELEASE_MS);
+
+      later(() => {
+        if (disposed || token !== actionToken) return;
+        busy[who] = false;
+        clearThrowClasses(charBtn);
+        update();
+      }, THROW_WINDUP_MS + THROW_RELEASE_MS + THROW_FOLLOW_MS);
+    }
+
     function throwItem(who) {
-      if (!editable()) return;
+      if (!editable() || busy[who]) return;
       const { a, b } = task();
       if (who === 'obbe' && obbeClicks >= a) return;
       if (who === 'luigi' && luigiClicks >= b) return;
@@ -238,39 +365,13 @@
       const item = pickItem(who, ++serial);
       const charBtn = $(`[data-pp-throw="${who}"]`);
       const canvas = $('#pp-canvas');
-      const charBox = charBtn.getBoundingClientRect();
-      const canvasBox = canvas.getBoundingClientRect();
-
-      const targetLeft = canvasBox.left + (item.left / 100) * canvasBox.width;
-      const targetTop = canvasBox.top + (item.top / 100) * canvasBox.height;
-      const startX = charBox.left + charBox.width * 0.5;
-      const startY = charBox.top + charBox.height * 0.35;
-
-      const fly = document.createElement('div');
-      fly.className = `pp-flight pp-flight-${who}`;
-      fly.innerHTML = `<span aria-hidden="true">${item.emoji}</span>`;
-      fly.style.left = `${startX}px`;
-      fly.style.top = `${startY}px`;
-      fly.style.setProperty('--pp-dx', `${targetLeft - startX}px`);
-      fly.style.setProperty('--pp-dy', `${targetTop - startY}px`);
-      document.body.append(fly);
-      flights.add(fly);
-
-      charBtn.classList.add('pp-throwing');
-      later(() => charBtn.classList.remove('pp-throwing'), 280);
-
-      later(() => {
-        fly.remove();
-        flights.delete(fly);
-        if (disposed) return;
-        items.push(item);
-        paintItems();
-        if (quotasFilled() && phase === 'throw') enterAnswerPhase();
-        else update();
-      }, 420);
 
       updateProgress();
-      update();
+
+      runThrowPose(charBtn, who, () => {
+        if (disposed) return;
+        spawnFlight(who, item, charBtn, canvas);
+      });
     }
 
     function enterDigit(digit) {
@@ -286,6 +387,8 @@
       const { a, b } = task();
       $('.pp-obbe .pp-char-img').hidden = true;
       $('.pp-obbe .pp-char-happy').hidden = false;
+      $('[data-pp-throw="obbe"]').classList.add('pp-celebrate');
+      $('[data-pp-throw="luigi"]').classList.add('pp-celebrate');
       feedback(`Sådan! ${a} + ${b} = ${a + b}. Der er ${a + b} ting i alt!`, 'success');
       update();
       later(() => {
@@ -329,6 +432,7 @@
     }
 
     function startTask() {
+      actionToken += 1;
       flights.forEach(el => el.remove());
       flights.clear();
       items = [];
@@ -339,8 +443,17 @@
       pending = false;
       started = performance.now();
       serial = 0;
+      busy.obbe = false;
+      busy.luigi = false;
 
       $('.pp-game').classList.remove('pp-ready', 'pp-done', 'pp-glow');
+      const obbeBtn = $('[data-pp-throw="obbe"]');
+      const luigiBtn = $('[data-pp-throw="luigi"]');
+      clearThrowClasses(obbeBtn);
+      clearThrowClasses(luigiBtn);
+      obbeBtn.classList.remove('pp-celebrate', 'pp-complete');
+      luigiBtn.classList.remove('pp-celebrate', 'pp-complete');
+
       const happy = $('.pp-obbe .pp-char-happy');
       const normal = $('.pp-obbe .pp-char-img');
       if (happy) happy.hidden = true;

@@ -68,9 +68,9 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     assert.equal(await page.locator('#pp-a').innerText(), '2');
     assert.equal(await page.locator('#pp-b').innerText(), '3');
     assert.equal(await page.locator('#pp-answer-panel').isHidden(), true);
-    for (let i = 0; i < 2; i++) await page.locator('[data-pp-throw="obbe"]').click();
-    for (let i = 0; i < 3; i++) await page.locator('[data-pp-throw="luigi"]').click();
-    await page.waitForSelector('#pp-answer-panel:not([hidden])');
+    for (let i = 0; i < 2; i++) await page.locator('[data-pp-throw="obbe"]').click({ timeout: 15000 });
+    for (let i = 0; i < 3; i++) await page.locator('[data-pp-throw="luigi"]').click({ timeout: 15000 });
+    await page.waitForSelector('#pp-answer-panel:not([hidden])', { timeout: 20000 });
     assert.equal(await page.locator('.pp-item').count(), 5);
     await page.locator('[data-pp-digit="4"]').click();
     await page.locator('[data-pp-submit]').click();
