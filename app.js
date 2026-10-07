@@ -512,21 +512,37 @@ multiplicationColumn: {
 
   // Practice access and Jacob's teacher preview are independent of authorization roles.
   const isFractionTester = () => state.user?.id === "c8b8e1c4-3264-40e9-a43d-0eb6214a0183" && state.user.role === "teacher";
-  const canLearnFractions = () => window.JacobFractionLesson?.isEnabled(state.user) === true;
+  const gameModuleEnabled = user => Boolean(user?.id && ["student","teacher","guest"].includes(user.role));
+  const canLearnFractions = () => gameModuleEnabled(state.user);
   let jacobFrontend = false;
   let switchingJacobView = false;
   let disposeFractionLesson = null;
   let disposeMarley = null;
   let disposeTenFriends = null;
-  const canPlayTenFriends = () => window.LuigiTenFriends?.isEnabled(state.user) === true;
+  const canPlayTenFriends = () => gameModuleEnabled(state.user);
   function leaveTenFriends() { disposeTenFriends?.(); disposeTenFriends = null; }
   let disposeMarleyAddition = null;
-  const canPlayMarleyAddition = () => window.MarleyAddition?.isEnabled(state.user) === true;
+  const canPlayMarleyAddition = () => gameModuleEnabled(state.user);
   function leaveMarleyAddition() { disposeMarleyAddition?.(); disposeMarleyAddition = null; }
-  function renderMarleyAddition() {
+  async function ensureModule(name, view) {
+    if (!window.JacobModules?.load) throw new Error("Module loader mangler");
+    await window.JacobModules.load(name);
+    return !view || state.view === view;
+  }
+  function moduleLoadError(message) {
+    return `${header()}<div class="page"><section class="loading-card"><p>${message}</p><button class="btn" type="button" data-action="home">Tilbage</button></section></div>`;
+  }
+  async function renderMarleyAddition() {
     leaveMarleyAddition();
     if (!canPlayMarleyAddition()) { state.view=state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
-    app.innerHTML=`${header()}<div id="marley-addition-root"></div>`;
+    app.innerHTML=`${header()}<div id="marley-addition-root"><p class="seo-loading" data-module-loading>Indlæser...</p></div>`;
+    try {
+      if (!(await ensureModule("marley-addition", "marley-addition"))) return;
+    } catch (error) {
+      console.error(error);
+      app.innerHTML = moduleLoadError("Godbidder til Marley kunne ikke indlæses. Prøv igen.");
+      return;
+    }
     const learner=state.user;
     disposeMarleyAddition=window.MarleyAddition.mount(document.getElementById("marley-addition-root"), {
       user:learner,
@@ -547,12 +563,19 @@ multiplicationColumn: {
     });
   }
   let disposePlusPenalhus = null;
-  const canPlayPlusPenalhus = () => window.PlusPenalhus?.isEnabled(state.user) === true;
+  const canPlayPlusPenalhus = () => gameModuleEnabled(state.user);
   function leavePlusPenalhus() { disposePlusPenalhus?.(); disposePlusPenalhus = null; }
-  function renderPlusPenalhus() {
+  async function renderPlusPenalhus() {
     leavePlusPenalhus();
     if (!canPlayPlusPenalhus()) { state.view=state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
-    app.innerHTML=`${header()}<div id="plus-penalhus-root"></div>`;
+    app.innerHTML=`${header()}<div id="plus-penalhus-root"><p class="seo-loading" data-module-loading>Indlæser...</p></div>`;
+    try {
+      if (!(await ensureModule("plus-penalhus", "plus-penalhus"))) return;
+    } catch (error) {
+      console.error(error);
+      app.innerHTML = moduleLoadError("Plus-penalhus kunne ikke indlæses. Prøv igen.");
+      return;
+    }
     const learner=state.user;
     disposePlusPenalhus=window.PlusPenalhus.mount(document.getElementById("plus-penalhus-root"), {
       user:learner,
@@ -572,10 +595,17 @@ multiplicationColumn: {
       onExit() { leavePlusPenalhus(); state.view=state.user?.role==='teacher'&&!jacobFrontend ? "teacher" : "student"; render(); window.scrollTo(0,0); }
     });
   }
-  function renderTenFriends() {
+  async function renderTenFriends() {
     leaveTenFriends();
     if (!canPlayTenFriends()) { state.view=state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
-    app.innerHTML=`${header()}<div id="pizza-friends-root"></div>`;
+    app.innerHTML=`${header()}<div id="pizza-friends-root"><p class="seo-loading" data-module-loading>Indlæser...</p></div>`;
+    try {
+      if (!(await ensureModule("ten-friends", "ten-friends"))) return;
+    } catch (error) {
+      console.error(error);
+      app.innerHTML = moduleLoadError("Luigis 10'er-venner kunne ikke indlæses. Prøv igen.");
+      return;
+    }
     const learner=state.user;
     disposeTenFriends=window.LuigiTenFriends.mount(document.getElementById("pizza-friends-root"), {
       user:learner,
@@ -616,19 +646,33 @@ multiplicationColumn: {
   function leaveFractionLesson() {
     disposeFractionLesson?.(); disposeFractionLesson = null;
   }
-  function renderFractionLesson() {
+  async function renderFractionLesson() {
     leaveFractionLesson();
     if (!canLearnFractions()) { state.view = state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
     jacobFrontend = isFractionTester();
-    app.innerHTML = `${header()}<div id="fraction-lesson-root"></div>`;
+    app.innerHTML = `${header()}<div id="fraction-lesson-root"><p class="seo-loading" data-module-loading>Indlæser...</p></div>`;
+    try {
+      if (!(await ensureModule("learn-fractions", "learn-fractions"))) return;
+    } catch (error) {
+      console.error(error);
+      app.innerHTML = moduleLoadError("Brøkregning kunne ikke indlæses. Prøv igen.");
+      return;
+    }
     disposeFractionLesson = window.JacobFractionLesson.mount(document.getElementById("fraction-lesson-root"), {
       user: state.user,
       onExit() { leaveFractionLesson(); state.view=state.user?.role === "teacher" && !jacobFrontend ? "teacher" : "student"; render(); window.scrollTo(0,0); },
     });
   }
-  function renderMarley() {
+  async function renderMarley() {
     disposeMarley?.();
-    app.innerHTML = `${header()}<div id="marley-root"></div>`;
+    app.innerHTML = `${header()}<div id="marley-root"><p class="seo-loading" data-module-loading>Indlæser...</p></div>`;
+    try {
+      if (!(await ensureModule("marley", "marley"))) return;
+    } catch (error) {
+      console.error(error);
+      app.innerHTML = moduleLoadError("Marley kunne ikke indlæses. Prøv igen.");
+      return;
+    }
     disposeMarley = window.MarleyMath.mount(document.getElementById("marley-root"), {onExit() { disposeMarley?.(); disposeMarley=null; state.view="teacher"; render(); }});
   }
   function jacobViewButton() {
@@ -769,11 +813,19 @@ multiplicationColumn: {
     disposeFoodtruck?.(); disposeFoodtruck = null;
     document.body.classList.remove("foodtruck-active");
   }
-  function renderFoodtruck() {
+  async function renderFoodtruck() {
     leaveFoodtruck();
     if (!state.user || isGuest()) return renderLogin();
     document.body.classList.add("foodtruck-active");
-    app.innerHTML = `${header()}<div id="foodtruck-root"></div>`;
+    app.innerHTML = `${header()}<div id="foodtruck-root"><p class="seo-loading" data-module-loading>Indlæser...</p></div>`;
+    try {
+      if (!(await ensureModule("foodtruck", "foodtruck"))) return;
+    } catch (error) {
+      console.error(error);
+      document.body.classList.remove("foodtruck-active");
+      app.innerHTML = moduleLoadError("Luigis Foodtruck kunne ikke indlæses. Prøv igen.");
+      return;
+    }
     disposeFoodtruck = window.LuigiFoodtruck.mount(document.getElementById("foodtruck-root"));
   }
   function header() {
@@ -901,6 +953,9 @@ multiplicationColumn: {
         </section>
       </div>`;
     if (window.matchMedia("(min-width: 901px) and (pointer: fine)").matches) document.getElementById("username").focus();
+    // Login extras: FPS trial card + Dennis speech — not needed for first paint.
+    window.JacobModules?.load("fps-trial-entry").catch(err => console.error(err));
+    window.JacobModules?.load("dennis-audio").catch(err => console.error(err));
   }
   const MATH_TOWER_LEVELS = [
     { label:"Negative tal", symbol:"−4", topics:["negatives"] },
@@ -2522,7 +2577,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       }
     },320);
   }
-  function renderMatrixDrill() {
+  async function renderMatrixDrill() {
     const drill = state.matrixDrill;
     if (!drill) { startMatrixDrill(MATRIX_DRILL_TOPICS.has(state.selectedTopic) ? state.selectedTopic : "tableDrill"); return; }
     const isDivision = drill.topic === "divisionDrill";
@@ -2591,6 +2646,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     const timerStatus = state.showExerciseTimer
       ? `<span>Tid: <strong id="matrix-drill-time">${formatMatrixDrillTime(elapsed)}</strong></span>`
       : `<span class="table-drill-time-hidden">Tid skjult</span>`;
+    try { await window.JacobModules?.load("obbe-coach"); } catch (error) { console.error(error); }
     app.innerHTML = `${header()}<div class="page table-drill-page"><div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button>${exerciseLeaderboardLink(drill.topic)}<span class="topic-tag">${drill.previousTroubleRound ? `${drillName} · tidligere drillere` : drill.troubleRound ? `${drillName} · drillere` : drillName}</span></div>${window.ObbeCoach?.render() || ""}<section class="table-drill-card"><div class="table-drill-status">${timerStatus}<button class="table-drill-timer-toggle" type="button" data-action="toggle-exercise-timer" aria-pressed="${state.showExerciseTimer}">${state.showExerciseTimer ? "Skjul tid" : "Vis tid"}</button>${previousTroubleButton}<span>Fejl: <strong>${drill.errors}</strong></span><span>${progressLabel}: <strong>${completedInRound}/${drill.pairs.length}</strong></span></div><div class="table-drill-layout"><div class="table-drill-board">${grid}</div>${answerPanel}</div></section></div>`;
     window.ObbeCoach?.onDrill(drill);
   }
@@ -3590,7 +3646,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     }
 
     if (action === "marley") {
-      if (!isFractionTester() || !window.MarleyMath) return;
+      if (!isFractionTester()) return;
       leaveMarleyAddition(); leavePlusPenalhus(); leaveTenFriends(); leaveFractionLesson(); leaveFoodtruck(); stopTeacherLiveUpdates();
       state.view="marley"; renderMarley(); window.scrollTo(0,0); return;
     }
