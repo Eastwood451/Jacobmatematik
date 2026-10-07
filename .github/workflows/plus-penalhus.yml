@@ -1,7 +1,7 @@
 name: Plus-penalhus cartoon
 on:
   push:
-    branches: [main, 'fix/plus-penalhus-cartoon-20261007']
+    branches: [main, 'fix/plus-penalhus-*']
     paths: ['index.html', 'plus-penalhus.*', 'assets/figurer/plus-penalhus/**', 'scripts/test-plus-penalhus.cjs', '.github/workflows/plus-penalhus.yml']
   pull_request:
     paths: ['plus-penalhus.*', 'assets/figurer/plus-penalhus/**', 'scripts/test-plus-penalhus.cjs', '.github/workflows/plus-penalhus.yml']
@@ -43,3 +43,4 @@ jobs:
             test-results/plus-penalhus/
             assets/figurer/plus-penalhus/audio/
           retention-days: 7
+
