@@ -234,12 +234,22 @@ try { playwright = require('playwright'); } catch { playwright = null; }
       assert.equal(await page.locator('.pp-hand-loaded').count(), 1);
       assert.equal(await page.locator('.pp-item').count(), landed, 'No instant landing');
       assert.equal(await page.locator('.pp-flight').count(), 0, 'Windup precedes release');
-      await page.waitForSelector('.pp-flight');
-      const from = await page.locator('.pp-flight').evaluate(el => el.getBoundingClientRect().toJSON());
-      await page.waitForTimeout(250);
-      const to = await page.locator('.pp-flight').evaluate(el => el.getBoundingClientRect().toJSON());
+      // Sample the brief flight in one browser call so CI round trips cannot
+      // consume its whole lifetime between finding it and reading its position.
+      const { from, to, landedDuringFlight } = await page.evaluate(async () => {
+        const started = performance.now();
+        let flight;
+        while (!(flight = document.querySelector('.pp-flight'))) {
+          if (performance.now() - started > 3000) throw Error('Object was never released');
+          await new Promise(requestAnimationFrame);
+        }
+        const from = flight.getBoundingClientRect().toJSON();
+        await new Promise(resolve => setTimeout(resolve, 250));
+        return { from, to: flight.getBoundingClientRect().toJSON(),
+          landedDuringFlight: document.querySelectorAll('.pp-item').length };
+      });
       assert.ok(Math.hypot(to.x - from.x, to.y - from.y) > 10, `${who}'s item visibly travels`);
-      assert.equal(await page.locator('.pp-item').count(), landed, 'Count only landed objects');
+      assert.equal(landedDuringFlight, landed, 'Count only landed objects');
       await page.screenshot({ path: `${out}/${who}-reduced-motion-flight.png`, fullPage: true });
       await page.waitForSelector('.pp-flight', { state: 'detached' });
       assert.equal(await page.locator('.pp-item').count(), landed + 1);

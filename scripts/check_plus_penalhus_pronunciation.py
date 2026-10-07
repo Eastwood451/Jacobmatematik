@@ -3,7 +3,9 @@ import json
 import re
 import subprocess
 import tempfile
+import wave
 from pathlib import Path
+import numpy as np
 from faster_whisper import WhisperModel
 import imageio_ffmpeg
 
@@ -24,7 +26,9 @@ def read_audio(paths):
         args += ["-filter_complex", "".join(f"[{i}:a]" for i in range(len(paths)))
                  + f"concat=n={len(paths)}:v=0:a=1", "-ar", "16000", str(wav)]
         subprocess.run(args, check=True)
-        segments, _ = model.transcribe(str(wav), language="da", beam_size=5,
+        with wave.open(str(wav), "rb") as audio:
+            samples = np.frombuffer(audio.readframes(audio.getnframes()), dtype=np.int16).astype(np.float32) / 32768
+        segments, _ = model.transcribe(samples, language="da", beam_size=5,
                                        condition_on_previous_text=False)
         return " ".join(s.text.strip() for s in segments)
 
