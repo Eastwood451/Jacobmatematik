@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   const KEY = "jacobmatematik-marley-jacob-v1";
-  const CACHE = "20261007-pet1";
+  const CACHE = "20261007-pet2";
   const items = [
     { id: "bee", name: "Humlebikostume", price: 20, icon: "🐝", slot: "body" },
     { id: "hat", name: "Festhat", price: 8, icon: "🎉", slot: "head" },
@@ -26,7 +26,7 @@
 
   function loadScript(src) {
     return new Promise((resolve, reject) => {
-      if (window.MarleyPetScene || window.MarleyPremiumScene || window.MarleyRiveScene) {
+      if (window.MarleyPetScene) {
         resolve();
         return;
       }
@@ -182,7 +182,7 @@
 
     loadScript("marley-pet.js?v=" + CACHE)
       .then(() => {
-        const Scene = window.MarleyPetScene || window.MarleyPremiumScene || window.MarleyRiveScene;
+        const Scene = window.MarleyPetScene;
         if (disposed || !Scene) throw new Error("MarleyPetScene mangler");
         return Scene.create(host, (name) => {
           action = name;

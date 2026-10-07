@@ -2,7 +2,7 @@
 (() => {
   "use strict";
 
-  const CACHE = "20261007-pet1";
+  const CACHE = "20261007-pet2";
   const CANON = "assets/figurer/marley-canon.png?v=" + CACHE;
   const ART = 900;
   const HOME = { x: 450, y: 700 };
