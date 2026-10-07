@@ -25,7 +25,11 @@ jobs:
       - name: Install browser test dependencies
         run: |
           npm install --no-save --package-lock=false playwright@1.57.0
-          npx playwright install --with-deps chromium
+          if command -v google-chrome >/dev/null; then
+            echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+          else
+            npx playwright install --with-deps chromium
+          fi
       - name: Build missing Danish voice clips
         run: |
           if [ ! -f assets/figurer/plus-penalhus/audio-v2/count-4.mp3 ] || [ ! -f assets/figurer/plus-penalhus/audio-v2/sum-9-9.mp3 ]; then
