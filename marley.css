@@ -207,3 +207,12 @@
 @media(prefers-reduced-motion:reduce){
   .marley-pet-fx.is-on{animation:none !important}
 }
+
+/* Visible motion cues during walk/wag/run pose swaps */
+.marley-pet-actor[data-pose="walk"] .marley-pet-sprite{
+  filter:drop-shadow(0 2px 4px #1a0f2e33);
+}
+.marley-pet-actor[data-pose="sit"] .marley-pet-sprite,
+.marley-pet-actor[data-pose="bed"] .marley-pet-sprite{
+  filter:drop-shadow(0 3px 6px #1a0f2e44);
+}
