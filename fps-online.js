@@ -9,7 +9,7 @@ const $=id=>document.getElementById(id);
 const colours=[0x43cbb7,0xf6b94d,0xa3a0ff,0xfc8c93];
 const text=(el,value)=>{if(el.textContent!==String(value)) el.textContent=String(value);};
 
-export function createOnlineGame({scene,camera,controls,colliders,makePencil,prepare,ready,textures,startAudio,flash,inputReady,touchInput,touchEnabled,gunnarSlime,minigunView,minigunSound}) {
+export function createOnlineGame({scene,camera,controls,colliders,makePencil,prepare,ready,textures,startAudio,enterPlay,flash,inputReady,touchInput,touchEnabled,gunnarSlime,minigunView,minigunSound}) {
   let room=null, state=null, me=null, epoch=-1, answer='';
   let busy=false, lastPhase='', previousHp=5, problemId=null, syncing=false;
   const keys={}, objects=new Map();
@@ -92,6 +92,8 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
     state=next; me=player;
     if(next.phase==='playing' && phaseChanged) {
       prepare(); clearObjects(); startAudio();
+      // Host already enters via #begin-match click; joiners need the same path (audio + touch).
+      enterPlay?.();
       $('online-overlay').classList.remove('open'); $('online-hud').hidden=false;
       text($('pointer-note'),'Klik i spillet for at fange musen'); $('pointer-note').classList.add('show');
     }
@@ -250,7 +252,8 @@ export function createOnlineGame({scene,camera,controls,colliders,makePencil,pre
   addEventListener('keyup',e=>delete keys[e.code]);
   const clearKeys=()=>{for(const key of Object.keys(keys)) delete keys[key];};
   addEventListener('blur',clearKeys);controls.addEventListener('unlock',clearKeys);
-  addEventListener('pagehide',()=>void room?.close());
+  // Intentionally no pagehide→close: mobile app-switch fires pagehide and must not
+  // drop the room. Leave via #leave-room / #exit-match (stop()) only.
   $('game').addEventListener('click',()=>{if(room && state?.phase==='playing' && !touchEnabled() && !controls.isLocked) controls.lock();});
   controls.addEventListener('lock',()=>$('pointer-note').classList.remove('show'));
   controls.addEventListener('unlock',()=>{if(room && state?.phase==='playing') $('pointer-note').classList.add('show');});

@@ -18,7 +18,7 @@ function writeTouchPreference(enabled) {
 
 export const hasTouchControls = () => readTouchPreference() ?? detectsTouchHardware();
 
-export function createTouchControls({ camera, isPlaying, keydown, fire, clearKeys }) {
+export function createTouchControls({ camera, isPlaying, keydown, fire, clearKeys, resumeAudio }) {
   let enabled = hasTouchControls();
   const root = document.documentElement;
   const panel = document.getElementById('touch-controls');
@@ -38,6 +38,7 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
   const held = new Map();
   let lastState = null;
   const landscape = () => innerWidth > innerHeight;
+  let lastLandscape = landscape();
   const available = () => enabled && isPlaying() && landscape() && !paused && !document.hidden;
   const sendKey = code => keydown({code, repeat:false, preventDefault(){}});
 
@@ -76,6 +77,9 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
   function sync() {
     root.classList.toggle('touch-device', enabled);
     updateToggle();
+    const playing = isPlaying();
+    // Hide mid-fight so the toggle cannot turn controls OFF during a match.
+    if (toggle) toggle.hidden = Boolean(playing && !paused);
     if (!enabled) {
       panel.hidden = true;
       touchPauseButton.hidden = true;
@@ -85,7 +89,6 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
       lastState = 'disabled';
       return;
     }
-    const playing = isPlaying();
     if (!playing) paused = false;
     const state = `${playing}:${landscape()}:${paused}:${document.hidden}`;
     if (state === lastState) return;
@@ -116,6 +119,7 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
     if (!enabled) return;
     paused = false;
     reset(); sync();
+    try { resumeAudio?.(); } catch {}
     // Fullscreen/orientation are optional: Safari can still play after a manual turn.
     try { if (!document.fullscreenElement) await document.documentElement.requestFullscreen?.(); } catch {}
     try { await screen.orientation?.lock?.('landscape'); } catch {}
@@ -260,7 +264,14 @@ export function createTouchControls({ camera, isPlaying, keydown, fire, clearKey
     if (document.hidden && enabled && isPlaying()) paused = true;
     reset(); sync();
   });
-  addEventListener('resize', () => { reset(); sync(); });
+  addEventListener('resize', () => {
+    const nextLandscape = landscape();
+    if (nextLandscape !== lastLandscape) {
+      lastLandscape = nextLandscape;
+      reset();
+    }
+    sync();
+  });
   panel.addEventListener('contextmenu', e => e.preventDefault());
   sync();
   return {
