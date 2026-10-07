@@ -27,6 +27,7 @@ jobs:
           npm install --no-save --package-lock=false playwright@1.57.0
           if command -v google-chrome >/dev/null; then
             echo "CHROME_PATH=$(command -v google-chrome)" >> "$GITHUB_ENV"
+            npx playwright install ffmpeg
           else
             npx playwright install --with-deps chromium
           fi

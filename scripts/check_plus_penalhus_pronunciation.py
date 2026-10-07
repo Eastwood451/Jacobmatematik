@@ -36,8 +36,10 @@ def read_audio(paths):
 old = ROOT / "assets/figurer/plus-penalhus/audio"
 new = ROOT / "assets/figurer/plus-penalhus/audio-v2"
 report = {}
-for name, folder in [("previous_counts", old), ("new_counts", new)]:
-    report[name] = read_audio([folder / f"count-{n}.mp3" for n in [4, 5, 4, 5]])
+report["previous_counts"] = read_audio([old / f"count-{n}.mp3" for n in [4, 5, 4, 5]])
+# Use the natural counting sequence as acoustic context for the short clips.
+# There is no text prompt or expected transcript supplied to recognition.
+report["new_counts"] = read_audio([new / f"count-{n}.mp3" for n in range(1, 10)])
 report["new_equation"] = read_audio([new / "sum-5-3.mp3"] * 2)
 (OUT / "pronunciation.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))
 print(json.dumps(report, ensure_ascii=False, indent=2), flush=True)
