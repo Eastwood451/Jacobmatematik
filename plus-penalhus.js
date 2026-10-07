@@ -18,7 +18,7 @@
   // Every cel is a complete drawing of the original character, not a body-part rig.
   const CEL_COLS = 4;
   const CEL_ROWS = 3;
-  const CEL_FPS = 40;
+  const CEL_FPS = 20;
   const CEL_MS = 1000 / CEL_FPS;
   // Consecutive poses: one planted stance and one throwing arm per character.
   const THROW_CELS = {
@@ -27,7 +27,8 @@
   };
   const IDLE_CEL = { obbe: 0, luigi: 11 };
   const RELEASE_STEP = { obbe: 7, luigi: 4 };
-  const THROW_MS = 750; // From an accepted click, including the windup.
+  const ORIGINAL_THROW_MS = 1500;
+  const FLIGHT_SCALE = .5; // Only airborne time changes; character poses keep their tempo.
   const AUDIO_BASE = 'assets/figurer/plus-penalhus/audio-v2/';
   const CEL_ASSETS = {
     obbe: 'assets/figurer/plus-penalhus/obbe-cartoon-v5.webp',
@@ -436,7 +437,7 @@
       }, 50);
     }
 
-    function spawnFlight(who, item, charBtn) {
+    function spawnFlight(who, item, charBtn, onLand) {
       const reduced = prefersReducedMotion();
       const hand = charBtn.querySelector('[data-pp-hand]') || charBtn.querySelector('.pp-hand-grip');
       const body = charBtn.querySelector('.pp-char-body') || charBtn;
@@ -458,10 +459,11 @@
       // The throw explains where each counted object comes from. Keep this
       // essential movement visible, with a smaller arc and no spin in reduced motion.
       const arc = reduced ? 20 : 48 + (Math.abs(targetLeft - startX) * 0.12) + ((item.id * 7) % 28);
-      const duration = Math.max(1, item.deadline - performance.now());
+      const duration = (ORIGINAL_THROW_MS - item.windupMs) * FLIGHT_SCALE;
 
       const fly = document.createElement('div');
       fly.className = `pp-flight pp-flight-${who}`;
+      fly.dataset.ppFlight = item.id;
       fly.innerHTML = `<span aria-hidden="true">${item.emoji}</span>`;
       fly.style.left = `${startX}px`;
       fly.style.top = `${startY}px`;
@@ -471,7 +473,7 @@
       activeFlights.set(fly, { item, start: performance.now(), x: startX, y: startY,
         targetX: targetLeft, targetY: targetTop, arc, duration,
         spin: reduced ? 0 : (who === 'obbe' ? 300 : -300) });
-
+      later(onLand, duration);
     }
 
     function setHandItem(charBtn, emoji) {
@@ -486,13 +488,13 @@
       }
     }
 
-    function runThrowPose(charBtn, who, itemEmoji, onRelease) {
+    function runThrowPose(charBtn, who, itemEmoji, onRelease, celMs) {
       const actor = actors[who];
       busy[who] = true;
       clearThrowClasses(charBtn);
       charBtn.classList.add('pp-busy');
       setHandItem(charBtn, itemEmoji);
-      actor.throw = { start: performance.now(), celMs: prefersReducedMotion() ? 40 : CEL_MS,
+      actor.throw = { start: performance.now(), celMs,
         released: false, onRelease };
       paintCel(who, THROW_CELS[who][0]);
       update();
@@ -508,7 +510,8 @@
       else luigiClicks++;
 
       const item = pickItem(who, ++serial);
-      item.deadline = performance.now() + THROW_MS;
+      const celMs = prefersReducedMotion() ? 80 : CEL_MS;
+      item.windupMs = RELEASE_STEP[who] * celMs;
       const token = actionToken;
       const charBtn = $(`[data-pp-throw="${who}"]`);
 
@@ -526,7 +529,7 @@
         unlock();
       });
 
-      later(() => {
+      const land = () => {
         if (token !== actionToken) return;
         if (item.flight) {
           item.flight.remove();
@@ -536,14 +539,14 @@
         items.push(item);
         paintItems(item.id);
         maybeEnterAnswerPhase();
-      }, Math.max(0, item.deadline - performance.now()));
+      };
 
       runThrowPose(charBtn, who, item.emoji, () => {
         if (disposed || token !== actionToken || items.includes(item)) return;
         item.released = true;
-        spawnFlight(who, item, charBtn);
+        spawnFlight(who, item, charBtn, land);
         unlock();
-      });
+      }, celMs);
     }
 
     function enterDigit(digit) {
