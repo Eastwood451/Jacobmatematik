@@ -524,9 +524,22 @@ multiplicationColumn: {
   let disposeMarleyAddition = null;
   const canPlayMarleyAddition = () => gameModuleEnabled(state.user);
   function leaveMarleyAddition() { disposeMarleyAddition?.(); disposeMarleyAddition = null; }
+  function moduleApiReady(name) {
+    if (name === "marley") return !!window.MarleyMath;
+    if (name === "marley-addition") return !!window.MarleyAddition;
+    if (name === "plus-penalhus") return !!window.PlusPenalhus;
+    if (name === "ten-friends") return !!window.LuigiTenFriends;
+    if (name === "foodtruck") return !!window.LuigiFoodtruck;
+    if (name === "learn-fractions") return !!window.JacobFractionLesson && !!window.JacobFractionFinish;
+    if (name === "obbe-coach") return !!window.ObbeCoach;
+    return false;
+  }
   async function ensureModule(name, view) {
-    if (!window.JacobModules?.load) throw new Error("Module loader mangler");
-    await window.JacobModules.load(name);
+    // Tests and preloaded pages may already expose the game API without JacobModules.
+    if (!moduleApiReady(name)) {
+      if (!window.JacobModules?.load) throw new Error("Module loader mangler");
+      await window.JacobModules.load(name);
+    }
     return !view || state.view === view;
   }
   function moduleLoadError(message) {
