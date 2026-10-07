@@ -67,59 +67,127 @@
   .marley-still,.marley-still-wrap.is-run .marley-still,.marley-still-wrap.is-eat .marley-still{animation:none}
 }
 
-/* ── Living pet-scene M1 (layered roam) ───────────────────────── */
+/* ── Living pet-scene M2a: room + transparent cutout ─────────── */
 .marley-dog:has(.marley-scene[data-renderer="pet"]){
-  width:min(100%,420px);
+  width:min(100%,440px);
   aspect-ratio:1;
-  max-width:420px;
+  max-width:440px;
 }
 .marley-scene[data-renderer="pet"]{
   background:transparent;
   display:block;
+  overflow:hidden;
 }
 .marley-scene[data-renderer="pet"] ~ .marley-accessories{display:none !important}
+
 .marley-pet-room{
   position:absolute;inset:0;
   overflow:hidden;border-radius:18px;
-  background:linear-gradient(180deg,#5a3d9a 0%,#c45a3a 55%,#f0a04a 100%);
+  background:#3d2a6b;
 }
-.marley-pet-wall{position:absolute;inset:0 0 38% 0;pointer-events:none;opacity:.35;
-  background:radial-gradient(ellipse at 50% 0%,#ffffff33,transparent 60%)}
-.marley-pet-floor{position:absolute;left:0;right:0;bottom:0;height:42%;
-  background:linear-gradient(180deg,#0000 0%,#2a184466 30%,#1a0f2e88 100%);pointer-events:none}
-.marley-pet-ground{position:absolute;left:8%;right:8%;bottom:18%;height:14px;border-radius:50%;
-  background:#1a0f2e55;filter:blur(2px);pointer-events:none}
-.marley-pet-basket{position:absolute;left:62%;bottom:14%;font-size:clamp(28px,8%,52px);
-  opacity:0;transform:translateX(-50%) scale(.9);transition:opacity .2s;pointer-events:none;filter:drop-shadow(0 4px 6px #0006)}
-.marley-pet-basket.is-visible{opacity:.95}
-.marley-pet-treat{position:absolute;left:58%;top:52%;font-size:clamp(22px,6%,40px);
-  opacity:0;transform:translate(-50%,-50%);pointer-events:none;z-index:4;transition:opacity .15s}
+/* Back wall */
+.marley-pet-wall{
+  position:absolute;inset:0 0 36% 0;pointer-events:none;
+  background:
+    linear-gradient(180deg,#6b4cae 0%,#4a3278 55%,#3a2560 100%);
+  box-shadow:inset 0 -8px 24px #1a0f2e44;
+}
+.marley-pet-wall::before{
+  content:"";position:absolute;left:8%;right:8%;top:10%;height:4px;
+  background:#ffffff18;border-radius:2px;
+}
+/* Window */
+.marley-pet-window{
+  position:absolute;left:58%;top:8%;width:28%;height:22%;
+  border-radius:10px;pointer-events:none;z-index:1;
+  background:
+    linear-gradient(160deg,#9fd4ff 0%,#e8f4ff 40%,#ffe6b8 100%);
+  border:3px solid #2a1844;
+  box-shadow:0 4px 12px #1a0f2e55, inset 0 0 20px #ffffff55;
+}
+.marley-pet-window::after{
+  content:"";position:absolute;inset:0;
+  background:
+    linear-gradient(#2a184488,#2a184488) center/2px 100% no-repeat,
+    linear-gradient(#2a184488,#2a184488) center/100% 2px no-repeat;
+}
+/* Floor plane */
+.marley-pet-floor{
+  position:absolute;left:0;right:0;bottom:0;height:42%;
+  pointer-events:none;
+  background:
+    linear-gradient(180deg,#5c3d28 0%,#4a301f 40%,#3a2518 100%);
+  transform-origin:50% 0;
+  clip-path:polygon(4% 0, 96% 0, 100% 100%, 0 100%);
+}
+.marley-pet-floor::before{
+  content:"";position:absolute;inset:0;
+  background:repeating-linear-gradient(
+    90deg,
+    transparent 0 28px,
+    #2a184422 28px 30px
+  );
+  opacity:.55;
+}
+/* Soft rug */
+.marley-pet-rug{
+  position:absolute;left:18%;right:18%;bottom:12%;height:16%;
+  border-radius:50%;pointer-events:none;z-index:1;
+  background:radial-gradient(ellipse at 50% 50%, #c45a6a 0%, #8b3a4a 55%, #5a2835 100%);
+  box-shadow:0 4px 10px #1a0f2e44;
+  opacity:.92;
+}
+/* Dog bed / basket corner */
+.marley-pet-basket{
+  position:absolute;left:72%;bottom:10%;z-index:2;
+  opacity:0;transform:translateX(-50%) scale(.92);
+  transition:opacity .25s;pointer-events:none;
+  filter:drop-shadow(0 6px 8px #0007);
+}
+.marley-pet-basket-emoji{font-size:clamp(36px,11%,64px);display:block}
+.marley-pet-basket.is-visible{opacity:.98}
+
+.marley-pet-treat{
+  position:absolute;left:62%;top:58%;font-size:clamp(22px,6%,40px);
+  opacity:0;transform:translate(-50%,-50%);pointer-events:none;z-index:5;
+  transition:opacity .15s;filter:drop-shadow(0 3px 4px #0006);
+}
 .marley-pet-treat.is-visible{opacity:1}
+
+/* Actor: full 900 footprint so pose PNGs align; feet at bottom */
 .marley-pet-actor{
-  position:absolute;width:46.67%; /* 420/900 */ height:53.33%; /* 480/900 */
+  position:absolute;width:52%;height:58%;
   transform:translate(-50%,-100%);transform-origin:50% 100%;
-  will-change:left,top,transform,opacity;z-index:2;
+  will-change:left,top,transform,opacity;z-index:3;
 }
-.marley-pet-shadow{position:absolute;left:18%;right:18%;bottom:2%;height:10%;border-radius:50%;
-  background:#1a0f2e66;filter:blur(3px);pointer-events:none}
-.marley-pet-sprite{display:block;width:100%;height:100%;object-fit:contain;
-  filter:drop-shadow(0 6px 12px #1a0f2e77);user-select:none;pointer-events:none}
-.marley-pet-actor[data-pose="walk"] .marley-pet-sprite{animation:marley-pet-step 420ms ease-in-out infinite}
-.marley-pet-actor[data-pose="wag"] .marley-pet-sprite,
-.marley-pet-actor[data-pose="look"] .marley-pet-sprite{animation:marley-pet-wag 700ms ease-in-out infinite}
-.marley-pet-actor[data-pose="sniff"] .marley-pet-sprite{animation:none}
-.marley-pet-actor[data-pose="sit"] .marley-pet-sprite,
-.marley-pet-actor[data-pose="lie"] .marley-pet-sprite,
-.marley-pet-actor[data-pose="sleep"] .marley-pet-sprite,
-.marley-pet-actor[data-pose="bed"] .marley-pet-sprite{animation:none;filter:drop-shadow(0 6px 12px #1a0f2e77) brightness(.95)}
-.marley-pet-actor[data-pose="celebrate"] .marley-pet-sprite,
-.marley-pet-actor[data-pose="eat"] .marley-pet-sprite,
-.marley-pet-actor[data-pose="outfit"] .marley-pet-sprite{animation:marley-pet-happy 380ms ease-in-out infinite}
-.marley-pet-actor.is-paused .marley-pet-sprite,
-.marley-pet-room.is-paused .marley-pet-sprite{animation-play-state:paused !important}
+.marley-pet-shadow{
+  position:absolute;left:29%;width:42%;bottom:1%;height:5.5%;
+  border-radius:50%;
+  background:radial-gradient(ellipse at 50% 50%, #1a0f2e99 0%, #1a0f2e55 45%, transparent 72%);
+  filter:blur(2px);pointer-events:none;z-index:0;
+}
+.marley-pet-sprite{
+  display:block;position:absolute;inset:0;
+  width:100%;height:100%;object-fit:contain;object-position:50% 100%;
+  filter:drop-shadow(0 2px 4px #1a0f2e33);
+  user-select:none;pointer-events:none;z-index:1;
+  background:transparent !important;
+}
+/* Sunglasses overlay ~28% down subject (canon head region) */
+.marley-pet-sunglasses{
+  position:absolute;left:50%;top:28%;
+  width:38%;height:auto;max-height:12%;
+  transform:translate(-50%,-50%);
+  object-fit:contain;pointer-events:none;z-index:4;
+  filter:drop-shadow(0 2px 2px #0008);
+  opacity:1;
+}
+.marley-pet-sunglasses[hidden]{display:none !important}
+.marley-pet-sunglasses.is-on{display:block}
+
 .marley-pet-gear{position:absolute;inset:0;pointer-events:none;z-index:3}
 .marley-pet-wear{position:absolute;font-size:clamp(18px,28%,42px);filter:drop-shadow(0 2px 2px #321831aa);line-height:1}
-.marley-pet-wear.head{top:2%;left:52%;transform:translateX(-50%)}
+.marley-pet-wear.head{top:6%;left:52%;transform:translateX(-50%)}
 .marley-pet-wear.eyes{top:28%;left:54%;transform:translateX(-50%);font-size:clamp(16px,24%,36px)}
 .marley-pet-wear.body{top:52%;left:48%;transform:translateX(-50%)}
 .marley-pet-wear.feet{bottom:4%;left:48%;transform:translateX(-50%)}
@@ -128,23 +196,14 @@
 .marley-pet-fx{position:absolute;top:8%;left:50%;transform:translateX(-50%);font-size:clamp(16px,5%,28px);
   opacity:0;pointer-events:none;z-index:5;transition:opacity .15s}
 .marley-pet-fx.is-on{opacity:1;animation:marley-pet-sparkle 600ms ease-in-out infinite}
-@keyframes marley-pet-step{
-  0%,100%{transform:translateY(0)}
-  50%{transform:translateY(-3%)}
-}
-@keyframes marley-pet-wag{
-  0%,100%{transform:rotate(0deg)}
-  50%{transform:rotate(2.2deg)}
-}
-@keyframes marley-pet-happy{
-  0%,100%{transform:translateY(0) scale(1)}
-  50%{transform:translateY(-4%) scale(1.03)}
-}
+
+.marley-pet-actor.is-paused .marley-pet-sprite,
+.marley-pet-room.is-paused .marley-pet-fx{animation-play-state:paused !important}
+
 @keyframes marley-pet-sparkle{
   0%,100%{opacity:.7;transform:translateX(-50%) scale(1)}
   50%{opacity:1;transform:translateX(-50%) scale(1.15)}
 }
 @media(prefers-reduced-motion:reduce){
-  .marley-pet-actor .marley-pet-sprite,
   .marley-pet-fx.is-on{animation:none !important}
 }
