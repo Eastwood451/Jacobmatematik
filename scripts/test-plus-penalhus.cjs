@@ -117,8 +117,40 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     await page.screenshot({ path: `${out}/mobile-count.png`, fullPage: true });
     await page.evaluate(() => __dispose());
     assert.equal(await page.locator('.pp-game').count(), 0);
+
+    // Android's Remove animations setting exposes this media preference. A click
+    // must still show a whole-body windup and a travelling object, not teleport it.
+    await page.emulateMedia({ reducedMotion: 'reduce' });
+    await page.evaluate(() => {
+      window.__dispose = PlusPenalhus.mount(document.getElementById('root'), {
+        user: { id: 'guest', role: 'guest' }, tasks: [{ a: 1, b: 1 }],
+      });
+    });
+    await page.waitForFunction(() => !document.querySelector('[data-pp-throw="obbe"]').disabled);
+    for (const who of ['obbe', 'luigi']) {
+      const actorCel = page.locator(`[data-pp-cel="${who}"]`);
+      const before = await actorCel.evaluate(el => el.toDataURL());
+      const landed = await page.locator('.pp-item').count();
+      await page.locator(`[data-pp-throw="${who}"]`).click();
+      await page.waitForTimeout(240);
+      assert.notEqual(await actorCel.evaluate(el => el.toDataURL()), before, `${who} winds up with reduced motion`);
+      assert.equal(await page.locator('.pp-hand-loaded').count(), 1);
+      assert.equal(await page.locator('.pp-item').count(), landed, 'No instant landing');
+      assert.equal(await page.locator('.pp-flight').count(), 0, 'Windup precedes release');
+      await page.waitForSelector('.pp-flight');
+      const from = await page.locator('.pp-flight').evaluate(el => el.getBoundingClientRect().toJSON());
+      await page.waitForTimeout(250);
+      const to = await page.locator('.pp-flight').evaluate(el => el.getBoundingClientRect().toJSON());
+      assert.ok(Math.hypot(to.x - from.x, to.y - from.y) > 10, `${who}'s item visibly travels`);
+      assert.equal(await page.locator('.pp-item').count(), landed, 'Count only landed objects');
+      await page.screenshot({ path: `${out}/${who}-reduced-motion-flight.png`, fullPage: true });
+      await page.waitForSelector('.pp-flight', { state: 'detached' });
+      assert.equal(await page.locator('.pp-item').count(), landed + 1);
+    }
+    await page.waitForSelector('#pp-answer-panel:not([hidden])');
+    await page.evaluate(() => __dispose());
     assert.deepEqual(errors, []);
-    console.log('PASS: cartoon animation, hand release, throw quotas, wrong/correct answer, cleanup.');
+    console.log('PASS: cartoon throws and visible flights in normal/reduced motion, quotas, answers, cleanup.');
   } finally {
     await browser.close();
   }
