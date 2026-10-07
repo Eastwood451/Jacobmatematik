@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   const KEY = "jacobmatematik-marley-jacob-v1";
-  const CACHE = "20261007-act2";
+  const CACHE = "20261007-cartoon1";
   const items = [
     { id: "bee", name: "Humlebikostume", price: 20, icon: "🐝", slot: "body" },
     { id: "hat", name: "Festhat", price: 8, icon: "🎉", slot: "head" },
@@ -26,7 +26,7 @@
 
   function loadScript(src) {
     return new Promise((resolve, reject) => {
-      if (window.MarleyPetScene) {
+      if (window.MarleyCartoonScene) {
         resolve();
         return;
       }
@@ -51,11 +51,7 @@
     let task;
     let feedback = "Regn et stykke og tjen en mønt til Marley!";
     let action = "wag";
-    let actionTimer = null;
     let paused = false;
-    let pendingThen = null;
-    let remainingMs = 0;
-    let timerStartedAt = 0;
     let scene = null;
     let disposed = false;
     let focusAnswer = true;
@@ -77,25 +73,6 @@
     const q = (sel) => root.querySelector(sel);
     const host = q(".marley-scene");
     const accessories = q(".marley-accessories");
-
-    function clearActionTimer() {
-      clearTimeout(actionTimer);
-      actionTimer = null;
-    }
-
-    function scheduleThen(duration, then) {
-      clearActionTimer();
-      pendingThen = then;
-      remainingMs = duration;
-      timerStartedAt = performance.now();
-      actionTimer = setTimeout(() => {
-        actionTimer = null;
-        pendingThen = null;
-        remainingMs = 0;
-        if (disposed) return;
-        play(then);
-      }, duration);
-    }
 
     function renderAccessories() {
       const equipped = data.equipped || {};
@@ -161,43 +138,35 @@
       focusAnswer = true;
     }
 
-    function play(name, duration = 0, then = "wag") {
+    function play(name) {
       if (!scene || disposed) return;
-      clearActionTimer();
-      pendingThen = null;
-      remainingMs = 0;
       action = name;
       paused = false;
       if (messages[name]) feedback = messages[name];
+      scene.pause(false);
       scene.play(name);
-      host.dataset.action = name;
+      action = scene.getState();
+      host.dataset.action = action;
       const dog = q(".marley-dog");
       if (dog) dog.dataset.action = name;
       update();
-      if (duration) scheduleThen(duration, then);
     }
 
     next();
     update();
 
-    loadScript("marley-pet.js?v=" + CACHE)
+    loadScript("marley-cartoon.js?v=" + CACHE)
       .then(() => {
-        const Scene = window.MarleyPetScene;
-        if (disposed || !Scene) throw new Error("MarleyPetScene mangler");
+        const Scene = window.MarleyCartoonScene;
+        if (disposed || !Scene) throw new Error("MarleyCartoonScene mangler");
         return Scene.create(host, (name) => {
           action = name;
+          if (scene) paused = scene.isPaused();
           host.dataset.action = name;
           const dog = q(".marley-dog");
           if (dog) dog.dataset.action = name;
           if (name === "sleep") feedback = messages.sleep;
           update();
-        }, {
-          onThrottled(kind) {
-            if (kind === "eat") {
-              feedback = "Marley er mæt — prøv en godbid igen om lidt.";
-              update();
-            }
-          }
         });
       })
       .then((created) => {
@@ -230,7 +199,7 @@
         feedback = "Rigtigt! Marley fik en mønt. 🪙";
         save();
         next();
-        play("smile", 1400);
+        play("smile");
         q("#marley-input")?.focus({ preventScroll: true });
       } else {
         feedback = "Prøv igen: " + task.a + " " + task.sign + " " + task.b + " = " + task.answer + ".";
@@ -250,15 +219,10 @@
         if (!scene) return;
         if (!paused) {
           paused = true;
-          if (actionTimer) {
-            clearActionTimer();
-            remainingMs = Math.max(0, remainingMs - (performance.now() - timerStartedAt));
-          }
           scene.pause(true);
         } else {
           paused = false;
           scene.pause(false);
-          if (remainingMs > 0 && pendingThen != null) scheduleThen(remainingMs, pendingThen);
         }
         update();
         return;
@@ -266,9 +230,9 @@
       if (button.dataset.marley === "action") {
         const chosen = button.dataset.action;
         if (chosen === "wag") play("wag");
-        if (chosen === "smile") play("smile", 1800);
-        if (chosen === "run") play("run", 3200);
-        if (chosen === "bed") play("bed", 2400, "sleep");
+        if (chosen === "smile") play("smile");
+        if (chosen === "run") play("run");
+        if (chosen === "bed") play("bed");
         return;
       }
       const item = items.find((x) => x.id === button.dataset.item);
@@ -285,7 +249,7 @@
         data.lastEatAt = now;
         feedback = messages.eat;
         save();
-        play("eat", 3500);
+        play("eat");
         return;
       }
       if (!data.owned.includes(item.id)) {
@@ -306,7 +270,7 @@
       // Sunglasses / hat outfit oneshot when putting on
       if (!wasOn && (item.id === "glasses" || item.id === "hat" || item.id === "cap")) {
         if (item.id === "glasses") feedback = "Se! Marley har solbriller på! 😎";
-        play("outfit", 2500);
+        play("outfit");
         return;
       }
       update();
@@ -316,7 +280,6 @@
     root.addEventListener("click", click);
     return () => {
       disposed = true;
-      clearActionTimer();
       scene?.destroy();
       scene = null;
       root.removeEventListener("submit", submit);

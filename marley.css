@@ -216,3 +216,21 @@
 .marley-pet-actor[data-pose="bed"] .marley-pet-sprite{
   filter:drop-shadow(0 3px 6px #1a0f2e44);
 }
+
+/* Whole-character cartoon films; the dog has no CSS movement. */
+.marley-dog:has(.marley-scene[data-renderer="cartoon"]){width:min(100%,480px);max-width:480px;aspect-ratio:1}
+.marley-scene[data-renderer="cartoon"]{display:block;min-height:0;background:#4a3278}
+.marley-scene[data-renderer="cartoon"] ~ .marley-accessories{display:none!important}
+.marley-cartoon-room{position:absolute;inset:0;overflow:hidden;border-radius:18px}
+.marley-cartoon-film{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:contain;opacity:0;transition:opacity 100ms linear;pointer-events:none}
+.marley-cartoon-film.is-active{opacity:1}
+.marley-cartoon-gear{position:absolute;inset:0;pointer-events:none;z-index:2}
+.marley-cartoon-gear[hidden]{display:none}
+.marley-cartoon-wear{position:absolute;transform:translate(-50%,-50%);font-size:clamp(24px,4vw,46px);line-height:1;filter:drop-shadow(0 2px 2px #0005)}
+.marley-cartoon-wear.head{left:65%;top:20%}
+.marley-cartoon-wear.eyes{left:64%;top:35%;font-size:clamp(25px,4.5vw,50px)}
+.marley-cartoon-wear.body{left:49%;top:58%}
+.marley-cartoon-wear.feet{left:52%;top:84%}
+.marley-cartoon-wear.board{left:52%;top:89%;font-size:clamp(35px,5vw,65px)}
+.marley-cartoon-wear.toy{left:81%;top:89%}
+@media(max-width:780px){.marley-dog:has(.marley-scene[data-renderer="cartoon"]){width:100%;max-width:480px}}
