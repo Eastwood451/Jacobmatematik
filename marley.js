@@ -22,25 +22,37 @@
       data={...start(),...JSON.parse(localStorage.getItem(storageKey))};
       if(!Array.isArray(data.owned)||!Number.isSafeInteger(data.coins)||data.coins<0)throw Error();
     } catch {data=start();}
-    let task,feedback="",focusAnswer=true,action="wag",actionTimer=null,paused=false;
+    let task,feedback="",focusAnswer=true,action="wag",actionTimer=null,paused=false,pendingThen=null,remainingMs=0,timerStartedAt=0;
     const save=()=>{try{localStorage.setItem(storageKey,JSON.stringify(data));}catch{feedback="Denne browser kunne ikke gemme dit spil.";}};
     function next() {
       const minus=random(2)===0,a=random(10),b=random(10);
       task=minus?{a:Math.max(a,b),b:Math.min(a,b),sign:"−",answer:Math.abs(a-b)}:{a,b,sign:"+",answer:a+b};
       focusAnswer=true;
     }
+    function clearActionTimer(){clearTimeout(actionTimer);actionTimer=null;}
+    function scheduleThen(duration,then){
+      clearActionTimer();
+      pendingThen=then;
+      remainingMs=duration;
+      timerStartedAt=performance.now();
+      actionTimer=setTimeout(()=>{
+        actionTimer=null;pendingThen=null;remainingMs=0;
+        action=then;paused=false;render();
+      },duration);
+    }
     function render() {
-      const equipped=data.equipped||{},wear=action==="wag"||action==="smile";
+      const equipped=data.equipped||{},wear=action==="wag"||action==="smile",lock=paused?" disabled":"";
       root.innerHTML=`<div class="marley-page"><header class="marley-top"><button type="button" data-marley="exit">← Tilbage</button><h1>Matematikhunden Marley</h1><strong aria-label="Mønter">🪙 ${data.coins}</strong></header>
       <main class="marley-grid"><section class="marley-play" aria-label="Regn og tjen mønter"><div class="marley-scene"><div class="marley-dog is-${action}${paused?" is-paused":""}"><div class="marley-portrait" data-action="${action}" role="img" aria-label="${description[action]}"></div>${wear?`<div class="marley-accessories" aria-hidden="true"><span class="marley-wear head">${equipped.head?items.find(x=>x.id===equipped.head)?.icon||"":""}</span><span class="marley-wear eyes">${equipped.eyes?"🕶️":""}</span><span class="marley-wear body">${equipped.body?"🐝":""}</span><span class="marley-wear feet">${equipped.feet?"👟":""}</span><span class="marley-wear board">${equipped.board?"🛹":""}</span><span class="marley-wear toy">${equipped.toy?items.find(x=>x.id===equipped.toy)?.icon||"":""}</span></div>`:""}</div></div>
-      <div class="marley-actions" role="group" aria-label="Leg med Marley"><button type="button" data-marley="action" data-action="wag">🐕 Logre</button><button type="button" data-marley="action" data-action="smile">😊 Smil</button><button type="button" data-marley="action" data-action="run">🐾 Løb i cirkler</button><button type="button" data-marley="action" data-action="bed">🧺 I kurven</button><button type="button" data-marley="pause">${paused?"▶ Fortsæt":"⏸ Pause"}</button></div>
+      <div class="marley-actions" role="group" aria-label="Leg med Marley"><button type="button" data-marley="action" data-action="wag"${lock}>🐕 Logre</button><button type="button" data-marley="action" data-action="smile"${lock}>😊 Smil</button><button type="button" data-marley="action" data-action="run"${lock}>🐾 Løb i cirkler</button><button type="button" data-marley="action" data-action="bed"${lock}>🧺 I kurven</button><button type="button" data-marley="pause">${paused?"▶ Fortsæt":"⏸ Pause"}</button></div>
       <p class="marley-speech" aria-live="polite">${feedback||"Regn et stykke og tjen en mønt til Marley!"}</p><form id="marley-answer"><label for="marley-input">Hvad er ${task.a} ${task.sign} ${task.b}?</label><div class="marley-answer-row"><input id="marley-input" type="number" inputmode="numeric" min="0" max="18" required autocomplete="off" aria-label="Dit svar"><button type="submit">Svar</button></div></form><p class="marley-progress">${data.correct} rigtige svar i alt · 1 mønt pr. rigtigt svar</p></section>
-      <section class="marley-shop" aria-label="Butik"><h2>Marleys butik</h2><p>Køb udstyr, og tryk på det igen for at tage det af eller på. Godbidder spiser Marley med det samme.</p><div class="marley-items">${items.map(item=>{const treat=item.id==="treat",owned=!treat&&data.owned.includes(item.id),worn=equipped[item.slot]===item.id;return `<button type="button" data-marley="buy" data-item="${item.id}" ${(!owned&&data.coins<item.price)||treat&&action==="eat"?"disabled":""} aria-label="${item.name}, ${treat?item.price+" mønter, giv til Marley":owned?worn?"på, tag af":"købt, tag på":item.price+" mønter"}"><span class="marley-item-icon">${item.icon}</span><strong>${item.name}</strong><small>${treat?`Giv nu · 🪙 ${item.price}`:owned?worn?"På ✓":"Tag på":`🪙 ${item.price}`}</small></button>`}).join("")}</div></section></main></div>`;
+      <section class="marley-shop" aria-label="Butik"><h2>Marleys butik</h2><p>Køb udstyr, og tryk på det igen for at tage det af eller på. Godbidder spiser Marley med det samme.</p><div class="marley-items">${items.map(item=>{const treat=item.id==="treat",owned=!treat&&data.owned.includes(item.id),worn=equipped[item.slot]===item.id;return `<button type="button" data-marley="buy" data-item="${item.id}" ${(!owned&&data.coins<item.price)||treat&&(action==="eat"||paused)?"disabled":""} aria-label="${item.name}, ${treat?item.price+" mønter, giv til Marley":owned?worn?"på, tag af":"købt, tag på":item.price+" mønter"}"><span class="marley-item-icon">${item.icon}</span><strong>${item.name}</strong><small>${treat?`Giv nu · 🪙 ${item.price}`:owned?worn?"På ✓":"Tag på":`🪙 ${item.price}`}</small></button>`}).join("")}</div></section></main></div>`;
       if(focusAnswer){root.querySelector("#marley-input")?.focus({preventScroll:true});focusAnswer=false;}
     }
     function play(name,duration=0,then="wag"){
-      clearTimeout(actionTimer);action=name;paused=false;focusAnswer=false;render();
-      if(duration)actionTimer=setTimeout(()=>{action=then;paused=false;render();actionTimer=null;},duration);
+      clearActionTimer();pendingThen=null;remainingMs=0;
+      action=name;paused=false;focusAnswer=false;render();
+      if(duration)scheduleThen(duration,then);
     }
     next();render();
     function submit(event){
@@ -54,10 +66,22 @@
       const button=event.target.closest("[data-marley]");if(!button||!root.contains(button))return;
       if(button.dataset.marley==="exit"){onExit();return;}
       if(button.dataset.marley==="pause"){
-        paused=!paused;
+        if(!paused){
+          paused=true;
+          if(actionTimer){
+            clearActionTimer();
+            remainingMs=Math.max(0,remainingMs-(performance.now()-timerStartedAt));
+          }
+        }else{
+          paused=false;
+          if(remainingMs>0&&pendingThen!=null)scheduleThen(remainingMs,pendingThen);
+        }
         const dog=root.querySelector(".marley-dog");
         if(dog)dog.classList.toggle("is-paused",paused);
         button.textContent=paused?"▶ Fortsæt":"⏸ Pause";
+        root.querySelectorAll('[data-marley="action"]').forEach(b=>b.disabled=paused);
+        const treat=root.querySelector('[data-item="treat"]');
+        if(treat)treat.disabled=paused||action==="eat"||data.coins<3;
         return;
       }
       if(button.dataset.marley==="action"){
