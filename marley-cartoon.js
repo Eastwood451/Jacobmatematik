@@ -1,7 +1,7 @@
 /* Complete drawn Marley performances, encoded as 60 fps films. */
 (() => {
   "use strict";
-  const CACHE = "20261007-cartoon1";
+  const CACHE = "20261007-cartoon2";
   const BASE = "assets/figurer/marley-cartoon/";
   const LABELS = {wag:"Marley logrer",smile:"Marley smiler",run:"Marley løber i cirkler",eat:"Marley spiser en godbid",bed:"Marley lægger sig i kurven",sleep:"Marley sover i kurven"};
   const GEAR = {hat:["head","🎉"],cap:["head","🧢"],glasses:["eyes","🕶️"],bee:["body","🐝"],shoes:["feet","👟"],skate:["board","🛹"],ball:["toy","🎾"],bone:["toy","🦴"]};
