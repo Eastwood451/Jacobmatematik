@@ -234,3 +234,16 @@
 .marley-cartoon-wear.board{left:52%;top:89%;font-size:clamp(35px,5vw,65px)}
 .marley-cartoon-wear.toy{left:81%;top:89%}
 @media(max-width:780px){.marley-dog:has(.marley-scene[data-renderer="cartoon"]){width:100%;max-width:480px}}
+
+
+/* Real illustrated clothing, fitted to the character's video coordinates. */
+.marley-fitted-gear{position:absolute;inset:0;z-index:3;pointer-events:none}
+.marley-fitted-item{position:absolute;transform-origin:50% 50%;filter:drop-shadow(0 3px 2px #25133655);padding:0;margin:0;border:0;background:none;box-shadow:none;transition:none}
+.marley-fitted-item svg{display:block;width:100%;height:100%;overflow:visible}
+button.marley-fitted-item{pointer-events:auto;cursor:pointer;touch-action:manipulation}
+button.marley-fitted-item:focus-visible{outline:3px solid #ffe5a5;border-radius:20px;outline-offset:4px}
+.marley-fitted-item[hidden]{display:none}
+.gear-bee{z-index:1}.gear-shoe0,.gear-shoe1{z-index:2}.gear-shoe2,.gear-shoe3{z-index:3}.gear-cap,.gear-hat{z-index:5}.gear-glasses{z-index:6}.gear-bone,.gear-ball{z-index:7}
+.marley-cartoon-room:has(.marley-cartoon-film[data-action="eat"].is-active)::after{content:"♥  ♥  ♥";position:absolute;top:30%;left:54%;color:#ff93b0;font-size:clamp(22px,3vw,38px);pointer-events:none;z-index:8;animation:marley-treat-love 3.5s ease-out both}
+@keyframes marley-treat-love{0%,25%{opacity:0;transform:translateY(12px)}45%{opacity:1}100%{opacity:0;transform:translateY(-65px)}}
+@media(prefers-reduced-motion:reduce){.marley-cartoon-room::after{animation:none!important}}

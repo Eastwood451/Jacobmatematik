@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   const KEY = "jacobmatematik-marley-jacob-v1";
-  const CACHE = "20261007-cartoon2";
+  const CACHE = "20261007-calm-wardrobe1";
   const items = [
     { id: "bee", name: "Humlebikostume", price: 20, icon: "🐝", slot: "body" },
     { id: "hat", name: "Festhat", price: 8, icon: "🎉", slot: "head" },
@@ -21,12 +21,15 @@
     eat: "Mums! Marley spiser godbidden. 💛",
     run: "Marley løber en glad runde!",
     bed: "Marley lægger sig i sin kurv. Tryk på Logre, når han skal op igen.",
+    bone: "Marley holder kødbenet i munden og gumler!",
+    ball: "Tril, tril! Marley løber efter bolden!",
+    skate: "Se Marley køre på sit skateboard!",
     sleep: "Marley sover i sin kurv. Tryk på Logre for at kalde ham op."
   };
 
-  function loadScript(src) {
+  function loadScript(src, ready) {
     return new Promise((resolve, reject) => {
-      if (window.MarleyCartoonScene) {
+      if (ready()) {
         resolve();
         return;
       }
@@ -43,6 +46,7 @@
     const start = () => ({ ...blank(), coins: initialCoins });
     try {
       data = { ...start(), ...JSON.parse(localStorage.getItem(storageKey)) };
+      if (!data.equipped || typeof data.equipped !== "object") data.equipped = {};
       if (!Array.isArray(data.owned) || !Number.isSafeInteger(data.coins) || data.coins < 0) throw Error();
     } catch {
       data = start();
@@ -68,29 +72,10 @@
     <main class="marley-grid"><section class="marley-play" aria-label="Regn og tjen mønter"><div class="marley-dog" data-action="wag"><div class="marley-scene" data-action="wag"><p class="marley-loading" role="status">Marley vågner …</p></div><div class="marley-accessories" aria-hidden="true"></div></div>
     <div class="marley-actions" role="group" aria-label="Leg med Marley"><button type="button" data-marley="action" data-action="wag" disabled>🐕 Logre</button><button type="button" data-marley="action" data-action="smile" disabled>😊 Smil</button><button type="button" data-marley="action" data-action="run" disabled>🐾 Løb i cirkler</button><button type="button" data-marley="action" data-action="bed" disabled>🧺 I kurven</button><button type="button" data-marley="pause" disabled>⏸ Pause</button></div>
     <p class="marley-speech" aria-live="polite"></p><form id="marley-answer"><label for="marley-input"></label><div class="marley-answer-row"><input id="marley-input" type="number" inputmode="numeric" min="0" max="18" required autocomplete="off" aria-label="Dit svar"><button type="submit">Svar</button></div></form><p class="marley-progress"></p></section>
-    <section class="marley-shop" aria-label="Butik"><h2>Marleys butik</h2><p>Køb udstyr, og tryk på det igen for at tage det af eller på. Godbidder spiser Marley med det samme.</p><div class="marley-items"></div></section></main></div>`;
+    <section class="marley-shop" aria-label="Butik"><h2>Marleys butik</h2><p>Klæd Marley på, og leg med ham! Tryk på købt legetøj for at lege igen. Du kan give en ny godbid, når han har spist færdig.</p><div class="marley-items"></div></section></main></div>`;
 
     const q = (sel) => root.querySelector(sel);
     const host = q(".marley-scene");
-    const accessories = q(".marley-accessories");
-
-    function renderAccessories() {
-      const equipped = data.equipped || {};
-      const wear = action === "wag" || action === "smile";
-      if (!wear) {
-        accessories.innerHTML = "";
-        accessories.hidden = true;
-        return;
-      }
-      accessories.hidden = false;
-      accessories.innerHTML =
-        `<span class="marley-wear head">${equipped.head ? items.find((x) => x.id === equipped.head)?.icon || "" : ""}</span>` +
-        `<span class="marley-wear eyes">${equipped.eyes ? "🕶️" : ""}</span>` +
-        `<span class="marley-wear body">${equipped.body ? "🐝" : ""}</span>` +
-        `<span class="marley-wear feet">${equipped.feet ? "👟" : ""}</span>` +
-        `<span class="marley-wear board">${equipped.board ? "🛹" : ""}</span>` +
-        `<span class="marley-wear toy">${equipped.toy ? items.find((x) => x.id === equipped.toy)?.icon || "" : ""}</span>`;
-    }
 
     function update() {
       if (disposed) return;
@@ -112,14 +97,12 @@
           const treat = item.id === "treat";
           const owned = !treat && data.owned.includes(item.id);
           const worn = data.equipped[item.slot] === item.id;
-          const eatCooling = treat && data.lastEatAt && Date.now() - data.lastEatAt < 90000;
           const disabled =
             (!owned && data.coins < item.price) ||
-            (treat && (action === "eat" || paused || !scene || eatCooling));
-          return `<button type="button" data-marley="buy" data-item="${item.id}" ${disabled ? "disabled" : ""} aria-label="${item.name}"><span class="marley-item-icon">${item.icon}</span><strong>${item.name}</strong><small>${treat ? "Giv nu · 🪙 " + item.price : owned ? (worn ? "På ✓" : "Tag på") : "🪙 " + item.price}</small></button>`;
+            (treat && (["eat","bone"].includes(action) || paused || !scene));
+          return `<button type="button" data-marley="buy" data-item="${item.id}" ${disabled ? "disabled" : ""} aria-label="${item.name}"><span class="marley-item-icon">${item.icon}</span><strong>${item.name}</strong><small>${treat ? "Giv nu · 🪙 " + item.price : owned ? (["toy","board"].includes(item.slot) ? "Leg igen" : worn ? "Tag af ✓" : "Tag på") : "🪙 " + item.price}</small></button>`;
         })
         .join("");
-      renderAccessories();
       if (focusAnswer) {
         q("#marley-input")?.focus({ preventScroll: true });
         focusAnswer = false;
@@ -155,7 +138,8 @@
     next();
     update();
 
-    loadScript("marley-cartoon.js?v=" + CACHE)
+    loadScript("marley-wardrobe.js?v=" + CACHE, () => window.MarleyWardrobe)
+      .then(() => loadScript("marley-cartoon.js?v=" + CACHE, () => window.MarleyCartoonScene))
       .then(() => {
         const Scene = window.MarleyCartoonScene;
         if (disposed || !Scene) throw new Error("MarleyCartoonScene mangler");
@@ -210,7 +194,7 @@
 
     function click(event) {
       const button = event.target.closest("[data-marley]");
-      if (!button || !root.contains(button)) return;
+      if (!button || !root.contains(button) || button.disabled) return;
       if (button.dataset.marley === "exit") {
         onExit();
         return;
@@ -238,15 +222,8 @@
       const item = items.find((x) => x.id === button.dataset.item);
       if (!item) return;
       if (item.id === "treat") {
-        if (!scene || action === "eat" || paused || data.coins < item.price) return;
-        const now = Date.now();
-        if (data.lastEatAt && now - data.lastEatAt < 90000) {
-          feedback = "Marley er mæt — prøv en godbid igen om lidt.";
-          update();
-          return;
-        }
+        if (!scene || ["eat","bone"].includes(action) || paused || data.coins < item.price) return;
         data.coins -= item.price;
-        data.lastEatAt = now;
         feedback = messages.eat;
         save();
         play("eat");
@@ -263,11 +240,13 @@
             ? item.name + " er taget af."
             : "Marley har " + item.name.toLowerCase() + " på!";
       }
-      const wasOn = data.equipped[item.slot] === item.id;
+      const interactive = ["toy","board"].includes(item.slot);
+      const wasOn = !interactive && data.equipped[item.slot] === item.id;
       data.equipped[item.slot] = wasOn ? null : item.id;
       save();
       scene?.setEquipment?.(data.equipped);
-      // Sunglasses / hat outfit oneshot when putting on
+      if (interactive) { play(item.id); return; }
+      // Show the newly fitted outfit.
       if (!wasOn && (item.id === "glasses" || item.id === "hat" || item.id === "cap")) {
         if (item.id === "glasses") feedback = "Se! Marley har solbriller på! 😎";
         play("outfit");
@@ -289,3 +268,4 @@
 
   window.MarleyMath = { mount };
 })();
+

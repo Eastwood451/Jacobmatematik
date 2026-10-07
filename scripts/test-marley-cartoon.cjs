@@ -3,10 +3,11 @@ const vm = require('node:vm');
 const assert = require('node:assert/strict');
 class Element {
   constructor(tag) {
-    this.tag=tag; this.dataset={}; this.children=[]; this.listeners=new Map(); this.paused=true;
+    this.style={}; this.tag=tag; this.dataset={}; this.children=[]; this.listeners=new Map(); this.paused=true;
     const names=new Set();
     this.classList={add:n=>names.add(n),toggle:(n,on)=>on?names.add(n):names.delete(n),contains:n=>names.has(n)};
   }
+  remove() {}
   append(...xs) {this.children.push(...xs);}
   replaceChildren(...xs) {this.children=xs;}
   setAttribute(k,v) {this[k]=v;}
@@ -19,7 +20,9 @@ class Element {
   load() {}
   requestVideoFrameCallback(f) {f();}
 }
-const context={window:{},document:{createElement:t=>new Element(t)}};
+const timers=new Map(); let timerId=0;
+const context={window:{},document:{createElement:t=>new Element(t)},setTimeout:(f,ms)=>{timers.set(++timerId,{f,ms});return timerId},clearTimeout:id=>timers.delete(id),requestAnimationFrame:()=>1,cancelAnimationFrame:()=>{}};
+vm.runInNewContext(fs.readFileSync("marley-wardrobe.js","utf8"),context);
 vm.runInNewContext(fs.readFileSync('marley-cartoon.js','utf8'),context);
 const flush=()=>Promise.resolve();
 (async()=>{
@@ -28,7 +31,10 @@ const flush=()=>Promise.resolve();
   const videos=host.children[0].children.filter(x=>x.tag==='video');
   const active=()=>videos.find(v=>v.classList.contains('is-active'));
   const loaded=()=>videos.find(v=>v.dataset.action===host.dataset.loading)?.emit('loadeddata');
-  scene.play('roam'); loaded(); await flush(); assert.equal(scene.getState(),'wag'); assert.equal(active().loop,true);
+  scene.play('roam'); loaded(); await flush(); assert.equal(scene.getState(),'wag'); assert.equal(active().loop,false);assert.equal(active().playbackRate,0.4);
+  active().emit('ended');assert.equal(active().paused,true);assert.equal([...timers.values()][0].ms,8000);
+  scene.pause(true);assert.equal(timers.size,0);scene.pause(false);assert.equal(timers.size,1);
+  scene.play('wag');loaded();await flush();
   assert.equal(active().muted,true); assert.equal(active().playsInline,true);
   scene.play('eat'); loaded(); await flush(); assert.equal(active().dataset.action,'eat'); assert.equal(active().loop,false);
   assert.equal(scene.pause(true),true); assert.equal(active().paused,true);
@@ -41,10 +47,15 @@ const flush=()=>Promise.resolve();
   loaded(); await flush(); assert.equal(active().loop,true); assert.equal(active().dataset.action,'sleep');
   scene.play('run'); scene.play('smile'); loaded(); await flush(); assert.equal(active().dataset.action,'smile','latest rapid click wins');
   const gear=host.children[0].children.find(x=>x.tag==='div'); scene.setEquipment({eyes:'glasses',head:'cap'});
-  assert.equal(gear.hidden,false); assert.equal(gear.children.length,2);
+  assert.equal(gear.children.length,2);assert(gear.children.every(n=>n.innerHTML.includes('<svg')));
+  scene.play('bone');loaded();await flush();assert.equal(active().dataset.clip,'eat');active().emit('ended');loaded();await flush();
+  scene.play('eat');loaded();await flush();active().emit('ended');loaded();await flush();
+  scene.play('eat');loaded();await flush();assert.equal(scene.getState(),'eat','a second treat works immediately after chewing');
+  scene.play('smile');active().emit('ended');loaded();await flush();
   scene.play('wag'); const next=videos.find(v=>v.dataset.action==='wag'&&!v.classList.contains('is-active')); next.emit('error');
   assert.equal(host.dataset.playbackError,'1'); assert.equal(active().dataset.action,'smile','network error preserves visible film');
   scene.destroy(); assert.equal(host.children.length,0); assert.ok(videos.every(v=>v.paused));
   videos.forEach(v=>v.emit('ended')); assert.equal(host.children.length,0);
   console.log('PASS: film completion, sleep loop, pause, queued rewards, rapid clicks, props, load failure and cleanup');
 })().catch(e=>{console.error(e);process.exitCode=1;});
+
