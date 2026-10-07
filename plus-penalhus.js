@@ -15,13 +15,23 @@
     { id: 'tusch', label: 'Tusch', emoji: '🖊️' },
   ];
 
+  const OBBE_POSES = {
+    idleA: 'assets/figurer/plus-penalhus/obbe-idle-a.png',
+    idleB: 'assets/figurer/plus-penalhus/obbe-idle-b.png',
+    windup: 'assets/figurer/plus-penalhus/obbe-windup.png',
+    throw: 'assets/figurer/plus-penalhus/obbe-throw.png',
+    follow: 'assets/figurer/plus-penalhus/obbe-follow.png',
+  };
   const OBBE_HAPPY = 'assets/figurer/obbe-techno.webp';
+  const OBBE_IDLE_MS = 800;
+  const OBBE_CACHE = '20261007-obbe1';
 
-  const THROW_WINDUP_MS = 220;
-  const THROW_RELEASE_MS = 280;
-  const THROW_FOLLOW_MS = 320;
+  // Milestone A beat sheet (FULLSTACK-OBBE-A.md)
+  const THROW_WINDUP_MS = 180;
+  const THROW_RELEASE_MS = 240;
+  const THROW_FOLLOW_MS = 230;
   const FLIGHT_MS = 620;
-  const FLIGHT_RELEASE_AT = THROW_WINDUP_MS + 140;
+  const FLIGHT_RELEASE_AT = THROW_WINDUP_MS + 90; // mid-throw release
   function prefersReducedMotion() {
     return typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches;
   }
@@ -90,6 +100,9 @@
     const flights = new Set();
     const busy = { obbe: false, luigi: false };
     let actionToken = 0;
+    let obbeIdleFlip = false;
+    let obbeIdleTimer = null;
+
 
     const later = (fn, ms) => {
       const id = setTimeout(() => {
@@ -124,76 +137,15 @@
       </div>
       <div class="pp-stage">
         <div class="pp-characters">
-          <button type="button" class="pp-char pp-obbe" data-pp-throw="obbe" aria-label="Øbbe Øvdig">
+          <button type="button" class="pp-char pp-obbe pp-pose-char" data-pp-throw="obbe" aria-label="Øbbe Øvdig">
             <span class="pp-char-body">
-              <span class="pp-puppet" data-pp-puppet="obbe">
-                <span class="pp-puppet-torso">
-                  <svg class="pp-body-svg" viewBox="0 0 160 200" width="160" height="200" aria-hidden="true">
-  <!-- boots -->
-  <ellipse cx="58" cy="188" rx="22" ry="10" fill="#1a1a1a"/>
-  <ellipse cx="102" cy="188" rx="22" ry="10" fill="#1a1a1a"/>
-  <!-- legs -->
-  <rect x="42" y="128" width="36" height="58" rx="10" fill="#4a5c28"/>
-  <rect x="82" y="128" width="36" height="58" rx="10" fill="#4a5c28"/>
-  <text x="50" y="158" font-size="7" font-weight="800" fill="#2a3415" font-family="system-ui,sans-serif">PRACTICE</text>
-  <!-- torso -->
-  <rect x="38" y="72" width="84" height="62" rx="14" fill="#c4a060"/>
-  <rect x="46" y="80" width="28" height="18" rx="4" fill="#2a2a2a"/>
-  <text x="49" y="92" font-size="7" font-weight="900" fill="#f5d76e" font-family="system-ui,sans-serif">MATH</text>
-  <!-- belt -->
-  <rect x="38" y="124" width="84" height="12" rx="3" fill="#1a1a1a"/>
-  <rect x="68" y="122" width="24" height="16" rx="3" fill="#e6b422"/>
-  <text x="74" y="134" font-size="11" font-weight="900" fill="#1a1a1a" font-family="system-ui,sans-serif">Σ</text>
-  <!-- neck -->
-  <rect x="70" y="62" width="20" height="14" fill="#5c3d2e"/>
-  <!-- head -->
-  <ellipse cx="80" cy="44" rx="32" ry="30" fill="#5c3d2e"/>
-  <!-- campaign hat -->
-  <ellipse cx="80" cy="22" rx="40" ry="10" fill="#3d4a20"/>
-  <rect x="55" y="4" width="50" height="22" rx="6" fill="#4a5c28"/>
-  <circle cx="80" cy="14" r="8" fill="#e6b422"/>
-  <text x="75" y="18" font-size="11" font-weight="900" fill="#1a1a1a" font-family="system-ui,sans-serif">Σ</text>
-  <!-- face: fierce brows + open mouth -->
-  <path d="M58 36 L72 40" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round"/>
-  <path d="M102 36 L88 40" stroke="#1a1a1a" stroke-width="3" stroke-linecap="round"/>
-  <circle cx="68" cy="46" r="4" fill="#1a1a1a"/>
-  <circle cx="92" cy="46" r="4" fill="#1a1a1a"/>
-  <ellipse cx="80" cy="58" rx="10" ry="7" fill="#2a1a14"/>
-  <ellipse cx="80" cy="56" rx="7" ry="3" fill="#c45c4a"/>
-  <!-- clipboard arm (non-throwing, left) -->
-  <g transform="translate(18,78)">
-    <rect x="0" y="0" width="22" height="48" rx="4" fill="#5c3d2e"/>
-    <rect x="2" y="8" width="18" height="28" rx="2" fill="#e8dcc0"/>
-    <text x="4" y="20" font-size="5" font-weight="800" fill="#302044" font-family="system-ui,sans-serif">WORK!</text>
-  </g>
-</svg>
-                  <img class="pp-char-happy" src="${OBBE_HAPPY}" alt="" width="160" height="160" decoding="async" hidden>
-                </span>
-                <span class="pp-puppet-arm" data-pp-arm="obbe" aria-hidden="true">
-                  <svg class="pp-arm-svg" viewBox="0 0 110 150" width="110" height="150" aria-hidden="true">
-  <g class="pp-arm-upper">
-    <line x1="20" y1="20" x2="55" y2="62" stroke="#b8924e" stroke-width="26" stroke-linecap="round"/>
-    <line x1="20" y1="20" x2="55" y2="62" stroke="#d4b06a" stroke-width="16" stroke-linecap="round"/>
-    <circle cx="20" cy="20" r="15" fill="#d4b06a" stroke="#8a7040" stroke-width="2.5"/>
-  </g>
-  <g class="pp-arm-fore" style="transform-origin:55px 62px">
-    <line x1="55" y1="62" x2="88" y2="108" stroke="#4a3124" stroke-width="22" stroke-linecap="round"/>
-    <line x1="55" y1="62" x2="88" y2="108" stroke="#5c3d2e" stroke-width="12" stroke-linecap="round"/>
-    <circle cx="55" cy="62" r="12" fill="#5c3d2e" stroke="#3a261c" stroke-width="2"/>
-    <g class="pp-fist" transform="translate(88,108)">
-      <ellipse cx="0" cy="0" rx="17" ry="15" fill="#4a3124" stroke="#2a1a14" stroke-width="2" transform="rotate(28)"/>
-      <circle cx="10" cy="-6" r="4" fill="#3a261c"/>
-      <circle cx="13" cy="2" r="3.8" fill="#3a261c"/>
-      <circle cx="9" cy="9" r="3.5" fill="#3a261c"/>
-    </g>
-  </g>
-</svg>
-                  <span class="pp-hand-grip" data-pp-hand="obbe"></span>
-                </span>
-              </span>
+              <img class="pp-pose" data-pp-pose="obbe" src="${OBBE_POSES.idleA}?v=${OBBE_CACHE}" alt="" width="160" height="200" decoding="async">
+              <img class="pp-char-happy" src="${OBBE_HAPPY}" alt="" width="160" height="160" decoding="async" hidden>
+              <span class="pp-hand-grip" data-pp-hand="obbe" aria-hidden="true"></span>
             </span>
             <strong>Øbbe</strong>
             <span class="pp-progress" id="pp-obbe-progress" aria-live="polite">0/5</span>
+          </button>
           </button>
           <div class="pp-canvas-wrap">
             <div class="pp-canvas" id="pp-canvas" aria-label="Penalhus-ting på bordet"></div>
@@ -300,6 +252,40 @@
 
     function clearThrowClasses(btn) {
       btn.classList.remove('pp-windup', 'pp-throwing', 'pp-follow', 'pp-busy');
+    }
+
+    function setObbePose(key) {
+      const img = $('[data-pp-pose="obbe"]');
+      if (!img) return;
+      const src = OBBE_POSES[key];
+      if (!src) return;
+      img.src = src + '?v=' + OBBE_CACHE;
+    }
+
+    function stopObbeIdle() {
+      if (obbeIdleTimer != null) {
+        clearInterval(obbeIdleTimer);
+        timers.delete(obbeIdleTimer);
+        obbeIdleTimer = null;
+      }
+    }
+
+    function startObbeIdle() {
+      stopObbeIdle();
+      if (disposed) return;
+      obbeIdleFlip = false;
+      setObbePose('idleA');
+      if (prefersReducedMotion()) return;
+      obbeIdleTimer = setInterval(() => {
+        if (disposed || busy.obbe || phase === 'done') return;
+        const btn = $('[data-pp-throw="obbe"]');
+        if (!btn || btn.classList.contains('pp-busy') || btn.classList.contains('pp-celebrate')) return;
+        const happy = $('.pp-obbe .pp-char-happy');
+        if (happy && !happy.hidden) return;
+        obbeIdleFlip = !obbeIdleFlip;
+        setObbePose(obbeIdleFlip ? 'idleB' : 'idleA');
+      }, OBBE_IDLE_MS);
+      timers.add(obbeIdleTimer);
     }
 
     function updateProgress() {
@@ -466,6 +452,10 @@
       clearThrowClasses(charBtn);
       charBtn.classList.add('pp-busy');
       setHandItem(charBtn, itemEmoji);
+      if (who === 'obbe') {
+        stopObbeIdle();
+        setObbePose('windup');
+      }
       update();
 
       if (reduced) {
@@ -474,6 +464,7 @@
         if (token === actionToken) {
           busy[who] = false;
           clearThrowClasses(charBtn);
+          if (who === 'obbe') startObbeIdle();
           update();
         }
         return;
@@ -484,6 +475,7 @@
         if (disposed || token !== actionToken) return;
         charBtn.classList.remove('pp-windup');
         charBtn.classList.add('pp-throwing');
+        if (who === 'obbe') setObbePose('throw');
       }, THROW_WINDUP_MS);
 
       later(() => {
@@ -496,6 +488,7 @@
         if (disposed || token !== actionToken) return;
         charBtn.classList.remove('pp-throwing');
         charBtn.classList.add('pp-follow');
+        if (who === 'obbe') setObbePose('follow');
       }, THROW_WINDUP_MS + THROW_RELEASE_MS);
 
       later(() => {
@@ -503,6 +496,7 @@
         busy[who] = false;
         clearThrowClasses(charBtn);
         setHandItem(charBtn, '');
+        if (who === 'obbe') startObbeIdle();
         update();
       }, THROW_WINDUP_MS + THROW_RELEASE_MS + THROW_FOLLOW_MS);
     }
@@ -539,9 +533,10 @@
       phase = 'done';
       solved++;
       const { a, b } = task();
-      const torsoSvg = $('.pp-obbe .pp-body-svg');
+      stopObbeIdle();
+      const pose = $('.pp-obbe .pp-pose');
       const happy = $('.pp-obbe .pp-char-happy');
-      if (torsoSvg) torsoSvg.hidden = true;
+      if (pose) pose.hidden = true;
       if (happy) happy.hidden = false;
       $('[data-pp-throw="obbe"]').classList.add('pp-celebrate');
       $('[data-pp-throw="luigi"]').classList.add('pp-celebrate');
@@ -613,9 +608,10 @@
       setHandItem(luigiBtn, '');
 
       const happy = $('.pp-obbe .pp-char-happy');
-      const torsoSvg = $('.pp-obbe .pp-body-svg');
+      const pose = $('.pp-obbe .pp-pose');
       if (happy) happy.hidden = true;
-      if (torsoSvg) torsoSvg.hidden = false;
+      if (pose) pose.hidden = false;
+      startObbeIdle();
 
       const { a, b } = task();
       $('#pp-a').textContent = a;
@@ -684,7 +680,11 @@
 
     return () => {
       disposed = true;
-      timers.forEach(clearTimeout);
+      stopObbeIdle();
+      timers.forEach(id => {
+        clearTimeout(id);
+        clearInterval(id);
+      });
       timers.clear();
       flights.forEach(el => el.remove());
       flights.clear();

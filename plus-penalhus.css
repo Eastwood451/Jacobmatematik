@@ -35,63 +35,44 @@
 .pp-obbe .pp-progress{background:#ffe9c4;color:#8a5a20}
 .pp-luigi .pp-progress{background:#d8f0e4;color:#2f6b4f}
 
-/* ===== Layered cartoon puppet (SVG body + separate arm) ===== */
+/* ===== Øbbe PNG pose-swap (Milestone A). Luigi SVG puppet until B ===== */
 .pp-char-body{display:block;position:relative;width:150px;height:190px;overflow:visible;filter:drop-shadow(0 8px 6px #32204918)}
+.pp-pose{display:block;position:absolute;inset:0;width:100%;height:100%;object-fit:contain;object-position:center bottom;pointer-events:none;user-select:none;-webkit-user-select:none;background:transparent}
+.pp-pose-char .pp-hand-grip{position:absolute;right:6%;top:40%;width:30px;height:30px;display:grid;place-items:center;z-index:6;pointer-events:none}
+.pp-char-happy{position:absolute;inset:8% 10% 18%;width:80%;height:auto;object-fit:contain;pointer-events:none;border-radius:12px;z-index:3}
+
+/* Luigi SVG puppet (unchanged) */
 .pp-puppet{display:block;position:relative;width:100%;height:100%;overflow:visible}
 .pp-puppet-torso{display:block;position:absolute;left:0;right:0;top:0;bottom:0;transform-origin:50% 88%;will-change:transform;overflow:visible}
 .pp-body-svg{display:block;width:100%;height:100%;overflow:visible;pointer-events:none}
-.pp-char-happy{position:absolute;inset:8% 10% 18%;width:80%;height:auto;object-fit:contain;pointer-events:none;border-radius:12px}
-
-/* Throwing arm — separate layer, shoulder pivot toward canvas */
 .pp-puppet-arm{position:absolute;top:28%;width:58%;height:62%;z-index:5;pointer-events:none;will-change:transform;filter:drop-shadow(0 2px 1px #32204933)}
-.pp-obbe .pp-puppet-arm{left:48%;transform-origin:14% 12%}
 .pp-luigi .pp-puppet-arm{right:48%;left:auto;transform-origin:86% 12%}
 .pp-arm-svg{display:block;width:100%;height:100%;overflow:visible}
 .pp-hand-grip{position:absolute;width:30px;height:30px;display:grid;place-items:center;z-index:6;pointer-events:none}
-.pp-obbe .pp-hand-grip{right:-4%;bottom:0%}
 .pp-luigi .pp-hand-grip{left:-4%;bottom:0%}
 .pp-hand-emoji{font-size:24px;line-height:1;display:block;filter:drop-shadow(0 2px 1px #32204944);animation:pp-hand-wiggle .35s ease-in-out infinite alternate}
 .pp-hand-loaded .pp-hand-emoji{opacity:1}
 
-/* Idle: torso breathes, arm gently swings — separate layers */
-.pp-char:not(:disabled):not(.pp-busy) .pp-puppet-torso{animation:pp-torso-breathe 2.6s ease-in-out infinite}
-.pp-luigi:not(:disabled):not(.pp-busy) .pp-puppet-torso{animation-delay:.4s}
-.pp-char:not(:disabled):not(.pp-busy) .pp-puppet-arm{animation:pp-arm-idle-obbe 2.6s ease-in-out infinite}
-.pp-luigi:not(:disabled):not(.pp-busy) .pp-puppet-arm{animation-name:pp-arm-idle-luigi;animation-delay:.4s}
-.pp-char:not(:disabled):not(.pp-busy):hover .pp-puppet-arm{animation:pp-arm-ready-obbe .5s ease-in-out infinite}
-.pp-luigi:not(:disabled):not(.pp-busy):hover .pp-puppet-arm{animation-name:pp-arm-ready-luigi}
-.pp-char:not(:disabled):not(.pp-busy):hover .pp-puppet-torso{animation:pp-torso-ready .5s ease-in-out infinite}
-
-/* THROW: arm rotates at shoulder — tegnefilm wind-up → swing → follow */
-.pp-obbe.pp-windup .pp-puppet-arm{animation:pp-arm-windup-obbe .22s ease-out forwards}
-.pp-obbe.pp-throwing .pp-puppet-arm{animation:pp-arm-release-obbe .28s cubic-bezier(.15,.85,.35,1) forwards}
-.pp-obbe.pp-follow .pp-puppet-arm{animation:pp-arm-follow-obbe .32s ease-out forwards}
+/* Luigi idle / ready / throw — SVG arm keyframes only (Øbbe uses PNG pose swap) */
+.pp-luigi:not(:disabled):not(.pp-busy) .pp-puppet-torso{animation:pp-torso-breathe 2.6s ease-in-out infinite;animation-delay:.4s}
+.pp-luigi:not(:disabled):not(.pp-busy) .pp-puppet-arm{animation:pp-arm-idle-luigi 2.6s ease-in-out infinite;animation-delay:.4s}
+.pp-luigi:not(:disabled):not(.pp-busy):hover .pp-puppet-arm{animation:pp-arm-ready-luigi .5s ease-in-out infinite}
+.pp-luigi:not(:disabled):not(.pp-busy):hover .pp-puppet-torso{animation:pp-torso-ready .5s ease-in-out infinite}
 .pp-luigi.pp-windup .pp-puppet-arm{animation:pp-arm-windup-luigi .22s ease-out forwards}
 .pp-luigi.pp-throwing .pp-puppet-arm{animation:pp-arm-release-luigi .28s cubic-bezier(.15,.85,.35,1) forwards}
 .pp-luigi.pp-follow .pp-puppet-arm{animation:pp-arm-follow-luigi .32s ease-out forwards}
-
-
-/* Elbow bend — nested forearm flex during throw (tegnefilm squash) */
 .pp-arm-fore{transform-box:fill-box;transform-origin:center;transition:none}
-.pp-obbe.pp-windup .pp-arm-fore{animation:pp-elbow-windup-obbe .22s ease-out forwards}
-.pp-obbe.pp-throwing .pp-arm-fore{animation:pp-elbow-release-obbe .28s cubic-bezier(.15,.85,.35,1) forwards}
-.pp-obbe.pp-follow .pp-arm-fore{animation:pp-elbow-follow-obbe .32s ease-out forwards}
 .pp-luigi.pp-windup .pp-arm-fore{animation:pp-elbow-windup-luigi .22s ease-out forwards}
 .pp-luigi.pp-throwing .pp-arm-fore{animation:pp-elbow-release-luigi .28s cubic-bezier(.15,.85,.35,1) forwards}
 .pp-luigi.pp-follow .pp-arm-fore{animation:pp-elbow-follow-luigi .32s ease-out forwards}
-
-/* Body lean accompanies arm (secondary motion) */
-.pp-obbe.pp-windup .pp-puppet-torso{animation:pp-torso-windup-obbe .22s ease-out forwards}
-.pp-obbe.pp-throwing .pp-puppet-torso{animation:pp-torso-release-obbe .28s cubic-bezier(.15,.85,.35,1) forwards}
-.pp-obbe.pp-follow .pp-puppet-torso{animation:pp-torso-follow-obbe .32s ease-out forwards}
 .pp-luigi.pp-windup .pp-puppet-torso{animation:pp-torso-windup-luigi .22s ease-out forwards}
 .pp-luigi.pp-throwing .pp-puppet-torso{animation:pp-torso-release-luigi .28s cubic-bezier(.15,.85,.35,1) forwards}
 .pp-luigi.pp-follow .pp-puppet-torso{animation:pp-torso-follow-luigi .32s ease-out forwards}
 
 /* Celebrate */
-.pp-char.pp-celebrate .pp-puppet-torso,.pp-done .pp-obbe .pp-puppet-torso,.pp-done .pp-luigi .pp-puppet-torso{animation:pp-torso-celebrate .7s ease-in-out 2}
-.pp-char.pp-celebrate .pp-puppet-arm,.pp-done .pp-obbe .pp-puppet-arm,.pp-done .pp-luigi .pp-puppet-arm{animation:pp-arm-celebrate-obbe .7s ease-in-out 2}
-.pp-luigi.pp-celebrate .pp-puppet-arm,.pp-done .pp-luigi .pp-puppet-arm{animation-name:pp-arm-celebrate-luigi}
+.pp-luigi.pp-celebrate .pp-puppet-torso,.pp-done .pp-luigi .pp-puppet-torso{animation:pp-torso-celebrate .7s ease-in-out 2}
+.pp-luigi.pp-celebrate .pp-puppet-arm,.pp-done .pp-luigi .pp-puppet-arm{animation:pp-arm-celebrate-luigi .7s ease-in-out 2}
+.pp-obbe.pp-celebrate .pp-pose,.pp-done .pp-obbe .pp-pose,.pp-obbe.pp-celebrate .pp-char-happy,.pp-done .pp-obbe .pp-char-happy{animation:pp-torso-celebrate .7s ease-in-out 2}
 
 .pp-canvas-wrap{position:relative;min-height:220px}
 .pp-canvas{position:relative;height:220px;border:3px solid #cbb8e0;border-radius:24px;background:linear-gradient(180deg,#f7f1ff,#fffaf0 70%);box-shadow:inset 0 6px 0 #ebe3f6;overflow:hidden}
@@ -324,19 +305,17 @@
   .pp-item{width:42px;height:42px}
 }
 @media(prefers-reduced-motion:reduce){
-  .pp-char:not(:disabled):not(.pp-busy) .pp-puppet-torso,
-  .pp-char:not(:disabled):not(.pp-busy) .pp-puppet-arm,
-  .pp-char:not(:disabled):not(.pp-busy):hover .pp-puppet-torso,
-  .pp-char:not(:disabled):not(.pp-busy):hover .pp-puppet-arm,
-  .pp-obbe.pp-windup .pp-puppet-arm,.pp-obbe.pp-throwing .pp-puppet-arm,.pp-obbe.pp-follow .pp-puppet-arm,
+  .pp-luigi:not(:disabled):not(.pp-busy) .pp-puppet-torso,
+  .pp-luigi:not(:disabled):not(.pp-busy) .pp-puppet-arm,
+  .pp-luigi:not(:disabled):not(.pp-busy):hover .pp-puppet-torso,
+  .pp-luigi:not(:disabled):not(.pp-busy):hover .pp-puppet-arm,
   .pp-luigi.pp-windup .pp-puppet-arm,.pp-luigi.pp-throwing .pp-puppet-arm,.pp-luigi.pp-follow .pp-puppet-arm,
-  .pp-obbe.pp-windup .pp-puppet-torso,.pp-obbe.pp-throwing .pp-puppet-torso,.pp-obbe.pp-follow .pp-puppet-torso,
   .pp-luigi.pp-windup .pp-puppet-torso,.pp-luigi.pp-throwing .pp-puppet-torso,.pp-luigi.pp-follow .pp-puppet-torso,
-  .pp-char.pp-celebrate .pp-puppet-torso,.pp-char.pp-celebrate .pp-puppet-arm,
-  .pp-done .pp-obbe .pp-puppet-torso,.pp-done .pp-luigi .pp-puppet-torso,
-  .pp-done .pp-obbe .pp-puppet-arm,.pp-done .pp-luigi .pp-puppet-arm,
+  .pp-luigi.pp-celebrate .pp-puppet-torso,.pp-luigi.pp-celebrate .pp-puppet-arm,
+  .pp-done .pp-luigi .pp-puppet-torso,.pp-done .pp-luigi .pp-puppet-arm,
+  .pp-obbe.pp-celebrate .pp-pose,.pp-done .pp-obbe .pp-pose,
+  .pp-obbe.pp-celebrate .pp-char-happy,.pp-done .pp-obbe .pp-char-happy,
   .pp-hand-emoji,.pp-arm-fore{animation:none!important}
-  .pp-obbe:not(.pp-busy) .pp-puppet-arm{transform:rotate(-12deg)}
   .pp-luigi:not(.pp-busy) .pp-puppet-arm{transform:rotate(12deg)}
   .pp-flight{animation:none;opacity:0}
   .pp-flight span{animation:none}
