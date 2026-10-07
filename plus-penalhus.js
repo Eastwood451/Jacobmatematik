@@ -18,14 +18,14 @@
   // Every cel is a complete drawing of the original character, not a body-part rig.
   const CEL_COLS = 6;
   const CEL_ROWS = 4;
-  const CEL_FPS = 24;
+  const CEL_FPS = 16;
   const CEL_MS = 1000 / CEL_FPS;
   const THROW_CELS = {
     obbe: [19, 4, 6, 7, 11, 9, 5, 12, 8, 10, 13, 14, 15, 17, 18, 19],
     luigi: [19, 4, 5, 13, 16, 8, 6, 9, 10, 7, 11, 12, 14, 15, 18, 19],
   };
   const RELEASE_STEP = 10;
-  const FLIGHT_MS = 620;
+  const FLIGHT_MS = 800;
   const CEL_ASSETS = {
     obbe: 'assets/figurer/plus-penalhus/obbe-cartoon-v3.webp',
     luigi: 'assets/figurer/plus-penalhus/luigi-cartoon-v3.webp',
@@ -211,7 +211,7 @@
         if (!actor?.image) continue;
         if (actor.throw) {
           const t = actor.throw;
-          const step = Math.max(0, Math.floor((now - t.start) / CEL_MS));
+          const step = Math.max(0, Math.floor((now - t.start) / t.celMs));
           const cels = THROW_CELS[who];
           paintCel(who, cels[Math.min(cels.length - 1, step)]);
           if (!t.released && step >= RELEASE_STEP) {
@@ -228,12 +228,12 @@
         }
       }
       for (const [el, flight] of activeFlights) {
-        const t = Math.min(1, Math.max(0, (now - flight.start) / FLIGHT_MS));
+        const t = Math.min(1, Math.max(0, (now - flight.start) / flight.duration));
         const x = flight.x + (flight.targetX - flight.x) * t;
         const y = flight.y + (flight.targetY - flight.y) * t - 4 * flight.arc * t * (1 - t);
         el.style.left = `${x}px`;
         el.style.top = `${y}px`;
-        el.style.transform = `translate(-50%,-50%) rotate(${(flight.who === 'obbe' ? 1 : -1) * t * 300}deg)`;
+        el.style.transform = `translate(-50%,-50%) rotate(${flight.spin * t}deg)`;
       }
       animationFrame = requestAnimationFrame(animate);
     }
@@ -367,18 +367,10 @@
       }
       const targetLeft = canvasBox.left + (item.left / 100) * canvasBox.width;
       const targetTop = canvasBox.top + (item.top / 100) * canvasBox.height;
-      const arc = 48 + (Math.abs(targetLeft - startX) * 0.12) + ((item.id * 7) % 28);
-
-      if (reduced) {
-        if (token !== actionToken) return;
-        items.push(item);
-        busy[who] = false;
-        clearThrowClasses(charBtn);
-        paintItems(item.id);
-        maybeEnterAnswerPhase();
-        update();
-        return;
-      }
+      // The throw explains where each counted object comes from. Keep this
+      // essential movement visible, with a smaller arc and no spin in reduced motion.
+      const arc = reduced ? 20 : 48 + (Math.abs(targetLeft - startX) * 0.12) + ((item.id * 7) % 28);
+      const duration = reduced ? 1000 : FLIGHT_MS;
 
       const fly = document.createElement('div');
       fly.className = `pp-flight pp-flight-${who}`;
@@ -388,7 +380,8 @@
       document.body.append(fly);
       flights.add(fly);
       activeFlights.set(fly, { start: performance.now(), x: startX, y: startY,
-        targetX: targetLeft, targetY: targetTop, arc, who });
+        targetX: targetLeft, targetY: targetTop, arc, duration,
+        spin: reduced ? 0 : (who === 'obbe' ? 300 : -300) });
 
       later(() => {
         fly.remove();
@@ -401,7 +394,7 @@
         paintItems(item.id);
         maybeEnterAnswerPhase();
         update();
-      }, FLIGHT_MS);
+      }, duration);
     }
 
     function setHandItem(charBtn, emoji) {
@@ -422,14 +415,9 @@
       clearThrowClasses(charBtn);
       charBtn.classList.add('pp-busy');
       setHandItem(charBtn, itemEmoji);
-      if (prefersReducedMotion()) {
-        paintCel(who, THROW_CELS[who][RELEASE_STEP]);
-        setHandItem(charBtn, '');
-        onRelease();
-      } else {
-        actor.throw = { start: performance.now(), released: false, onRelease };
-        paintCel(who, THROW_CELS[who][0]);
-      }
+      actor.throw = { start: performance.now(), celMs: prefersReducedMotion() ? 80 : CEL_MS,
+        released: false, onRelease };
+      paintCel(who, THROW_CELS[who][0]);
       update();
     }
 
