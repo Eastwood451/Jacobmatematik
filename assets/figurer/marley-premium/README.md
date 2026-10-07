@@ -1,6 +1,6 @@
 # Marley premium clips
 
-Expected files (drop when approved — runtime probes and falls back to `marley.webp` if missing):
+Expected files (drop when approved — runtime probes and falls back to `marley-canon.png` (Jacob’s canon still) if missing):
 
 - `wag.webm` / `wag.mp4` (idle loop)
 - `smile.webm` / `smile.mp4`

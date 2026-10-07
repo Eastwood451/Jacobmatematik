@@ -3,7 +3,7 @@
   "use strict";
 
   const CACHE = "20261007-clips1";
-  const STILL_SRC = "assets/figurer/marley.webp?v=" + CACHE;
+  const STILL_SRC = "assets/figurer/marley-canon.png?v=" + CACHE;
   const VIDEO_DIR = "assets/figurer/marley-premium/";
   const LABELS = {
     wag: "Marley logrer",
