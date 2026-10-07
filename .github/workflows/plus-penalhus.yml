@@ -26,11 +26,19 @@ jobs:
         run: |
           npm install --no-save --package-lock=false playwright@1.57.0
           npx playwright install --with-deps chromium
+      - name: Build missing Danish voice clips
+        run: |
+          if [ ! -f assets/figurer/plus-penalhus/audio/sum-9-9.mp3 ]; then
+            pip install edge-tts==7.2.8 imageio-ffmpeg==0.6.0
+            python scripts/generate_plus_penalhus_audio.py
+          fi
       - name: Exercise with fake users
         run: node scripts/test-plus-penalhus.cjs
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: plus-penalhus-review
-          path: test-results/plus-penalhus/
+          path: |
+            test-results/plus-penalhus/
+            assets/figurer/plus-penalhus/audio/
           retention-days: 7

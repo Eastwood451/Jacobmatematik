@@ -69,6 +69,45 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     await page.setContent(`<!doctype html><html lang="da"><head><base href="http://pilot.local/"><meta name="viewport" content="width=device-width,initial-scale=1"><style>${css}</style></head><body><div id="root"></div></body></html>`);
     await page.addScriptTag({ content: source });
     await page.evaluate(() => {
+      window.__speech = [];
+      // Deterministic audio completion: test queue order, not CI audio hardware.
+      HTMLMediaElement.prototype.play = function () {
+        __speech.push(this.src.split('/').pop());
+        setTimeout(() => this.dispatchEvent(new Event('ended')), 80);
+        return Promise.resolve();
+      };
+      window.__timings = { clicks: [], landed: {} };
+      document.getElementById('root').addEventListener('click', event => {
+        const button = event.target.closest('[data-pp-throw]');
+        if (button && !button.disabled) __timings.clicks.push(performance.now());
+      }, true);
+      new MutationObserver(() => {
+        document.querySelectorAll('[data-pp-item]').forEach(el => {
+          __timings.landed[el.dataset.ppItem] ??= performance.now();
+        });
+      }).observe(document.getElementById('root'), { childList: true, subtree: true });
+    });
+    async function verifyTiming() {
+      const timings = await page.evaluate(() => __timings);
+      assert.ok(timings.clicks.length > 0);
+      timings.clicks.forEach((time, i) => {
+        const elapsed = timings.landed[i + 1] - time;
+        assert.ok(elapsed >= 1490 && elapsed < 1700, `Click ${i + 1} landed after ${elapsed}ms`);
+      });
+    }
+    async function verifyLayout() {
+      const boxes = await page.locator('.pp-item').evaluateAll(els => els.map(el => el.getBoundingClientRect().toJSON()));
+      const canvasBox = await page.locator('#pp-canvas').boundingBox();
+      boxes.forEach((a, i) => {
+        assert.ok(a.left >= canvasBox.x && a.right <= canvasBox.x + canvasBox.width);
+        assert.ok(a.top >= canvasBox.y && a.bottom <= canvasBox.y + canvasBox.height);
+        boxes.slice(i + 1).forEach(b => {
+          assert.ok(a.right + 10 <= b.left || b.right + 10 <= a.left || a.bottom + 10 <= b.top || b.bottom + 10 <= a.top,
+            'Every card has its own slot, including counted/celebrating cards');
+        });
+      });
+    }
+    await page.evaluate(() => {
       window.__results = [];
       window.__dispose = PlusPenalhus.mount(document.getElementById('root'), {
         user: { id: 'guest', role: 'guest' },
@@ -118,18 +157,28 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     for (let i = 0; i < 3; i++) await page.locator('[data-pp-throw="luigi"]').click({ timeout: 15000 });
     await page.waitForSelector('#pp-answer-panel:not([hidden])', { timeout: 20000 });
     assert.equal(await page.locator('.pp-item').count(), 5);
+    await verifyTiming();
+    await verifyLayout();
+    assert.deepEqual(await page.evaluate(() => __speech), ['count-1.mp3', 'count-2.mp3', 'count-1.mp3', 'count-2.mp3', 'count-3.mp3']);
+    await page.locator('[data-pp-item="1"]').click();
+    await page.waitForTimeout(100);
+    assert.equal(await page.evaluate(() => __speech.at(-1)), 'count-1.mp3');
     await page.locator('[data-pp-digit="4"]').click();
     await page.locator('[data-pp-submit]').click();
     await page.waitForFunction(() => document.querySelector('#pp-feedback')?.textContent.includes('Tæl dem'));
     assert.equal(await page.evaluate(() => __results.length), 1);
     assert.equal(await page.evaluate(() => __results[0].correct), false);
+    assert.equal(await page.evaluate(() => __speech.filter(s => s.startsWith('sum-')).length), 0);
     await page.locator('[data-pp-digit="5"]').click();
     await page.locator('[data-pp-submit]').click();
     await page.waitForSelector('[data-pp-next]:visible');
     assert.equal(await page.evaluate(() => __results[1].correct), true);
     assert.equal(await page.evaluate(() => __results[1].topic), 'plusPenalhus');
+    assert.equal(await page.evaluate(() => __speech.at(-1)), 'sum-2-3.mp3');
+    await verifyLayout();
     await page.screenshot({ path: `${out}/desktop-done.png`, fullPage: true });
     await page.locator('[data-pp-next]').click();
+    await page.evaluate(() => { window.__timings = { clicks: [], landed: {} }; });
     assert.equal(await page.locator('#pp-a').innerText(), '1');
     await page.setViewportSize({ width: 390, height: 844 });
     await page.locator('[data-pp-throw="obbe"]').click();
@@ -138,6 +187,8 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     assert.equal(await page.locator('#pp-answer-panel').isHidden(), true, 'Wait for both items to land');
     await page.waitForSelector('#pp-answer-panel:not([hidden])');
     assert.equal(await page.locator('.pp-item').count(), 2);
+    await verifyTiming();
+    await verifyLayout();
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
     await page.screenshot({ path: `${out}/mobile-count.png`, fullPage: true });
     await page.evaluate(() => __dispose());
@@ -147,6 +198,7 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     // must still show a whole-body windup and a travelling object, not teleport it.
     await page.emulateMedia({ reducedMotion: 'reduce' });
     await page.evaluate(() => {
+      window.__timings = { clicks: [], landed: {} };
       window.__dispose = PlusPenalhus.mount(document.getElementById('root'), {
         user: { id: 'guest', role: 'guest' }, tasks: [{ a: 1, b: 1 }],
       });
@@ -173,9 +225,41 @@ try { playwright = require('playwright'); } catch { playwright = null; }
       assert.equal(await page.locator('.pp-item').count(), landed + 1);
     }
     await page.waitForSelector('#pp-answer-panel:not([hidden])');
+    await verifyTiming();
+    await page.evaluate(() => __dispose());
+    // Maximum supported sum. Both actors may throw together; slots are reserved
+    // in accepted-click order rather than whichever flight happens to finish first.
+    await page.emulateMedia({ reducedMotion: 'no-preference' });
+    await page.evaluate(() => {
+      window.__timings = { clicks: [], landed: {} };
+      window.__dispose = PlusPenalhus.mount(document.getElementById('root'), {
+        user: { id: 'guest', role: 'guest' }, tasks: [{ a: 9, b: 9 }],
+      });
+    });
+    for (let i = 0; i < 9; i++) {
+      await page.locator('[data-pp-throw="obbe"]').click();
+      await page.locator('[data-pp-throw="luigi"]').click();
+    }
+    await page.waitForSelector('#pp-answer-panel:not([hidden])');
+    assert.equal(await page.locator('.pp-item').count(), 18);
+    await verifyTiming();
+    for (const width of [320, 390, 720, 980, 1280]) {
+      await page.setViewportSize({ width, height: 900 });
+      await page.waitForTimeout(100);
+      await verifyLayout();
+      assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
+    }
+    for (const el of await page.locator('.pp-item').all()) await el.click();
+    await verifyLayout();
+    await page.locator('[data-pp-digit="1"]').click();
+    await page.locator('[data-pp-digit="8"]').click();
+    await page.locator('[data-pp-submit]').click();
+    await page.waitForSelector('[data-pp-next]:visible');
+    assert.equal(await page.evaluate(() => __speech.at(-1)), 'sum-9-9.mp3');
+    await verifyLayout();
     await page.evaluate(() => __dispose());
     assert.deepEqual(errors, []);
-    console.log('PASS: cartoon throws and visible flights in normal/reduced motion, quotas, answers, cleanup.');
+    console.log('PASS: 1500ms throws in normal/reduced motion, no overlaps at 320–1280px, Danish counting/equations, quotas, answers, cleanup.');
   } finally {
     await browser.close();
   }
