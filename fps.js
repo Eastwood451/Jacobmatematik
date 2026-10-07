@@ -6,7 +6,7 @@ import { createGunnarProjectiles } from './fps-gunnar-projectiles.js?v=20260912-
 import { createErlingFoodProjectiles } from './fps-erling-food.js?v=20260919-remoulade1';
 import { createEnemyNavigator } from './fps-navigation.js?v=20260911-path1';
 import { createGunnarSlime } from './fps-slime.js?v=20260912-goo1';
-import { createTouchControls, touchInput, hasTouchControls } from './fps-touch.js?v=20260909-touch3';
+import { createTouchControls, touchInput, hasTouchControls } from './fps-touch.js?v=20261007-polish1';
 let touch = null;
 let gameTime = performance.now();
 const gameNow = () => gameTime;
@@ -19,7 +19,7 @@ import { createPlayerMovement } from './fps-movement.js?v=20260909-touch2';
 import { createDuctBuilder } from './fps-ducts.js?v=20260907-ducts1';
 import { createSchoolInteriorMaterials, applySchoolSurfaceUV } from './fps-interior.js?v=20260911-pastel1';
 import { createElseAttacks, ELSE_THROW_INTERVAL } from './fps-else-attacks.js?v=20260909-examdrop2';
-import { createOnlineGame } from './fps-online.js?v=20260914-gun1';
+import { createOnlineGame } from './fps-online.js?v=20261007-polish1';
 let multiplayer = null;
 import { createSchoolyard } from './fps-schoolyard.js?v=20260907-courtyard1';
 import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
@@ -1411,6 +1411,7 @@ multiplayer = createOnlineGame({
   ready: () => charactersReady && playerRulesReady,
   textures: () => ({ erling:erlingTexture, gunnar:gunnarTexture }),
   startAudio: () => { ensureMusic(); audioCtx?.resume(); },
+  enterPlay: enterControls,
 });
 
 
@@ -1420,4 +1421,5 @@ touch = createTouchControls({
   keydown: handleKeyDown,
   fire: firePencil,
   clearKeys: () => { clearMovementKeys(); multiplayer?.clearKeys(); },
+  resumeAudio: () => { ensureMusic(); audioCtx?.resume(); },
 });

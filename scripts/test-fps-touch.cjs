@@ -18,9 +18,9 @@ function setup(t,touch=true) {
   w.HTMLElement.prototype.setPointerCapture=function(){};
   const api=w.eval(`${source}\n({createTouchControls,touchInput})`);
   const camera=new THREE.PerspectiveCamera();
-  let playing=true,fired=0,cleared=0;
+  let playing=true,fired=0,cleared=0,resumed=0;
   const keys=[];
-  const controls=api.createTouchControls({camera,isPlaying:()=>playing,keydown:e=>keys.push(e.code),fire:()=>fired++,clearKeys:()=>cleared++});
+  const controls=api.createTouchControls({camera,isPlaying:()=>playing,keydown:e=>keys.push(e.code),fire:()=>fired++,clearKeys:()=>cleared++,resumeAudio:()=>resumed++});
   const get=selector=>w.document.querySelector(selector);
   get('#move-stick').getBoundingClientRect=()=>({left:0,top:0,width:100,height:100});
   get('#look-stick').getBoundingClientRect=()=>({left:600,top:100,width:100,height:100});
@@ -29,7 +29,7 @@ function setup(t,touch=true) {
     Object.assign(event,{pointerId:id,clientX:x,clientY:y});
     get(selector).dispatchEvent(event);
   };
-  return {w,api,camera,controls,get,keys,pointer,setPlaying:v=>playing=v,get fired(){return fired;},get cleared(){return cleared;}};
+  return {w,api,camera,controls,get,keys,pointer,setPlaying:v=>playing=v,get fired(){return fired;},get cleared(){return cleared;},get resumed(){return resumed;}};
 }
 
 test('independent fingers can move, look, answer and shoot; digit taps never shoot',t=>{
@@ -118,12 +118,11 @@ test('look joystick has a dead zone, frame-independent speed and bounded pitch',
   assert.ok(s.camera.rotation.x<=Math.PI/2-.05);
 });
 
-test('look joystick resets on cancellation, lost capture, pause, resize and disabled controls',t=>{
+test('look joystick resets on cancellation, lost capture, pause, blur and disabled controls',t=>{
   for(const stop of [
     s=>s.pointer('#look-stick','pointercancel',1),
     s=>s.pointer('#look-stick','lostpointercapture',1),
     s=>s.get('#touch-pause').click(),
-    s=>s.w.dispatchEvent(new s.w.Event('resize')),
     s=>s.w.dispatchEvent(new s.w.Event('blur')),
     s=>s.controls.setEnabled(false),
     s=>{s.setPlaying(false);s.controls.sync();},
@@ -139,6 +138,34 @@ test('look joystick resets on cancellation, lost capture, pause, resize and disa
   }
 });
 
+test('plain resize keeps sticks; orientation change resets',t=>{
+  const s=setup(t);
+  s.pointer('#move-stick','pointerdown',1,50,18);
+  s.pointer('#look-stick','pointerdown',2,682,150);
+  s.controls.update(.02);
+  assert.equal(s.api.touchInput.z,-1);
+  assert.ok(s.get('#look-stick span').style.transform);
+  // Same orientation (still landscape): chrome/keyboard resize must not wipe state.
+  s.w.innerWidth=820;s.w.innerHeight=380;s.w.dispatchEvent(new s.w.Event('resize'));
+  assert.equal(s.api.touchInput.z,-1);
+  assert.ok(s.get('#look-stick span').style.transform);
+  s.controls.update(.02);
+  // Portrait flip: full reset.
+  s.w.innerWidth=390;s.w.innerHeight=844;s.w.dispatchEvent(new s.w.Event('resize'));
+  assert.equal(s.api.touchInput.z,0);
+  assert.equal(s.get('#look-stick span').style.transform,'');
+  assert.equal(s.controls.active,false);
+});
+
+test('controls toggle is hidden while playing and shown on pause/lobby',t=>{
+  const s=setup(t);
+  assert.equal(s.get('#touch-controls-toggle').hidden,true); // actively playing
+  s.get('#touch-pause').click();
+  assert.equal(s.get('#touch-controls-toggle').hidden,false); // pause UI
+  s.setPlaying(false);s.controls.sync();
+  assert.equal(s.get('#touch-controls-toggle').hidden,false); // start/lobby
+});
+
 test('rotation, pause, blur and game over clear input; unsupported fullscreen is harmless',async t=>{
   const s=setup(t);
   s.pointer('#move-stick','pointerdown',1,50,18);
@@ -150,7 +177,7 @@ test('rotation, pause, blur and game over clear input; unsupported fullscreen is
   s.get('#touch-pause').click();assert.equal(s.controls.active,false);
   assert.equal(s.get('#touch-pause-overlay').hidden,false);
   s.w.document.documentElement.requestFullscreen=()=>Promise.reject(new Error('Unsupported'));
-  await s.controls.enter();assert.equal(s.controls.active,true);
+  await s.controls.enter();assert.equal(s.controls.active,true);assert.equal(s.resumed,1);
   s.w.dispatchEvent(new s.w.Event('blur'));assert.equal(s.controls.active,false);
   s.setPlaying(false);s.controls.sync();
   assert.equal(s.get('#touch-controls').hidden,true);
@@ -228,7 +255,7 @@ test('JacobE gets the courtyard on every solo reset; other users and online keep
     let opens=0,spawns=0;
     const context={URLSearchParams,location:{search:''},console,setTimeout(){},
       window:{JacobBackend:{configured:true,loadDatabase:async()=>({currentUserId:'player',database:{users:[{id:'player',username}]}})}},
-      gameVoice:{stop(){}},elseAttacks:{clear(){}},gunnarSlime:{clear(){}},gunnarProjectiles:{clear(){}},minigun:{reset(){}},minigunView:{hide(){}},minigunSound:{stop(){}},projectiles:[],schoolyardDoor:null,
+      gameVoice:{stop(){}},elseAttacks:{clear(){}},gunnarSlime:{clear(){}},gunnarProjectiles:{clear(){}},erlingFood:{clear(){}},minigun:{reset(){}},minigunView:{hide(){}},minigunSound:{stop(){}},captainHologram:{hide(){}},projectiles:[],schoolyardDoor:null,
       playerMovement:{reset(){}},camera:{rotation:{set(){}}},gameNow:()=>0,
       openSchoolyardDoor:()=>opens++,spawnWave:()=>spawns++,
     };
