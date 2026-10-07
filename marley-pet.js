@@ -1,8 +1,10 @@
-/* Marley living pet-scene: room + cutout; prefers WebM loops when present; PNG pose-swap is degraded fallback. */
+/* Marley living pet-scene: room + cutout; prefers WebM loops when present; PNG pose-swap is degraded fallback.
+ * Hero Logre = Jacob Imagine ~3s stand-wag loop (wag-loop.webm/mp4), NOT free frame→WebM.
+ * Soft-ffmpeg archive under assets/figurer/marley-premium/ remains Jacob FAIL — do not probe as default. */
 (() => {
   "use strict";
 
-  const CACHE = "20261007-premium1";
+  const CACHE = "20261007-logre1";
   const BASE = "assets/figurer/marley-pet/";
   const POSES = {
     stand: BASE + "stand.png?v=" + CACHE,
@@ -15,8 +17,9 @@
   };
   const CUTOUT = "assets/figurer/marley-cutout.png?v=" + CACHE;
   const SUNGLASSES = BASE + "sunglasses.png?v=" + CACHE;
-  // G&M Imagine loops first (wag-loop / walk-loop). Alias plan short names under assets/marley-premium/.
-  // Do NOT probe assets/figurer/marley-premium/* (soft-ffmpeg archive — Jacob FAIL).
+  // Hero: Jacob Imagine Logre (~3s stand-wag loop). Probe wag-loop.webm then .mp4 first.
+  // Alias plan short names under assets/marley-premium/. Soft-ffmpeg archive = FAIL (not default).
+  const WAG_STILL = BASE + "wag-loop-still.png?v=" + CACHE;
   const LOOP_CANDIDATES = {
     wag: [
       BASE + "wag-loop.webm",
@@ -208,6 +211,7 @@
       video.setAttribute("muted", "");
       video.setAttribute("aria-hidden", "true");
       video.hidden = true;
+      video.poster = WAG_STILL;
       video.onerror = () => {
         const key = video.dataset.clip;
         if (key && clips[key]) delete clips[key];
@@ -906,7 +910,7 @@
       state = "wag";
       let poseTimer = 0;
       setLabel("wag");
-      setSprite(POSES.stand);
+      setSprite(WAG_STILL);
       applyTransform();
       emit("wag");
 
@@ -965,7 +969,7 @@
             y = HOME.y;
             bob = 0;
             tilt = 0;
-            setSprite(POSES.stand);
+            setSprite(state === "wag" ? WAG_STILL : POSES.stand);
             setLabel(state === "wag" ? "wag" : state);
             applyTransform();
             emit(state === "celebrate" ? "smile" : state);
@@ -1024,7 +1028,7 @@
               if (disposed) return;
               pose = "stand";
               state = "wag";
-              setSprite(POSES.stand);
+              setSprite(WAG_STILL);
               setLabel("wag");
               applyTransform();
               emit("wag");
@@ -1132,6 +1136,7 @@
     PLAYLIST,
     POSES,
     CUTOUT,
+    WAG_STILL,
     CACHE,
     LOOP_CANDIDATES,
     resolveLoops

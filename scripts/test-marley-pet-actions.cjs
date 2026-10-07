@@ -165,7 +165,7 @@ function loadPet(reduced, fetchImpl) {
   const host = makeHost();
   const scene = await Scene.create(host, () => {});
 
-  assert.strictEqual(Scene.CACHE, "20261007-premium1", "CACHE premium1");
+  assert.strictEqual(Scene.CACHE, "20261007-logre1", "CACHE logre1");
   assert(/wag-a\.png/.test(Scene.POSES.wagA), "POSES.wagA");
   assert(/wag-b\.png/.test(Scene.POSES.wagB), "POSES.wagB");
 
@@ -229,8 +229,8 @@ function loadPet(reduced, fetchImpl) {
 
   // Video loops preferred when HEAD probe succeeds (G&M wag-loop / walk-loop)
   const okUrls = new Set([
-    "assets/figurer/marley-pet/wag-loop.webm?v=20261007-premium1",
-    "assets/figurer/marley-pet/walk-loop.webm?v=20261007-premium1"
+    "assets/figurer/marley-pet/wag-loop.webm?v=20261007-logre1",
+    "assets/figurer/marley-pet/walk-loop.webm?v=20261007-logre1"
   ]);
   const SceneV = loadPet(false, (url) =>
     Promise.resolve({ ok: okUrls.has(String(url).split("#")[0]) })
