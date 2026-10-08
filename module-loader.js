@@ -59,8 +59,8 @@
 
   const MODULES = {
     marley: {
-      css: ["marley.css?v=20261008-painted1"],
-      js: ["marley.js?v=20261008-painted1"],
+      css: ["marley.css?v=20261008-bee1"],
+      js: ["marley.js?v=20261008-bee1"],
       ready: () => !!window.MarleyMath,
     },
     "marley-addition": {
@@ -141,4 +141,3 @@
     modules: MODULES,
   });
 })();
-

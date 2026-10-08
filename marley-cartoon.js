@@ -1,7 +1,7 @@
 /* Complete drawn Marley performances, encoded as 60 fps films. */
 (() => {
   "use strict";
-  const CACHE = "20261008-painted1";
+  const CACHE = "20261008-bee1";
   const BASE = "assets/figurer/marley-cartoon/";
   const LABELS = {wag:"Marley logrer",smile:"Marley smiler",run:"Marley løber i cirkler",eat:"Marley spiser en godbid",bed:"Marley lægger sig i kurven",sleep:"Marley sover i kurven",bone:"Marley gumler på sit kødben",ball:"Marley leger med sin bold",skate:"Marley kører på skateboard"};
 
@@ -21,7 +21,7 @@
     room.append(...videos);
     host.replaceChildren(room);
     host.dataset.renderer = "cartoon";
-    let state = "wag", active = -1, version = 0, paused = false, disposed = false;
+    let state = "wag", active = -1, version = 0, paused = false, disposed = false, bee = false;
     let queuedSmile = false, pendingCleanup = null, restTimer = null, resting = false, raf = null;
     const wardrobe = window.MarleyWardrobe.create(room, name => { if (!paused) play(name); });
     function track() {
@@ -43,20 +43,20 @@
     }
     videos[0].classList.add("is-active");
 
-    function play(requested) {
+    function play(requested, resume = null) {
       if (disposed) return;
       const name = requested === "roam" ? "wag" : requested === "outfit" ? "smile" : requested;
       if (!LABELS[name]) return;
       clearTimeout(restTimer); resting = false;
       const clip = ({bone:"eat",ball:"run",skate:"run"})[name] || name;
       if (name === "smile" && state === "eat") { queuedSmile = true; return; }
-      if (name !== "smile") queuedSmile = false;
+      if (!resume && name !== "smile") queuedSmile = false;
       pendingCleanup?.(); pendingCleanup = null;
       const token = ++version;
       state = name;
       host.dataset.action = name;
       room.setAttribute("aria-label", LABELS[name]);
-      onChange(name);
+      if (!resume) onChange(name);
       const index = active === 0 ? 1 : 0;
       const next = videos[index];
       next.pause();
@@ -74,10 +74,16 @@
             if (i !== index) videos[i].pause();
           }
           active = index;
+          room.dataset.outfit = bee ? "bee" : "plain";
           delete host.dataset.loading;
           delete host.dataset.playbackError;
           if (paused) next.pause();
+          if (resume?.resting && name === "wag") {
+            resting = true;
+            if (!paused) rest();
+          }
         };
+        if (resume?.time && Number.isFinite(next.duration)) next.currentTime = Math.min(resume.time, Math.max(0, next.duration - .02));
         if (paused) { reveal(); return; }
         next.play().then(() => {
           if (typeof next.requestVideoFrameCallback === "function") next.requestVideoFrameCallback(reveal);
@@ -108,7 +114,8 @@
       next.dataset.action = name;
       next.dataset.clip = clip;
       host.dataset.loading = name;
-      next.src = BASE + clip + ".mp4?v=" + CACHE;
+      next.poster = BASE + (bee ? "bee/" : "") + "poster.webp?v=" + CACHE;
+      next.src = BASE + (bee ? "bee/" : "") + clip + ".mp4?v=" + CACHE;
       next.load();
     }
 
@@ -135,7 +142,18 @@
         else if (active >= 0) videos[active].play().catch(() => { paused = true; onChange(state); });
         return paused;
       },
-      setEquipment(value) { wardrobe.set(value); },
+      setEquipment(value) {
+        wardrobe.set(value);
+        const wearingBee = value?.body === "bee";
+        if (wearingBee === bee) return;
+        bee = wearingBee;
+        // Costume is painted into every whole-character performance. Continue
+        // the current action, including pauses and the quiet idle interval.
+        if (active >= 0 || host.dataset.loading) {
+          const current = videos[active];
+          play(state, {time: current?.currentTime || 0, resting});
+        }
+      },
       getState() { return state; },
       isPaused() { return paused; },
       destroy() {
@@ -148,4 +166,5 @@
   }
   window.MarleyCartoonScene = {create,CACHE};
 })();
+
 

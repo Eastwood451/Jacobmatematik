@@ -33,13 +33,25 @@ def room(size):
     d.line((int(.07*size),int(.12*size),int(.59*size),int(.12*size)),fill=(118,87,175),width=2)
     return np.asarray(wall,dtype=np.float32)
 
-def assemble(sheet, out, columns, rows, duration, loop, size, start=0, circle=False, hearts=False):
+def assemble(sheet, out, columns, rows, duration, loop, size, start=0, circle=False, hearts=False, grid_cells=False):
     source = Image.open(sheet).convert('RGBA')
     sw, sh = source.size
     pixels=np.asarray(source)
     component_count,labels,stats,centers=cv2.connectedComponentsWithStats((pixels[:,:,3]>30).astype('uint8'))
     figures=[(i,s) for i,s in enumerate(stats) if i and s[4]>2000]
     figures.sort(key=lambda p:(int((p[1][1]+p[1][3]/2)/(sh/rows)),p[1][0]))
+    if grid_cells:
+        # Separate complete drawings using their authored cells when fur tips touch.
+        labels=np.zeros((sh,sw),dtype=np.int32)
+        figures=[]
+        for row in range(rows):
+            for col in range(columns):
+                left,right=round(col*sw/columns),round((col+1)*sw/columns)
+                top,bottom=round(row*sh/rows),round((row+1)*sh/rows)
+                ys,xs=np.where(pixels[top:bottom,left:right,3]>30)
+                label=row*columns+col+1
+                labels[top:bottom,left:right][pixels[top:bottom,left:right,3]>30]=label
+                figures.append((label,np.array([left+xs.min(),top+ys.min(),xs.max()-xs.min()+1,ys.max()-ys.min()+1,len(xs)])))
     if len(figures)!=columns*rows:
         raise ValueError(f'Expected {columns*rows} separate whole figures, found {len(figures)}')
     cells=[]
@@ -137,5 +149,6 @@ if __name__=='__main__':
     p.add_argument('--columns',type=int,default=6);p.add_argument('--rows',type=int,default=4)
     p.add_argument('--duration',type=float,default=2);p.add_argument('--size',type=int,default=640)
     p.add_argument('--loop',action='store_true');p.add_argument('--circle',action='store_true');p.add_argument('--hearts',action='store_true')
-    p.add_argument('--start',type=int,default=0);args=p.parse_args()
+    p.add_argument('--start',type=int,default=0);p.add_argument('--grid-cells',action='store_true');args=p.parse_args()
     assemble(**vars(args))
+

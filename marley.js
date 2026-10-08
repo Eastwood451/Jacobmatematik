@@ -1,7 +1,7 @@
 (() => {
   "use strict";
   const KEY = "jacobmatematik-marley-jacob-v1";
-  const CACHE = "20261008-painted1";
+  const CACHE = "20261008-bee1";
   const items = [
     { id: "bee", name: "Humlebikostume", price: 20, icon: "🐝", slot: "body" },
     { id: "hat", name: "Festhat", price: 8, icon: "🎉", slot: "head" },
@@ -247,7 +247,7 @@
       scene?.setEquipment?.(data.equipped);
       if (interactive) { play(item.id); return; }
       // Show the newly fitted outfit.
-      if (!wasOn && (item.id === "glasses" || item.id === "hat" || item.id === "cap")) {
+      if (!wasOn && (item.id === "glasses" || item.id === "hat" || item.id === "cap" || item.id === "bee")) {
         if (item.id === "glasses") feedback = "Se! Marley har solbriller på! 😎";
         play("outfit");
         return;
@@ -268,4 +268,5 @@
 
   window.MarleyMath = { mount };
 })();
+
 

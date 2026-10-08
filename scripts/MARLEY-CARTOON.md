@@ -33,7 +33,14 @@ by the media `ended` event; basket transitions to sleep, other one-shot actions
 return to wagging. Pause freezes the video's own clock. A reward during chewing
 is queued until chewing finishes. Load failures retain the current visible film.
 
-Coins, purchases and local storage keys are unchanged. Existing illustrated
-equipment overlays are visible for standing/smile poses, and hidden during
-running, chewing and sleeping rather than floating at the wrong body position.
-The character films do not yet bake costumes into the fur or body drawings.
+Coins, purchases and local storage keys are unchanged. Caps, glasses and toys
+use the fitted wardrobe layer. The bee vest and wings are painted into all six
+complete-character performances in `assets/figurer/marley-cartoon/bee/`.
+Choosing or removing the bee costume switches between the dressed and plain
+films at the current playback time, preserving pauses, idle rests and queued
+chewing rewards. There is no bee SVG overlay.
+
+The five dressed source sheets are retained in `bee/sources/`. Rebuild using
+the commands above with `bee/` inserted before each source and output path.
+For the dressed smile sheet add `--grid-cells`: neighbouring fur tips touch,
+so the authored 4 × 4 grid separates the whole drawings for interpolation.
