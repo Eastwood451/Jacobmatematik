@@ -4,7 +4,13 @@
   const host=document.getElementById('stage'),T=window.THREE;
   let renderer;
   try { renderer=new T.WebGLRenderer({antialias:true,alpha:true}); }
-  catch(error){document.getElementById('loading').remove();document.getElementById('error').textContent='Denne browser kunne ikke starte 3D-visningen.';return;}
+  catch(error){
+    document.getElementById('loading').remove();
+    const still=document.createElement('img');still.src='assets/figurer/marley-3d-study.webp';still.alt='Render af 3D-prøven: Marley med kasket';still.style.cssText='width:100%;height:100%;object-fit:contain';host.prepend(still);
+    host.querySelector('.status').textContent='Stillbillede af 3D-prøven';
+    document.querySelectorAll('.controls button').forEach(b=>b.disabled=true);
+    document.getElementById('error').textContent='3D kan ikke starte i denne browser. Her vises en render af modellen.';return;
+  }
   renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.75));
   renderer.shadowMap.enabled=true;renderer.shadowMap.type=T.PCFSoftShadowMap;
   renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;
@@ -20,7 +26,9 @@
   const fur=material(0xc98447),furLight=material(0xe6ad6e),earFur=material(0xb8773c),cream=material(0xf5d5aa);
   const dark=material(0x281811,.34),white=material(0xfff3df,.3),iris=material(0x713f20,.25),pink=material(0xdf7483,.52);
   const cloth=material(0x526bc1,.98),hatMat=material(0x376ca8,.88),hatSeam=material(0x6797c4,.93),hatInside=material(0x193e67,.94);
-  const sphere=new T.SphereGeometry(1,32,24),curlGeo=new T.SphereGeometry(1,10,8);
+  const sphere=new T.SphereGeometry(1,32,24);
+  const curlPoints=Array.from({length:20},(_,i)=>{const a=i/19*7.1,r=.66-i/19*.37;return new T.Vector3(Math.cos(a)*r,.06*Math.sin(a*.65),Math.sin(a)*r);});
+  const curlGeo=new T.TubeGeometry(new T.CatmullRomCurve3(curlPoints),22,.26,6,false);
   function ellipsoid(parent,mat,pos,size){const m=new T.Mesh(sphere,mat);m.position.set(...pos);m.scale.set(...size);m.castShadow=m.receiveShadow=true;parent.add(m);return m;}
   function tube(parent,points,radius,mat){const m=new T.Mesh(new T.TubeGeometry(new T.CatmullRomCurve3(points.map(p=>new T.Vector3(...p))),40,radius,8,false),mat);m.castShadow=m.receiveShadow=true;parent.add(m);return m;}
   let seed=817;const random=()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296;};
@@ -55,7 +63,7 @@
   }
   const headPivot=new T.Group();headPivot.position.set(0,1.63,.06);body.add(headPivot);
   const head=new T.Group();head.position.y=.28;headPivot.add(head);
-  fluffy(head,[0,0,0],[.53,.49,.435],800,furLight,n=>!(n.z>.77&&n.y<.37&&n.y>-.36));
+  fluffy(head,[0,0,0],[.53,.49,.435],1100,furLight,n=>n.y<.4&&!(n.z>.77&&n.y<.37&&n.y>-.36));
   const crown=fluffy(head,[0,.27,-.035],[.43,.265,.35],360,furLight);
   const ears=[];
   for(const side of [-1,1]){
