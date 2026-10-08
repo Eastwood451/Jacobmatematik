@@ -24,6 +24,9 @@ async def main(force=False):
     with tempfile.TemporaryDirectory(prefix="erling-danish-audio-") as temporary:
         for line in manifest["lines"]:
             final = OUTPUT / f'{line["id"]}.mp3'
+            if line.get("generator"):
+                print(f"Skipping {final.name}: made by {line['generator']}", flush=True)
+                continue
             if final.exists() and not force:
                 print(f"Keeping {final.name}", flush=True)
                 continue

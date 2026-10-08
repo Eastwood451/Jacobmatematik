@@ -41,8 +41,8 @@
       "id": "erling-matematik-eksamen",
       "character": "erling",
       "text": "Jeg slapper din matematik-eksamen!",
-      "speak": "Jeg slæbber din matematik-eksamen!",
-      "v": "20261007-lyd1"
+      "generator": "scripts/generate_erling_slapper_audio.py",
+      "v": "20261008-slap1"
     },
     {
       "id": "erling-du-skal-vaere-et-nul",

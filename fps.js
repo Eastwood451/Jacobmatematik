@@ -13,7 +13,7 @@ const gameNow = () => gameTime;
 const inputReady = () => touch?.enabled ? touch.active : controls.isLocked;
 const enterControls = () => touch?.enabled ? void touch.enter() : controls.lock();
 import { createSchoolWindows } from './fps-windows.js?v=20260907-windows1';
-import { createGameVoicePlayer } from './fps-voice.js?v=20261007-lyd1';
+import { createGameVoicePlayer } from './fps-voice.js?v=20261008-slap1';
 const gameVoice = createGameVoicePlayer();
 import { createPlayerMovement } from './fps-movement.js?v=20260909-touch2';
 import { createDuctBuilder } from './fps-ducts.js?v=20260907-ducts1';
