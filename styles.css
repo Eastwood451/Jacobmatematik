@@ -802,14 +802,14 @@ button.lollipop-source-digit.dragging { opacity:.2; cursor:grabbing; animation:n
 /* Øbbe keeps his own row so the keyboard and matrix remain unobstructed. */
 .obbe-coach { display:flex; align-items:center; gap:16px; min-width:0; color:var(--ink); }
 .obbe-drill { margin:0 0 18px; padding:10px 18px; border:2px solid var(--ink); border-radius:18px; background:#f1ecd9; }
-.obbe-portrait { flex:0 0 105px; align-self:stretch; padding:0; overflow:hidden; border:2px solid var(--ink); border-radius:14px; background:white; cursor:pointer; touch-action:manipulation; }
+.obbe-portrait { flex:0 0 105px; align-self:stretch; padding:0; overflow:visible; border:0; border-radius:14px; background:transparent; cursor:pointer; touch-action:manipulation; }
 .obbe-portrait img { display:block; width:100%; height:100%; max-height:130px; object-fit:contain; }
 .obbe-portrait:focus-visible,.obbe-mute:focus-visible { outline:3px solid var(--purple); outline-offset:4px; }
 .obbe-message { min-width:0; flex:1; }
 .obbe-message>strong { font-size:16px; font-weight:900; }
 .obbe-bubble { position:relative; margin:7px 0; padding:10px 14px; border:2px solid var(--ink); border-radius:14px 14px 14px 3px; background:white; font-size:clamp(15px,1.6vw,21px); font-weight:800; line-height:1.3; overflow-wrap:anywhere; }
 .obbe-mute { padding:6px 10px; min-height:36px; border:1px solid #747861; border-radius:8px; background:#fff9; color:var(--ink); font:inherit; font-size:12px; font-weight:700; cursor:pointer; touch-action:manipulation; }
-.obbe-coach.is-speaking .obbe-portrait { box-shadow:0 0 0 3px #d9ae44; }
+.obbe-coach.is-speaking .obbe-portrait img { filter:drop-shadow(0 0 4px #d9ae44) drop-shadow(0 0 2px #d9ae44); }
 .login-drill-team { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,2.4fr) minmax(0,1fr); align-items:center; width:100%; max-width:660px; gap:20px; padding:8px 8px 20px; }
 .login-drill-team .character-frame { aspect-ratio:3/4; background:white; }
 .login-drill-team .character-frame img { object-fit:contain; }
