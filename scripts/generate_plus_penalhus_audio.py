@@ -27,7 +27,11 @@ async def main():
     OUTPUT.mkdir(parents=True, exist_ok=True)
     # Numeric cardinal input avoids the voice treating "Fem." as an abbreviation.
     lines = [(f"count-{n}", f"{n}!") for n in range(1, 19)]
-    lines += [(f"sum-{a}-{b}", f"{NUMBERS[a].capitalize()} plus {NUMBERS[b]} giver {NUMBERS[a+b]}.")
+    # Cardinal input avoids spelling the result "ti" as initials. Versioned
+    # filenames prevent playback of cached, mispronounced equations.
+    lines += [(f"sum-{a}-{b}-ti-v3", f"{a} plus {b} giver 10.")
+              if a + b == 10 else
+              (f"sum-{a}-{b}", f"{NUMBERS[a].capitalize()} plus {NUMBERS[b]} giver {NUMBERS[a+b]}.")
               for a in range(10) for b in range(10)]
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
     limit = asyncio.Semaphore(2)
