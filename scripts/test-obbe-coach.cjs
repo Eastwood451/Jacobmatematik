@@ -46,6 +46,6 @@ const root = path.resolve(__dirname, '..');
   Audio.prototype.play = () => Promise.reject(new Error('unsupported audio'));
   click('[data-obbe-shout]'); await flush(); await Promise.resolve(); assert.equal(spoken.length,1,'speech fallback');
   assert.match(coach.render(true),/Øbbe Øvdig/);
-  for(const clip of clips) assert.ok(fs.existsSync(path.join(root,clip.url)),`missing ${clip.url}`);
+  for(const clip of clips) assert.ok(fs.existsSync(path.join(root,clip.url.split("?")[0])),`missing ${clip.url}`);
   console.log('PASS: drill start/progress/completion, rerenders, throttle, no immediate repeats, mute persistence, navigation cancellation, Danish speech fallback and audio assets.');
 })();

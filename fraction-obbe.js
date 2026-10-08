@@ -44,7 +44,7 @@
       if (!audible || muted || doc.hidden || view.performance.now() - lastVoiceAt < 8000) return;
       stopVoice(); lastVoiceAt = view.performance.now();
       try {
-        const sound = new view.Audio(`assets/figurer/audio/obbe-${LINES[index][0]}.mp3`);
+        const sound = new view.Audio(`assets/figurer/audio/obbe-${LINES[index][0]}.mp3?v=20261007-lyd1`);
         sound.volume = .65; voice = sound;
         sound.play().catch(() => { if (voice === sound) stopVoice(); });
       } catch { /* The speech bubble is available even when playback is blocked. */ }

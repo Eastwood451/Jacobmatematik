@@ -3,7 +3,8 @@
 
   const LINES = [
     'Åhh hvor er det flot regnet!',
-    'Du er en regnechamp!'
+    // Spoken only (not displayed): phonetic spelling so Danish voices say the English "champ".
+    'Du er en regnetjæmp!'
   ];
   let lastIndex = -1;
 

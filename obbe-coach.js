@@ -79,7 +79,7 @@
       paint(true); window.speechSynthesis.speak(speech);
     };
     // Start within the click gesture so mobile browsers can unlock playback.
-    audio = new Audio(`assets/figurer/audio/obbe-${lines[index][0]}.mp3`);
+    audio = new Audio(`assets/figurer/audio/obbe-${lines[index][0]}.mp3?v=20261007-lyd1`);
     audio.volume = .8;
     audio.onended = done;
     audio.play().then(() => { if (token === playback) paint(true); }).catch(fallback);

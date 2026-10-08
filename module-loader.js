@@ -96,13 +96,13 @@
         "fraction-lesson.js?v=20260920-fractions-public",
         "fraction-simplify.js?v=20260918-fraction4-simplify",
         "fraction-add-subtract.js?v=20260920-fractions-public",
-        "fraction-obbe.js?v=20260919-obbe-fractions1",
+        "fraction-obbe.js?v=20261007-lyd1",
       ],
       ready: () => !!window.JacobFractionLesson && !!window.JacobFractionFinish,
     },
     "obbe-coach": {
       css: [],
-      js: ["obbe-coach.js?v=20260910-obbe1"],
+      js: ["obbe-coach.js?v=20261007-lyd1"],
       ready: () => !!window.ObbeCoach,
     },
     "fps-trial-entry": {
@@ -112,7 +112,7 @@
     },
     "dennis-audio": {
       css: [],
-      js: ["dennis-audio.js?v=20260904-dennis1"],
+      js: ["dennis-audio.js?v=20261007-lyd1"],
       ready: () => true,
     },
   };

@@ -19,7 +19,7 @@ LINES = [
     ("kom-nuuu", "Kom nuuu!"),
     ("10-mere", "10 mere!"),
     ("kaemp-for-det", "Kæmp for det!"),
-    ("smerte", "Smerte er svaghed, der forlader kroppen!"),
+    ("smerte", "Smerte... er svaghed, der forlader kroppen!"),  # pause so "er" is not heard as "af"
     ("den-der-oever", "Den der øver, vinder!"),
     ("igen", "Vi gør det ordentligt eller vi gør det IGEN!"),
     ("smaakage", "Ingen smerte, ingen småkage!"),
