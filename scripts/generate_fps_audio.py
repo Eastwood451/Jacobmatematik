@@ -31,7 +31,7 @@ async def main(force=False):
             raw = Path(temporary) / "voice.mp3"
             for attempt in range(3):
                 try:
-                    await edge_tts.Communicate(line["text"], **profile, volume="+8%").save(str(raw))
+                    await edge_tts.Communicate(line.get("speak", line["text"]), **profile, volume="+8%").save(str(raw))
                     break
                 except Exception:
                     if attempt == 2:

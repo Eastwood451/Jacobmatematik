@@ -48,7 +48,7 @@ function makeExamTexture() {
 
 function speakDumpedFallback() {
   if (!('speechSynthesis' in window)) return;
-  const utterance = new SpeechSynthesisUtterance('DUMPET!');
+  const utterance = new SpeechSynthesisUtterance('Dumpet!');
   utterance.lang = 'da-DK';
   utterance.rate = .72;
   utterance.pitch = .55;

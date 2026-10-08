@@ -31,7 +31,8 @@ async def main():
     for a in range(10):
         for b in range(10):
             suffix = '-ti-v3' if a + b == 10 else '-fem-v4' if a + b == 5 else ''
-            lines.append((f"sum-{a}-{b}{suffix}", f"{a} plus {b} giver {a+b}."))
+            right = 'nul,' if b == 0 else str(b)
+            lines.append((f"sum-{a}-{b}{suffix}", f"{a} plus {right} giver {a+b}."))
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
     limit = asyncio.Semaphore(2)
 
