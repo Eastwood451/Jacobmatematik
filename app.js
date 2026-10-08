@@ -123,7 +123,7 @@
     letter,
     word,
     image:`assets/letters/${file}`,
-    audio:`assets/letters/audio/${file.replace(/\.webp$/, ["L","N"].includes(letter) ? "-v2.mp3" : ".mp3")}`,
+    audio:`assets/letters/audio/${file.replace(/\.webp$/, ["L","N"].includes(letter) ? "-v2.mp3" : ".mp3")}${["E","J","L","O","Ø"].includes(letter) ? "?v=20261007-lyd1" : ""}`,
   }));
   const LETTER_KEYS = LETTER_ITEMS.map(item => item.letter);
   let activeLetterAudio = null;
@@ -135,7 +135,7 @@
     "assets/figurer/audio/erling-kloge-mennesker-er-dumme.mp3",
     "assets/figurer/audio/erling-jeg-kan-godt-jeg-gider-bare-ikke.mp3",
     "assets/figurer/audio/erling-det-er-dumt-at-oeve-sig.mp3",
-    "assets/figurer/audio/erling-jo-mindre-du-ved.mp3",
+    "assets/figurer/audio/erling-jo-mindre-du-ved.mp3?v=20261007-lyd1",
     "assets/figurer/audio/erling-jeg-hader-dem-der-kan.mp3",
     "assets/figurer/audio/erling-hold-op-med-at-oeve-dig.mp3",
     "assets/figurer/audio/erling-giv-nu-bare-op.mp3",
@@ -146,7 +146,7 @@
   let lastErlingAudioIndex = -1;
   const KAPTAJN_AUDIO_CLIP = "assets/figurer/audio/kaptajn-tyggegummi-og-regnestykker.mp3";
   let activeKaptajnAudio = null;
-  const LUIGI_AUDIO_CLIP = "assets/figurer/audio/luigi-nummer-treogtres.mp3";
+  const LUIGI_AUDIO_CLIP = "assets/figurer/audio/luigi-nummer-treogtres.mp3?v=20261007-lyd1";
   let activeLuigiAudio = null;
   const SPEED_DRILLS = new Set(["numbers", "addition", "subtractionDrill", "multiplication", "tableDrill", "divisionDrill"]);
   const LUIGI_SURPRISE_LINES = [

@@ -40,7 +40,9 @@
     {
       "id": "erling-matematik-eksamen",
       "character": "erling",
-      "text": "Jeg slapper din matematik-eksamen!"
+      "text": "Jeg slapper din matematik-eksamen!",
+      "speak": "Jeg slæbber din matematik-eksamen!",
+      "v": "20261007-lyd1"
     },
     {
       "id": "erling-du-skal-vaere-et-nul",
@@ -60,7 +62,9 @@
     {
       "id": "erling-jo-mindre-du-ved",
       "character": "erling",
-      "text": "Jo mindre du ved, jo bedre!"
+      "text": "Jo mindre du ved, jo bedre!",
+      "speak": "Jo mindre du véd, jo bedre!",
+      "v": "20261007-lyd1"
     },
     {
       "id": "erling-jeg-hader-dem-der-kan",
@@ -95,7 +99,9 @@
     {
       "id": "gunnar-in-the-house",
       "character": "gunnar",
-      "text": "Gunnar in the house!"
+      "text": "Gunnar in the house!",
+      "speak": "Gunnar inn de haus!",
+      "v": "20261007-lyd1"
     },
     {
       "id": "else-tid-til-eksamen",
@@ -129,6 +135,8 @@
       "id": "gunnar-buuh-du-er-en-straeber",
       "character": "gunnar",
       "text": "Buuh! Du er en stræber!",
+      "speak": "Buuuh! Du er en stræber!",
+      "v": "20261007-lyd1",
       "trigger": "defeat"
     },
     {
@@ -141,6 +149,7 @@
       "id": "gunnar-hvorfor-kun-efter-mig",
       "character": "gunnar",
       "text": "Hvorfor er du kun efter MIG?!",
+      "v": "20261007-lyd1",
       "trigger": "defeat"
     },
     {
@@ -156,7 +165,9 @@
     {
       "id": "kaptajn-stolt-unge-graeshoppe",
       "character": "captain",
-      "text": "Jeg er stolt af dig, unge græshoppe!"
+      "text": "Jeg er stolt af dig, unge græshoppe!",
+      "speak": "Jeg er stolt af dig, unge græs-hoppe!",
+      "v": "20261007-lyd1"
     }
   ]
 }

@@ -17,6 +17,8 @@ OUTPUT = ROOT / "assets" / "figurer" / "audio"
 VOICE = "it-IT-DiegoNeural"
 STEM = "nummer-treogtres"
 TEXT = "Jeg bager nummer treogtres med ni pepperoni og syv champignon."
+# Keep Luigi's Italian voice; commas + slower rate make "treogtres" and "med ni" intelligible.
+SPOKEN = "Jeg bager nummer treogtres, med ni pepperoni, og syv champignon."
 
 
 async def main() -> None:
@@ -24,9 +26,9 @@ async def main() -> None:
     raw = OUTPUT / f".luigi-{STEM}-raw.mp3"
     final = OUTPUT / f"luigi-{STEM}.mp3"
     await edge_tts.Communicate(
-        TEXT,
+        SPOKEN,
         VOICE,
-        rate="-4%",
+        rate="-15%",
         pitch="+3Hz",
         volume="+5%",
     ).save(str(raw))
