@@ -81,6 +81,8 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     await page.evaluate(() => {
       window.__speech = [];
       window.__nativePlay = HTMLMediaElement.prototype.play;
+      window.__nativeAudioContext = window.AudioContext;
+      window.AudioContext = window.webkitAudioContext = undefined;
       // Deterministic audio completion: test queue order, not CI audio hardware.
       HTMLMediaElement.prototype.play = function () {
         __speech.push(this.src.split('/').pop());
@@ -332,34 +334,85 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     assert.equal(await page.evaluate(() => __speech.at(-1)), 'sum-9-9.mp3');
     await verifyLayout();
     await page.evaluate(() => __dispose());
-    // Verify the shipped MP3s actually decode and finish in Chromium too.
+    // Force slow downloads, then measure clicks after the real MP3s have been
+    // decoded. Playback must not start another request or build a counting queue.
+    await page.route('**/assets/figurer/plus-penalhus/audio-v2/*.mp3', async route => {
+      await new Promise(resolve => setTimeout(resolve, 180));
+      const file = path.join(process.cwd(), new URL(route.request().url()).pathname);
+      return route.fulfill({ path: file });
+    });
     await page.evaluate(() => {
       window.__played = [];
-      window.__audioErrors = [];
-      HTMLMediaElement.prototype.play = function () {
-        const clip = this.src.split('/').pop();
-        this.addEventListener('ended', () => __played.push(clip), { once: true });
-        const promise = __nativePlay.call(this);
-        promise.catch(error => __audioErrors.push(error.message));
-        return promise;
+      window.__scheduled = [];
+      window.__voiceRequests = [];
+      window.AudioContext = __nativeAudioContext;
+      HTMLMediaElement.prototype.play = __nativePlay;
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = async (...args) => {
+        const response = await originalFetch(...args);
+        const clip = String(args[0]).split('/').pop();
+        __voiceRequests.push(clip);
+        const originalArrayBuffer = response.arrayBuffer.bind(response);
+        response.arrayBuffer = async () => {
+          const data = await originalArrayBuffer();
+          data.__testClip = clip;
+          return data;
+        };
+        return response;
       };
+      const originalDecode = AudioContext.prototype.decodeAudioData;
+      AudioContext.prototype.decodeAudioData = function (data) {
+        const clip = data.__testClip;
+        return originalDecode.call(this, data).then(buffer => {
+          buffer.__testClip = clip;
+          return buffer;
+        });
+      };
+      const originalCreate = AudioContext.prototype.createBufferSource;
+      AudioContext.prototype.createBufferSource = function () {
+        const source = originalCreate.call(this);
+        const originalStart = source.start.bind(source);
+        source.start = function (...args) {
+          const clip = this.buffer.__testClip;
+          __scheduled.push({ clip, delay: performance.now() - window.__lastSoundClick });
+          this.addEventListener('ended', () => __played.push(clip), { once: true });
+          return originalStart(...args);
+        };
+        return source;
+      };
+      document.getElementById('root').addEventListener('click', event => {
+        const button = event.target.closest('[data-pp-throw], [data-pp-item], [data-pp-submit]');
+        if (button && !button.disabled) window.__lastSoundClick = performance.now();
+      }, true);
       window.__dispose = PlusPenalhus.mount(document.getElementById('root'), {
         user: { id: 'guest', role: 'guest' }, tasks: [{ a: 5, b: 5 }],
+        onResult: () => new Promise(resolve => setTimeout(resolve, 300)),
       });
     });
+    assert.equal(await page.locator('[data-pp-throw="obbe"]').isDisabled(), true, 'Wait for downloaded, decoded sounds');
+    await page.waitForFunction(() => !document.querySelector('[data-pp-throw="obbe"]').disabled);
+    assert.equal(await page.evaluate(() => __voiceRequests.length), 19);
     await page.locator('[data-pp-throw="obbe"]').click();
     for (let i = 1; i < 5; i++) await page.locator('[data-pp-throw="obbe"]').click();
     for (let i = 0; i < 5; i++) await page.locator('[data-pp-throw="luigi"]').click();
     await page.waitForFunction(() => __played.includes('count-4.mp3') && __played.includes('count-5.mp3'));
     await page.waitForSelector('#pp-answer-panel:not([hidden])');
+    await page.evaluate(() => {
+      document.querySelector('[data-pp-item="1"]').click();
+      document.querySelector('[data-pp-item="2"]').click();
+    });
+    assert.deepEqual(await page.evaluate(() => __scheduled.slice(-2).map(s => s.clip)), ['count-1.mp3', 'count-2.mp3'], 'Rapid item taps play immediately rather than waiting in a queue');
     await page.locator('[data-pp-digit="1"]').click();
     await page.locator('[data-pp-digit="0"]').click();
     await page.locator('[data-pp-submit]').click();
     await page.waitForFunction(() => __played.includes('sum-5-5-ti-v3.mp3'));
-    assert.deepEqual(await page.evaluate(() => __audioErrors), []);
+    const audioLatency = await page.evaluate(() => __scheduled);
+    assert.ok(audioLatency.every(s => s.delay >= 0 && s.delay < 80), JSON.stringify(audioLatency));
+    assert.equal(await page.evaluate(() => __voiceRequests.length), 19, 'No audio downloads on throws, item taps or correct answers');
+    fs.writeFileSync(`${out}/audio-latency.json`, JSON.stringify(audioLatency, null, 2));
     await page.evaluate(() => __dispose());
     assert.deepEqual(errors, []);
-    console.log('PASS: half flight time with unchanged poses in normal/reduced motion, no overlaps at 320–1280px, Danish counting/equations, quotas, answers, cleanup.');
+    console.log('PASS: sound starts within 80ms of each click after slow preloading; no new requests or counting backlog; unchanged throws, layout, answers and cleanup.');
   } catch (error) {
     console.error('Browser errors:', errors);
     throw error;

@@ -112,21 +112,66 @@
     const activeFlights = new Map();
     let columns = 1;
     let rows = 1;
-    const voice = new Audio();
-    voice.preload = 'auto';
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    let audioContext = null;
+    try {
+      if (AudioContextClass) audioContext = new AudioContextClass({ latencyHint: 'interactive' });
+    } catch { /* Preloaded media elements also support older browsers. */ }
+    const voiceBuffers = new Map();
+    const voiceLoads = new Map();
+    const mediaVoices = new Map();
+    const audioRequests = new AbortController();
+    let soundsReady = false;
+    let voice = null;
+    let voiceSource = null;
     let voiceQueue = [];
     let currentVoice = null;
     let speaking = false;
     let voiceToken = 0;
+
+    function prepareVoice(clip) {
+      if (voiceLoads.has(clip)) return voiceLoads.get(clip);
+      const url = AUDIO_BASE + clip + '.mp3';
+      const prepareMedia = () => {
+        if (disposed) return;
+        const media = new Audio(url);
+        media.preload = 'auto';
+        media.load();
+        mediaVoices.set(clip, media);
+      };
+      const loading = audioContext
+        ? fetch(url, { signal: audioRequests.signal }).then(response => {
+          if (!response.ok) throw Error('Lydfilen kunne ikke hentes.');
+          return response.arrayBuffer();
+        }).then(data => audioContext.decodeAudioData(data))
+          .then(buffer => { if (!disposed) voiceBuffers.set(clip, buffer); })
+          .catch(prepareMedia)
+        : Promise.resolve(prepareMedia());
+      voiceLoads.set(clip, loading);
+      return loading;
+    }
+
+    function clearPlayingVoice() {
+      if (voiceSource) {
+        voiceSource.onended = null;
+        try { voiceSource.stop(); } catch { /* It may already have ended. */ }
+        voiceSource.disconnect();
+        voiceSource = null;
+      }
+      if (voice) {
+        voice.onended = voice.onerror = null;
+        voice.pause();
+        voice.currentTime = 0;
+        voice = null;
+      }
+    }
 
     function stopVoice() {
       voiceToken++;
       voiceQueue = [];
       currentVoice = null;
       speaking = false;
-      voice.pause();
-      voice.removeAttribute('src');
-      voice.load();
+      clearPlayingVoice();
     }
 
     function playNextVoice() {
@@ -134,23 +179,41 @@
       speaking = true;
       const token = ++voiceToken;
       currentVoice = voiceQueue.shift();
-      voice.src = AUDIO_BASE + currentVoice.clip + '.mp3';
-      voice.play().catch(() => {
-        if (token !== voiceToken || disposed) return;
-        voiceFinished();
-      });
+      const buffer = voiceBuffers.get(currentVoice.clip);
+      if (audioContext && buffer) {
+        // The file is already downloaded and decoded. Start in this click's
+        // gesture, without a network request or media-element warm-up.
+        if (audioContext.state !== 'running') {
+          audioContext.resume().catch(() => voiceFinished(token));
+        }
+        voiceSource = audioContext.createBufferSource();
+        voiceSource.buffer = buffer;
+        voiceSource.connect(audioContext.destination);
+        voiceSource.onended = () => voiceFinished(token);
+        voiceSource.start();
+      } else {
+        voice = mediaVoices.get(currentVoice.clip);
+        if (!voice) {
+          voiceFinished(token);
+          return;
+        }
+        voice.currentTime = 0;
+        voice.onended = voice.onerror = () => voiceFinished(token);
+        voice.play().catch(() => voiceFinished(token));
+      }
+      update();
     }
 
-    function voiceFinished() {
-      if (!speaking) return;
+    function voiceFinished(token) {
+      if (disposed || token !== voiceToken || !speaking) return;
       const finished = currentVoice;
       currentVoice = null;
       speaking = false;
+      clearPlayingVoice();
       finished?.onEnd?.();
       playNextVoice();
+      update();
     }
-    voice.addEventListener('ended', voiceFinished);
-    voice.addEventListener('error', voiceFinished);
 
     function say(clip, replace = false, onEnd = null) {
       if (replace) stopVoice();
@@ -170,7 +233,7 @@
 
     const task = () => sequence[index];
     const quotasFilled = () => obbeClicks >= task().a && luigiClicks >= task().b;
-    const editable = () => assetsReady && !disposed && !pending && phase === 'throw';
+    const editable = () => assetsReady && soundsReady && !disposed && !pending && phase === 'throw';
     const answerable = () => !disposed && !pending && phase === 'answer';
 
     root.innerHTML = `<section class="pp-game" aria-label="Plus-penalhus: Øbbe og Luigi">
@@ -327,7 +390,7 @@
 
     function maybeEnterAnswerPhase() {
       // Quotas count clicks; only the landed objects are available to count.
-      if (phase === 'throw' && quotasFilled() && items.length === task().a + task().b) {
+      if (assetsReady && soundsReady && phase === 'throw' && quotasFilled() && items.length === task().a + task().b) {
         enterAnswerPhase();
       }
     }
@@ -365,8 +428,8 @@
 
       const obbeBtn = $('[data-pp-throw="obbe"]');
       const luigiBtn = $('[data-pp-throw="luigi"]');
-      obbeBtn.disabled = lockedThrow || busy.obbe || obbeClicks >= task().a;
-      luigiBtn.disabled = lockedThrow || busy.luigi || luigiClicks >= task().b;
+      obbeBtn.disabled = lockedThrow || speaking || busy.obbe || obbeClicks >= task().a;
+      luigiBtn.disabled = lockedThrow || speaking || busy.luigi || luigiClicks >= task().b;
       obbeBtn.classList.toggle('pp-complete', obbeClicks >= task().a && !busy.obbe);
       luigiBtn.classList.toggle('pp-complete', luigiClicks >= task().b && !busy.luigi);
 
@@ -509,7 +572,7 @@
     }
 
     function throwItem(who) {
-      if (!editable() || busy[who]) return;
+      if (!editable() || speaking || busy[who]) return;
       const { a, b } = task();
       if (who === 'obbe' && obbeClicks >= a) return;
       if (who === 'luigi' && luigiClicks >= b) return;
@@ -568,7 +631,6 @@
       phase = 'done';
       solved++;
       const { a, b } = task();
-      say(`sum-${a}-${b}${a + b === 10 ? '-ti-v3' : ''}`, true);
       feedback(`Sådan! ${a} + ${b} = ${a + b}. Der er ${a + b} ting i alt!`, 'success');
       update();
       later(() => {
@@ -583,6 +645,8 @@
       const value = Number(answer);
       const { a, b } = task();
       const correct = value === a + b;
+      // Feedback follows the answer click, independent of saving its result.
+      if (correct) say(`sum-${a}-${b}${a + b === 10 ? '-ti-v3' : ''}`, true);
       const result = {
         topic: 'plusPenalhus',
         problem: `${a} + ${b}`,
@@ -649,8 +713,19 @@
       const { a, b } = task();
       $('#pp-a').textContent = a;
       $('#pp-b').textContent = b;
+      soundsReady = false;
       paintItems();
-      feedback(`Klik ${a} gange på Øbbe og ${b} gange på Luigi.`);
+      feedback('Øbbe og Luigi gør sig klar …');
+      const token = actionToken;
+      const clips = Array.from({ length: 18 }, (_, i) => `count-${i + 1}`);
+      clips.push(`sum-${a}-${b}${a + b === 10 ? '-ti-v3' : ''}`);
+      Promise.all(clips.map(prepareVoice)).then(() => {
+        if (disposed || token !== actionToken) return;
+        soundsReady = true;
+        update();
+        maybeEnterAnswerPhase();
+        if (assetsReady && phase === 'throw') feedback(`Klik ${a} gange på Øbbe og ${b} gange på Luigi.`);
+      });
     }
 
     function nextTask() {
@@ -676,7 +751,7 @@
         const item = items.find(i => i.id === Number(button.dataset.ppItem));
         if (item) {
           item.counted = !item.counted;
-          if (item.counted) say(`count-${items.filter(i => i.counted).length}`);
+          if (item.counted) say(`count-${items.filter(i => i.counted).length}`, true);
           paintItems();
         }
       }
@@ -720,7 +795,7 @@
       animationFrame = requestAnimationFrame(animate);
       update();
       maybeEnterAnswerPhase();
-      if (phase === 'throw') feedback(`Klik ${task().a} gange på Øbbe og ${task().b} gange på Luigi.`);
+      if (soundsReady && phase === 'throw') feedback(`Klik ${task().a} gange på Øbbe og ${task().b} gange på Luigi.`);
     }).catch(() => {
       if (!disposed) feedback('Animationerne kunne ikke hentes. Prøv at åbne øvelsen igen.', 'error');
     });
@@ -728,8 +803,10 @@
     return () => {
       disposed = true;
       stopVoice();
-      voice.removeEventListener('ended', voiceFinished);
-      voice.removeEventListener('error', voiceFinished);
+      audioRequests.abort();
+      mediaVoices.forEach(media => { media.pause(); media.removeAttribute('src'); media.load(); });
+      voiceBuffers.clear();
+      if (audioContext) void audioContext.close().catch(() => {});
       resizeObserver.disconnect();
       if (animationFrame != null) cancelAnimationFrame(animationFrame);
       activeFlights.clear();
