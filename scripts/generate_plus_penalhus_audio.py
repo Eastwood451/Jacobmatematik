@@ -20,19 +20,18 @@ import imageio_ffmpeg
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT = ROOT / "assets/figurer/plus-penalhus/audio-v2"
 VOICE = "da-DK-ChristelNeural"
-NUMBERS = "nul en to tre fire fem seks syv otte ni ti elleve tolv tretten fjorten femten seksten sytten atten".split()
 
 
 async def main():
     OUTPUT.mkdir(parents=True, exist_ok=True)
     # Numeric cardinal input avoids the voice treating "Fem." as an abbreviation.
     lines = [(f"count-{n}", f"{n}!") for n in range(1, 19)]
-    # Cardinal input avoids spelling the result "ti" as initials. Versioned
-    # filenames prevent playback of cached, mispronounced equations.
-    lines += [(f"sum-{a}-{b}-ti-v3", f"{a} plus {b} giver 10.")
-              if a + b == 10 else
-              (f"sum-{a}-{b}", f"{NUMBERS[a].capitalize()} plus {NUMBERS[b]} giver {NUMBERS[a+b]}.")
-              for a in range(10) for b in range(10)]
+    # Cardinal input prevents "fem." being expanded to "femininum" and
+    # "ti" being spelled as initials. Keep the complete utterance intact.
+    for a in range(10):
+        for b in range(10):
+            suffix = '-ti-v3' if a + b == 10 else '-fem-v4' if a + b == 5 else ''
+            lines.append((f"sum-{a}-{b}{suffix}", f"{a} plus {b} giver {a+b}."))
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
     limit = asyncio.Semaphore(2)
 

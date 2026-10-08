@@ -37,7 +37,7 @@ for (const clip of [
   ...Array.from({ length: 18 }, (_, i) => `count-${i + 1}`),
   ...Array.from({ length: 100 }, (_, i) => {
     const a = Math.floor(i / 10), b = i % 10;
-    return `sum-${a}-${b}${a + b === 10 ? '-ti-v3' : ''}`;
+    return `sum-${a}-${b}${a + b === 10 ? '-ti-v3' : a + b === 5 ? '-fem-v4' : ''}`;
   }),
 ]) {
   const file = path.join('assets/figurer/plus-penalhus/audio-v2', `${clip}.mp3`);
@@ -203,7 +203,7 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     await page.waitForSelector('[data-pp-next]:visible');
     assert.equal(await page.evaluate(() => __results[1].correct), true);
     assert.equal(await page.evaluate(() => __results[1].topic), 'plusPenalhus');
-    assert.equal(await page.evaluate(() => __speech.at(-1)), 'sum-2-3.mp3');
+    assert.equal(await page.evaluate(() => __speech.at(-1)), 'sum-2-3-fem-v4.mp3');
     await verifyLayout();
     await page.screenshot({ path: `${out}/desktop-done.png`, fullPage: true });
     await page.locator('[data-pp-next]').click();
@@ -385,7 +385,7 @@ try { playwright = require('playwright'); } catch { playwright = null; }
         if (button && !button.disabled) window.__lastSoundClick = performance.now();
       }, true);
       window.__dispose = PlusPenalhus.mount(document.getElementById('root'), {
-        user: { id: 'guest', role: 'guest' }, tasks: [{ a: 5, b: 5 }],
+        user: { id: 'guest', role: 'guest' }, tasks: [{ a: 5, b: 5 }, { a: 2, b: 3 }],
         onResult: () => new Promise(resolve => setTimeout(resolve, 300)),
       });
     });
@@ -406,9 +406,19 @@ try { playwright = require('playwright'); } catch { playwright = null; }
     await page.locator('[data-pp-digit="0"]').click();
     await page.locator('[data-pp-submit]').click();
     await page.waitForFunction(() => __played.includes('sum-5-5-ti-v3.mp3'));
+    assert.equal(await page.evaluate(() => __voiceRequests.length), 19, 'First task plays entirely from decoded clips');
+    await page.locator('[data-pp-next]').click();
+    await page.waitForFunction(() => !document.querySelector('[data-pp-throw="obbe"]').disabled);
+    assert.equal(await page.evaluate(() => __voiceRequests.length), 20, 'Only the next equation needs preparation');
+    for (let i = 0; i < 2; i++) await page.locator('[data-pp-throw="obbe"]').click();
+    for (let i = 0; i < 3; i++) await page.locator('[data-pp-throw="luigi"]').click();
+    await page.waitForSelector('#pp-answer-panel:not([hidden])');
+    await page.locator('[data-pp-digit="5"]').click();
+    await page.locator('[data-pp-submit]').click();
+    await page.waitForFunction(() => __played.includes('sum-2-3-fem-v4.mp3'));
     const audioLatency = await page.evaluate(() => __scheduled);
     assert.ok(audioLatency.every(s => s.delay >= 0 && s.delay < 80), JSON.stringify(audioLatency));
-    assert.equal(await page.evaluate(() => __voiceRequests.length), 19, 'No audio downloads on throws, item taps or correct answers');
+    assert.equal(await page.evaluate(() => __voiceRequests.length), 20, 'No audio downloads on throws, item taps or correct answers');
     fs.writeFileSync(`${out}/audio-latency.json`, JSON.stringify(audioLatency, null, 2));
     await page.evaluate(() => __dispose());
     assert.deepEqual(errors, []);

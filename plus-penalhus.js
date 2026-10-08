@@ -38,6 +38,10 @@
   const ORIGINAL_THROW_MS = 1500;
   const FLIGHT_SCALE = .5; // Only airborne time changes; character poses keep their tempo.
   const AUDIO_BASE = 'assets/figurer/plus-penalhus/audio-v2/';
+  function equationClip(a, b) {
+    const suffix = a + b === 10 ? '-ti-v3' : a + b === 5 ? '-fem-v4' : '';
+    return `sum-${a}-${b}${suffix}`;
+  }
   const CEL_ASSETS = {
     obbe: 'assets/figurer/plus-penalhus/obbe-cartoon-v5.webp',
     luigi: 'assets/figurer/plus-penalhus/luigi-cartoon-v5.webp',
@@ -646,7 +650,7 @@
       const { a, b } = task();
       const correct = value === a + b;
       // Feedback follows the answer click, independent of saving its result.
-      if (correct) say(`sum-${a}-${b}${a + b === 10 ? '-ti-v3' : ''}`, true);
+      if (correct) say(equationClip(a, b), true);
       const result = {
         topic: 'plusPenalhus',
         problem: `${a} + ${b}`,
@@ -718,7 +722,7 @@
       feedback('Øbbe og Luigi gør sig klar …');
       const token = actionToken;
       const clips = Array.from({ length: 18 }, (_, i) => `count-${i + 1}`);
-      clips.push(`sum-${a}-${b}${a + b === 10 ? '-ti-v3' : ''}`);
+      clips.push(equationClip(a, b));
       Promise.all(clips.map(prepareVoice)).then(() => {
         if (disposed || token !== actionToken) return;
         soundsReady = true;

@@ -70,7 +70,7 @@
     },
     "plus-penalhus": {
       css: ["plus-penalhus.css?v=20261008-stationery1"],
-      js: ["plus-penalhus.js?v=20261008-instant-audio1"],
+      js: ["plus-penalhus.js?v=20261008-fem-v4"],
       ready: () => !!window.PlusPenalhus,
     },
     "ten-friends": {
