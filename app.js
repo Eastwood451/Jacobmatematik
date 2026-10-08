@@ -146,7 +146,7 @@
   let lastErlingAudioIndex = -1;
   const KAPTAJN_AUDIO_CLIP = "assets/figurer/audio/kaptajn-tyggegummi-og-regnestykker.mp3";
   let activeKaptajnAudio = null;
-  const LUIGI_AUDIO_CLIP = "assets/figurer/audio/luigi-nummer-treogtres.mp3?v=20261008-luigi63";
+  const LUIGI_AUDIO_CLIP = "assets/figurer/audio/luigi-nummer-treogtres.mp3?v=20261008-luigi63b";
   let activeLuigiAudio = null;
   const SPEED_DRILLS = new Set(["numbers", "addition", "subtractionDrill", "multiplication", "tableDrill", "divisionDrill"]);
   const LUIGI_SURPRISE_LINES = [
