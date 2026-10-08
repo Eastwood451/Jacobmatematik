@@ -4,16 +4,24 @@
 
   const isEnabled = user => !!user?.id && ['student', 'teacher', 'guest'].includes(user.role);
 
+  // Draw the actual stationery, rather than unrelated emoji stand-ins.
+  function stationeryIcon(drawing) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false"><g stroke="#302044" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${drawing}</g></svg>`;
+  }
+
   const ITEM_KINDS = [
-    { id: 'blyant', label: 'Blyant', emoji: '✏️' },
-    { id: 'viskelader', label: 'Viskelæder', emoji: '🧽' },
-    { id: 'spidser', label: 'Blyantspidser', emoji: '🔶' },
-    { id: 'farvekridt', label: 'Farvekridt', emoji: '🖍️' },
-    { id: 'lineal', label: 'Lineal', emoji: '📏' },
-    { id: 'saks', label: 'Saks', emoji: '✂️' },
-    { id: 'limstift', label: 'Limstift', emoji: '🧴' },
-    { id: 'tusch', label: 'Tusch', emoji: '🖊️' },
-  ];
+    { id: 'blyant', label: 'Blyant', drawing: '<path fill="#ffc34d" d="M13 43 43 13 51 21 21 51Z"/><path fill="#f9d7ad" d="m13 43-4 12 12-4Z"/><path fill="#302044" d="m9 55 2-6 4 4Z"/><path fill="#ff86a8" d="m43 13 5-5q2-2 4 0l4 4q2 2 0 4l-5 5Z"/><path fill="none" d="m18 47 29-29"/>' },
+    { id: 'viskelader', label: 'Viskelæder', drawing: '<path fill="#ff99b5" d="M9 37 27 17q2-2 5 0l23 17q2 2 0 4L37 55q-2 2-5 0L9 41Z"/><path fill="#c9bcf2" d="m38 22 17 12q2 2 0 4L37 55q-2 2-5 0L20 46Z"/><path fill="none" d="m9 37 23 17 23-20"/>' },
+    { id: 'spidser', label: 'Blyantspidser', drawing: '<path fill="#58bfca" d="M10 23 45 14 55 23v27l-35 8-10-9Z"/><path fill="#a5e5e9" d="m10 23 10 9 35-9-10-9Z"/><path fill="none" d="M20 32v26"/><path fill="#dce3ed" d="m20 24 24-6 6 5-24 6Z"/><circle cx="35" cy="23" r="2" fill="#71849a"/><ellipse cx="37" cy="42" rx="9" ry="8" fill="#302044"/><ellipse cx="38" cy="41" rx="4" ry="4" fill="#c8d4de"/>' },
+    { id: 'farveblyant', label: 'Farveblyant', drawing: '<path fill="#f9755f" d="M13 43 45 11 53 19 21 51Z"/><path fill="#f9d7ad" d="m13 43-4 12 12-4Z"/><path fill="#e44343" d="m9 55 2-6 4 4Z"/><path fill="none" d="m18 47 31-31"/><path fill="#ffb59d" d="m45 11 3-3 8 8-3 3Z"/>' },
+    { id: 'lineal', label: 'Lineal', drawing: '<rect x="6" y="21" width="52" height="23" rx="3" fill="#ffd86b" transform="rotate(-20 32 32)"/><g transform="rotate(-20 32 32)" fill="none"><path d="M13 22v12m7-12v7m7-7v12m7-12v7m7-7v12m7-12v7"/></g>' },
+    { id: 'saks', label: 'Saks', drawing: '<path fill="#dbe4ed" d="m25 35 4-7L51 9q3-2 2 2L37 38Z"/><path fill="#c0cbd9" d="m32 36-5-7L12 9q-2-3-3 1l11 28Z"/><path fill="none" stroke="#54bfc3" stroke-width="7" d="M25 38c-15-12-23 11-10 16 8 3 17-6 10-16Zm8 0c15-12 23 11 10 16-8 3-17-6-10-16Z"/><circle cx="29" cy="34" r="3" fill="#71849a"/>' },
+    { id: 'limstift', label: 'Limstift', drawing: '<rect x="21" y="22" width="22" height="32" rx="3" fill="#ffcb4f"/><rect x="20" y="9" width="24" height="17" rx="4" fill="#9168ca"/><rect x="22" y="32" width="20" height="13" rx="1" fill="#fff7de"/><path fill="none" d="M27 37h10m-8 4h6"/><rect x="20" y="50" width="24" height="7" rx="2" fill="#9168ca"/>' },
+    { id: 'tusch', label: 'Tusch', drawing: '<g transform="rotate(35 32 32)"><rect x="26" y="23" width="12" height="29" rx="2" fill="#a8e4c8"/><path fill="#3aaf83" d="M25 10q0-3 3-3h8q3 0 3 3v17H25Z"/><path fill="none" d="M38 11h4v12"/><path fill="#3aaf83" d="M26 48h12v7H26Z"/><path fill="none" d="M29 32v9"/></g>' },
+    { id: 'passer', label: 'Passer', drawing: '<path fill="none" stroke="#8195ac" stroke-width="6" d="m31 22-15 31m17-31 15 31"/><path fill="#302044" d="m16 51-3 8m35-8 3 8"/><path fill="none" d="M22 37h20"/><rect x="28" y="5" width="8" height="12" rx="2" fill="#8b70d0"/><circle cx="32" cy="21" r="7" fill="#a78be8"/><circle cx="32" cy="21" r="2" fill="#fff"/>' },
+    { id: 'lommeregner', label: 'Lommeregner', drawing: '<rect x="14" y="6" width="36" height="52" rx="5" fill="#627a9e"/><rect x="20" y="12" width="24" height="12" rx="2" fill="#d1efce"/><path fill="none" d="M33 17h6v4h-6Z"/><g fill="#fff2d7"><rect x="20" y="30" width="6" height="6" rx="1"/><rect x="29" y="30" width="6" height="6" rx="1"/><rect x="20" y="39" width="6" height="6" rx="1"/><rect x="29" y="39" width="6" height="6" rx="1"/><rect x="20" y="48" width="15" height="5" rx="1"/></g><g fill="#ffb655"><rect x="38" y="30" width="6" height="6" rx="1"/><rect x="38" y="39" width="6" height="14" rx="1"/></g>' },
+    { id: 'vinkelmaler', label: 'Vinkelmåler', drawing: '<path fill="#a6dfeebf" d="M5 49a27 27 0 0 1 54 0Z"/><path fill="#fffaf0" d="M20 49a12 12 0 0 1 24 0Z"/><path fill="none" d="M9 46h6m-3-10 5 3m3-11 3 5m9-9v7m12-3-3 5m11 3-5 3m8 7h-6M32 46v6"/>' },
+  ].map(({ drawing, ...kind }) => ({ ...kind, icon: stationeryIcon(drawing) }));
 
   // Every cel is a complete drawing of the original character, not a body-part rig.
   const CEL_COLS = 4;
@@ -67,7 +75,7 @@
       who,
       kind: kind.id,
       label: kind.label,
-      emoji: kind.emoji,
+      icon: kind.icon,
       counted: false,
     };
   }
@@ -417,7 +425,7 @@
         const pos = itemPosition(item);
         const landing = item.id === landingId ? ' pp-landing' : '';
         const counted = item.counted ? ' pp-counted' : '';
-        return `<button type="button" class="pp-item pp-item-${item.who}${counted}${landing}" data-pp-item="${item.id}" style="left:${pos.left}%;top:${pos.top}%" aria-pressed="${item.counted ? 'true' : 'false'}" aria-label="${item.label} fra ${item.who === 'obbe' ? 'Øbbe' : 'Luigi'}${item.counted ? ', talt' : ''}"><span class="pp-item-emoji" aria-hidden="true">${item.emoji}</span></button>`;
+        return `<button type="button" class="pp-item pp-item-${item.who}${counted}${landing}" data-pp-item="${item.id}" style="left:${pos.left}%;top:${pos.top}%" aria-pressed="${item.counted ? 'true' : 'false'}" aria-label="${item.label} fra ${item.who === 'obbe' ? 'Øbbe' : 'Luigi'}${item.counted ? ', talt' : ''}"><span class="pp-item-icon" aria-hidden="true">${item.icon}</span></button>`;
       }).join('');
       update();
     }
@@ -464,7 +472,7 @@
       const fly = document.createElement('div');
       fly.className = `pp-flight pp-flight-${who}`;
       fly.dataset.ppFlight = item.id;
-      fly.innerHTML = `<span aria-hidden="true">${item.emoji}</span>`;
+      fly.innerHTML = `<span aria-hidden="true">${item.icon}</span>`;
       fly.style.left = `${startX}px`;
       fly.style.top = `${startY}px`;
       document.body.append(fly);
@@ -476,11 +484,11 @@
       later(onLand, duration);
     }
 
-    function setHandItem(charBtn, emoji) {
+    function setHandItem(charBtn, icon) {
       const grip = charBtn.querySelector('[data-pp-hand]');
       if (!grip) return;
-      if (emoji) {
-        grip.innerHTML = `<span class="pp-hand-emoji" aria-hidden="true">${emoji}</span>`;
+      if (icon) {
+        grip.innerHTML = `<span class="pp-hand-icon" aria-hidden="true">${icon}</span>`;
         grip.classList.add('pp-hand-loaded');
       } else {
         grip.innerHTML = '';
@@ -488,12 +496,12 @@
       }
     }
 
-    function runThrowPose(charBtn, who, itemEmoji, onRelease, celMs) {
+    function runThrowPose(charBtn, who, itemIcon, onRelease, celMs) {
       const actor = actors[who];
       busy[who] = true;
       clearThrowClasses(charBtn);
       charBtn.classList.add('pp-busy');
-      setHandItem(charBtn, itemEmoji);
+      setHandItem(charBtn, itemIcon);
       actor.throw = { start: performance.now(), celMs,
         released: false, onRelease };
       paintCel(who, THROW_CELS[who][0]);
@@ -541,7 +549,7 @@
         maybeEnterAnswerPhase();
       };
 
-      runThrowPose(charBtn, who, item.emoji, () => {
+      runThrowPose(charBtn, who, item.icon, () => {
         if (disposed || token !== actionToken || items.includes(item)) return;
         item.released = true;
         spawnFlight(who, item, charBtn, land);
@@ -560,7 +568,7 @@
       phase = 'done';
       solved++;
       const { a, b } = task();
-      say(`sum-${a}-${b}`, true);
+      say(`sum-${a}-${b}${a + b === 10 ? '-ti-v3' : ''}`, true);
       feedback(`Sådan! ${a} + ${b} = ${a + b}. Der er ${a + b} ting i alt!`, 'success');
       update();
       later(() => {
