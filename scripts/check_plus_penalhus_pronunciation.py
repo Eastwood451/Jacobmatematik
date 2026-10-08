@@ -41,6 +41,11 @@ report["previous_counts"] = read_audio([old / f"count-{n}.mp3" for n in [4, 5, 4
 # There is no text prompt or expected transcript supplied to recognition.
 report["new_counts"] = read_audio([new / f"count-{n}.mp3" for n in range(1, 10)])
 report["new_equation"] = read_audio([new / "sum-5-3.mp3"] * 2)
+report["previous_result_five"] = read_audio([new / "sum-2-3.mp3"] * 2)
+report["result_five"] = {
+    f"{a}+{5-a}": read_audio([new / f"sum-{a}-{5-a}-fem-v4.mp3"] * 2)
+    for a in range(6)
+}
 report["result_ten"] = {
     f"{a}+{10-a}": read_audio([new / f"sum-{a}-{10-a}-ti-v3.mp3"] * 2)
     for a in range(1, 10)
@@ -57,4 +62,7 @@ for word, digit in [("fem", "5"), ("tre", "3"), ("otte", "8")]:
     assert re.search(rf"\b({word}|{digit})\b", equation), equation
 for task, transcript in report["result_ten"].items():
     assert re.search(r"\bgive[rt]\s+(ti|10)\b", transcript.lower()), (task, transcript)
-print("PASS: Danish speech recognition identifies fire, fem, 5 + 3 = 8 and all nine results of ten.")
+for task, transcript in report["result_five"].items():
+    assert re.search(r"\bgive[rt]\s+(fem|5)\b", transcript.lower()), (task, transcript)
+    assert not re.search(r"feminin|feminim", transcript.lower()), (task, transcript)
+print("PASS: Danish speech recognition identifies fire, fem, 5 + 3 = 8, all six results of five and all nine results of ten.")
