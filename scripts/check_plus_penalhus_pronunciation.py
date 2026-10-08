@@ -41,6 +41,10 @@ report["previous_counts"] = read_audio([old / f"count-{n}.mp3" for n in [4, 5, 4
 # There is no text prompt or expected transcript supplied to recognition.
 report["new_counts"] = read_audio([new / f"count-{n}.mp3" for n in range(1, 10)])
 report["new_equation"] = read_audio([new / "sum-5-3.mp3"] * 2)
+report["result_ten"] = {
+    f"{a}+{10-a}": read_audio([new / f"sum-{a}-{10-a}-ti-v3.mp3"] * 2)
+    for a in range(1, 10)
+}
 (OUT / "pronunciation.json").write_text(json.dumps(report, ensure_ascii=False, indent=2))
 print(json.dumps(report, ensure_ascii=False, indent=2), flush=True)
 # ASR may render spoken numbers as digits. Require both problem counts and all
@@ -51,4 +55,6 @@ assert re.search(r"\b(fem|5)\b", counts), counts
 equation = report["new_equation"].lower()
 for word, digit in [("fem", "5"), ("tre", "3"), ("otte", "8")]:
     assert re.search(rf"\b({word}|{digit})\b", equation), equation
-print("PASS: independent Danish speech recognition identifies fire, fem and 5 + 3 = 8.")
+for task, transcript in report["result_ten"].items():
+    assert re.search(r"\bgive[rt]\s+(ti|10)\b", transcript.lower()), (task, transcript)
+print("PASS: Danish speech recognition identifies fire, fem, 5 + 3 = 8 and all nine results of ten.")

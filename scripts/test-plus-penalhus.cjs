@@ -35,7 +35,10 @@ for (const who of ['obbe', 'luigi']) {
 assert.doesNotMatch(source, /pp-puppet|pp-arm-svg|OBBE_POSES/);
 for (const clip of [
   ...Array.from({ length: 18 }, (_, i) => `count-${i + 1}`),
-  ...Array.from({ length: 100 }, (_, i) => `sum-${Math.floor(i / 10)}-${i % 10}`),
+  ...Array.from({ length: 100 }, (_, i) => {
+    const a = Math.floor(i / 10), b = i % 10;
+    return `sum-${a}-${b}${a + b === 10 ? '-ti-v3' : ''}`;
+  }),
 ]) {
   const file = path.join('assets/figurer/plus-penalhus/audio-v2', `${clip}.mp3`);
   assert.ok(fs.existsSync(file) && fs.statSync(file).size > 1000, `${clip} must ship with the game`);
@@ -341,17 +344,18 @@ try { playwright = require('playwright'); } catch { playwright = null; }
         return promise;
       };
       window.__dispose = PlusPenalhus.mount(document.getElementById('root'), {
-        user: { id: 'guest', role: 'guest' }, tasks: [{ a: 5, b: 3 }],
+        user: { id: 'guest', role: 'guest' }, tasks: [{ a: 5, b: 5 }],
       });
     });
     await page.locator('[data-pp-throw="obbe"]').click();
     for (let i = 1; i < 5; i++) await page.locator('[data-pp-throw="obbe"]').click();
-    for (let i = 0; i < 3; i++) await page.locator('[data-pp-throw="luigi"]').click();
+    for (let i = 0; i < 5; i++) await page.locator('[data-pp-throw="luigi"]').click();
     await page.waitForFunction(() => __played.includes('count-4.mp3') && __played.includes('count-5.mp3'));
     await page.waitForSelector('#pp-answer-panel:not([hidden])');
-    await page.locator('[data-pp-digit="8"]').click();
+    await page.locator('[data-pp-digit="1"]').click();
+    await page.locator('[data-pp-digit="0"]').click();
     await page.locator('[data-pp-submit]').click();
-    await page.waitForFunction(() => __played.includes('sum-5-3.mp3'));
+    await page.waitForFunction(() => __played.includes('sum-5-5-ti-v3.mp3'));
     assert.deepEqual(await page.evaluate(() => __audioErrors), []);
     await page.evaluate(() => __dispose());
     assert.deepEqual(errors, []);
