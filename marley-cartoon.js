@@ -1,7 +1,7 @@
 /* Complete drawn Marley performances, encoded as 60 fps films. */
 (() => {
   "use strict";
-  const CACHE = "20261007-calm-wardrobe1";
+  const CACHE = "20261008-painted1";
   const BASE = "assets/figurer/marley-cartoon/";
   const LABELS = {wag:"Marley logrer",smile:"Marley smiler",run:"Marley løber i cirkler",eat:"Marley spiser en godbid",bed:"Marley lægger sig i kurven",sleep:"Marley sover i kurven",bone:"Marley gumler på sit kødben",ball:"Marley leger med sin bold",skate:"Marley kører på skateboard"};
 

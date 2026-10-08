@@ -2,10 +2,12 @@
 (() => {
   'use strict';
   const svg = (body, box='-100 -70 200 140') => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}" aria-hidden="true" fill="none" stroke="#30203d" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">${body}</svg>`;
+  // Transparent painted atlas: use tight viewBoxes without resampling the artwork.
+  const painted = box => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${box}" aria-hidden="true"><image href="assets/figurer/marley-cartoon/wardrobe-painted.png?v=20261008-painted1" width="1280" height="1280"/></svg>`;
   const art = {
-    cap: svg('<path d="M-80 23 Q-83-47-12-51 Q51-53 65 16Z" fill="#369dcc"/><path d="M-12-50Q-37-18-27 22M-12-50Q22-24 22 19" stroke="#17618d"/><path d="M-82 20 Q-15 0 65 15 Q101 19 92 33 Q50 49-10 29Z" fill="#1676aa"/><path d="M-77 22Q-27 11 8 18" stroke="#8fdef3"/><ellipse cx="-11" cy="-51" rx="8" ry="5" fill="#ffd362"/><path d="M-29-22l7-8 7 8-3 12h-9Z" fill="#ffe18b" stroke-width="2"/>'),
+    cap: painted('150 65 1010 625'),
     hat: svg('<path d="M-52 27 L0-65 51 28Z" fill="#d865aa"/><path d="M-39 5l62-34M-21-29l56 32" stroke="#ffe17d" stroke-width="10"/><ellipse cy="27" rx="56" ry="12" fill="#ffe5a5"/><circle cy="-63" r="11" fill="#ffdd60"/>'),
-    glasses: svg('<path d="M-85-10L-99-20M85-10l14-10" stroke-width="7"/><path d="M-82-19Q-48-29-14-17L-20 14Q-55 36-77 9Z M14-17Q49-29 82-19L77 9Q53 36 20 14Z" fill="#252046" stroke="#ffa83d" stroke-width="7"/><path d="M-14-12Q0-23 14-12" stroke="#ffa83d" stroke-width="8"/><path d="M-62-8l22-4M34-8l21-4" stroke="#87b9e0" stroke-width="5"/>'),
+    glasses: painted('65 785 1135 355'),
     bee: svg('<ellipse cx="-61" cy="-37" rx="24" ry="40" transform="rotate(-35 -61 -37)" fill="#d9f6ff" fill-opacity=".85"/><ellipse cx="-29" cy="-47" rx="20" ry="34" transform="rotate(-15 -29 -47)" fill="#eafaff" fill-opacity=".9"/><path d="M-94-10Q-64-31-27-25L38-48Q61-33 66-4L40 46Q-5 66-76 33Z" fill="#ffce47"/><path d="M-64-24L-52 44M-22-26L-13 52M21-39L28 44" stroke="#342745" stroke-width="19"/><path d="M38-48Q61-33 66-4L40 46" stroke="#ffe794" stroke-width="10"/>'),
     shoe: svg('<path d="M-34-17h49l6 22 22 9q11 18-9 19h-65q-17-2-13-19Z" fill="#ed795d"/><path d="M-42 26h89v11h-89Z" fill="#fff1d5"/><path d="M-16-5h27M-13 5h27" stroke="#fff1d5" stroke-width="5"/>'),
     skate: svg('<circle cx="-61" cy="29" r="13" fill="#ffc15b"/><circle cx="63" cy="29" r="13" fill="#ffc15b"/><path d="M-94-3Q-103 15-74 17H76Q104 14 94-4L76 5H-75Z" fill="#63c6a2"/><path d="M-66 8H66" stroke="#bff2d8"/><path d="M-22 6l15-9 15 9" stroke="#ffe284"/>'),
@@ -44,14 +46,14 @@
       if(equipment.body==='bee')add('bee','wear',225,170,art.bee);
       if(equipment.feet==='shoes')for(let i=0;i<4;i++)add('shoe'+i,'wear',110,75,art.shoe);
       if(equipment.board==='skate')add('skate','toy',275,105,art.skate);
-      if(art[equipment.head])add(equipment.head,'wear',equipment.head==='cap'?200:150,145,art[equipment.head]);
-      if(equipment.eyes==='glasses')add('glasses','wear',138,98,art.glasses);
+      if(art[equipment.head])add(equipment.head,'wear',equipment.head==='cap'?210:150,equipment.head==='cap'?130:145,art[equipment.head]);
+      if(equipment.eyes==='glasses')add('glasses','wear',151,47,art.glasses);
       if(['bone','ball'].includes(equipment.toy))add(equipment.toy,'toy',equipment.toy==='bone'?155:106,110,art[equipment.toy]);
     }
     function put(id,x,y,scale=1,angle=0){const n=nodes[id];if(!n)return;n.style.left=x/640*100+'%';n.style.top=y/640*100+'%';n.style.transform=`translate(-50%,-50%) rotate(${angle}deg) scale(${scale})`;}
     function frame(clip,t,activity,paused) {
       const [x,y,s,r]=sample(clip,t);
-      put(equipment.head,x+5*s,y-100*s,s,r);put('glasses',x-8*s,y-16*s,s,r);
+      put(equipment.head,x,y-98*s,s,r);put('glasses',x+7*s,y-17*s,s,r+15);
       const resting=clip==='bed'||clip==='sleep';
       put('bee',resting?293:298+(x-411)*.55,resting?423:384+(y-245)*.12,resting?.8:s,resting?5:-10);
       const feet=[[181,518],[298,509],[365,539],[464,504]];

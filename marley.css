@@ -247,3 +247,7 @@ button.marley-fitted-item:focus-visible{outline:3px solid #ffe5a5;border-radius:
 .marley-cartoon-room:has(.marley-cartoon-film[data-action="eat"].is-active)::after{content:"♥  ♥  ♥";position:absolute;top:30%;left:54%;color:#ff93b0;font-size:clamp(22px,3vw,38px);pointer-events:none;z-index:8;animation:marley-treat-love 3.5s ease-out both}
 @keyframes marley-treat-love{0%,25%{opacity:0;transform:translateY(12px)}45%{opacity:1}100%{opacity:0;transform:translateY(-65px)}}
 @media(prefers-reduced-motion:reduce){.marley-cartoon-room::after{animation:none!important}}
+
+/* Painted edges and fur contact are in the atlas; avoid the sticker-like halo. */
+.gear-cap,.gear-glasses{filter:none}
+.gear-cap svg,.gear-glasses svg{overflow:hidden}
