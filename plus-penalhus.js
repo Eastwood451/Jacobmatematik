@@ -4,16 +4,24 @@
 
   const isEnabled = user => !!user?.id && ['student', 'teacher', 'guest'].includes(user.role);
 
+  // Draw the actual stationery, rather than unrelated emoji stand-ins.
+  function stationeryIcon(drawing) {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false"><g stroke="#302044" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">${drawing}</g></svg>`;
+  }
+
   const ITEM_KINDS = [
-    { id: 'blyant', label: 'Blyant', emoji: '✏️' },
-    { id: 'viskelader', label: 'Viskelæder', emoji: '🧽' },
-    { id: 'spidser', label: 'Blyantspidser', emoji: '🔶' },
-    { id: 'farvekridt', label: 'Farvekridt', emoji: '🖍️' },
-    { id: 'lineal', label: 'Lineal', emoji: '📏' },
-    { id: 'saks', label: 'Saks', emoji: '✂️' },
-    { id: 'limstift', label: 'Limstift', emoji: '🧴' },
-    { id: 'tusch', label: 'Tusch', emoji: '🖊️' },
-  ];
+    { id: 'blyant', label: 'Blyant', drawing: '<path fill="#ffc34d" d="M13 43 43 13 51 21 21 51Z"/><path fill="#f9d7ad" d="m13 43-4 12 12-4Z"/><path fill="#302044" d="m9 55 2-6 4 4Z"/><path fill="#ff86a8" d="m43 13 5-5q2-2 4 0l4 4q2 2 0 4l-5 5Z"/><path fill="none" d="m18 47 29-29"/>' },
+    { id: 'viskelader', label: 'Viskelæder', drawing: '<path fill="#ff99b5" d="M9 37 27 17q2-2 5 0l23 17q2 2 0 4L37 55q-2 2-5 0L9 41Z"/><path fill="#c9bcf2" d="m38 22 17 12q2 2 0 4L37 55q-2 2-5 0L20 46Z"/><path fill="none" d="m9 37 23 17 23-20"/>' },
+    { id: 'spidser', label: 'Blyantspidser', drawing: '<path fill="#58bfca" d="M10 23 45 14 55 23v27l-35 8-10-9Z"/><path fill="#a5e5e9" d="m10 23 10 9 35-9-10-9Z"/><path fill="none" d="M20 32v26"/><path fill="#dce3ed" d="m20 24 24-6 6 5-24 6Z"/><circle cx="35" cy="23" r="2" fill="#71849a"/><ellipse cx="37" cy="42" rx="9" ry="8" fill="#302044"/><ellipse cx="38" cy="41" rx="4" ry="4" fill="#c8d4de"/>' },
+    { id: 'farveblyant', label: 'Farveblyant', drawing: '<path fill="#f9755f" d="M13 43 45 11 53 19 21 51Z"/><path fill="#f9d7ad" d="m13 43-4 12 12-4Z"/><path fill="#e44343" d="m9 55 2-6 4 4Z"/><path fill="none" d="m18 47 31-31"/><path fill="#ffb59d" d="m45 11 3-3 8 8-3 3Z"/>' },
+    { id: 'lineal', label: 'Lineal', drawing: '<rect x="6" y="21" width="52" height="23" rx="3" fill="#ffd86b" transform="rotate(-20 32 32)"/><g transform="rotate(-20 32 32)" fill="none"><path d="M13 22v12m7-12v7m7-7v12m7-12v7m7-7v12m7-12v7"/></g>' },
+    { id: 'saks', label: 'Saks', drawing: '<path fill="#dbe4ed" d="m25 35 4-7L51 9q3-2 2 2L37 38Z"/><path fill="#c0cbd9" d="m32 36-5-7L12 9q-2-3-3 1l11 28Z"/><path fill="none" stroke="#54bfc3" stroke-width="7" d="M25 38c-15-12-23 11-10 16 8 3 17-6 10-16Zm8 0c15-12 23 11 10 16-8 3-17-6-10-16Z"/><circle cx="29" cy="34" r="3" fill="#71849a"/>' },
+    { id: 'limstift', label: 'Limstift', drawing: '<rect x="21" y="22" width="22" height="32" rx="3" fill="#ffcb4f"/><rect x="20" y="9" width="24" height="17" rx="4" fill="#9168ca"/><rect x="22" y="32" width="20" height="13" rx="1" fill="#fff7de"/><path fill="none" d="M27 37h10m-8 4h6"/><rect x="20" y="50" width="24" height="7" rx="2" fill="#9168ca"/>' },
+    { id: 'tusch', label: 'Tusch', drawing: '<g transform="rotate(35 32 32)"><rect x="26" y="23" width="12" height="29" rx="2" fill="#a8e4c8"/><path fill="#3aaf83" d="M25 10q0-3 3-3h8q3 0 3 3v17H25Z"/><path fill="none" d="M38 11h4v12"/><path fill="#3aaf83" d="M26 48h12v7H26Z"/><path fill="none" d="M29 32v9"/></g>' },
+    { id: 'passer', label: 'Passer', drawing: '<path fill="none" stroke="#8195ac" stroke-width="6" d="m31 22-15 31m17-31 15 31"/><path fill="#302044" d="m16 51-3 8m35-8 3 8"/><path fill="none" d="M22 37h20"/><rect x="28" y="5" width="8" height="12" rx="2" fill="#8b70d0"/><circle cx="32" cy="21" r="7" fill="#a78be8"/><circle cx="32" cy="21" r="2" fill="#fff"/>' },
+    { id: 'lommeregner', label: 'Lommeregner', drawing: '<rect x="14" y="6" width="36" height="52" rx="5" fill="#627a9e"/><rect x="20" y="12" width="24" height="12" rx="2" fill="#d1efce"/><path fill="none" d="M33 17h6v4h-6Z"/><g fill="#fff2d7"><rect x="20" y="30" width="6" height="6" rx="1"/><rect x="29" y="30" width="6" height="6" rx="1"/><rect x="20" y="39" width="6" height="6" rx="1"/><rect x="29" y="39" width="6" height="6" rx="1"/><rect x="20" y="48" width="15" height="5" rx="1"/></g><g fill="#ffb655"><rect x="38" y="30" width="6" height="6" rx="1"/><rect x="38" y="39" width="6" height="14" rx="1"/></g>' },
+    { id: 'vinkelmaler', label: 'Vinkelmåler', drawing: '<path fill="#a6dfeebf" d="M5 49a27 27 0 0 1 54 0Z"/><path fill="#fffaf0" d="M20 49a12 12 0 0 1 24 0Z"/><path fill="none" d="M9 46h6m-3-10 5 3m3-11 3 5m9-9v7m12-3-3 5m11 3-5 3m8 7h-6M32 46v6"/>' },
+  ].map(({ drawing, ...kind }) => ({ ...kind, icon: stationeryIcon(drawing) }));
 
   // Every cel is a complete drawing of the original character, not a body-part rig.
   const CEL_COLS = 4;
@@ -27,8 +35,9 @@
   };
   const IDLE_CEL = { obbe: 0, luigi: 11 };
   const RELEASE_STEP = { obbe: 7, luigi: 4 };
-  const THROW_MS = 1500; // From an accepted click, including the windup.
-  const AUDIO_BASE = 'assets/figurer/plus-penalhus/audio/';
+  const ORIGINAL_THROW_MS = 1500;
+  const FLIGHT_SCALE = .5; // Only airborne time changes; character poses keep their tempo.
+  const AUDIO_BASE = 'assets/figurer/plus-penalhus/audio-v2/';
   const CEL_ASSETS = {
     obbe: 'assets/figurer/plus-penalhus/obbe-cartoon-v5.webp',
     luigi: 'assets/figurer/plus-penalhus/luigi-cartoon-v5.webp',
@@ -66,7 +75,7 @@
       who,
       kind: kind.id,
       label: kind.label,
-      emoji: kind.emoji,
+      icon: kind.icon,
       counted: false,
     };
   }
@@ -103,43 +112,112 @@
     const activeFlights = new Map();
     let columns = 1;
     let rows = 1;
-    const voice = new Audio();
-    voice.preload = 'auto';
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    let audioContext = null;
+    try {
+      if (AudioContextClass) audioContext = new AudioContextClass({ latencyHint: 'interactive' });
+    } catch { /* Preloaded media elements also support older browsers. */ }
+    const voiceBuffers = new Map();
+    const voiceLoads = new Map();
+    const mediaVoices = new Map();
+    const audioRequests = new AbortController();
+    let soundsReady = false;
+    let voice = null;
+    let voiceSource = null;
     let voiceQueue = [];
+    let currentVoice = null;
     let speaking = false;
     let voiceToken = 0;
+
+    function prepareVoice(clip) {
+      if (voiceLoads.has(clip)) return voiceLoads.get(clip);
+      const url = AUDIO_BASE + clip + '.mp3';
+      const prepareMedia = () => {
+        if (disposed) return;
+        const media = new Audio(url);
+        media.preload = 'auto';
+        media.load();
+        mediaVoices.set(clip, media);
+      };
+      const loading = audioContext
+        ? fetch(url, { signal: audioRequests.signal }).then(response => {
+          if (!response.ok) throw Error('Lydfilen kunne ikke hentes.');
+          return response.arrayBuffer();
+        }).then(data => audioContext.decodeAudioData(data))
+          .then(buffer => { if (!disposed) voiceBuffers.set(clip, buffer); })
+          .catch(prepareMedia)
+        : Promise.resolve(prepareMedia());
+      voiceLoads.set(clip, loading);
+      return loading;
+    }
+
+    function clearPlayingVoice() {
+      if (voiceSource) {
+        voiceSource.onended = null;
+        try { voiceSource.stop(); } catch { /* It may already have ended. */ }
+        voiceSource.disconnect();
+        voiceSource = null;
+      }
+      if (voice) {
+        voice.onended = voice.onerror = null;
+        voice.pause();
+        voice.currentTime = 0;
+        voice = null;
+      }
+    }
 
     function stopVoice() {
       voiceToken++;
       voiceQueue = [];
+      currentVoice = null;
       speaking = false;
-      voice.pause();
-      voice.removeAttribute('src');
-      voice.load();
+      clearPlayingVoice();
     }
 
     function playNextVoice() {
       if (disposed || speaking || !voiceQueue.length) return;
       speaking = true;
       const token = ++voiceToken;
-      voice.src = AUDIO_BASE + voiceQueue.shift() + '.mp3';
-      voice.play().catch(() => {
-        if (token !== voiceToken || disposed) return;
-        speaking = false;
-        playNextVoice();
-      });
+      currentVoice = voiceQueue.shift();
+      const buffer = voiceBuffers.get(currentVoice.clip);
+      if (audioContext && buffer) {
+        // The file is already downloaded and decoded. Start in this click's
+        // gesture, without a network request or media-element warm-up.
+        if (audioContext.state !== 'running') {
+          audioContext.resume().catch(() => voiceFinished(token));
+        }
+        voiceSource = audioContext.createBufferSource();
+        voiceSource.buffer = buffer;
+        voiceSource.connect(audioContext.destination);
+        voiceSource.onended = () => voiceFinished(token);
+        voiceSource.start();
+      } else {
+        voice = mediaVoices.get(currentVoice.clip);
+        if (!voice) {
+          voiceFinished(token);
+          return;
+        }
+        voice.currentTime = 0;
+        voice.onended = voice.onerror = () => voiceFinished(token);
+        voice.play().catch(() => voiceFinished(token));
+      }
+      update();
     }
 
-    function voiceFinished() {
+    function voiceFinished(token) {
+      if (disposed || token !== voiceToken || !speaking) return;
+      const finished = currentVoice;
+      currentVoice = null;
       speaking = false;
+      clearPlayingVoice();
+      finished?.onEnd?.();
       playNextVoice();
+      update();
     }
-    voice.addEventListener('ended', voiceFinished);
-    voice.addEventListener('error', voiceFinished);
 
-    function say(clip, replace = false) {
+    function say(clip, replace = false, onEnd = null) {
       if (replace) stopVoice();
-      voiceQueue.push(clip);
+      voiceQueue.push({ clip, onEnd });
       playNextVoice();
     }
 
@@ -155,7 +233,7 @@
 
     const task = () => sequence[index];
     const quotasFilled = () => obbeClicks >= task().a && luigiClicks >= task().b;
-    const editable = () => assetsReady && !disposed && !pending && phase === 'throw';
+    const editable = () => assetsReady && soundsReady && !disposed && !pending && phase === 'throw';
     const answerable = () => !disposed && !pending && phase === 'answer';
 
     root.innerHTML = `<section class="pp-game" aria-label="Plus-penalhus: Øbbe og Luigi">
@@ -312,7 +390,7 @@
 
     function maybeEnterAnswerPhase() {
       // Quotas count clicks; only the landed objects are available to count.
-      if (phase === 'throw' && quotasFilled() && items.length === task().a + task().b) {
+      if (assetsReady && soundsReady && phase === 'throw' && quotasFilled() && items.length === task().a + task().b) {
         enterAnswerPhase();
       }
     }
@@ -350,8 +428,8 @@
 
       const obbeBtn = $('[data-pp-throw="obbe"]');
       const luigiBtn = $('[data-pp-throw="luigi"]');
-      obbeBtn.disabled = lockedThrow || busy.obbe || obbeClicks >= task().a;
-      luigiBtn.disabled = lockedThrow || busy.luigi || luigiClicks >= task().b;
+      obbeBtn.disabled = lockedThrow || speaking || busy.obbe || obbeClicks >= task().a;
+      luigiBtn.disabled = lockedThrow || speaking || busy.luigi || luigiClicks >= task().b;
       obbeBtn.classList.toggle('pp-complete', obbeClicks >= task().a && !busy.obbe);
       luigiBtn.classList.toggle('pp-complete', luigiClicks >= task().b && !busy.luigi);
 
@@ -410,7 +488,7 @@
         const pos = itemPosition(item);
         const landing = item.id === landingId ? ' pp-landing' : '';
         const counted = item.counted ? ' pp-counted' : '';
-        return `<button type="button" class="pp-item pp-item-${item.who}${counted}${landing}" data-pp-item="${item.id}" style="left:${pos.left}%;top:${pos.top}%" aria-pressed="${item.counted ? 'true' : 'false'}" aria-label="${item.label} fra ${item.who === 'obbe' ? 'Øbbe' : 'Luigi'}${item.counted ? ', talt' : ''}"><span class="pp-item-emoji" aria-hidden="true">${item.emoji}</span></button>`;
+        return `<button type="button" class="pp-item pp-item-${item.who}${counted}${landing}" data-pp-item="${item.id}" style="left:${pos.left}%;top:${pos.top}%" aria-pressed="${item.counted ? 'true' : 'false'}" aria-label="${item.label} fra ${item.who === 'obbe' ? 'Øbbe' : 'Luigi'}${item.counted ? ', talt' : ''}"><span class="pp-item-icon" aria-hidden="true">${item.icon}</span></button>`;
       }).join('');
       update();
     }
@@ -430,7 +508,7 @@
       }, 50);
     }
 
-    function spawnFlight(who, item, charBtn) {
+    function spawnFlight(who, item, charBtn, onLand) {
       const reduced = prefersReducedMotion();
       const hand = charBtn.querySelector('[data-pp-hand]') || charBtn.querySelector('.pp-hand-grip');
       const body = charBtn.querySelector('.pp-char-body') || charBtn;
@@ -452,11 +530,12 @@
       // The throw explains where each counted object comes from. Keep this
       // essential movement visible, with a smaller arc and no spin in reduced motion.
       const arc = reduced ? 20 : 48 + (Math.abs(targetLeft - startX) * 0.12) + ((item.id * 7) % 28);
-      const duration = Math.max(1, item.deadline - performance.now());
+      const duration = (ORIGINAL_THROW_MS - item.windupMs) * FLIGHT_SCALE;
 
       const fly = document.createElement('div');
       fly.className = `pp-flight pp-flight-${who}`;
-      fly.innerHTML = `<span aria-hidden="true">${item.emoji}</span>`;
+      fly.dataset.ppFlight = item.id;
+      fly.innerHTML = `<span aria-hidden="true">${item.icon}</span>`;
       fly.style.left = `${startX}px`;
       fly.style.top = `${startY}px`;
       document.body.append(fly);
@@ -465,14 +544,14 @@
       activeFlights.set(fly, { item, start: performance.now(), x: startX, y: startY,
         targetX: targetLeft, targetY: targetTop, arc, duration,
         spin: reduced ? 0 : (who === 'obbe' ? 300 : -300) });
-
+      later(onLand, duration);
     }
 
-    function setHandItem(charBtn, emoji) {
+    function setHandItem(charBtn, icon) {
       const grip = charBtn.querySelector('[data-pp-hand]');
       if (!grip) return;
-      if (emoji) {
-        grip.innerHTML = `<span class="pp-hand-emoji" aria-hidden="true">${emoji}</span>`;
+      if (icon) {
+        grip.innerHTML = `<span class="pp-hand-icon" aria-hidden="true">${icon}</span>`;
         grip.classList.add('pp-hand-loaded');
       } else {
         grip.innerHTML = '';
@@ -480,20 +559,20 @@
       }
     }
 
-    function runThrowPose(charBtn, who, itemEmoji, onRelease) {
+    function runThrowPose(charBtn, who, itemIcon, onRelease, celMs) {
       const actor = actors[who];
       busy[who] = true;
       clearThrowClasses(charBtn);
       charBtn.classList.add('pp-busy');
-      setHandItem(charBtn, itemEmoji);
-      actor.throw = { start: performance.now(), celMs: prefersReducedMotion() ? 80 : CEL_MS,
+      setHandItem(charBtn, itemIcon);
+      actor.throw = { start: performance.now(), celMs,
         released: false, onRelease };
       paintCel(who, THROW_CELS[who][0]);
       update();
     }
 
     function throwItem(who) {
-      if (!editable() || busy[who]) return;
+      if (!editable() || speaking || busy[who]) return;
       const { a, b } = task();
       if (who === 'obbe' && obbeClicks >= a) return;
       if (who === 'luigi' && luigiClicks >= b) return;
@@ -502,14 +581,26 @@
       else luigiClicks++;
 
       const item = pickItem(who, ++serial);
-      item.deadline = performance.now() + THROW_MS;
+      const celMs = prefersReducedMotion() ? 80 : CEL_MS;
+      item.windupMs = RELEASE_STEP[who] * celMs;
       const token = actionToken;
       const charBtn = $(`[data-pp-throw="${who}"]`);
 
       updateProgress();
-      say(`count-${who === 'obbe' ? obbeClicks : luigiClicks}`);
+      item.voiceDone = false;
+      item.released = false;
+      const unlock = () => {
+        if (disposed || token !== actionToken || !item.voiceDone || !item.released) return;
+        busy[who] = false;
+        clearThrowClasses(charBtn);
+        update();
+      };
+      say(`count-${who === 'obbe' ? obbeClicks : luigiClicks}`, false, () => {
+        item.voiceDone = true;
+        unlock();
+      });
 
-      later(() => {
+      const land = () => {
         if (token !== actionToken) return;
         if (item.flight) {
           item.flight.remove();
@@ -517,16 +608,16 @@
           activeFlights.delete(item.flight);
         }
         items.push(item);
-        busy[who] = false;
-        clearThrowClasses(charBtn);
         paintItems(item.id);
         maybeEnterAnswerPhase();
-      }, Math.max(0, item.deadline - performance.now()));
+      };
 
-      runThrowPose(charBtn, who, item.emoji, () => {
+      runThrowPose(charBtn, who, item.icon, () => {
         if (disposed || token !== actionToken || items.includes(item)) return;
-        spawnFlight(who, item, charBtn);
-      });
+        item.released = true;
+        spawnFlight(who, item, charBtn, land);
+        unlock();
+      }, celMs);
     }
 
     function enterDigit(digit) {
@@ -540,7 +631,6 @@
       phase = 'done';
       solved++;
       const { a, b } = task();
-      say(`sum-${a}-${b}`, true);
       feedback(`Sådan! ${a} + ${b} = ${a + b}. Der er ${a + b} ting i alt!`, 'success');
       update();
       later(() => {
@@ -555,6 +645,8 @@
       const value = Number(answer);
       const { a, b } = task();
       const correct = value === a + b;
+      // Feedback follows the answer click, independent of saving its result.
+      if (correct) say(`sum-${a}-${b}${a + b === 10 ? '-ti-v3' : ''}`, true);
       const result = {
         topic: 'plusPenalhus',
         problem: `${a} + ${b}`,
@@ -621,8 +713,19 @@
       const { a, b } = task();
       $('#pp-a').textContent = a;
       $('#pp-b').textContent = b;
+      soundsReady = false;
       paintItems();
-      feedback(`Klik ${a} gange på Øbbe og ${b} gange på Luigi.`);
+      feedback('Øbbe og Luigi gør sig klar …');
+      const token = actionToken;
+      const clips = Array.from({ length: 18 }, (_, i) => `count-${i + 1}`);
+      clips.push(`sum-${a}-${b}${a + b === 10 ? '-ti-v3' : ''}`);
+      Promise.all(clips.map(prepareVoice)).then(() => {
+        if (disposed || token !== actionToken) return;
+        soundsReady = true;
+        update();
+        maybeEnterAnswerPhase();
+        if (assetsReady && phase === 'throw') feedback(`Klik ${a} gange på Øbbe og ${b} gange på Luigi.`);
+      });
     }
 
     function nextTask() {
@@ -648,7 +751,7 @@
         const item = items.find(i => i.id === Number(button.dataset.ppItem));
         if (item) {
           item.counted = !item.counted;
-          if (item.counted) say(`count-${items.filter(i => i.counted).length}`);
+          if (item.counted) say(`count-${items.filter(i => i.counted).length}`, true);
           paintItems();
         }
       }
@@ -692,7 +795,7 @@
       animationFrame = requestAnimationFrame(animate);
       update();
       maybeEnterAnswerPhase();
-      if (phase === 'throw') feedback(`Klik ${task().a} gange på Øbbe og ${task().b} gange på Luigi.`);
+      if (soundsReady && phase === 'throw') feedback(`Klik ${task().a} gange på Øbbe og ${task().b} gange på Luigi.`);
     }).catch(() => {
       if (!disposed) feedback('Animationerne kunne ikke hentes. Prøv at åbne øvelsen igen.', 'error');
     });
@@ -700,8 +803,10 @@
     return () => {
       disposed = true;
       stopVoice();
-      voice.removeEventListener('ended', voiceFinished);
-      voice.removeEventListener('error', voiceFinished);
+      audioRequests.abort();
+      mediaVoices.forEach(media => { media.pause(); media.removeAttribute('src'); media.load(); });
+      voiceBuffers.clear();
+      if (audioContext) void audioContext.close().catch(() => {});
       resizeObserver.disconnect();
       if (animationFrame != null) cancelAnimationFrame(animationFrame);
       activeFlights.clear();
