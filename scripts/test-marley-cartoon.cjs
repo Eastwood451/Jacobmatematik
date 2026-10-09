@@ -42,6 +42,19 @@ const flush=()=>Promise.resolve();
   assert.equal(active().currentTime,1.3,'outfit switch preserves animation time');
   assert.equal(host.children[0].dataset.outfit,'bee');
   assert.equal(host.children[0].children.find(x=>x.tag==='div').children.length,1,'only the cap is an overlay');
+  scene.setEquipment({body:'bee',feet:'shoes',head:'cap'});loaded();await flush();
+  assert.ok(active().src.includes('/bee-shoes/wag.mp4'),'shoes combine with the painted costume');
+  assert.equal(active().currentTime,1.3);
+  assert.equal(host.children[0].children.find(x=>x.tag==='div').children.length,1,'shoes add no overlay elements');
+  scene.pause(true);scene.setEquipment({feet:'shoes'});loaded();await flush();
+  assert.ok(active().src.includes('/shoes/wag.mp4'));
+  assert.equal(active().paused,true);assert.equal(active().currentTime,1.3);
+  scene.pause(false);
+  for(const clip of ['run','smile','eat','bed','sleep']) {
+    scene.play(clip);loaded();await flush();
+    assert.ok(active().src.includes('/shoes/'+clip+'.mp4'),'shoes stay on for '+clip);
+  }
+  scene.play('wag');loaded();await flush();
   scene.pause(true);scene.setEquipment({});loaded();await flush();
   assert.ok(!active().src.includes('/bee/'));assert.equal(active().paused,true);assert.equal(scene.isPaused(),true);
   scene.pause(false);
@@ -70,5 +83,6 @@ const flush=()=>Promise.resolve();
   assert.equal(host.dataset.playbackError,'1'); assert.equal(active().dataset.action,'smile','network error preserves visible film');
   scene.destroy(); assert.equal(host.children.length,0); assert.ok(videos.every(v=>v.paused));
   videos.forEach(v=>v.emit('ended')); assert.equal(host.children.length,0);
-  console.log('PASS: bee outfit/time/pause/toggles, film completion, sleep loop, queued rewards, props, load failure and cleanup');
+  console.log('PASS: all four outfits, shoes in every film, time/pause/toggles, completion, queued rewards, props, errors and cleanup');
 })().catch(e=>{console.error(e);process.exitCode=1;});
+

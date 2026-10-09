@@ -35,7 +35,7 @@ const pass=s=>{reports.push(s);console.log('PASS',s);};
     };
    },JACOB);
    await page.addScriptTag({content:fs.readFileSync(path.join(root,'app.js'),'utf8')});
-   await page.waitForSelector('.topbar');await page.locator('[data-action="learn-fractions"]').click();
+   await page.waitForSelector('.topbar');await openPractice(page);
   } else await page.evaluate(id=>{
    window.cleanup=JacobFractionLesson.mount(document.querySelector('#app'),{user:{id,role:'teacher'},onExit:()=>{window.cleanup();document.querySelector('#app').textContent='Afsluttet';}});
   },JACOB);
@@ -153,7 +153,7 @@ const pass=s=>{reports.push(s);console.log('PASS',s);};
    await p.locator('[data-action="toggle-jacob-view"]').click();await p.waitForSelector('.teacher-layout');
    assert.equal(await p.locator('.fl-page').count(),0);assert.equal(await p.evaluate(()=>window.__profile.role),'teacher');
    assert.ok(await p.evaluate(()=>window.__writes.every(role=>role==='teacher')));
-   await p.locator('[data-action="learn-fractions"]').click();await p.locator('[data-fa-mode="multiply"]').click();
+   await openPractice(p);await p.locator('[data-fa-mode="multiply"]').click();
    await p.locator('[data-fl-operation="*"]').click();await p.locator('[data-action="logout"]').click();await p.waitForTimeout(950);
    assert.equal(await p.locator('.login-wrap').count(),1);assert.equal(await p.locator('[data-fa-mode]').count(),0);await p.close();
    pass('Actual app teacher toggle and logout during multiplication keep authorization intact and leave no stale lesson or student writes.');
@@ -163,3 +163,9 @@ const pass=s=>{reports.push(s);console.log('PASS',s);};
   fs.writeFileSync(path.join(out,'summary.txt'),reports.join('\n')+'\n');
  } finally {await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
+
+async function openPractice(page) {
+ const panel=page.locator('.teacher-practice');
+ if(await panel.count() && !(await panel.evaluate(el=>el.open))) await panel.locator('summary').click();
+ await page.locator('[data-action="learn-fractions"]').click();
+}

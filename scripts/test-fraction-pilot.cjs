@@ -71,7 +71,7 @@ pass('All student, teacher and guest profiles are enabled; 2,000 valid problems 
    assert.equal(await page.locator('[data-action="learn-fractions"]').count(),1);
    await page.waitForTimeout(2200);
    assert.equal(await page.locator('.student-home-layout').count(),1);
-   await page.locator('[data-action="learn-fractions"]').click();
+   await openPractice(page,'learn-fractions');
    await page.waitForSelector('.fl-compound');
    assert.equal(await page.locator('.fl-expression .fl-numerator').allTextContents().then(x=>x.join(',')),'1,3');
    for(const op of ['+','-','*']) {
@@ -135,13 +135,13 @@ pass('All student, teacher and guest profiles are enabled; 2,000 valid problems 
    assert.equal(await page.evaluate(()=>window.__resultWrites.length),0);
    assert.ok(await page.evaluate(()=>window.__schoolWrites.every(w=>w.role==='teacher')));
    pass('Toggle preserves teacher permissions and selected class, cancels pending lesson timers, and writes no student results.');
-   await page.locator('[data-action="learn-fractions"]').click();
+   await openPractice(page,'learn-fractions');
    await page.locator('[data-fl-exit]').click();
    await page.waitForSelector('.student-home-layout');
    await page.locator('.topic-card[data-topic="addition"]').click();
    await page.locator('[data-action="toggle-jacob-view"]').click();
    await page.waitForSelector('.teacher-layout');
-   await page.locator('[data-action="learn-fractions"]').click();
+   await openPractice(page,'learn-fractions');
    await page.locator('[data-fl-operation=":"]').click();
    await page.locator('[data-action="logout"]').click();
    await page.waitForTimeout(1100);
@@ -151,7 +151,7 @@ pass('All student, teacher and guest profiles are enabled; 2,000 valid problems 
    await page.close();
    for(const width of [320,390,768]) {
      const mobile=await mountAs('jacob',width);
-     await mobile.locator('[data-action="learn-fractions"]').click();
+     await openPractice(mobile,'learn-fractions');
      assert.ok(await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
      await mobile.locator('[data-fl-operation=":"]').click();
      await mobile.waitForSelector('[data-fl-rule]');
@@ -187,7 +187,7 @@ pass('All student, teacher and guest profiles are enabled; 2,000 valid problems 
        await p.evaluate(()=>{const b=document.createElement('button');b.dataset.action='learn-fractions';document.getElementById('app').append(b);b.click();b.remove()});
        assert.equal(await p.locator('.fl-page').count(),0);
      } else {
-       await p.locator('[data-action="learn-fractions"]').click();
+       await openPractice(p,'learn-fractions');
        await p.waitForSelector('.fl-page');
        assert.equal(await p.locator('.fl-pilot').count(),0);
        const before=await p.locator('.fl-page').innerHTML();
@@ -206,3 +206,9 @@ pass('All student, teacher and guest profiles are enabled; 2,000 valid problems 
    fs.writeFileSync(path.join(out,'summary.txt'),summary.join('\n')+'\n');
  } finally { await browser.close(); }
 })().catch(error=>{console.error(error);process.exitCode=1});
+
+async function openPractice(page, action) {
+ const panel=page.locator('.teacher-practice');
+ if(await panel.count() && !(await panel.evaluate(el=>el.open))) await panel.locator('summary').click();
+ await page.locator('[data-action="'+action+'"]').click();
+}

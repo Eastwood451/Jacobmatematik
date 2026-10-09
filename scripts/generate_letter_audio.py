@@ -1,31 +1,46 @@
-"""Regenerate letter-learning clips (da-DK-ChristelNeural, rate -7%, raw edge-tts MP3).
+"""Build Danish alphabet recordings with explicit spoken letter names.
 
-Only the clips fixed on 2026-10-07 are listed; the other letters were made with the same
-voice and pattern ("X som i ord. Ord starter med X."). Some words are spelled
-phonetically so the voice says the letter/word clearly: "Jåd" = J, "el" = L, "ejern" = egern.
+pip install edge-tts imageio-ffmpeg
+python scripts/generate_letter_audio.py --force
 """
+import argparse
 import asyncio
-from pathlib import Path
+import re
 
-import edge_tts
+from generate_plus_penalhus_audio import ROOT, build_clips
 
-ROOT = Path(__file__).resolve().parents[1]
-OUTPUT = ROOT / "assets" / "letters" / "audio"
-VOICE = "da-DK-ChristelNeural"
-RATE = "-7%"
-LINES = [
-    ("e-egern", "E som i ejern. Ejern starter med E."),
-    ("j-jaguar", "Jåd, som i jaguar. Jaguar starter med jåd."),
-    ("l-loeve-v2", "Løve begynder med bogstavet el. El som i løve."),
-    ("o-orm", "O som i orm. Orm starter med O."),
-    ("oe-oekse", "Ø som i økse. Økse starter med Ø."),
-]
+OUTPUT = ROOT / "assets/letters/audio"
+# Bare letters followed by a full stop can be expanded as abbreviations
+# (F. -> femininum, G. -> gift, T. -> tidende, U. -> udskiftet).
+LETTER_NAMES = dict(zip(
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZÆØÅ",
+    ["a", "be", "se", "de", "e", "æf", "ge", "hå", "i", "jåd", "kå",
+     "el", "æm", "æn", "o", "pe", "ku", "ær", "æs", "te", "u", "ve",
+     "dobbelt ve", "æks", "y", "sæt", "æ", "ø", "å"],
+))
+# Keep the pronunciation correction used by the newer E recording.
+SPOKEN_WORDS = {"E": "ejern"}
 
 
-async def main() -> None:
-    for stem, text in LINES:
-        await edge_tts.Communicate(text, VOICE, rate=RATE).save(str(OUTPUT / f"{stem}.mp3"))
+def narration_lines():
+    app = (ROOT / "app.js").read_text(encoding="utf-8")
+    items = app.split("const LETTER_ITEMS = [", 1)[1].split("].map", 1)[0]
+    letters = re.findall(r'\["([A-ZÆØÅ])","([^"]+)","([^"]+)\.webp"\]', items)
+    if [letter for letter, _, _ in letters] != list(LETTER_NAMES):
+        raise ValueError("Every alphabet letter must have an explicit Danish spoken name")
+    letters = [(letter, SPOKEN_WORDS.get(letter, word), stem)
+               for letter, word, stem in letters]
+    return [
+        (stem + ("-v2" if letter in ["L", "N"] else ""),
+         f"Bogstavet {LETTER_NAMES[letter]} som i {word}! "
+         f"{word.capitalize()} starter med bogstavet {LETTER_NAMES[letter]}!")
+        for letter, word, stem in letters
+    ]
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--force", action="store_true", help="Replace existing recordings")
+    args = parser.parse_args()
+    asyncio.run(build_clips(narration_lines(), output=OUTPUT, force=args.force))
+

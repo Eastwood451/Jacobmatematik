@@ -1,0 +1,44 @@
+name: Sandbox and Marley outfits
+on:
+  push:
+    branches: [main, 'fix/finish-site-*']
+    paths: ['app.js', 'cinematic-theme.css', 'marley-cartoon.js', 'marley-wardrobe.js', 'marley.js', 'assets/figurer/marley-cartoon/**', 'scripts/test-sandbox.cjs', 'scripts/test-marley-cartoon.cjs', '.github/workflows/site-finish.yml']
+  pull_request:
+    paths: ['app.js', 'cinematic-theme.css', 'marley-cartoon.js', 'marley-wardrobe.js', 'marley.js', 'assets/figurer/marley-cartoon/**', 'scripts/test-sandbox.cjs', 'scripts/test-marley-cartoon.cjs', '.github/workflows/site-finish.yml']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Controller and shop checks
+        run: |
+          node --check app.js
+          node scripts/test-lazy-load-startup.cjs
+          node scripts/test-marley-cartoon.cjs
+          node scripts/test-marley-shop.cjs
+      - name: Install browser
+        run: |
+          npm install --no-save --package-lock=false playwright@1.57.0
+          npx playwright install --with-deps chromium
+      - name: Fake-user navigation and mobile layout
+        run: node scripts/test-sandbox.cjs
+      - name: Verify every shipped shoe film
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y ffmpeg
+          for outfit in shoes bee-shoes; do
+            for clip in wag run eat bed sleep smile; do
+              ffmpeg -v error -i "assets/figurer/marley-cartoon/$outfit/$clip.mp4" -f null -
+            done
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: sandbox-review
+          path: test-results/sandbox/

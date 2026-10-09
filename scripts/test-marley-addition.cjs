@@ -99,7 +99,7 @@ const out='test-results/marley-addition';fs.mkdirSync(out,{recursive:true});
     await page.evaluate(()=>{const b=document.createElement('button');b.dataset.action='marley-addition';document.body.append(b);b.click();});
     assert.equal(await page.locator('.ma-game').count(),0);await page.close();continue;
    }
-   await page.locator('[data-action="marley-addition"]').click();await fill(page);await answer(page,10);await page.waitForSelector('.ma-happy');
+   await openPractice(page,'marley-addition');await fill(page);await answer(page,10);await page.waitForSelector('.ma-happy');
    assert.equal(await page.evaluate(()=>__writes.length),0);assert.equal(await page.evaluate(()=>__localWrites.length),kind==='local'?1:0);
    await page.locator('[data-ma-exit]').click();assert.equal(await page.locator('.ma-flight').count(),0);
    await page.waitForTimeout(2600);assert.equal(await page.locator('.ma-game').count(),0);
@@ -144,3 +144,9 @@ const out='test-results/marley-addition';fs.mkdirSync(out,{recursive:true});
   assert.deepEqual(errors,[]);console.log('PASS: dragging and touch, counting, 0–9 operands, two-digit answers, whole-frame animations, retry, result privacy, cleanup and responsive layouts.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
+
+async function openPractice(page, action) {
+ const panel=page.locator('.teacher-practice');
+ if(await panel.count() && !(await panel.evaluate(el=>el.open))) await panel.locator('summary').click();
+ await page.locator('[data-action="'+action+'"]').click();
+}

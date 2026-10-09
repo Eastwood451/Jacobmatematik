@@ -165,20 +165,20 @@ function pass(text){reports.push(text);console.log('PASS',text);}
      await page.close();
    }
    pass('Plus and minus at 320/390/768px with touch mode switching, visible fractional inputs and no horizontal overflow.');
-   const full=await open({full:true});await full.locator('[data-action="learn-fractions"]').click();
+   const full=await open({full:true});await openPractice(full);
    await full.locator('[data-fa-mode="plus"]').click();await full.locator('[data-fa-operation="+"]').click();
    await full.locator('[data-fa-mode="minus"]').click();await full.waitForTimeout(1000);
    assert.equal(await full.locator('[data-fa-phase="operation"]').count(),1);assert.match(await full.locator('#fl-title').innerText(),/minus/);
    await toFinish(full,'-');await full.locator('[data-action="toggle-jacob-view"]').click();await full.waitForSelector('.teacher-layout');
    assert.equal(await full.locator('.fa-page').count(),0);assert.equal(await full.evaluate(()=>window.__profile.role),'teacher');
    assert.ok(await full.evaluate(()=>window.__writes.every(w=>w.role==='teacher')));
-   await full.locator('[data-action="learn-fractions"]').click();await full.locator('[data-fa-mode="plus"]').click();
+   await openPractice(full);await full.locator('[data-fa-mode="plus"]').click();
    await full.locator('[data-fa-exit]').click();await full.waitForSelector('.student-home-layout');
    await full.close();
    pass('Actual app entry and teacher toggle work; mode switches cancel pending timers; exit and backend switch preserve teacher role without student writes.');
    for(const kind of ['student','other']) {
      const page=await open({kind,full:true});
-     await page.locator('[data-action="learn-fractions"]').click();
+     await openPractice(page);
      for(const mode of ['plus','minus','mixed']) {
        await page.locator(`[data-fa-mode="${mode}"]`).click();
        assert.equal(await page.locator('[data-fa-mode][aria-pressed="true"]').getAttribute('data-fa-mode'),mode);
@@ -192,3 +192,9 @@ function pass(text){reports.push(text);console.log('PASS',text);}
    fs.writeFileSync(path.join(out,'summary.txt'),reports.join('\n')+'\n');
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});
+
+async function openPractice(page) {
+ const panel=page.locator('.teacher-practice');
+ if(await panel.count() && !(await panel.evaluate(el=>el.open))) await panel.locator('summary').click();
+ await page.locator('[data-action="learn-fractions"]').click();
+}

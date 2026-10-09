@@ -1,7 +1,7 @@
 /* Complete drawn Marley performances, encoded as 60 fps films. */
 (() => {
   "use strict";
-  const CACHE = "20261008-bee1";
+  const CACHE = "20261009-shoes1";
   const BASE = "assets/figurer/marley-cartoon/";
   const LABELS = {wag:"Marley logrer",smile:"Marley smiler",run:"Marley løber i cirkler",eat:"Marley spiser en godbid",bed:"Marley lægger sig i kurven",sleep:"Marley sover i kurven",bone:"Marley gumler på sit kødben",ball:"Marley leger med sin bold",skate:"Marley kører på skateboard"};
 
@@ -21,7 +21,8 @@
     room.append(...videos);
     host.replaceChildren(room);
     host.dataset.renderer = "cartoon";
-    let state = "wag", active = -1, version = 0, paused = false, disposed = false, bee = false;
+    let state = "wag", active = -1, version = 0, paused = false, disposed = false, bee = false, shoes = false;
+    const outfitPath = () => bee && shoes ? "bee-shoes/" : bee ? "bee/" : shoes ? "shoes/" : "";
     let queuedSmile = false, pendingCleanup = null, restTimer = null, resting = false, raf = null;
     const wardrobe = window.MarleyWardrobe.create(room, name => { if (!paused) play(name); });
     function track() {
@@ -74,7 +75,7 @@
             if (i !== index) videos[i].pause();
           }
           active = index;
-          room.dataset.outfit = bee ? "bee" : "plain";
+          room.dataset.outfit = outfitPath().replace("/", "") || "plain";
           delete host.dataset.loading;
           delete host.dataset.playbackError;
           if (paused) next.pause();
@@ -114,8 +115,8 @@
       next.dataset.action = name;
       next.dataset.clip = clip;
       host.dataset.loading = name;
-      next.poster = BASE + (bee ? "bee/" : "") + "poster.webp?v=" + CACHE;
-      next.src = BASE + (bee ? "bee/" : "") + clip + ".mp4?v=" + CACHE;
+      next.poster = BASE + outfitPath() + "poster.webp?v=" + CACHE;
+      next.src = BASE + outfitPath() + clip + ".mp4?v=" + CACHE;
       next.load();
     }
 
@@ -145,8 +146,10 @@
       setEquipment(value) {
         wardrobe.set(value);
         const wearingBee = value?.body === "bee";
-        if (wearingBee === bee) return;
+        const wearingShoes = value?.feet === "shoes";
+        if (wearingBee === bee && wearingShoes === shoes) return;
         bee = wearingBee;
+        shoes = wearingShoes;
         // Costume is painted into every whole-character performance. Continue
         // the current action, including pauses and the quiet idle interval.
         if (active >= 0 || host.dataset.loading) {
@@ -166,5 +169,6 @@
   }
   window.MarleyCartoonScene = {create,CACHE};
 })();
+
 
 

@@ -45,7 +45,7 @@ const errors = [];
         };
       },JACOB);
       await page.addScriptTag({content:read('app.js').toString()});
-      await page.locator('[data-action="learn-fractions"]').click();
+      await openPractice(page);
     } else await page.evaluate(id=>{
       window.cleanup=JacobFractionLesson.mount(document.querySelector('#app'),{user:{id,role:'teacher'},onExit:()=>{window.cleanup();document.querySelector('#app').textContent='Afsluttet';}});
     },JACOB);
@@ -141,3 +141,9 @@ const errors = [];
     console.log('PASS 390px full-app entry, cancellation on mode change, teacher toggle, valid-profile access and no browser errors');
   } finally {await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
+
+async function openPractice(page) {
+ const panel=page.locator('.teacher-practice');
+ if(await panel.count() && !(await panel.evaluate(el=>el.open))) await panel.locator('summary').click();
+ await page.locator('[data-action="learn-fractions"]').click();
+}

@@ -2,9 +2,9 @@ name: Plus-penalhus cartoon
 on:
   push:
     branches: [main, 'fix/plus-penalhus-*']
-    paths: ['index.html', 'plus-penalhus.*', 'assets/figurer/plus-penalhus/**', 'scripts/test-plus-penalhus.cjs', '.github/workflows/plus-penalhus.yml']
+    paths: ['index.html', 'plus-penalhus.*', 'assets/figurer/plus-penalhus/**', 'assets/letters/audio/**', 'scripts/generate_letter_audio.py', 'scripts/generate_plus_penalhus_audio.py', 'scripts/test-learning-audio.py', 'scripts/test-plus-penalhus.cjs', '.github/workflows/plus-penalhus.yml']
   pull_request:
-    paths: ['plus-penalhus.*', 'assets/figurer/plus-penalhus/**', 'scripts/test-plus-penalhus.cjs', '.github/workflows/plus-penalhus.yml']
+    paths: ['plus-penalhus.*', 'assets/figurer/plus-penalhus/**', 'assets/letters/audio/**', 'scripts/generate_letter_audio.py', 'scripts/generate_plus_penalhus_audio.py', 'scripts/test-learning-audio.py', 'scripts/test-plus-penalhus.cjs', '.github/workflows/plus-penalhus.yml']
 permissions:
   contents: read
 jobs:
@@ -31,12 +31,10 @@ jobs:
           else
             npx playwright install --with-deps chromium
           fi
-      - name: Build missing Danish voice clips
+      - name: Check shipped Danish voice clips
         run: |
-          if [ ! -f assets/figurer/plus-penalhus/audio-v2/count-4.mp3 ] || [ ! -f assets/figurer/plus-penalhus/audio-v2/sum-9-9.mp3 ] || [ ! -f assets/figurer/plus-penalhus/audio-v2/sum-5-5-ti-v3.mp3 ] || [ ! -f assets/figurer/plus-penalhus/audio-v2/sum-2-3-fem-v4.mp3 ]; then
-            pip install edge-tts==7.2.8 imageio-ffmpeg==0.6.0
-            python scripts/generate_plus_penalhus_audio.py
-          fi
+          pip install edge-tts==7.2.8 imageio-ffmpeg==0.6.0
+          python scripts/test-learning-audio.py
       - name: Check actual Danish pronunciation
         run: |
           pip install faster-whisper==1.2.1 imageio-ffmpeg==0.6.0
@@ -52,4 +50,5 @@ jobs:
             test-results/plus-penalhus/
             assets/figurer/plus-penalhus/audio-v2/
           retention-days: 7
+
 
