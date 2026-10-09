@@ -83,3 +83,23 @@ Genopbyg med `python scripts/generate_fps_audio.py` (kræver `edge-tts` og
 ## Webadresse
 
 - https://jacobmatematik.dk
+
+
+## Sandbox
+
+Upublicerede moduler åbnes fra knappen Sandbox: Marleys butik og skakbetaen.
+Adgangen følger de eksisterende testprofiler; de almindelige elevøvelser er
+stadig offentligt tilgængelige for de samme brugerroller. Lærere kan åbne
+de færdige øvelser under “Prøv elevernes øvelser” i lærerportalen.
+
+## Rettigheder
+
+Se [rettighedsmeddelelsen](LICENSE), [tredjepartslicenserne](THIRD_PARTY_NOTICES.md)
+og [rettighedssiden](rettigheder.html). Kontaktlinket peger på projektets
+GitHub-side. Three.js, Supabase-klienten og chess.js følger egne licenser.
+
+## Danske læringsklip
+
+Plus-penalhus beholder de nyere, komplette `audio-v2`-optagelser. Bogstavlæring
+bruger de rettede alfabetklip med en fælles cacheversion. Begge generatorer
+understøtter `--force`; se [lydnoterne](scripts/LEARNING-AUDIO.md).

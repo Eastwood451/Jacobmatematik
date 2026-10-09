@@ -34,7 +34,8 @@ return to wagging. Pause freezes the video's own clock. A reward during chewing
 is queued until chewing finishes. Load failures retain the current visible film.
 
 Coins, purchases and local storage keys are unchanged. Caps, glasses and toys
-use the fitted wardrobe layer. The bee vest and wings are painted into all six
+use the fitted wardrobe layer. Shoes are painted into the complete figures and
+use no runtime overlay. The bee vest and wings are painted into all six
 complete-character performances in `assets/figurer/marley-cartoon/bee/`.
 Choosing or removing the bee costume switches between the dressed and plain
 films at the current playback time, preserving pauses, idle rests and queued
@@ -44,3 +45,18 @@ The five dressed source sheets are retained in `bee/sources/`. Rebuild using
 the commands above with `bee/` inserted before each source and output path.
 For the dressed smile sheet add `--grid-cells`: neighbouring fur tips touch,
 so the authored 4 × 4 grid separates the whole drawings for interpolation.
+
+
+## Shoes
+
+The four film families are plain, `bee/`, `shoes/` and `bee-shoes/`.
+All six performances exist for each dressed family, including basket and sleep.
+The same coral sneakers were painted into every visible paw of the retained
+whole-character keyframes with imagegen; occlusion follows fur and the basket.
+The original plain and bee sheets/films are unchanged.
+
+Run `python scripts/build-marley-shoes.py` to rebuild the twelve shoe films.
+It uses the existing bidirectional optical-flow builder and preserves clip timing.
+Keyframes are stored in each outfit’s `sources/` directory. Outfit switching
+preserves the video time, Pause, resting intervals, queued rewards and purchases.
+Kasket and sunglasses still use the fitted painted atlas layer.

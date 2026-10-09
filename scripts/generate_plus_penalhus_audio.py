@@ -5,6 +5,7 @@ python scripts/generate_plus_penalhus_audio.py
 Only leading/trailing silence is trimmed, retaining 60ms around all speech.
 """
 import asyncio
+import argparse
 import os
 import re
 import subprocess
@@ -22,8 +23,7 @@ OUTPUT = ROOT / "assets/figurer/plus-penalhus/audio-v2"
 VOICE = "da-DK-ChristelNeural"
 
 
-async def main():
-    OUTPUT.mkdir(parents=True, exist_ok=True)
+def narration_lines():
     # Numeric cardinal input avoids the voice treating "Fem." as an abbreviation.
     lines = [(f"count-{n}", f"{n}!") for n in range(1, 19)]
     # Cardinal input prevents "fem." being expanded to "femininum" and
@@ -32,13 +32,18 @@ async def main():
         for b in range(10):
             suffix = '-ti-v3' if a + b == 10 else '-fem-v4' if a + b == 5 else ''
             right = 'nul,' if b == 0 else str(b)
-            lines.append((f"sum-{a}-{b}{suffix}", f"{a} plus {right} giver {a+b}."))
+            lines.append((f"sum-{a}-{b}{suffix}", f"{a} plus {right} giver {a+b}!"))
+    return lines
+
+
+async def build_clips(lines, output=OUTPUT, force=False):
+    output.mkdir(parents=True, exist_ok=True)
     ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
     limit = asyncio.Semaphore(2)
 
     async def generate(stem, text):
-        final = OUTPUT / f"{stem}.mp3"
-        if final.exists() and final.stat().st_size > 1000:
+        final = output / f"{stem}.mp3"
+        if not force and final.exists() and final.stat().st_size > 1000:
             return
         async with limit:
             with tempfile.TemporaryDirectory(prefix="plus-whole-voice-") as tmp:
@@ -78,4 +83,8 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--force", action="store_true", help="Replace existing recordings")
+    args = parser.parse_args()
+    asyncio.run(build_clips(narration_lines(), force=args.force))
+

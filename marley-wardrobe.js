@@ -8,7 +8,6 @@
     cap: painted('150 65 1010 625'),
     hat: svg('<path d="M-52 27 L0-65 51 28Z" fill="#d865aa"/><path d="M-39 5l62-34M-21-29l56 32" stroke="#ffe17d" stroke-width="10"/><ellipse cy="27" rx="56" ry="12" fill="#ffe5a5"/><circle cy="-63" r="11" fill="#ffdd60"/>'),
     glasses: painted('65 785 1135 355'),
-    shoe: svg('<path d="M-34-17h49l6 22 22 9q11 18-9 19h-65q-17-2-13-19Z" fill="#ed795d"/><path d="M-42 26h89v11h-89Z" fill="#fff1d5"/><path d="M-16-5h27M-13 5h27" stroke="#fff1d5" stroke-width="5"/>'),
     skate: svg('<circle cx="-61" cy="29" r="13" fill="#ffc15b"/><circle cx="63" cy="29" r="13" fill="#ffc15b"/><path d="M-94-3Q-103 15-74 17H76Q104 14 94-4L76 5H-75Z" fill="#63c6a2"/><path d="M-66 8H66" stroke="#bff2d8"/><path d="M-22 6l15-9 15 9" stroke="#ffe284"/>'),
     bone: svg('<path d="M-53-15Q-80-42-90-21Q-101-4-79 6Q-96 29-74 36Q-56 43-47 20H48Q58 43 78 34Q99 25 79 6Q101-10 87-27Q72-43 51-15Z" fill="#fff0c8"/><path d="M-43-5H43" stroke="#fffbed" stroke-width="9"/><path d="M-43 20H47" stroke="#e6c78e" stroke-width="5"/>'),
     ball: svg('<circle r="47" fill="#bbd83b"/><path d="M-33-34Q18-22 12 0Q4 24 35 31M-44-13Q-17-5-22 15Q-27 34-10 46" stroke="#fff7cf" stroke-width="6"/>'),
@@ -42,7 +41,6 @@
         if(kind==='toy'){el.type='button';el.setAttribute('aria-label',id==='bone'?'Giv Marley kødbenet igen':id==='ball'?'Leg med bolden igen':'Kør på skateboardet igen');el.addEventListener('click',()=>onPlay(id));}
         else el.setAttribute('aria-hidden','true');
       }
-      if(equipment.feet==='shoes')for(let i=0;i<4;i++)add('shoe'+i,'wear',110,75,art.shoe);
       if(equipment.board==='skate')add('skate','toy',275,105,art.skate);
       if(art[equipment.head])add(equipment.head,'wear',equipment.head==='cap'?210:150,equipment.head==='cap'?130:145,art[equipment.head]);
       if(equipment.eyes==='glasses')add('glasses','wear',151,47,art.glasses);
@@ -52,9 +50,6 @@
     function frame(clip,t,activity,paused) {
       const [x,y,s,r]=sample(clip,t);
       put(equipment.head,x,y-98*s,s,r);put('glasses',x+7*s,y-17*s,s,r+15);
-      const resting=clip==='bed'||clip==='sleep';
-      const feet=[[181,518],[298,509],[365,539],[464,504]];
-      feet.forEach(([fx,fy],i)=>{put('shoe'+i,fx+(x-411)*.45,fy+(clip==='run'?-40:0),s);if(nodes['shoe'+i])nodes['shoe'+i].hidden=resting;});
       put('skate',321+(clip==='run'?(x-411)*.75:0),clip==='run'?515:550,clip==='run'?s:1,clip==='run'?Math.sin(t*Math.PI*2)*5:0);
       if(nodes.bone){
         const chewing=activity==='bone';
@@ -70,4 +65,5 @@
   }
   window.MarleyWardrobe={create};
 })();
+
 

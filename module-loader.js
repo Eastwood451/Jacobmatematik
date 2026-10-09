@@ -60,7 +60,7 @@
   const MODULES = {
     marley: {
       css: ["marley.css?v=20261008-bee2"],
-      js: ["marley.js?v=20261008-bee2"],
+      js: ["marley.js?v=20261009-shoes1"],
       ready: () => !!window.MarleyMath,
     },
     "marley-addition": {
@@ -147,4 +147,5 @@
     modules: MODULES,
   });
 })();
+
 
