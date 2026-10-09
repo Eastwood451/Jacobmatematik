@@ -110,6 +110,12 @@
       js: ["fps-trial-entry.js?v=20260920-cinematic-world4"],
       ready: () => true,
     },
+    skak: {
+      css: ["skak.css?v=20261009-skak1"],
+      // chess.js (BSD-2) → ren spillogik → UI
+      js: ["skak-chess-lib.js?v=20261009-skak1", "skak-core.js?v=20261009-skak1", "skak.js?v=20261009-skak1"],
+      ready: () => !!window.JacobSkak && !!window.SkakCore,
+    },
     "dennis-audio": {
       css: [],
       js: ["dennis-audio.js?v=20261007-lyd1"],
