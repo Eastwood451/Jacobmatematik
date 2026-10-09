@@ -532,6 +532,7 @@ multiplicationColumn: {
     if (name === "foodtruck") return !!window.LuigiFoodtruck;
     if (name === "learn-fractions") return !!window.JacobFractionLesson && !!window.JacobFractionFinish;
     if (name === "obbe-coach") return !!window.ObbeCoach;
+    if (name === "skak") return !!window.JacobSkak;
     return false;
   }
   async function ensureModule(name, view) {
@@ -647,6 +648,32 @@ multiplicationColumn: {
   function plusPenalhusCard() {
     return canPlayPlusPenalhus() ? `<button type="button" class="topic-card pp-penalhus-card" data-action="plus-penalhus"><span class="topic-icon">5 + 4</span><strong>Plus-penalhus</strong><small>Klik på Øbbe og Luigi. Tæl tingene, og plus!</small><span class="pp-card-art" aria-hidden="true"><img src="assets/figurer/obbe-ovdig.png" alt="" width="110" height="110" loading="lazy"><img src="assets/figurer/luigi-laekkermat-cutout.webp" alt="" width="110" height="130" loading="lazy"></span></button>` : "";
   }
+  // Skak er en beta, der kun vises på Jacobs profil (lærerkontoen "Jacob") og hans testelev "jacobe",
+  // så han kan prøve både computer- og online-kampe, før eleverne får adgang. Udvid listen for at åbne for flere.
+  const SKAK_PROFILE_IDS = new Set(["c8b8e1c4-3264-40e9-a43d-0eb6214a0183", "3af639de-b0e0-496a-a5b7-b732e49d1fa7"]);
+  const canPlaySkak = () => Boolean(state.user?.id && SKAK_PROFILE_IDS.has(state.user.id) && ["teacher","student"].includes(state.user.role));
+  let disposeSkak = null;
+  function leaveSkak() { disposeSkak?.(); disposeSkak = null; }
+  async function renderSkak() {
+    leaveSkak();
+    if (!canPlaySkak()) { state.view=state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
+    app.innerHTML=`${header()}<div id="skak-root"><p class="seo-loading" data-module-loading>Indlæser...</p></div>`;
+    try {
+      if (!(await ensureModule("skak", "skak"))) return;
+    } catch (error) {
+      console.error(error);
+      app.innerHTML = moduleLoadError("Skak kunne ikke indlæses. Prøv igen.");
+      return;
+    }
+    disposeSkak=window.JacobSkak.mount(document.getElementById("skak-root"), {
+      user:state.user,
+      backend,
+      onExit() { leaveSkak(); state.view=state.user?.role==='teacher'&&!jacobFrontend ? "teacher" : "student"; render(); window.scrollTo(0,0); }
+    });
+  }
+  function skakCard() {
+    return canPlaySkak() ? `<button type="button" class="topic-card skak-card" data-action="skak"><span class="topic-icon">♞ 7 × 8</span><strong>Skak</strong><small>Regn for at købe dit træk. Sværere stykker giver ekstra brikker.</small></button>` : "";
+  }
   const appendCurrentPracticeResult = async result => {
     if (isGuest()) return null; // Guest sessions are memory-only and must never reach Supabase.
     if (isFractionTester()) return null; // Teacher preview is session-only; never impersonate a student.
@@ -693,8 +720,9 @@ multiplicationColumn: {
     const friendsLink=canPlayTenFriends() && state.view === "teacher" ? `<button type="button" class="btn secondary" data-action="ten-friends">Luigis 10’er-venner</button>` : "";
     const marleyLink=canPlayMarleyAddition() && state.view === "teacher" ? `<button type="button" class="btn secondary" data-action="marley-addition">Godbidder til Marley</button>` : "";
     const penalhusLink=canPlayPlusPenalhus() && state.view === "teacher" ? `<button type="button" class="btn secondary" data-action="plus-penalhus">Plus-penalhus</button>` : "";
-    if (!isFractionTester()) return marleyLink+penalhusLink+friendsLink+lessonLink;
-    return `<button type="button" class="btn secondary" data-action="marley">🐶 Marley</button>${friendsLink}${marleyLink}${penalhusLink}<button type="button" class="jacob-view-switch" data-action="toggle-jacob-view" role="switch" aria-checked="${jacobFrontend}" aria-label="Front-end" title="Skift mellem front-end og back-end"><span class="${jacobFrontend ? "active" : ""}">Front-end</span><span class="${!jacobFrontend ? "active" : ""}">Back-end</span></button>${lessonLink}`;
+    const skakLink=canPlaySkak() && state.view === "teacher" ? `<button type="button" class="btn secondary" data-action="skak">♞ Skak</button>` : "";
+    if (!isFractionTester()) return marleyLink+penalhusLink+friendsLink+skakLink+lessonLink;
+    return `<button type="button" class="btn secondary" data-action="marley">🐶 Marley</button>${friendsLink}${marleyLink}${penalhusLink}${skakLink}<button type="button" class="jacob-view-switch" data-action="toggle-jacob-view" role="switch" aria-checked="${jacobFrontend}" aria-label="Front-end" title="Skift mellem front-end og back-end"><span class="${jacobFrontend ? "active" : ""}">Front-end</span><span class="${!jacobFrontend ? "active" : ""}">Back-end</span></button>${lessonLink}`;
   }
   function fractionPilotCard() {
     return canLearnFractions() ? `<button type="button" class="topic-card fraction-pilot-card" data-action="learn-fractions"><span class="topic-icon">½ : ¾</span><strong>Lær brøkregning</strong><small>Find regnearten, og vælg den rigtige regneregel.</small></button>` : "";
@@ -1257,7 +1285,7 @@ multiplicationColumn: {
     const fractionCard = fractionPilotCard();
     const towerTopics = new Set(levels.flat());
     const otherTopics = availableTopics.filter(key => !towerTopics.has(key));
-    const extraCards = otherTopics.map(card).join("") + (isGuest() ? "" : `<button type="button" class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`);
+    const extraCards = skakCard() + otherTopics.map(card).join("") + (isGuest() ? "" : `<button type="button" class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`);
     return `<section class="topic-tower" aria-label="Byg din matematik nedefra">
       <p class="topic-tower-intro"><span aria-hidden="true">↑</span> Byg videre på det, du kan. Start med Tallene nederst.</p>
       ${fractionCard ? `<div class="topic-tower-row">${fractionCard}</div>` : ""}
@@ -3388,7 +3416,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
   function renderLocalConsent() {
     app.innerHTML = `${header()}<div class="page"><section class="class-manager local-consent-card"><h1>Gem dine resultater på denne enhed</h1><p>Din bruger er selvoprettet. Dine resultater gemmes kun i denne browser, så du kan fortsætte næste gang. De sendes ikke til læreren eller vores server og følger ikke med til andre enheder.</p><p>Du kan slette resultaterne med “Slet data” under tårnet. De forsvinder også, hvis browserens webstedsdata slettes.</p><form id="local-consent-form"><label class="local-consent"><input type="checkbox" name="localConsent" required><span>Jeg giver samtykke til lokal lagring af mine resultater på denne enhed.</span></label><p id="local-consent-error" role="alert"></p><button class="btn" type="submit">Gem på denne enhed og fortsæt</button><button class="btn secondary" type="button" data-action="logout">Log ud</button></form></section></div>`;
   }
-  function render() { if (isLocalStudent() && !backend.hasLocalConsent()) { renderLocalConsent(); return; } if (state.view !== "marley-addition") leaveMarleyAddition(); if (state.view !== "plus-penalhus") leavePlusPenalhus(); if (state.view !== "ten-friends") leaveTenFriends(); if (state.view !== "learn-fractions") leaveFractionLesson(); if (!state.user) renderLogin(); else if (state.view==="marley-addition") renderMarleyAddition(); else if (state.view==="plus-penalhus") renderPlusPenalhus(); else if (state.view==="ten-friends") renderTenFriends(); else if (state.view==="learn-fractions") renderFractionLesson(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="marley") renderMarley(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
+  function render() { if (isLocalStudent() && !backend.hasLocalConsent()) { renderLocalConsent(); return; } if (state.view !== "marley-addition") leaveMarleyAddition(); if (state.view !== "plus-penalhus") leavePlusPenalhus(); if (state.view !== "ten-friends") leaveTenFriends(); if (state.view !== "learn-fractions") leaveFractionLesson(); if (state.view !== "skak") leaveSkak(); if (!state.user) renderLogin(); else if (state.view==="marley-addition") renderMarleyAddition(); else if (state.view==="plus-penalhus") renderPlusPenalhus(); else if (state.view==="ten-friends") renderTenFriends(); else if (state.view==="skak") renderSkak(); else if (state.view==="learn-fractions") renderFractionLesson(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="marley") renderMarley(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
 
   document.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -3660,12 +3688,12 @@ function finishColumnAdditionDrag(event, cancelled = false) {
 
     if (action === "marley") {
       if (!isFractionTester()) return;
-      leaveMarleyAddition(); leavePlusPenalhus(); leaveTenFriends(); leaveFractionLesson(); leaveFoodtruck(); stopTeacherLiveUpdates();
+      leaveMarleyAddition(); leavePlusPenalhus(); leaveTenFriends(); leaveSkak(); leaveFractionLesson(); leaveFoodtruck(); stopTeacherLiveUpdates();
       state.view="marley"; renderMarley(); window.scrollTo(0,0); return;
     }
-    if (["ten-friends", "marley-addition", "plus-penalhus"].includes(action)) {
+    if (["ten-friends", "marley-addition", "plus-penalhus", "skak"].includes(action)) {
       event.preventDefault();
-      const allowed=action === "marley-addition" ? canPlayMarleyAddition : action === "plus-penalhus" ? canPlayPlusPenalhus : canPlayTenFriends;
+      const allowed=action === "marley-addition" ? canPlayMarleyAddition : action === "plus-penalhus" ? canPlayPlusPenalhus : action === "skak" ? canPlaySkak : canPlayTenFriends;
       if (!allowed() || state.view === action || switchingJacobView) return;
       switchingJacobView=true;
       const userId=state.user.id;
@@ -3680,7 +3708,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       } finally { switchingJacobView=false; }
       return;
     }
-    if (["logout", "home", "change-password", "foodtruck", "learn-fractions", "toggle-jacob-view"].includes(action)) { leaveMarleyAddition(); leavePlusPenalhus(); leaveTenFriends(); }
+    if (["logout", "home", "change-password", "foodtruck", "learn-fractions", "toggle-jacob-view"].includes(action)) { leaveMarleyAddition(); leavePlusPenalhus(); leaveTenFriends(); leaveSkak(); }
     if (["toggle-jacob-view", "learn-fractions"].includes(action)) {
       event.preventDefault();
       const allowed=() => action === "learn-fractions" ? canLearnFractions() : isFractionTester();
