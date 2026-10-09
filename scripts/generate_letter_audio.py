@@ -15,9 +15,11 @@ OUTPUT = ROOT / "assets/letters/audio"
 LETTER_NAMES = dict(zip(
     "ABCDEFGHIJKLMNOPQRSTUVWXYZÆØÅ",
     ["a", "be", "se", "de", "e", "æf", "ge", "hå", "i", "jåd", "kå",
-     "æl", "æm", "æn", "o", "pe", "ku", "ær", "æs", "te", "u", "ve",
+     "el", "æm", "æn", "o", "pe", "ku", "ær", "æs", "te", "u", "ve",
      "dobbelt ve", "æks", "y", "sæt", "æ", "ø", "å"],
 ))
+# Keep the pronunciation correction used by the newer E recording.
+SPOKEN_WORDS = {"E": "ejern"}
 
 
 def narration_lines():
@@ -26,6 +28,8 @@ def narration_lines():
     letters = re.findall(r'\["([A-ZÆØÅ])","([^"]+)","([^"]+)\.webp"\]', items)
     if [letter for letter, _, _ in letters] != list(LETTER_NAMES):
         raise ValueError("Every alphabet letter must have an explicit Danish spoken name")
+    letters = [(letter, SPOKEN_WORDS.get(letter, word), stem)
+               for letter, word, stem in letters]
     return [
         (stem + ("-v2" if letter in ["L", "N"] else ""),
          f"Bogstavet {LETTER_NAMES[letter]} som i {word}! "
