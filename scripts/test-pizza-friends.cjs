@@ -48,7 +48,7 @@ const out='test-results/pizza-friends';fs.mkdirSync(out,{recursive:true});
  try{
   const page=await mount();
   assert.equal(await page.locator('[data-action="ten-friends"]').count(),1);
-  await page.locator('[data-action="ten-friends"]').click();await page.waitForSelector('.pf-roster');
+  await openPractice(page,'ten-friends');await page.waitForSelector('.pf-roster');
   assert.equal(await page.locator('.pf-roster-card').count(),9);
   await page.waitForFunction(()=>[...document.querySelectorAll('.pf-character img')].every(i=>i.complete&&i.naturalWidth>0));
   await page.screenshot({path:`${out}/desktop-intro.png`,fullPage:true});
@@ -95,7 +95,7 @@ const out='test-results/pizza-friends';fs.mkdirSync(out,{recursive:true});
   await page.locator('.pf-friends-card').click();await page.locator('[data-pf-start]').click();
   await page.locator('[data-action="toggle-jacob-view"]').click();await page.waitForSelector('.teacher-layout');
   assert.equal(await page.locator('.pf-page').count(),0);
-  await page.locator('[data-action="ten-friends"]').click();await page.locator('[data-action="logout"]').click();await page.waitForSelector('.login-wrap');
+  await openPractice(page,'ten-friends');await page.locator('[data-action="logout"]').click();await page.waitForSelector('.login-wrap');
   await page.keyboard.press('5');assert.equal(await page.locator('.pf-page').count(),0);
   await page.close();
   for(const kind of ['student','local','guest','other','out']){
@@ -105,7 +105,7 @@ const out='test-results/pizza-friends';fs.mkdirSync(out,{recursive:true});
     await p.evaluate(()=>{const b=document.createElement('button');b.dataset.action='ten-friends';document.body.append(b);b.click();});
     assert.equal(await p.locator('.pf-page').count(),0);await p.close();continue;
    }
-   if(kind==='other')await p.locator('[data-action="ten-friends"]').click();
+   if(kind==='other')await openPractice(p,'ten-friends');
    else{
     assert.equal(await p.locator('[data-action="ten-friends"]').count(),2);
     const rows=await p.locator('.topic-tower-row').evaluateAll(rows=>rows.map(r=>[...r.querySelectorAll('button')].map(b=>b.dataset.topic||b.dataset.action)));
@@ -149,7 +149,7 @@ const out='test-results/pizza-friends';fs.mkdirSync(out,{recursive:true});
    await p.close();
   }
   for(const width of [320,390,768]){
-   const p=await mount('jacob',width);await p.locator('[data-action="ten-friends"]').click();
+   const p=await mount('jacob',width);await openPractice(p,'ten-friends');
    await p.locator('[data-pf-start]').click();
    assert.ok(await p.evaluate(()=>document.querySelector('.pf-page').scrollWidth<=document.querySelector('.pf-page').clientWidth));
    assert.equal(await p.locator('[data-pf-answer]').count(),9);
@@ -178,3 +178,9 @@ const out='test-results/pizza-friends';fs.mkdirSync(out,{recursive:true});
   console.log('PASS: all user roles, signed-out guard, placement between plus and minus in both stacks, progress and storage routing, save retry, all complements including 5+5, shared tray and delivery, repeat clicks, round, replay, navigation and responsive layouts.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1});
+
+async function openPractice(page, action) {
+ const panel=page.locator('.teacher-practice');
+ if(await panel.count() && !(await panel.evaluate(el=>el.open))) await panel.locator('summary').click();
+ await page.locator('[data-action="'+action+'"]').click();
+}
