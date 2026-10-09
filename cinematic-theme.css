@@ -26,6 +26,10 @@ body.site-authenticated{
 
 /* Navigation */
 .site-authenticated .topbar{
+  height:auto;
+  min-height:72px;
+  padding-top:12px;
+  padding-bottom:12px;
   border-bottom:1px solid rgba(112,76,154,.13);
   background:rgba(255,250,241,.91);
   box-shadow:0 6px 24px rgba(74,47,30,.055);
@@ -84,8 +88,8 @@ body.site-authenticated{
 .site-authenticated .teacher-practice{margin-bottom:22px;padding:16px 20px;border:1px solid var(--line);border-radius:16px;background:rgba(255,253,248,.75)}
 .site-authenticated .teacher-practice summary{cursor:pointer;font-weight:750}
 .site-authenticated .teacher-practice-links{display:flex;flex-wrap:wrap;gap:10px;padding-top:16px}
-@media(max-width:640px){
-  .site-authenticated .topbar{flex-wrap:wrap;gap:12px}
+@media(max-width:900px){
+  .site-authenticated .topbar{position:static;flex-wrap:wrap;gap:12px;min-height:64px}
   .site-authenticated .top-actions{width:100%;justify-content:flex-start}
   .site-authenticated .sandbox-head{align-items:flex-start;flex-wrap:wrap}
   .site-authenticated .sandbox-card{min-height:210px}
