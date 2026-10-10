@@ -111,9 +111,9 @@
       ready: () => true,
     },
     skak: {
-      css: ["skak.css?v=20261009-skak1"],
+      css: ["skak.css?v=20261010-skak-figurer1"],
       // chess.js (BSD-2) → ren spillogik → UI
-      js: ["skak-chess-lib.js?v=20261009-skak1", "skak-core.js?v=20261009-skak1", "skak.js?v=20261009-skak1"],
+      js: ["skak-chess-lib.js?v=20261009-skak1", "skak-core.js?v=20261009-skak1", "skak.js?v=20261010-skak-figurer1"],
       ready: () => !!window.JacobSkak && !!window.SkakCore,
     },
     "dennis-audio": {

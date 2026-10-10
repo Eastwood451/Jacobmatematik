@@ -49,6 +49,26 @@
 .sk-piece{font-size:clamp(26px,8.6vw,54px);line-height:1;user-select:none;pointer-events:none}
 .sk-piece.w{color:#fffdf6;text-shadow:0 0 1px #1d1424,0 0 1px #1d1424,0 0 1px #1d1424,0 2px 2px #0005}
 .sk-piece.b{color:#231a2c;text-shadow:0 1px 0 #ffffff55}
+.sk-character{position:relative;display:grid;place-items:center;width:94%;height:94%;min-width:0;min-height:0;line-height:1;text-shadow:none;isolation:isolate}
+.sk-character img{display:block;width:100%;height:100%;object-fit:contain;user-select:none;pointer-events:none;filter:drop-shadow(0 1px 1px #26153540)}
+.sk-character img[hidden]{display:none}
+.sk-piece-role{position:absolute;right:0;bottom:0;display:grid;place-items:center;width:clamp(13px,2.6vw,19px);height:clamp(13px,2.6vw,19px);font-size:clamp(10px,2vw,15px);line-height:1;border:1px solid #b49660;border-radius:50%;text-shadow:none}
+.sk-character.w .sk-piece-role{background:#fff8e8;color:#514021}
+.sk-character.b .sk-piece-role{background:#302338;color:#ffe0a0}
+.sk-character.is-fallback .sk-piece-role{display:none}
+.sk-piece-fallback{font-size:clamp(26px,8.6vw,54px)}
+.sk-character.w .sk-piece-fallback{color:#fffdf6;text-shadow:0 0 2px #1d1424,0 2px 2px #0005}
+.sk-character.b .sk-piece-fallback{color:#231a2c;text-shadow:0 1px 0 #ffffff55}
+.sk-characters{margin:0 0 18px;padding:14px 16px;background:#fff;border:1px solid #eadcc6;border-radius:18px}
+.sk-characters summary{cursor:pointer;font-weight:800}
+.sk-teams{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin-top:12px}
+.sk-teams h3{font-size:16px;margin:0 0 8px}
+.sk-teams ul{display:grid;gap:6px;list-style:none;margin:0;padding:0}
+.sk-teams li{display:flex;align-items:center;gap:12px;min-width:0}
+.sk-teams .sk-character{width:62px;height:76px;flex:none}
+.sk-teams strong,.sk-teams small{display:block}
+.sk-teams strong{font-size:14px}
+.sk-teams small{font-size:12px;color:#6c5a79}
 .sk-rank,.sk-file{position:absolute;font-style:normal;font-size:10px;font-weight:800;opacity:.65;pointer-events:none}
 .sk-rank{top:2px;left:3px}.sk-file{bottom:1px;right:3px}
 .sk-status{text-align:center;font-weight:800;font-size:17px;margin:12px 0 0}
@@ -73,7 +93,9 @@
 .sk-shop h3 small,.sk-log h3 small{font-weight:600;color:#86769a;font-size:12px}
 .sk-shop-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
 .sk-shop-item{display:grid;justify-items:center;gap:1px;background:#faf5ea;border:2px solid #eadcc6;border-radius:12px;padding:6px 2px}
-.sk-shop-item .sk-piece{font-size:28px}
+.sk-shop-item .sk-character{width:100%;height:58px}
+.sk-shop-item .sk-piece-fallback{font-size:28px}
+.sk-shop-character{display:block;max-width:100%;padding:0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;color:#6c5a79}
 .sk-shop-item strong{font-size:12px}
 .sk-shop-item small{font-size:10px;color:#8a5a12;text-align:center;line-height:1.1}
 .sk-shop-item:not(:disabled):hover{border-color:#f1c76f;background:#fff4dc}
@@ -94,3 +116,4 @@
   .sk-hero img{width:76px}
   .sk-shop-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
 }
+@media (max-width:480px){.sk-teams{grid-template-columns:1fr}.sk-rank,.sk-file{font-size:9px}.sk-piece-role{width:12px;height:12px;font-size:9px}}
