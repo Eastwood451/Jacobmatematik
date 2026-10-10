@@ -96,7 +96,7 @@
 .sk-shop-item .sk-character{width:100%;height:58px}
 .sk-shop-item .sk-piece-fallback{font-size:28px}
 .sk-shop-character{display:block;max-width:100%;padding:0 2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:10px;color:#6c5a79}
-.sk-shop-item strong{font-size:12px}
+.sk-shop-item strong{font-size:clamp(9px,2.5vw,12px);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sk-shop-item small{font-size:10px;color:#8a5a12;text-align:center;line-height:1.1}
 .sk-shop-item:not(:disabled):hover{border-color:#f1c76f;background:#fff4dc}
 .sk-shop-item:disabled{opacity:.42}
