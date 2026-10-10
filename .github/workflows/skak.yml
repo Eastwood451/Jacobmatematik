@@ -1,0 +1,34 @@
+name: Skak characters
+on:
+  push:
+    branches: [main, 'codex/skak-character-*']
+    paths: ['skak*', 'module-loader.js', 'assets/figurer/skak/**', 'scripts/test-skak*.cjs', '.github/workflows/skak.yml']
+  pull_request:
+    paths: ['skak*', 'module-loader.js', 'assets/figurer/skak/**', 'scripts/test-skak*.cjs', '.github/workflows/skak.yml']
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Existing rules and loader checks
+        run: |
+          node --check skak.js
+          node scripts/test-skak.cjs
+          node scripts/test-lazy-load-startup.cjs
+      - name: Install browser
+        run: |
+          npm install --no-save --package-lock=false playwright@1.57.0
+          npx playwright install --with-deps chromium
+      - name: Desktop and mobile characters, movement and promotion
+        run: node scripts/test-skak-characters.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: skak-character-review
+          path: test-results/skak/

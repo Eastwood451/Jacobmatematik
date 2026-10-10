@@ -3,11 +3,29 @@
   "use strict";
   const Core = window.SkakCore;
   const GLYPH = { k: "♚", q: "♛", r: "♜", b: "♝", n: "♞", p: "♟" };
+  const CHARACTERS = {
+    w: { k: "Kaptajn Kvadratrod", q: "Superheltepigen", b: "Matematik-Marley", n: "Luigi Lækkermat", r: "Øbbe Øvdig", p: "Divisions-Dennis" },
+    b: { k: "Kejser Dummo", q: "Eksamens-Else", b: "Broder Brok", n: "Erling Ærgerlig", r: "Gunnar Giderik", p: "Surling" },
+  };
+  const PIECE_ART = "assets/figurer/skak/";
   const DROP_LETTER = { p: "B", n: "S", b: "L", r: "T", q: "D" };
   const PRAISE = ["Flot regnet!", "Sådan! Trækket er dit.", "Godt gået!", "Rigtigt! Vælg en brik.", "Skarpt regnet!"];
   const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
   const pick = list => list[Math.floor(Math.random() * list.length)];
   const colorName = c => (c === "w" ? "Hvid" : "Sort");
+
+  function pieceHtml(color, type) {
+    return `<span class="sk-piece sk-character ${color} sk-character-${type}" aria-hidden="true">
+      <img src="${PIECE_ART}${color}-${type}.webp" alt="" draggable="false" decoding="async" width="384" height="512">
+      <span class="sk-piece-fallback" hidden>${GLYPH[type]}</span>
+      <span class="sk-piece-role">${GLYPH[type]}</span></span>`;
+  }
+
+  function charactersHtml() {
+    return `<details class="sk-characters"><summary>Mød brikkerne · De kloge mod de dumme</summary>
+      <div class="sk-teams">${["w", "b"].map(color => `<section><h3>${color === "w" ? "De kloge · Hvid" : "De dumme · Sort"}</h3>
+        <ul>${["k", "q", "r", "b", "n", "p"].map(type => `<li>${pieceHtml(color, type)}<span><strong>${esc(CHARACTERS[color][type])}</strong><small>${esc(Core.PIECE_NAMES[type])}</small></span></li>`).join("")}</ul></section>`).join("")}</div></details>`;
+  }
 
   function mount(root, { user = null, backend = window.JacobBackend, onExit } = {}) {
     if (!root) throw new Error("Skak mangler en rod");
@@ -262,9 +280,9 @@
         if (s.phase === "place" && s.drops.includes(sq)) cls.push("drop");
         if (s.lastMove && (s.lastMove.from === sq || s.lastMove.to === sq)) cls.push("last");
         if (piece && piece.type === "k" && piece.color === checkKing) cls.push("check");
-        const label = piece ? `${sq}: ${colorName(piece.color).toLowerCase()} ${Core.PIECE_NAMES[piece.type]}` : sq;
+        const label = piece ? `${sq}: ${colorName(piece.color).toLowerCase()} ${Core.PIECE_NAMES[piece.type]} · ${CHARACTERS[piece.color][piece.type]}` : sq;
         const coord = (j === 0 ? `<i class="sk-rank">${8 - r}</i>` : "") + (i === 7 ? `<i class="sk-file">${String.fromCharCode(97 + f)}</i>` : "");
-        cells.push(`<button type="button" class="${cls.join(" ")}" data-sq="${sq}" aria-label="${label}">${piece ? `<span class="sk-piece ${piece.color}">${GLYPH[piece.type]}</span>` : ""}${coord}</button>`);
+        cells.push(`<button type="button" class="${cls.join(" ")}" data-sq="${sq}" aria-label="${esc(label)}" title="${esc(label)}">${piece ? pieceHtml(piece.color, piece.type) : ""}${coord}</button>`);
       }
       const locked = !["move", "place"].includes(s.phase);
       return `<div class="sk-board${locked ? " locked" : ""}" role="grid" aria-label="Skakbræt">${cells.join("")}</div>`;
@@ -289,8 +307,10 @@
       const items = Core.SHOP.map(item => {
         const hasSquare = Core.dropSquares(s.fen, s.myColor, item.type).length > 0;
         const disabled = !active || !status.ok || !hasSquare;
-        return `<button type="button" class="sk-shop-item" data-buy="${item.type}" ${disabled ? "disabled" : ""} title="${hasSquare ? "" : "Ingen ledige felter på dine bagerste rækker"}">
-          <span class="sk-piece ${s.myColor}">${GLYPH[item.type]}</span><strong>${esc(item.name)}</strong><small>${"★".repeat(item.stars)} ${esc(item.difficulty)}</small></button>`;
+        const character = CHARACTERS[s.myColor][item.type];
+        const title = `${character} · ${item.name}${hasSquare ? "" : " · Ingen ledige felter på dine bagerste rækker"}`;
+        return `<button type="button" class="sk-shop-item" data-buy="${item.type}" ${disabled ? "disabled" : ""} title="${esc(title)}" aria-label="${esc(title)}">
+          ${pieceHtml(s.myColor, item.type)}<strong>${esc(item.name)}</strong><span class="sk-shop-character">${esc(character)}</span><small>${"★".repeat(item.stars)} ${esc(item.difficulty)}</small></button>`;
       }).join("");
       const note = status.ok ? "Køb tager hele din tur. Brikken sættes på dine to bagerste rækker." : esc(status.reason);
       return `<section class="sk-shop" aria-label="Køb ekstra brik"><h3>Køb en ekstra brik <small>${meta.buys}/${Core.RULES.maxBuys} brugt</small></h3>
@@ -340,6 +360,7 @@
               : `<p>Kræver at begge spillere er logget ind og online.</p>`}
           </section>
         </div>
+        ${charactersHtml()}
         <details class="sk-rules"><summary>Regler for ekstra brikker</summary><ul>
           ${Core.SHOP.map(i => `<li><strong>${esc(i.name)}</strong>: ${"★".repeat(i.stars)} ${esc(i.difficulty)} opgave</li>`).join("")}
           <li>Butikken åbner efter ${Core.RULES.firstBuyAfterTurns} træk. Derefter højst ét køb pr. ${Core.RULES.cooldownTurns} træk og ${Core.RULES.maxBuys} køb i alt.</li>
@@ -415,8 +436,16 @@
       if (form.dataset.form === "answer") submitAnswer(data.get("answer"));
       if (form.dataset.form === "join") { s.online.joinCode = String(data.get("code") || ""); joinOnline(s.online.joinCode); }
     }
+    function onAssetError(event) {
+      const img = event.target;
+      if (img.tagName !== "IMG" || !img.parentElement?.classList.contains("sk-character")) return;
+      img.hidden = true;
+      img.parentElement.classList.add("is-fallback");
+      img.parentElement.querySelector(".sk-piece-fallback").hidden = false;
+    }
     root.addEventListener("click", onClick);
     root.addEventListener("submit", onSubmit);
+    root.addEventListener("error", onAssetError, true);
     render();
 
     const api = () => {
@@ -424,6 +453,7 @@
       timers.forEach(clearTimeout); timers.clear(); stopPolling();
       root.removeEventListener("click", onClick);
       root.removeEventListener("submit", onSubmit);
+      root.removeEventListener("error", onAssetError, true);
     };
     api.state = s; // til tests/screenshots
     return api;
