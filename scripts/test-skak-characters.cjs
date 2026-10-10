@@ -48,6 +48,11 @@ const expected = {
       assert.equal(await page.locator('.sk-board button').count(), 64);
       assert.equal(await page.locator('.sk-board .sk-character img').count(), 32);
       for (const [square, [id, name]] of Object.entries(expected)) await artAt(page, square, id, name);
+      assert.equal(await page.locator('.sk-board').evaluate(board => [...board.querySelectorAll('.sk-character img')].every(img => {
+        const art = img.getBoundingClientRect(), cell = img.closest('[data-sq]').getBoundingClientRect();
+        return art.left >= cell.left - 1 && art.right <= cell.right + 1 && art.top >= cell.top - 1 && art.bottom <= cell.bottom + 1;
+      })), true, 'character artwork fits inside its square');
+      assert.equal(await page.locator('.sk-shop').evaluate(shop => [...shop.querySelectorAll('.sk-character img')].every(img => Math.abs(img.getBoundingClientRect().height - 58) < 1)), true, 'shop artwork stays within the reserved height');
       assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), true, `${width}px must not scroll horizontally`);
       assert.equal(await page.locator('.sk-board').evaluate(board => {
         const cells = [...board.children].map(cell => cell.getBoundingClientRect());
