@@ -22,6 +22,16 @@ assert(app.includes('window.__clockTest='));
   const user=async role=>page.evaluate(role=>{const t=window.__clockTest;t.state.user={id:'clock-fake',role,name:'Test',username:'test',results:[],assignedLetters:[],assignedNumbers:[],assignedTables:[],assignedAddends:[],assignedAddendSeconds:[]};t.state.view=role==='teacher'?'teacher':'student';t.render();},role);
   await user('guest');await page.locator('[data-action="clock"]').click();
   assert.equal(await page.locator('.cl-clock').count(),1);
+  assert.equal(await page.locator('.cl-guide-ray').count(),3);
+  assert.equal(await page.locator('.cl-hour-guide-arc').getAttribute('data-direction'),'after');
+  assert.equal(await page.locator('.cl-hour-guide-arc').getAttribute('data-target-hour'),'1');
+  assert.match(await page.locator('.cl-direction-rule').textContent(),/venstre halvdel.*EFTER/);
+  assert.equal(await page.locator('.cl-hint').isVisible(),false,'numeric explanation should not reveal the minute answer before an attempt');
+  await page.locator('[data-cl="help"]').click();
+  assert.equal(await page.locator('.cl-guide-ray').count(),0);
+  assert.equal(await page.locator('.cl-direction').isVisible(),false);
+  await page.locator('[data-cl="help"]').click();
+  assert.equal(await page.locator('.cl-guide-ray').count(),3);
   assert.equal(await page.locator('[data-cl-field="minutes"]').count(),1);
   assert.equal(await page.locator('[data-cl-field="hour"]').count(),0);
   const digits=async n=>{for(const d of String(n))await page.locator(`[data-cl-key="${d}"]`).click();};
@@ -35,6 +45,9 @@ assert(app.includes('window.__clockTest='));
   await page.locator('[data-cl-setting="mode"]').selectOption('both');
   for(const [type,minute,hour] of [['to',20,1],['over',20,12],['half',null,1],['quarter-over',null,12],['quarter-to',null,1]]) {
    await page.locator('[data-cl-setting="type"]').selectOption(type);
+   assert.equal(await page.locator('.cl-hour-guide-arc').getAttribute('data-direction'),type==='over'||type==='quarter-over'?'before':'after');
+   assert.equal(await page.locator('.cl-hour-guide-arc').getAttribute('data-target-hour'),String(hour));
+   if(type==='half')assert.match(await page.locator('.cl-direction-rule').textContent(),/Stor viser på 6.*EFTER/);
    assert.equal(await page.locator('[data-cl-field]').count(),minute===null?1:2);
    if(minute!==null){await digits(minute);await page.locator('[data-cl-field="hour"]').click();}
    await digits(hour);await page.locator('[data-cl="check"]').click();await page.locator('.cl-feedback.is-good').waitFor();

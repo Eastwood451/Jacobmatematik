@@ -34,12 +34,24 @@
     const wrong = needed.filter(key => missing.includes(key) || Number(answers[key]) !== expected[key]);
     return {correct:!wrong.length, missing, wrong, expected};
   }
+  function hourGuide(task) {
+    const before = task.minute < 30;
+    return {
+      side: task.minute === 30 ? "half" : before ? "right" : "left",
+      direction: before ? "before" : "after",
+      namedHour: task.namedHour,
+      startAngle: task.hourAngle,
+      endAngle: task.hourAngle + (before ? -task.minute / 2 : (60 - task.minute) / 2),
+      label: task.minute === 30 ? "HALV · timen EFTER" : before ? "OVER · timen FØR" : "I · timen EFTER",
+      rule: task.minute === 30 ? "Stor viser på 6: halv betyder den kommende time. Vælg timen EFTER den lille viser." : before ? "Stor viser i højre halvdel: vælg timen FØR den lille viser." : "Stor viser i venstre halvdel: vælg timen EFTER den lille viser.",
+    };
+  }
   function explain(task) {
     const hourText = ["to", "half", "quarter-to"].includes(task.type) ? `Den korte viser er på vej mod ${task.namedHour}.` : `Den korte viser har passeret ${task.hour}.`;
     const minuteText = task.type === "half" ? "Den lange viser står på 6: der er gået 30 minutter. Halv betyder halvvejs til den næste time." : task.type.startsWith("quarter") ? `En kvart time er 15 minutter. ${task.type === "quarter-to" ? "Der er 15 minutter til den næste time." : "Der er gået 15 minutter siden timen."}` : task.type === "to" ? `Der er ${task.count} ${task.count === 1 ? "minut" : "minutter"} tilbage til den næste time. Derfor siger vi “i”.` : `Der er gået ${task.count} ${task.count === 1 ? "minut" : "minutter"} siden timen. Derfor siger vi “over”.`;
     return `${minuteText} ${hourText}`;
   }
-  const api = Object.freeze({TYPES, nextHour, describe, makeDeck, fields, validate, explain});
+  const api = Object.freeze({TYPES, nextHour, describe, makeDeck, fields, validate, hourGuide, explain});
   root.JacobClockCore = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);

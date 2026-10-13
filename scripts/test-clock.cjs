@@ -1,6 +1,9 @@
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
+const vm = require('node:vm');
 const clock = require('../clock-core.js');
+const svgContext={window:{JacobClockCore:clock}};
+vm.runInNewContext(fs.readFileSync('clock.js','utf8'),svgContext);
 
 for (let h=1; h<=12; h++) for(let m=1; m<=59; m++) {
   const t=clock.describe(h,m);
@@ -8,6 +11,19 @@ for (let h=1; h<=12; h++) for(let m=1; m<=59; m++) {
   assert.equal(t.count, m>30 ? 60-m : m);
   assert.equal(t.hourAngle,(h%12)*30+m/2);
   assert.equal(t.minuteAngle,m*6);
+  const guide=clock.hourGuide(t);
+  assert.equal(guide.direction,m<30?'before':'after');
+  assert.equal(guide.side,m<30?'right':m===30?'half':'left');
+  assert.equal(guide.namedHour,t.namedHour);
+  assert.equal(((guide.endAngle%360)+360)%360,(t.namedHour%12)*30);
+  assert(m<30?guide.endAngle<guide.startAngle:guide.endAngle>guide.startAngle);
+  const svg=svgContext.window.JacobClock.clockSvg(t,true);
+  assert(svg.includes(`data-target-hour="${t.namedHour}"`));
+  assert(svg.includes(`data-direction="${guide.direction}"`));
+  assert(svg.includes('cl-minute-ray'));
+  assert(svg.includes('cl-hour-ray'));
+  assert(svg.includes('stroke-dasharray="5 6"'));
+  assert(!svgContext.window.JacobClock.clockSvg(t,false).includes('cl-guide-ray'));
   for(const mode of ['minutes','hour','both']) {
     assert(clock.validate(t,mode,{minutes:t.count,hour:t.namedHour}).correct);
     assert(!clock.validate(t,mode,{}).correct);
@@ -43,5 +59,5 @@ const app=fs.readFileSync('app.js','utf8'),loader=fs.readFileSync('module-loader
 assert.match(app,/if \(key === "clock"\) return clockCard\(\)/);
 assert.match(app,/ensureModule\("clock", "clock"\)/);
 assert.match(app,/state.view !== "clock"\) leaveClock/);
-assert.match(loader,/clock-core\.js.*clock1", "clock\.js/);
-console.log('PASS: all 708 clock times, answer modes, five phrase families, hour rollover and module wiring.');
+assert.match(loader,/clock-core\.js.*clock-guides2", "clock\.js/);
+console.log('PASS: all 708 clock times, hour-guide directions and targets, dashed rays, answer modes, hour rollover and module wiring.');
