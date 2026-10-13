@@ -58,6 +58,11 @@
   }
 
   const MODULES = {
+    clock: {
+      css: ["clock.css?v=20261013-clock1"],
+      js: ["clock-core.js?v=20261013-clock1", "clock.js?v=20261013-clock1"],
+      ready: () => !!window.JacobClock && !!window.JacobClockCore,
+    },
     marley: {
       css: ["marley.css?v=20261008-bee2"],
       js: ["marley.js?v=20261009-shoes1"],
@@ -147,5 +152,6 @@
     modules: MODULES,
   });
 })();
+
 
 

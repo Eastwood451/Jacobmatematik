@@ -7,6 +7,7 @@
   const TIMER_VISIBILITY_KEY = "jacobmatematik-show-exercise-timer";
   const LEGACY_STORAGE_KEYS = ["matbootcamp-db-v1", "talvaerkstedet-db-v1"];
   const TOPICS = {
+    clock: { name: "Lær klokken", icon: "◷", description: "Aflæs uret, og øv minutter i, over, halv og kvart" },
     letters: { name: "Bogstavlæring", icon: "A B C", description: "Find billedet med den rigtige startlyd" },
     numbers: { name: "Tallene", icon: "● ● ●", description: "Tæl figurer og fingre fra 0 til 10" },
     addition: { name: "Plus-drill", icon: "4 + 5", description: "Plus med etcifrede tal" },
@@ -531,7 +532,43 @@ multiplicationColumn: {
   let disposeMarleyAddition = null;
   const canPlayMarleyAddition = () => gameModuleEnabled(state.user);
   function leaveMarleyAddition() { disposeMarleyAddition?.(); disposeMarleyAddition = null; }
+  let disposeClock = null;
+  const canLearnClock = () => gameModuleEnabled(state.user);
+  function leaveClock() { disposeClock?.(); disposeClock = null; }
+  async function renderClock() {
+    leaveClock();
+    if (!canLearnClock()) { state.view=homeView(); render(); return; }
+    app.innerHTML=`${header()}<div id="clock-root"><p class="seo-loading" data-module-loading>Indlæser uret...</p></div>`;
+    try {
+      if (!(await ensureModule("clock", "clock"))) return;
+    } catch (error) {
+      console.error(error);
+      app.innerHTML=moduleLoadError("Uret kunne ikke indlæses. Prøv igen.");
+      return;
+    }
+    const learner=state.user;
+    disposeClock=window.JacobClock.mount(document.getElementById("clock-root"), {
+      async onResult(result) {
+        if(state.user!==learner) throw new Error("Brugeren er skiftet.");
+        learner.results.push(result);
+        try {
+          if(learner.role==='teacher'||learner.role==='guest') return;
+          if(usingCentralDatabase) result.remoteId=await appendCurrentPracticeResult(result);
+          else await save();
+        } catch(error) {
+          const index=learner.results.indexOf(result);
+          if(index>=0) learner.results.splice(index,1);
+          throw error;
+        }
+      },
+      onExit() { leaveClock(); returnFromModule(); }
+    });
+  }
+  function clockCard() {
+    return canLearnClock() ? `<button type="button" class="topic-card" data-action="clock"><span class="topic-icon">◷</span><strong>Lær klokken</strong><small>Hvad er klokken? Øv minutter i, over, halv og kvart.</small></button>` : "";
+  }
   function moduleApiReady(name) {
+    if (name === "clock") return !!window.JacobClock;
     if (name === "marley") return !!window.MarleyMath;
     if (name === "marley-addition") return !!window.MarleyAddition;
     if (name === "plus-penalhus") return !!window.PlusPenalhus;
@@ -1285,6 +1322,7 @@ multiplicationColumn: {
     ];
     const card = key => {
       const topic = TOPICS[key];
+      if (key === "clock") return clockCard();
       if (key === "tenFriends") return tenFriendsCard();
       if (key === "marleyAddition") return marleyAdditionCard();
       if (key === "plusPenalhus") return plusPenalhusCard();
@@ -3394,7 +3432,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
 
     app.innerHTML = `${header()}<div class="page teacher-page">
       <section class="dashboard-head"><div><span class="eyebrow">Lærerportal</span><h1>${escapeHtml(activeClass.name)} lige nu</h1><p>Følg udvikling, opdag udfordringer og vælg næste fokus.</p></div>${usingCentralDatabase ? `<div id="teacher-live-status" class="teacher-live-status online" role="status"><i aria-hidden="true"></i><span>Live · opdaterer automatisk</span></div>` : `<button class="btn secondary" data-action="reset-demo">Nulstil demodata</button>`}</section>
-      <details class="teacher-practice"><summary>Prøv elevernes øvelser</summary><div class="teacher-practice-links"><button class="btn secondary" type="button" data-action="ten-friends">Luigis 10’er-venner</button><button class="btn secondary" type="button" data-action="marley-addition">Godbidder til Marley</button><button class="btn secondary" type="button" data-action="plus-penalhus">Plus-penalhus</button><button class="btn secondary" type="button" data-action="learn-fractions">Lær brøkregning</button></div></details>
+      <details class="teacher-practice"><summary>Prøv elevernes øvelser</summary><div class="teacher-practice-links"><button class="btn secondary" type="button" data-action="clock">Lær klokken</button><button class="btn secondary" type="button" data-action="ten-friends">Luigis 10’er-venner</button><button class="btn secondary" type="button" data-action="marley-addition">Godbidder til Marley</button><button class="btn secondary" type="button" data-action="plus-penalhus">Plus-penalhus</button><button class="btn secondary" type="button" data-action="learn-fractions">Lær brøkregning</button></div></details>
       <section class="class-manager" aria-label="Klasser">
         <div class="class-manager-title"><div><span class="eyebrow">Dine klasser</span><strong>${classes.length} ${classes.length===1?"klasse":"klasser"}</strong></div><form id="class-form" class="class-form"><label class="sr-only" for="class-name">Navn på ny klasse</label><input id="class-name" name="className" maxlength="30" placeholder="fx 9.A" required><button class="btn" type="submit">Opret klasse</button></form></div>
         <div class="class-tabs" role="tablist">${classes.map(item => { const count=db.users.filter(user=>user.role==="student"&&user.classId===item.id).length; return `<button role="tab" aria-selected="${item.id===activeClass.id}" class="class-tab ${item.id===activeClass.id?"active":""}" data-class="${item.id}"><strong>${escapeHtml(item.name)}</strong><small>${count} ${count===1?"elev":"elever"}</small></button>`; }).join("")}${showUnassigned ? `<button role="tab" aria-selected="${unassigned}" class="class-tab ${unassigned ? "active" : ""}" data-class="${UNASSIGNED_CLASS_ID}"><strong>Uden klasse</strong><small>${unassignedStudents.length} ${unassignedStudents.length === 1 ? "elev" : "elever"}</small></button>` : ""}</div>
@@ -3426,7 +3464,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
   function renderLocalConsent() {
     app.innerHTML = `${header()}<div class="page"><section class="class-manager local-consent-card"><h1>Gem dine resultater på denne enhed</h1><p>Din bruger er selvoprettet. Dine resultater gemmes kun i denne browser, så du kan fortsætte næste gang. De sendes ikke til læreren eller vores server og følger ikke med til andre enheder.</p><p>Du kan slette resultaterne med “Slet data” under tårnet. De forsvinder også, hvis browserens webstedsdata slettes.</p><form id="local-consent-form"><label class="local-consent"><input type="checkbox" name="localConsent" required><span>Jeg giver samtykke til lokal lagring af mine resultater på denne enhed.</span></label><p id="local-consent-error" role="alert"></p><button class="btn" type="submit">Gem på denne enhed og fortsæt</button><button class="btn secondary" type="button" data-action="logout">Log ud</button></form></section></div>`;
   }
-  function render() { if (isLocalStudent() && !backend.hasLocalConsent()) { renderLocalConsent(); return; } if (state.view !== "marley-addition") leaveMarleyAddition(); if (state.view !== "plus-penalhus") leavePlusPenalhus(); if (state.view !== "ten-friends") leaveTenFriends(); if (state.view !== "learn-fractions") leaveFractionLesson(); if (state.view !== "skak") leaveSkak(); if (!state.user) renderLogin(); else if (state.view==="sandbox") renderSandbox(); else if (state.view==="marley-addition") renderMarleyAddition(); else if (state.view==="plus-penalhus") renderPlusPenalhus(); else if (state.view==="ten-friends") renderTenFriends(); else if (state.view==="skak") renderSkak(); else if (state.view==="learn-fractions") renderFractionLesson(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="marley") renderMarley(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
+  function render() { if (state.view !== "clock") leaveClock(); if (isLocalStudent() && !backend.hasLocalConsent()) { renderLocalConsent(); return; } if (state.view !== "marley-addition") leaveMarleyAddition(); if (state.view !== "plus-penalhus") leavePlusPenalhus(); if (state.view !== "ten-friends") leaveTenFriends(); if (state.view !== "learn-fractions") leaveFractionLesson(); if (state.view !== "skak") leaveSkak(); if (!state.user) renderLogin(); else if (state.view==="clock") renderClock(); else if (state.view==="sandbox") renderSandbox(); else if (state.view==="marley-addition") renderMarleyAddition(); else if (state.view==="plus-penalhus") renderPlusPenalhus(); else if (state.view==="ten-friends") renderTenFriends(); else if (state.view==="skak") renderSkak(); else if (state.view==="learn-fractions") renderFractionLesson(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="marley") renderMarley(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
 
   document.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -3720,9 +3758,9 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       moduleReturnView=state.view === "sandbox" ? "sandbox" : null;
       state.view="marley"; renderMarley(); window.scrollTo(0,0); return;
     }
-    if (["ten-friends", "marley-addition", "plus-penalhus", "skak"].includes(action)) {
+    if (["clock", "ten-friends", "marley-addition", "plus-penalhus", "skak"].includes(action)) {
       event.preventDefault();
-      const allowed=action === "marley-addition" ? canPlayMarleyAddition : action === "plus-penalhus" ? canPlayPlusPenalhus : action === "skak" ? canPlaySkak : canPlayTenFriends;
+      const allowed=action === "clock" ? canLearnClock : action === "marley-addition" ? canPlayMarleyAddition : action === "plus-penalhus" ? canPlayPlusPenalhus : action === "skak" ? canPlaySkak : canPlayTenFriends;
       if (!allowed() || state.view === action || switchingJacobView) return;
       switchingJacobView=true;
       const userId=state.user.id;
@@ -4046,6 +4084,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     }
   });
   window.addEventListener("pagehide", () => {
+    leaveClock();
     leaveSkak(); disposeMarley?.(); disposeMarley=null;
     leaveMarleyAddition();
     leavePlusPenalhus();
@@ -4075,5 +4114,6 @@ function finishColumnAdditionDrag(event, cancelled = false) {
   }
   start();
 })();
+
 
 

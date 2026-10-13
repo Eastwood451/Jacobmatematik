@@ -1,0 +1,36 @@
+name: Analog clock module
+on:
+  push:
+    branches: [main]
+    paths: ['clock*', 'app.js', 'module-loader.js', 'index.html', 'scripts/test-clock*', '.github/workflows/clock.yml']
+  pull_request:
+    paths: ['clock*', 'app.js', 'module-loader.js', 'index.html', 'scripts/test-clock*', '.github/workflows/clock.yml']
+permissions:
+  contents: read
+jobs:
+  clock:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Clock language and startup checks
+        run: |
+          node --check app.js
+          node --check clock.js
+          node --check clock-core.js
+          node scripts/test-clock.cjs
+          node scripts/test-lazy-load-startup.cjs
+      - name: Install browser
+        run: |
+          npm install --no-save --package-lock=false playwright@1.57.0
+          npx playwright install --with-deps chromium
+      - name: Exercise and navigation checks
+        run: node scripts/test-clock-browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: clock-review
+          path: test-results/clock/
