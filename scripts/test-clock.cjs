@@ -5,24 +5,26 @@ const clock = require('../clock-core.js');
 const svgContext={window:{JacobClockCore:clock}};
 vm.runInNewContext(fs.readFileSync('clock.js','utf8'),svgContext);
 
-for (let h=1; h<=12; h++) for(let m=1; m<=59; m++) {
+for (let h=1; h<=12; h++) for(let m=0; m<=59; m++) {
   const t=clock.describe(h,m);
   assert.equal(t.namedHour, m>=30 ? h===12?1:h+1 : h);
   assert.equal(t.count, m>30 ? 60-m : m);
   assert.equal(t.hourAngle,(h%12)*30+m/2);
   assert.equal(t.minuteAngle,m*6);
   const guide=clock.hourGuide(t);
-  assert.equal(guide.direction,m<30?'before':'after');
-  assert.equal(guide.side,m<30?'right':m===30?'half':'left');
+  assert.equal(guide.direction,m===0?'exact':m<30?'before':'after');
+  assert.equal(guide.side,m===0?'whole':m<30?'right':m===30?'half':'left');
   assert.equal(guide.namedHour,t.namedHour);
   assert.equal(((guide.endAngle%360)+360)%360,(t.namedHour%12)*30);
-  assert(m<30?guide.endAngle<guide.startAngle:guide.endAngle>guide.startAngle);
+  assert(m===0?guide.endAngle===guide.startAngle:m<30?guide.endAngle<guide.startAngle:guide.endAngle>guide.startAngle);
   const svg=svgContext.window.JacobClock.clockSvg(t,true);
-  assert(svg.includes(`data-target-hour="${t.namedHour}"`));
-  assert(svg.includes(`data-direction="${guide.direction}"`));
-  assert(svg.includes('cl-minute-ray'));
-  assert(svg.includes('cl-hour-ray'));
-  assert(svg.includes('stroke-dasharray="5 6"'));
+  if(m!==0){
+    assert(svg.includes(`data-target-hour="${t.namedHour}"`));
+    assert(svg.includes(`data-direction="${guide.direction}"`));
+    assert(svg.includes('cl-minute-ray'));
+    assert(svg.includes('cl-hour-ray'));
+    assert(svg.includes('stroke-dasharray="5 6"'));
+  }
   assert(!svgContext.window.JacobClock.clockSvg(t,false).includes('cl-guide-ray'));
   for(const mode of ['minutes','hour','both']) {
     assert(clock.validate(t,mode,{minutes:t.count,hour:t.namedHour}).correct);
@@ -49,8 +51,8 @@ for(const type of ['mixed',...clock.TYPES]) for(const step of [1,5]) {
   assert.equal(new Set(deck.map(t=>`${t.hour}:${t.minute}`)).size,deck.length);
   for(const t of deck) {assert.equal(t.minute%step,0);if(type!=='mixed')assert.equal(t.type,type);}
 }
-assert.equal(clock.makeDeck('mixed',1).length,708);
-assert.equal(clock.makeDeck('mixed',5).length,132);
+assert.equal(clock.makeDeck('mixed',1).length,720);
+assert.equal(clock.makeDeck('mixed',5).length,144);
 assert.throws(()=>clock.describe(0,20));
 assert.throws(()=>clock.describe(1,40,'over'));
 assert.throws(()=>clock.describe(1,15,'half'));
@@ -59,5 +61,28 @@ const app=fs.readFileSync('app.js','utf8'),loader=fs.readFileSync('module-loader
 assert.match(app,/if \(key === "clock"\) return clockCard\(\)/);
 assert.match(app,/ensureModule\("clock", "clock"\)/);
 assert.match(app,/state.view !== "clock"\) leaveClock/);
-assert.match(loader,/clock-core\.js.*clock-guides2", "clock\.js/);
-console.log('PASS: all 708 clock times, hour-guide directions and targets, dashed rays, answer modes, hour rollover and module wiring.');
+assert.match(loader,/clock-core\.js.*clock-course\.js.*clock\.js/);
+console.log('PASS: all 720 clock times, hour-guide directions and targets, dashed rays, answer modes, hour rollover and module wiring.');
+
+for(const lesson of clock.LESSONS){
+ const deck=clock.lessonDeck(lesson.id,()=>0.5);
+ assert(deck.length>=5);
+ for(const t of deck){
+  assert.equal(t.type,lesson.type);
+  if(lesson.type==='whole')assert.equal(t.minute,0);
+  const svg=svgContext.window.JacobClock.clockSvg(t,true,{hands:lesson.hands,sectors:lesson.type!=='whole'});
+  assert.equal(svg.includes('class="cl-hour-hand"'),lesson.hands!=='minute');
+  assert.equal(svg.includes('class="cl-minute-hand"'),lesson.hands!=='hour');
+  if(lesson.hands==='hour')assert(!svg.includes('cl-guide-sectors'));
+ }
+ for(let n=0;n<10;n++){
+  const mode=clock.lessonMode(lesson.id,n);
+  assert.equal(mode,lesson.hands==='minute'?'minutes':lesson.hands==='hour'||lesson.type==='whole'?'hour':n<3?'minutes':n<6?'hour':'both');
+ }
+}
+assert.equal(clock.LESSONS.length,6);
+assert.deepEqual(clock.LESSONS.map(x=>x.chapter),[1,2,2,3,3,4]);
+assert.equal(clock.describe(12,0).phrase,'12');
+assert.equal(clock.describe(6,0).phrase,'6');
+assert.throws(()=>clock.describe(6,0,'over'));
+console.log('PASS: six ordered lesson phases, isolated hands, 10-answer scaffolding and whole hours.');

@@ -548,6 +548,7 @@ multiplicationColumn: {
     }
     const learner=state.user;
     disposeClock=window.JacobClock.mount(document.getElementById("clock-root"), {
+      user:learner,
       async onResult(result) {
         if(state.user!==learner) throw new Error("Brugeren er skiftet.");
         learner.results.push(result);

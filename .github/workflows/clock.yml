@@ -21,6 +21,7 @@ jobs:
           node --check app.js
           node --check clock.js
           node --check clock-core.js
+          node --check clock-course.js
           node scripts/test-clock.cjs
           node scripts/test-lazy-load-startup.cjs
       - name: Install browser
