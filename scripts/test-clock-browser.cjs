@@ -43,7 +43,7 @@ assert(app.includes('window.__clockTest='));
    assert.equal(await page.locator('.cl-minute-hand').count(),lesson.hands==='hour'?0:1);
    assert.equal(await page.locator('.cl-halves').count(),lesson.type==='whole'?0:1);
    if(lesson.hands==='hour'||lesson.type==='whole')assert.equal(await page.locator('.cl-hour-guide-arc').count(),0);
-   if(lesson.type==='whole')assert.equal(await page.locator('.cl-minute-hand').getAttribute('transform'),'rotate(0 200 200)');
+   if(lesson.type==='whole'&&lesson.hands==='both')assert.equal(await page.locator('.cl-minute-hand').getAttribute('transform'),'rotate(0 200 200)');
    await page.setViewportSize({width:390,height:844});
    assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),`${id} must fit on mobile`);
    await page.screenshot({path:`test-results/clock/course-${id}-mobile.png`,fullPage:true});
@@ -60,6 +60,7 @@ assert(app.includes('window.__clockTest='));
     assert.deepEqual(await page.locator('[data-course-field]').evaluateAll(elements=>elements.map(el=>el.dataset.courseField)),keys,'correct feedback must retain the answer fields for the completed task');
     await page.locator('[data-course="check"]').click();
    }
+   if(id==='hours'){await page.locator('[data-course="exit"]').click();await page.locator('[data-action="clock"]').click();assert.equal(await page.locator('.cl-course').getAttribute('data-lesson'),'minutes-over');}
   }
   await page.locator('.cl-course-finish').waitFor();
   assert.equal(await page.evaluate(()=>window.__clockTest.state.user.results.length),60);
