@@ -4105,8 +4105,10 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       state.user = db.users.find(user => user.id === loaded.currentUserId);
       if (!state.user) throw new Error("Brugerprofilen mangler.");
       state.view = state.user.role === "teacher" ? "teacher" : "student";
-      if (state.user.role === "teacher") await save();
+      if (state.user.role === "teacher") teacherResultsCursor = loaded.resultsCursor || null;
       render();
+      // Sync the normalized school state in the background; the UI does not need to wait for it.
+      if (state.user.role === "teacher") save();
     } catch {
       state.user=null; state.view="login"; renderLogin();
     }
