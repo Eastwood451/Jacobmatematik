@@ -133,7 +133,7 @@ assert(app.includes('window.__clockTest='));
   const beforeFree=await page.evaluate(()=>window.__clockTest.state.user.results.length);
 
   assert.equal(await page.locator('.cl-clock').count(),1);
-  assert.equal(await page.locator('.cl-guide-ray').count(),3);
+  assert.equal(await page.locator('.cl-guide-ray').count(),2);
   assert.equal(await page.locator('.cl-hour-guide-arc, .cl-clock marker').count(),0);
   assert.match(await page.locator('.cl-direction-rule').textContent(),/venstre halvdel.*EFTER/);
   assert.equal(await page.locator('.cl-hint').isVisible(),false,'numeric explanation should not reveal the minute answer before an attempt');
@@ -141,7 +141,7 @@ assert(app.includes('window.__clockTest='));
   assert.equal(await page.locator('.cl-guide-ray').count(),0);
   assert.equal(await page.locator('.cl-direction').isVisible(),false);
   await page.locator('[data-cl="help"]').click();
-  assert.equal(await page.locator('.cl-guide-ray').count(),3);
+  assert.equal(await page.locator('.cl-guide-ray').count(),2);
   assert.equal(await page.locator('[data-cl-field="minutes"]').count(),1);
   assert.equal(await page.locator('[data-cl-field="hour"]').count(),0);
   const digits=async n=>{for(const d of String(n))await page.locator(`[data-cl-key="${d}"]`).click();};
