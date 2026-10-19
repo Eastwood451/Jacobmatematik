@@ -23,9 +23,9 @@
       root.innerHTML=`<section class="cl-module cl-course" data-lesson="${stage().id}" data-phase="intro">${header()}<div class="cl-course-intro"><div class="cl-dial">${halves()}${svg(example)}<p class="cl-intro-caption">${stage().hands==='hour'?'Kun den lille timeviser':stage().hands==='minute'?'Kun den store minutviser':stage().type==='whole'?'Stor viser opad · lille viser på timen':'Nu bruger vi begge visere'}</p></div><div>${coach(stage().intro)}<p class="cl-course-goal">${10-counts[stageIndex]} korrekte svar ${counts[stageIndex]?'tilbage i denne del':'i denne del'}. Du kan rette et forkert svar.</p><button type="button" class="cl-button cl-course-start" data-course="start">${counts[stageIndex]?'Fortsæt øvelsen':'Start øvelsen'} →</button></div></div></section>`;
     }
     function beginExploration(){
-      phase='explore';exploration={index:0,angle:120,side:'over',stableSide:'over',trips:0,complete:false};
+      phase='explore';exploration={index:0,angle:120,side:'over'};
       const example=core.describe(3,20,'over');
-      root.innerHTML=`<section class="cl-module cl-course cl-explore" data-lesson="both-over" data-phase="explore">${header()}<div class="cl-course-intro"><div class="cl-dial"><div class="cl-halves" aria-label="De to måder at sige minutter"><span class="cl-side-to">Minutter I</span><span class="cl-side-over is-active">Minutter OVER</span></div>${window.JacobClock.clockSvg(example,false,{hands:'both',sectors:true,draggableMinute:true})}<p class="cl-intro-caption">Grib den lange viser og træk den rundt.<br>Du kan også bruge piletasterne.</p></div><div>${coach(['',''])}<div class="cl-explore-card"><p class="cl-explore-round"></p><strong class="cl-explore-choice"></strong><p class="cl-explore-progress"></p><p class="cl-explore-status" role="status" aria-live="polite"></p></div><button type="button" class="cl-button cl-course-start" data-course="explore-next" disabled>Før viseren frem og tilbage først</button></div></div></section>`;
+      root.innerHTML=`<section class="cl-module cl-course cl-explore" data-lesson="both-over" data-phase="explore">${header()}<div class="cl-course-intro"><div class="cl-dial"><div class="cl-halves" aria-label="De to måder at sige minutter"><span class="cl-side-to">Minutter I</span><span class="cl-side-over is-active">Minutter OVER</span></div>${window.JacobClock.clockSvg(example,false,{hands:'both',sectors:true,draggableMinute:true})}<p class="cl-intro-caption">Grib den lange viser og træk den rundt.<br>Du kan også bruge piletasterne.</p></div><div>${coach(['',''])}<div class="cl-explore-card"><p class="cl-explore-round"></p><strong class="cl-explore-choice"></strong><p class="cl-explore-progress"></p><p class="cl-explore-status" role="status" aria-live="polite"></p></div><div class="cl-course-actions"><button type="button" class="cl-button cl-quiet" data-course="explore-hour">Prøv mellem 10 og 11</button><button type="button" class="cl-button cl-course-start" data-course="explore-next">Start opgaverne →</button></div></div></div></section>`;
       const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
       circle.setAttribute('class','cl-explore-hour-ring');circle.setAttribute('r','23');circle.setAttribute('fill','none');circle.setAttribute('stroke-width','4');
       q('.cl-clock').insertBefore(circle,q('[data-clock-hour]'));
@@ -37,40 +37,34 @@
       const e=exploration,hour=e.index===0?3:10,nextHour=hour+1,namedHour=e.side==='over'?hour:nextHour;
       const color=e.side==='over'?'#c85540':'#356bc3',number=q(`[data-clock-hour="${namedHour}"]`),ring=q('.cl-explore-hour-ring');
       ring.setAttribute('cx',number.getAttribute('x'));ring.setAttribute('cy',number.getAttribute('y'));ring.setAttribute('stroke',color);ring.dataset.highlightHour=String(namedHour);
-      const hand=q('[data-clock-drag]');hand.setAttribute('transform',`rotate(${e.angle} 200 200)`);hand.setAttribute('aria-valuenow',String(Math.round(e.angle)%360));hand.setAttribute('aria-valuetext',`Minutter ${e.side==='over'?'OVER':'I'}: vi siger ${namedHour}. ${e.trips} af 3 ture frem og tilbage.`);
+      const hand=q('[data-clock-drag]');hand.setAttribute('transform',`rotate(${e.angle} 200 200)`);hand.setAttribute('aria-valuenow',String(Math.round(e.angle)%360));hand.setAttribute('aria-valuetext',`Minutter ${e.side==='over'?'OVER':'I'}: vi siger ${namedHour}.`);
       q('.cl-hour-hand').style.transform=`rotate(${hour*30+e.angle/12}deg)`;
       q('.cl-explore').dataset.hour=String(hour);q('.cl-explore').dataset.side=e.side;
       q('.cl-side-over').classList.toggle('is-active',e.side==='over');q('.cl-side-to').classList.toggle('is-active',e.side==='to');
       const paragraphs=root.querySelectorAll('.cl-coach p');
       paragraphs[0].textContent=`Den lille viser står mellem ${hour} og ${nextHour}. På den røde OVER-side siger vi ${hour}. På den blå I-side siger vi ${nextHour}. Se cirklen om tallet!`;
-      paragraphs[1].textContent='Grib den lange viser. Før den over på den blå side og tilbage til den røde side. Gør det 3 gange.';
+      paragraphs[1].textContent='Grib den lange viser. Før den frem og tilbage mellem den blå og den røde side, så mange gange du vil. Tryk på Start opgaverne, når du er klar.';
       q('.cl-explore-round').textContent=`Ur ${e.index+1} af 2 · mellem ${hour} og ${nextHour}`;
       q('.cl-explore-choice').textContent=`Minutter ${e.side==='over'?'OVER':'I'} → ${namedHour}`;
-      q('.cl-explore-progress').textContent=`${'★'.repeat(e.trips)}${'☆'.repeat(3-e.trips)} · ${e.trips} af 3 ture frem og tilbage`;
-      const message=e.complete?'Flot! Du har prøvet begge ure. Nu er du klar til opgaverne.':e.trips===3?'Flot! Slip viseren, så drejer den lille viser videre.':e.side==='to'?'Nu siger vi den næste time. Før viseren tilbage til den røde side.':e.index===1&&e.trips===0?'Nu står den lille viser mellem 10 og 11. Prøv igen med den lange viser.':'Før den lange viser over på den blå side.';
+      q('.cl-explore-progress').textContent='Øv dig så længe, du vil.';
+      const message=e.side==='to'?'På den blå side siger vi den næste time. Prøv at føre viseren tilbage.':'På den røde side siger vi den time, den lille viser har passeret.';
       if(q('.cl-explore-status').textContent!==message)q('.cl-explore-status').textContent=message;
-      const button=q('[data-course="explore-next"]');button.disabled=!e.complete;button.textContent=e.complete?'Start opgaverne →':'Før viseren frem og tilbage først';
+      q('[data-course="explore-hour"]').textContent=e.index===0?'Prøv mellem 10 og 11':'Prøv mellem 3 og 4';
     }
     function moveExploration(angle){
-      const e=exploration;if(phase!=='explore'||e.complete||e.trips===3)return;
+      const e=exploration;if(phase!=='explore')return;
       q('.cl-explore').classList.remove('is-changing-hour');
       e.angle=(angle%360+360)%360;
       const horizontal=Math.sin(e.angle*Math.PI/180);
       if(Math.abs(horizontal)>0.0001)e.side=horizontal>0?'over':'to';
-      // Require a clear crossing of the dividing line, so hand jitter cannot finish a trip.
-      if(Math.abs(horizontal)>Math.sin(8*Math.PI/180)&&e.side!==e.stableSide){
-        e.stableSide=e.side;if(e.side==='over')e.trips++;
-      }
       updateExploration();
     }
-    function advanceExploration(){
-      if(phase!=='explore'||exploration.trips!==3)return;
-      if(exploration.index===0){q('.cl-explore').classList.add('is-changing-hour');exploration.index=1;exploration.trips=0;}
-      else exploration.complete=true;
+    function switchExplorationHour(){
+      q('.cl-explore').classList.add('is-changing-hour');exploration.index=1-exploration.index;
       updateExploration();
     }
     function pointerDown(event){
-      if(phase!=='explore'||exploration.complete||event.button!==0||dragPointer!==null)return;
+      if(phase!=='explore'||event.button!==0||dragPointer!==null)return;
       const hand=event.target.closest('[data-clock-drag]');if(!hand||!root.contains(hand))return;
       event.preventDefault();dragPointer=event.pointerId;hand.setPointerCapture(dragPointer);hand.focus({preventScroll:true});hand.classList.add('is-dragging');
     }
@@ -85,7 +79,6 @@
       if(disposed||event.pointerId!==dragPointer)return;
       const hand=q('[data-clock-drag]');dragPointer=null;hand?.classList.remove('is-dragging');
       if(hand?.hasPointerCapture(event.pointerId))hand.releasePointerCapture(event.pointerId);
-      advanceExploration();
     }
     function renderFinish(){root.innerHTML=`<section class="cl-module cl-course" data-phase="finish">${header()}<div class="cl-course-finish"><span class="cl-finish-stars">★★★</span>${coach(['Du har lært timeviseren og minutviseren hver for sig. Du har øvet minutter OVER og minutter I, sat viserne sammen og lært hele timer.','Nu kan du øve videre i fri træning. Her finder du også halv og kvart.'])}<div class="cl-course-actions"><button type="button" class="cl-button" data-course="practice">Gå til fri træning</button><button type="button" class="cl-button cl-quiet" data-course="restart">Begynd kurset forfra</button></div></div></section>`;}
     function sentence(){
@@ -141,14 +134,15 @@
       if(action==='exit')options.onExit?.();
       if(action==='practice')options.onPractice?.();
       if(action==='start'&&phase==='intro'){if(stage().id==='both-over')beginExploration();else next();}
-      if(action==='explore-next'&&phase==='explore'&&exploration.complete)next();
+      if(action==='explore-next'&&phase==='explore')next();
+      if(action==='explore-hour'&&phase==='explore')switchExplorationHour();
       if(action==='check')void check();
       if(action==='help'&&!busy){help=!help;draw();}
       if(action==='restart'){counts.fill(0);stageIndex=0;phase='intro';deck=[];previous='';renderIntro();}
     }
     function keyboard(event){
       if(phase==='explore'&&!disposed&&!event.ctrlKey&&!event.metaKey&&!event.altKey&&event.target.closest('[data-clock-drag]')){
-        if(['ArrowRight','ArrowUp','ArrowLeft','ArrowDown'].includes(event.key)){event.preventDefault();event.stopPropagation();moveExploration(exploration.angle+(['ArrowRight','ArrowUp'].includes(event.key)?15:-15));advanceExploration();}return;
+        if(['ArrowRight','ArrowUp','ArrowLeft','ArrowDown'].includes(event.key)){event.preventDefault();event.stopPropagation();moveExploration(exploration.angle+(['ArrowRight','ArrowUp'].includes(event.key)?15:-15));}return;
       }
       if(disposed||phase!=='exercise'||event.ctrlKey||event.metaKey||event.altKey||event.target.closest('[data-course="exit"],[data-course="practice"],[data-course="help"]'))return;
       if(/^\d$/.test(event.key)){event.preventDefault();event.stopPropagation();key(event.key);}

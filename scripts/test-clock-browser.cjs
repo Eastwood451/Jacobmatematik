@@ -46,7 +46,7 @@ assert(app.includes('window.__clockTest='));
    if(id==='both-over'){
     assert.equal(await page.locator('.cl-course').getAttribute('data-phase'),'explore');
     const continuation=page.locator('[data-course="explore-next"]');
-    assert(await continuation.isDisabled());
+    assert(await continuation.isEnabled());
     const point=async angle=>{const box=await page.locator('.cl-clock').boundingBox(),r=angle*Math.PI/180;return {x:box.x+(240+Math.sin(r)*145)*box.width/480,y:box.y+(240-Math.cos(r)*145)*box.height/480};};
     const move=async angle=>{const p=await point(angle);await page.mouse.move(p.x,p.y,{steps:10});};
     const ring=page.locator('.cl-explore-hour-ring');
@@ -55,22 +55,22 @@ assert(app.includes('window.__clockTest='));
     await checkCoupledHands(3);
     await page.screenshot({path:'test-results/clock/drag-3-red.png',fullPage:true});
     await move(120);await page.mouse.down();
-    // Small movements around the boundary must not count as completed trips.
+    // Crossing the boundary never starts the scored tasks automatically.
     for(const angle of [179,181,179,181,170])await move(angle);
-    assert.match(await page.locator('.cl-explore-progress').textContent(),/0 af 3/);
     for(const hour of [3,10]){
-     for(let n=0;n<3;n++){
+     for(let n=0;n<5;n++){
       await move(240);await marked(hour+1,'#356bc3');
       await checkCoupledHands(hour);
-      assert.match(await page.locator('.cl-explore-progress').textContent(),new RegExp(`${n} af 3`));
       if(n===0){await page.screenshot({path:`test-results/clock/drag-${hour}-blue.png`,fullPage:true});}
       await move(120);await marked(hour,'#c85540');
       await checkCoupledHands(hour);
-      assert.match(await page.locator('.cl-explore-progress').textContent(),new RegExp(`${n+1} af 3`));
-      assert(await continuation.isDisabled());
+      assert(await continuation.isEnabled());
      }
      await page.mouse.up();
+     assert.equal(await page.locator('.cl-course').getAttribute('data-phase'),'explore');
+     assert.equal(await page.locator('.cl-explore').getAttribute('data-hour'),String(hour),'hour changes only when the learner chooses');
      if(hour===3){
+      await page.locator('[data-course="explore-hour"]').click();
       assert.equal(await page.locator('.cl-explore').getAttribute('data-hour'),'10');
       await marked(10,'#c85540');
       await page.locator('.cl-hour-hand').evaluate(el=>Promise.all(el.getAnimations().map(a=>a.finished)));
@@ -169,15 +169,21 @@ assert(app.includes('window.__clockTest='));
    await page.locator('[data-course="start"]').click();
   };
   await startExploration();
+  assert(await page.locator('[data-course="explore-next"]').isEnabled(),'the learner may start without a minimum number of trips');
+  await page.locator('[data-course="explore-next"]').click();
+  assert.equal(await page.locator('.cl-course').getAttribute('data-phase'),'exercise');
+  await startExploration();
   const slider=page.locator('[data-clock-drag]');await slider.focus();
-  // Three full trips at each hour pair using only the accessible slider's keys.
+  // More than three trips stay interactive at each hour pair, including with keys.
   for(const hour of [3,10]){
-   for(let n=0;n<3;n++){
+   for(let n=0;n<5;n++){
     for(let i=0;i<8;i++)await slider.press('ArrowRight');
     assert.equal(await page.locator('.cl-explore-hour-ring').getAttribute('data-highlight-hour'),String(hour+1));
     await checkCoupledHands(hour);
     for(let i=0;i<8;i++)await slider.press('ArrowLeft');
    }
+   assert.equal(await page.locator('.cl-explore').getAttribute('data-hour'),String(hour));
+   if(hour===3)await page.locator('[data-course="explore-hour"]').click();
   }
   assert(await page.locator('[data-course="explore-next"]').isEnabled());
   assert.equal(await page.evaluate(()=>window.__explorationRecords),0,'exploration must not count as scored answers');
@@ -191,19 +197,22 @@ assert(app.includes('window.__clockTest='));
    await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[await touchPoint(angle)]});
    if(verify)await page.waitForFunction(angle=>Number(document.querySelector('[data-clock-drag]').getAttribute('aria-valuenow'))===angle,angle);
   };
-  const scrollBefore=await page.evaluate(()=>scrollY);
   for(const hour of [3,10]){
+   await page.locator('.cl-clock').scrollIntoViewIfNeeded();
+   const scrollBefore=await page.evaluate(()=>scrollY);
    await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[await touchPoint(Number(await slider.getAttribute('aria-valuenow')))]});
-   for(let n=0;n<3;n++){
+   for(let n=0;n<5;n++){
     await touchMove(240);
     assert.equal(await page.locator('.cl-explore-hour-ring').getAttribute('data-highlight-hour'),String(hour+1));
     if(hour===3&&n===0)await page.screenshot({path:'test-results/clock/drag-mobile-touch.png'});
     await touchMove(120);
    }
    await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
-   if(hour===3)await page.waitForFunction(()=>document.querySelector('.cl-explore').dataset.hour==='10');
+   assert.equal(await page.evaluate(()=>scrollY),scrollBefore);
+   assert.equal(await page.locator('.cl-explore').getAttribute('data-hour'),String(hour));
+   assert.equal(await page.locator('.cl-course').getAttribute('data-phase'),'explore');
+   if(hour===3)await page.locator('[data-course="explore-hour"]').click();
   }
-  assert.equal(await page.evaluate(()=>scrollY),scrollBefore);
   assert(await page.locator('[data-course="explore-next"]').isEnabled());
   assert.equal(await page.evaluate(()=>window.__explorationRecords),0);
   // Disposing a grabbed hand must release capture and remove its listeners.
@@ -213,6 +222,6 @@ assert(app.includes('window.__clockTest='));
   await touchMove(240,false);await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
   assert.equal(await page.locator('.cl-explore-hour-ring').getAttribute('data-highlight-hour'),'3');
   await touch.detach();
-  assert.deepEqual(errors,[]);console.log('PASS: all 60 course tasks, mouse/touch/keyboard exploration, hour rotation, boundary jitter, gated continuation, disposal, saved results, navigation and mobile layout.');
+  assert.deepEqual(errors,[]);console.log('PASS: all 60 course tasks, mouse/touch/keyboard exploration, hour rotation, boundary jitter, unlimited dragging and manual continuation, disposal, saved results, navigation and mobile layout.');
  }finally{await browser.close();}
 })().catch(e=>{console.error(e);process.exitCode=1;});
