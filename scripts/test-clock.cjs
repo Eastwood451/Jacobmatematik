@@ -18,9 +18,10 @@ for (let h=1; h<=12; h++) for(let m=0; m<=59; m++) {
   assert.equal(((guide.endAngle%360)+360)%360,(t.namedHour%12)*30);
   assert(m===0?guide.endAngle===guide.startAngle:m<30?guide.endAngle<guide.startAngle:guide.endAngle>guide.startAngle);
   const svg=svgContext.window.JacobClock.clockSvg(t,true);
+  assert(!svg.includes('cl-hour-guide-arc'));
+  assert(!svg.includes('<marker'));
+  assert(!svg.includes('marker-end'));
   if(m!==0){
-    assert(svg.includes(`data-target-hour="${t.namedHour}"`));
-    assert(svg.includes(`data-direction="${guide.direction}"`));
     assert(svg.includes('cl-minute-ray'));
     assert(svg.includes('cl-hour-ray'));
     assert(svg.includes('stroke-dasharray="5 6"'));
