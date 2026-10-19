@@ -24,7 +24,7 @@
     }
     function beginExploration(){
       phase='explore';exploration={index:0,angle:120,side:'over',stableSide:'over',trips:0,complete:false};
-      const example={...core.describe(3,20,'over'),hourAngle:105};
+      const example=core.describe(3,20,'over');
       root.innerHTML=`<section class="cl-module cl-course cl-explore" data-lesson="both-over" data-phase="explore">${header()}<div class="cl-course-intro"><div class="cl-dial"><div class="cl-halves" aria-label="De to måder at sige minutter"><span class="cl-side-to">Minutter I</span><span class="cl-side-over is-active">Minutter OVER</span></div>${window.JacobClock.clockSvg(example,false,{hands:'both',sectors:true,draggableMinute:true})}<p class="cl-intro-caption">Grib den lange viser og træk den rundt.<br>Du kan også bruge piletasterne.</p></div><div>${coach(['',''])}<div class="cl-explore-card"><p class="cl-explore-round"></p><strong class="cl-explore-choice"></strong><p class="cl-explore-progress"></p><p class="cl-explore-status" role="status" aria-live="polite"></p></div><button type="button" class="cl-button cl-course-start" data-course="explore-next" disabled>Før viseren frem og tilbage først</button></div></div></section>`;
       const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
       circle.setAttribute('class','cl-explore-hour-ring');circle.setAttribute('r','23');circle.setAttribute('fill','none');circle.setAttribute('stroke-width','4');
@@ -38,7 +38,7 @@
       const color=e.side==='over'?'#c85540':'#356bc3',number=q(`[data-clock-hour="${namedHour}"]`),ring=q('.cl-explore-hour-ring');
       ring.setAttribute('cx',number.getAttribute('x'));ring.setAttribute('cy',number.getAttribute('y'));ring.setAttribute('stroke',color);ring.dataset.highlightHour=String(namedHour);
       const hand=q('[data-clock-drag]');hand.setAttribute('transform',`rotate(${e.angle} 200 200)`);hand.setAttribute('aria-valuenow',String(Math.round(e.angle)%360));hand.setAttribute('aria-valuetext',`Minutter ${e.side==='over'?'OVER':'I'}: vi siger ${namedHour}. ${e.trips} af 3 ture frem og tilbage.`);
-      q('.cl-hour-hand').style.transform=`rotate(${hour*30+15}deg)`;
+      q('.cl-hour-hand').style.transform=`rotate(${hour*30+e.angle/12}deg)`;
       q('.cl-explore').dataset.hour=String(hour);q('.cl-explore').dataset.side=e.side;
       q('.cl-side-over').classList.toggle('is-active',e.side==='over');q('.cl-side-to').classList.toggle('is-active',e.side==='to');
       const paragraphs=root.querySelectorAll('.cl-coach p');
@@ -53,6 +53,7 @@
     }
     function moveExploration(angle){
       const e=exploration;if(phase!=='explore'||e.complete||e.trips===3)return;
+      q('.cl-explore').classList.remove('is-changing-hour');
       e.angle=(angle%360+360)%360;
       const horizontal=Math.sin(e.angle*Math.PI/180);
       if(Math.abs(horizontal)>0.0001)e.side=horizontal>0?'over':'to';
@@ -64,7 +65,7 @@
     }
     function advanceExploration(){
       if(phase!=='explore'||exploration.trips!==3)return;
-      if(exploration.index===0){exploration.index=1;exploration.trips=0;}
+      if(exploration.index===0){q('.cl-explore').classList.add('is-changing-hour');exploration.index=1;exploration.trips=0;}
       else exploration.complete=true;
       updateExploration();
     }

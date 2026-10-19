@@ -34,6 +34,11 @@ assert(app.includes('window.__clockTest='));
   assert.equal(await page.locator('.cl-guide-sectors').count(),0);
   const courseIds=['hours','minutes-over','minutes-to','both-over','both-to','whole'];
   const courseDigits=async n=>{for(const d of String(n))await page.locator(`[data-course-key="${d}"]`).click();};
+  const checkCoupledHands=async hour=>{
+   const minuteAngle=Number(await page.locator('[data-clock-drag]').getAttribute('aria-valuenow'));
+   const hourAngle=await page.locator('.cl-hour-hand').evaluate(el=>{const m=new DOMMatrix(getComputedStyle(el).transform);return (Math.atan2(m.b,m.a)*180/Math.PI+360)%360;});
+   assert(Math.abs(hourAngle-(hour*30+minuteAngle/12))<0.1,'hour hand must follow the minute hand at a 1:12 ratio');
+  };
   for(const id of courseIds){
    assert.equal(await page.locator('.cl-course').getAttribute('data-lesson'),id);
    assert.equal(await page.locator('.cl-course').getAttribute('data-phase'),'intro');
@@ -47,6 +52,7 @@ assert(app.includes('window.__clockTest='));
     const ring=page.locator('.cl-explore-hour-ring');
     const marked=async(hour,color)=>{assert.equal(await ring.getAttribute('data-highlight-hour'),String(hour));assert.equal(await ring.getAttribute('stroke'),color);};
     await marked(3,'#c85540');
+    await checkCoupledHands(3);
     await page.screenshot({path:'test-results/clock/drag-3-red.png',fullPage:true});
     await move(120);await page.mouse.down();
     // Small movements around the boundary must not count as completed trips.
@@ -55,9 +61,11 @@ assert(app.includes('window.__clockTest='));
     for(const hour of [3,10]){
      for(let n=0;n<3;n++){
       await move(240);await marked(hour+1,'#356bc3');
+      await checkCoupledHands(hour);
       assert.match(await page.locator('.cl-explore-progress').textContent(),new RegExp(`${n} af 3`));
       if(n===0){await page.screenshot({path:`test-results/clock/drag-${hour}-blue.png`,fullPage:true});}
       await move(120);await marked(hour,'#c85540');
+      await checkCoupledHands(hour);
       assert.match(await page.locator('.cl-explore-progress').textContent(),new RegExp(`${n+1} af 3`));
       assert(await continuation.isDisabled());
      }
@@ -66,7 +74,7 @@ assert(app.includes('window.__clockTest='));
       assert.equal(await page.locator('.cl-explore').getAttribute('data-hour'),'10');
       await marked(10,'#c85540');
       await page.locator('.cl-hour-hand').evaluate(el=>Promise.all(el.getAnimations().map(a=>a.finished)));
-      assert.equal(await page.locator('.cl-hour-hand').evaluate(el=>getComputedStyle(el).transform),'matrix(0.707107, -0.707107, 0.707107, 0.707107, 0, 0)');
+      await checkCoupledHands(10);
       await page.screenshot({path:'test-results/clock/drag-10-red.png',fullPage:true});
       await move(Number(await page.locator('[data-clock-drag]').getAttribute('aria-valuenow')));await page.mouse.down();
      }
@@ -167,6 +175,7 @@ assert(app.includes('window.__clockTest='));
    for(let n=0;n<3;n++){
     for(let i=0;i<8;i++)await slider.press('ArrowRight');
     assert.equal(await page.locator('.cl-explore-hour-ring').getAttribute('data-highlight-hour'),String(hour+1));
+    await checkCoupledHands(hour);
     for(let i=0;i<8;i++)await slider.press('ArrowLeft');
    }
   }
