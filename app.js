@@ -566,7 +566,7 @@ multiplicationColumn: {
     });
   }
   function clockCard() {
-    return canLearnClock() ? `<button type="button" class="topic-card" data-action="clock"><span class="topic-icon">◷</span><strong>Lær klokken</strong><small>Hvad er klokken? Øv minutter i, over, halv og kvart.</small></button>` : "";
+    return canLearnClock() ? `<button type="button" class="topic-card clock-home-card" data-action="clock"><span class="clock-card-art" aria-hidden="true"><svg viewBox="0 0 160 104" role="img"><path d="M80 12A40 40 0 0 0 80 92" fill="#dce9ff" stroke="#4267a9" stroke-width="2"/><path d="M80 12A40 40 0 0 1 80 92" fill="#ffe2df" stroke="#c9524a" stroke-width="2"/><circle cx="80" cy="52" r="40" fill="none" stroke="#51476a" stroke-width="2.5"/><path d="M80 52L80 20" stroke="#51476a" stroke-width="4" stroke-linecap="round"/><path d="M80 52L101 68" stroke="#51476a" stroke-width="6" stroke-linecap="round"/><circle cx="80" cy="52" r="4" fill="#51476a"/><text x="38" y="56" text-anchor="middle" font-size="9" font-weight="800" fill="#365b9b">MINUTTER</text><text x="38" y="67" text-anchor="middle" font-size="12" font-weight="900" fill="#365b9b">I</text><text x="122" y="56" text-anchor="middle" font-size="9" font-weight="800" fill="#b84640">MINUTTER</text><text x="122" y="67" text-anchor="middle" font-size="10" font-weight="900" fill="#b84640">OVER</text></svg></span><span class="clock-card-copy"><strong>Lær klokken</strong><small>Hvad er klokken? Øv minutter i, over, halv og kvart.</small></span></button>` : "";
   }
   function moduleApiReady(name) {
     if (name === "clock") return !!window.JacobClock;
@@ -693,10 +693,8 @@ multiplicationColumn: {
   function plusPenalhusCard() {
     return canPlayPlusPenalhus() ? `<button type="button" class="topic-card pp-penalhus-card" data-action="plus-penalhus"><span class="topic-icon">5 + 4</span><strong>Plus-penalhus</strong><small>Klik på Øbbe og Luigi. Tæl tingene, og plus!</small><span class="pp-card-art" aria-hidden="true"><img src="assets/figurer/obbe-ovdig.png" alt="" width="110" height="110" loading="lazy"><img src="assets/figurer/luigi-laekkermat-cutout.webp" alt="" width="110" height="130" loading="lazy"></span></button>` : "";
   }
-  // Skak er en beta, der kun vises på Jacobs profil (lærerkontoen "Jacob") og hans testelev "jacobe",
-  // så han kan prøve både computer- og online-kampe, før eleverne får adgang. Udvid listen for at åbne for flere.
-  const SKAK_PROFILE_IDS = new Set(["c8b8e1c4-3264-40e9-a43d-0eb6214a0183", "3af639de-b0e0-496a-a5b7-b732e49d1fa7"]);
-  const canPlaySkak = () => Boolean(state.user?.id && SKAK_PROFILE_IDS.has(state.user.id) && ["teacher","student"].includes(state.user.role));
+  // Skak er udgivet til alle brugerroller. Gæster kan spille lokalt mod computeren; online kræver fortsat login.
+  const canPlaySkak = () => gameModuleEnabled(state.user);
   let disposeSkak = null;
   function leaveSkak() { disposeSkak?.(); disposeSkak = null; }
   async function renderSkak() {
@@ -761,7 +759,7 @@ multiplicationColumn: {
     }
     disposeMarley = window.MarleyMath.mount(document.getElementById("marley-root"), {onExit() { disposeMarley?.(); disposeMarley=null; returnFromModule(); }});
   }
-  const canUseSandbox = () => isFractionTester() || canPlaySkak();
+  const canUseSandbox = () => isFractionTester();
   function renderSandbox() {
     if (!canUseSandbox()) { state.view=homeView(); render(); return; }
     app.innerHTML = `${header()}<div class="page sandbox-page"><section class="sandbox-head"><div><span class="eyebrow">Udvikling</span><h1>Sandbox</h1><p>Her prøver du moduler, før de udgives til eleverne.</p></div><button type="button" class="btn secondary" data-action="home">← Tilbage</button></section><section class="sandbox-grid" aria-label="Moduler under udvikling">${isFractionTester() ? `<button type="button" class="sandbox-card" data-action="marley"><span class="sandbox-icon" aria-hidden="true">🐶</span><span class="sandbox-tag">Under udvikling</span><strong>Marleys butik</strong><span>Regn, tjen mønter, og klæd Marley på.</span></button>` : ""}${canPlaySkak() ? `<button type="button" class="sandbox-card" data-action="skak"><span class="sandbox-icon" aria-hidden="true">♞</span><span class="sandbox-tag">Beta</span><strong>Skak</strong><span>Spil mod computeren eller test online med en kampkode.</span></button>` : ""}${isFractionTester() ? `<a class="sandbox-card" href="marley-3d-preview.html"><span class="sandbox-icon" aria-hidden="true">🐾</span><span class="sandbox-tag">Grafikprøve</span><strong>Marley i 3D</strong><span>Separat prøve af modellen og bevægelserne.</span></a>` : ""}</section></div>`;
@@ -1333,7 +1331,7 @@ multiplicationColumn: {
     const fractionCard = fractionPilotCard();
     const towerTopics = new Set(levels.flat());
     const otherTopics = availableTopics.filter(key => !towerTopics.has(key));
-    const extraCards = otherTopics.map(card).join("") + (isGuest() ? "" : `<button type="button" class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`);
+    const extraCards = otherTopics.map(card).join("") + skakCard() + (isGuest() ? "" : `<button type="button" class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`);
     return `<section class="topic-tower" aria-label="Byg din matematik nedefra">
       <p class="topic-tower-intro"><span aria-hidden="true">↑</span> Byg videre på det, du kan. Start med Tallene nederst.</p>
       ${fractionCard ? `<div class="topic-tower-row">${fractionCard}</div>` : ""}

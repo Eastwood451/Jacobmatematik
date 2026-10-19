@@ -1752,3 +1752,13 @@ body{
 .home-game-links .fps-trial-entry-erling{right:8%;height:110%}
 .home-game-links>.fps-trial-entry:focus-visible{outline:3px solid #1a7358;outline-offset:5px}
 @media(max-width:560px){.home-game-links>.foodtruck-card{padding:16px;gap:14px}.home-game-links .fps-trial-entry-copy{padding-left:15px}}
+
+/* Home cards: published skak + visual clock guide */
+.clock-home-card{display:grid;grid-template-columns:minmax(105px,42%) 1fr;align-items:center;gap:12px;text-align:left}
+.clock-card-art{display:block;width:100%;max-width:150px;justify-self:center}
+.clock-card-art svg{display:block;width:100%;height:auto;filter:drop-shadow(0 4px 7px rgba(48,38,73,.10))}
+.clock-card-copy{display:grid;gap:5px}
+.clock-card-copy strong{font:inherit;font-weight:800}
+.clock-card-copy small{line-height:1.35}
+.skak-card .topic-icon{font-size:1.45rem}
+@media(max-width:520px){.clock-home-card{grid-template-columns:96px 1fr;gap:8px}.clock-card-art{max-width:110px}}
