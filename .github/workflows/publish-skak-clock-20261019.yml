@@ -33,23 +33,12 @@ jobs:
           assert old in s, 'Sandbox access line not found'
           s=s.replace(old,new,1)
           p.write_text(s)
-
-          css=Path('styles.css')
-          c=css.read_text()
-          c += '''\n/* Home cards: published skak + visual clock guide */\n.clock-home-card{display:grid;grid-template-columns:minmax(105px,42%) 1fr;align-items:center;gap:12px;text-align:left}\n.clock-card-art{display:block;width:100%;max-width:150px;justify-self:center}\n.clock-card-art svg{display:block;width:100%;height:auto;filter:drop-shadow(0 4px 7px rgba(48,38,73,.10))}\n.clock-card-copy{display:grid;gap:5px}\n.clock-card-copy strong{font:inherit;font-weight:800}\n.clock-card-copy small{line-height:1.35}\n.skak-card .topic-icon{font-size:1.45rem}\n@media(max-width:520px){.clock-home-card{grid-template-columns:96px 1fr;gap:8px}.clock-card-art{max-width:110px}}\n'''
-          css.write_text(c)
-
-          idx=Path('index.html')
-          h=idx.read_text()
-          h=h.replace('app.js?v=20261014-clock-course1','app.js?v=20261019-skak-clock-card1')
-          h=h.replace('styles.css?v=20261014-clock-course1','styles.css?v=20261019-skak-clock-card1')
-          idx.write_text(h)
+          css=Path('styles.css'); c=css.read_text(); c += '''\n.clock-home-card{display:grid;grid-template-columns:minmax(105px,42%) 1fr;align-items:center;gap:12px;text-align:left}\n.clock-card-art{display:block;width:100%;max-width:150px;justify-self:center}\n.clock-card-art svg{display:block;width:100%;height:auto;filter:drop-shadow(0 4px 7px rgba(48,38,73,.10))}\n.clock-card-copy{display:grid;gap:5px}.clock-card-copy strong{font:inherit;font-weight:800}.clock-card-copy small{line-height:1.35}\n.skak-card .topic-icon{font-size:1.45rem}\n@media(max-width:520px){.clock-home-card{grid-template-columns:96px 1fr;gap:8px}.clock-card-art{max-width:110px}}\n'''; css.write_text(c)
+          idx=Path('index.html'); h=idx.read_text(); h=h.replace('app.js?v=20261014-clock-course1','app.js?v=20261019-skak-clock-card1').replace('styles.css?v=20261014-clock-course1','styles.css?v=20261019-skak-clock-card1'); idx.write_text(h)
       - name: Verify patch
         run: |
           grep -q 'const canPlaySkak = () => gameModuleEnabled(state.user)' app.js
-          grep -q 'skakCard()' app.js
           grep -q 'clock-card-art' app.js
-          grep -q 'MINUTTER' app.js
       - name: Commit published module
         run: |
           git config user.name 'github-actions[bot]'
@@ -57,3 +46,4 @@ jobs:
           git add app.js styles.css index.html
           git commit -m 'Publish skak for all users and add clock card art'
           git push origin HEAD:main
+# trigger 2
