@@ -37,7 +37,7 @@ assert(app.includes('window.__clockTest='));
   const checkCoupledHands=async hour=>{
    const minuteAngle=Number(await page.locator('[data-clock-drag]').getAttribute('aria-valuenow'));
    const hourAngle=await page.locator('.cl-hour-hand').evaluate(el=>{const m=new DOMMatrix(getComputedStyle(el).transform);return (Math.atan2(m.b,m.a)*180/Math.PI+360)%360;});
-   assert(Math.abs(hourAngle-(hour*30+minuteAngle/12))<0.1,'hour hand must follow the minute hand at a 1:12 ratio');
+   assert(Math.abs(hourAngle-((hour%12)*30+minuteAngle/12))<0.1,'hour hand must follow the minute hand at a 1:12 ratio');
   };
   for(const id of courseIds){
    assert.equal(await page.locator('.cl-course').getAttribute('data-lesson'),id);
@@ -187,6 +187,47 @@ assert(app.includes('window.__clockTest='));
   }
   assert(await page.locator('[data-course="explore-next"]').isEnabled());
   assert.equal(await page.evaluate(()=>window.__explorationRecords),0,'exploration must not count as scored answers');
+  // Track the physical hour angle through many full turns in both directions,
+  // including 12 -> 1, 1 -> 12, negative time and release/re-grab boundaries.
+  await startExploration();
+  let elapsedMinutes=200;
+  const checkContinuousClock=async()=>{
+   const actual=await page.evaluate(()=>({
+    rotation:parseFloat(document.querySelector('.cl-hour-hand').style.transform.slice(7)),
+    hour:Number(document.querySelector('.cl-explore').dataset.hour),
+    namedHour:Number(document.querySelector('.cl-explore-hour-ring').dataset.highlightHour),
+    color:document.querySelector('.cl-explore-hour-ring').getAttribute('stroke'),
+    phase:document.querySelector('.cl-course').dataset.phase
+   }));
+   const hour=((Math.floor(elapsedMinutes/60)-1)%12+12)%12+1;
+   const minute=(elapsedMinutes%60+60)%60,to=minute>=30;
+   assert(Math.abs(actual.rotation-elapsedMinutes/2)<0.001,'hour rotation must accumulate without jumping back at 12');
+   assert.equal(actual.hour,hour);
+   assert.equal(actual.namedHour,to?hour===12?1:hour+1:hour);
+   assert.equal(actual.color,to?'#356bc3':'#c85540');
+   assert.equal(actual.phase,'explore');
+  };
+  for(const [direction,turns] of [[1,14],[-1,28]]){
+   for(let turn=0;turn<turns;turn++)for(let quarter=0;quarter<4;quarter++){
+    for(let step=0;step<6;step++){await slider.press(direction===1?'ArrowRight':'ArrowLeft');elapsedMinutes+=direction*2.5;}
+    await checkContinuousClock();
+   }
+  }
+  assert(await page.locator('[data-course="explore-next"]').isEnabled());
+  await startExploration();await page.locator('.cl-clock').scrollIntoViewIfNeeded();
+  elapsedMinutes=200;
+  const mouseMove=async angle=>{
+   const b=await page.locator('.cl-clock').boundingBox(),a=angle*Math.PI/180;
+   await page.mouse.move(b.x+(240+Math.sin(a)*145)*b.width/480,b.y+(240-Math.cos(a)*145)*b.height/480,{steps:8});
+  };
+  for(const direction of [1,-1]){
+   await mouseMove(120);await page.mouse.down();
+   for(let step=1;step<=8;step++){
+    await mouseMove((120+direction*step*90+720)%360);elapsedMinutes+=direction*15;
+    await checkContinuousClock();
+   }
+   await page.mouse.up();
+  }
   // The clock accepts touch input without scrolling the page during the drag.
   await startExploration();await page.setViewportSize({width:390,height:844});
   await page.locator('.cl-clock').scrollIntoViewIfNeeded();
@@ -215,6 +256,16 @@ assert(app.includes('window.__clockTest='));
   }
   assert(await page.locator('[data-course="explore-next"]').isEnabled());
   assert.equal(await page.evaluate(()=>window.__explorationRecords),0);
+  await startExploration();await page.locator('.cl-clock').scrollIntoViewIfNeeded();
+  elapsedMinutes=200;
+  for(const direction of [1,-1]){
+   await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[await touchPoint(120)]});
+   for(let step=1;step<=8;step++){
+    await touchMove((120+direction*step*90+720)%360);elapsedMinutes+=direction*15;
+    await checkContinuousClock();
+   }
+   await touch.send('Input.dispatchTouchEvent',{type:'touchEnd',touchPoints:[]});
+  }
   // Disposing a grabbed hand must release capture and remove its listeners.
   await startExploration();await page.locator('.cl-clock').scrollIntoViewIfNeeded();
   await touch.send('Input.dispatchTouchEvent',{type:'touchStart',touchPoints:[await touchPoint(120)]});

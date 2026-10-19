@@ -23,7 +23,7 @@
       root.innerHTML=`<section class="cl-module cl-course" data-lesson="${stage().id}" data-phase="intro">${header()}<div class="cl-course-intro"><div class="cl-dial">${halves()}${svg(example)}<p class="cl-intro-caption">${stage().hands==='hour'?'Kun den lille timeviser':stage().hands==='minute'?'Kun den store minutviser':stage().type==='whole'?'Stor viser opad · lille viser på timen':'Nu bruger vi begge visere'}</p></div><div>${coach(stage().intro)}<p class="cl-course-goal">${10-counts[stageIndex]} korrekte svar ${counts[stageIndex]?'tilbage i denne del':'i denne del'}. Du kan rette et forkert svar.</p><button type="button" class="cl-button cl-course-start" data-course="start">${counts[stageIndex]?'Fortsæt øvelsen':'Start øvelsen'} →</button></div></div></section>`;
     }
     function beginExploration(){
-      phase='explore';exploration={index:0,angle:120,side:'over'};
+      phase='explore';exploration={index:0,angle:120,turns:0,side:'over'};
       const example=core.describe(3,20,'over');
       root.innerHTML=`<section class="cl-module cl-course cl-explore" data-lesson="both-over" data-phase="explore">${header()}<div class="cl-course-intro"><div class="cl-dial"><div class="cl-halves" aria-label="De to måder at sige minutter"><span class="cl-side-to">Minutter I</span><span class="cl-side-over is-active">Minutter OVER</span></div>${window.JacobClock.clockSvg(example,false,{hands:'both',sectors:true,draggableMinute:true})}<p class="cl-intro-caption">Grib den lange viser og træk den rundt.<br>Du kan også bruge piletasterne.</p></div><div>${coach(['',''])}<div class="cl-explore-card"><p class="cl-explore-round"></p><strong class="cl-explore-choice"></strong><p class="cl-explore-progress"></p><p class="cl-explore-status" role="status" aria-live="polite"></p></div><div class="cl-course-actions"><button type="button" class="cl-button cl-quiet" data-course="explore-hour">Prøv mellem 10 og 11</button><button type="button" class="cl-button cl-course-start" data-course="explore-next">Start opgaverne →</button></div></div></div></section>`;
       const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
@@ -34,33 +34,35 @@
       updateExploration();
     }
     function updateExploration(){
-      const e=exploration,hour=e.index===0?3:10,nextHour=hour+1,namedHour=e.side==='over'?hour:nextHour;
+      const e=exploration,baseHour=e.index===0?3:10;
+      const hour=((baseHour+e.turns-1)%12+12)%12+1,nextHour=hour===12?1:hour+1,namedHour=e.side==='over'?hour:nextHour;
       const color=e.side==='over'?'#c85540':'#356bc3',number=q(`[data-clock-hour="${namedHour}"]`),ring=q('.cl-explore-hour-ring');
       ring.setAttribute('cx',number.getAttribute('x'));ring.setAttribute('cy',number.getAttribute('y'));ring.setAttribute('stroke',color);ring.dataset.highlightHour=String(namedHour);
-      const hand=q('[data-clock-drag]');hand.setAttribute('transform',`rotate(${e.angle} 200 200)`);hand.setAttribute('aria-valuenow',String(Math.round(e.angle)%360));hand.setAttribute('aria-valuetext',`Minutter ${e.side==='over'?'OVER':'I'}: vi siger ${namedHour}.`);
-      q('.cl-hour-hand').style.transform=`rotate(${hour*30+e.angle/12}deg)`;
+      const hand=q('[data-clock-drag]');hand.setAttribute('transform',`rotate(${e.turns*360+e.angle} 200 200)`);hand.setAttribute('aria-valuenow',String(Math.round(e.angle)%360));hand.setAttribute('aria-valuetext',`Minutter ${e.side==='over'?'OVER':'I'}: vi siger ${namedHour}.`);
+      q('.cl-hour-hand').style.transform=`rotate(${(baseHour+e.turns)*30+e.angle/12}deg)`;
       q('.cl-explore').dataset.hour=String(hour);q('.cl-explore').dataset.side=e.side;
       q('.cl-side-over').classList.toggle('is-active',e.side==='over');q('.cl-side-to').classList.toggle('is-active',e.side==='to');
       const paragraphs=root.querySelectorAll('.cl-coach p');
       paragraphs[0].textContent=`Den lille viser står mellem ${hour} og ${nextHour}. På den røde OVER-side siger vi ${hour}. På den blå I-side siger vi ${nextHour}. Se cirklen om tallet!`;
-      paragraphs[1].textContent='Grib den lange viser. Før den frem og tilbage mellem den blå og den røde side, så mange gange du vil. Tryk på Start opgaverne, når du er klar.';
-      q('.cl-explore-round').textContent=`Ur ${e.index+1} af 2 · mellem ${hour} og ${nextHour}`;
+      paragraphs[1].textContent='Grib den lange viser. Drej den rundt med eller mod uret, så mange gange du vil. Den lille viser følger med. Tryk på Start opgaverne, når du er klar.';
+      q('.cl-explore-round').textContent='Fri øvelse · drej uret begge veje';
       q('.cl-explore-choice').textContent=`Minutter ${e.side==='over'?'OVER':'I'} → ${namedHour}`;
       q('.cl-explore-progress').textContent='Øv dig så længe, du vil.';
       const message=e.side==='to'?'På den blå side siger vi den næste time. Prøv at føre viseren tilbage.':'På den røde side siger vi den time, den lille viser har passeret.';
       if(q('.cl-explore-status').textContent!==message)q('.cl-explore-status').textContent=message;
-      q('[data-course="explore-hour"]').textContent=e.index===0?'Prøv mellem 10 og 11':'Prøv mellem 3 og 4';
+      q('[data-course="explore-hour"]').textContent=e.index===0?'Begynd ved 10':'Begynd ved 3';
     }
     function moveExploration(angle){
       const e=exploration;if(phase!=='explore')return;
       q('.cl-explore').classList.remove('is-changing-hour');
-      e.angle=(angle%360+360)%360;
-      const horizontal=Math.sin(e.angle*Math.PI/180);
-      if(Math.abs(horizontal)>0.0001)e.side=horizontal>0?'over':'to';
+      const nextAngle=(angle%360+360)%360,delta=nextAngle-e.angle;
+      // Crossing 12 advances or reverses the hour instead of resetting it.
+      if(delta < -180)e.turns++;else if(delta > 180)e.turns--;
+      e.angle=nextAngle;e.side=e.angle<180?'over':'to';
       updateExploration();
     }
     function switchExplorationHour(){
-      q('.cl-explore').classList.add('is-changing-hour');exploration.index=1-exploration.index;
+      q('.cl-explore').classList.add('is-changing-hour');exploration.index=1-exploration.index;exploration.turns=0;
       updateExploration();
     }
     function pointerDown(event){
