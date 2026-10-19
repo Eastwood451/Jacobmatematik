@@ -67,17 +67,41 @@
   const throwIfError = ({ error }) => { if (error) throw error; };
   const RESULTS_PAGE_SIZE = 1000;
 
+  const RESULTS_PARALLEL_PAGES = 6;
+  function resultPageQuery(from, after, withCount) {
+    let query = client
+      .from("results")
+      .select("id,student_id,data,created_at", withCount ? { count:"exact" } : undefined)
+      .order("created_at", { ascending:true })
+      .order("id", { ascending:true })
+      .range(from, from + RESULTS_PAGE_SIZE - 1);
+    if (after) query=query.gte("created_at",after);
+    return query;
+  }
+  // The first page also returns the total count, so the remaining pages can be
+  // fetched in parallel instead of one round trip at a time (teacher startup
+  // used to wait for ~18 sequential requests before showing anything).
   async function fetchResultRows(after = null) {
-    const rows = [];
-    for (let from = 0; ; from += RESULTS_PAGE_SIZE) {
-      let query = client
-        .from("results")
-        .select("id,student_id,data,created_at")
-        .order("created_at", { ascending:true })
-        .order("id", { ascending:true })
-        .range(from, from + RESULTS_PAGE_SIZE - 1);
-      if (after) query=query.gte("created_at",after);
-      const response = await query;
+    const first = await resultPageQuery(0, after, true);
+    throwIfError(first);
+    const rows = [...(first.data || [])];
+    if (rows.length < RESULTS_PAGE_SIZE) return rows;
+    let from = RESULTS_PAGE_SIZE;
+    const total = Number(first.count);
+    if (Number.isFinite(total) && total > from) {
+      const offsets = [];
+      for (let offset = from; offset < total; offset += RESULTS_PAGE_SIZE) offsets.push(offset);
+      let lastPageLength = RESULTS_PAGE_SIZE;
+      for (let i = 0; i < offsets.length; i += RESULTS_PARALLEL_PAGES) {
+        const pages = await Promise.all(offsets.slice(i, i + RESULTS_PARALLEL_PAGES).map(offset => resultPageQuery(offset, after, false)));
+        pages.forEach(page => { throwIfError(page); rows.push(...(page.data || [])); lastPageLength = (page.data || []).length; });
+      }
+      if (lastPageLength < RESULTS_PAGE_SIZE) return rows;
+      from = offsets[offsets.length - 1] + RESULTS_PAGE_SIZE;
+    }
+    // Sequential tail: used when no count is available or rows arrived during loading.
+    for (; ; from += RESULTS_PAGE_SIZE) {
+      const response = await resultPageQuery(from, after, false);
       throwIfError(response);
       const page = response.data || [];
       rows.push(...page);
@@ -217,13 +241,17 @@
       const permission = await client.rpc("can_manage_self_registered");
       ownUser.canManageRegistrations = !permission.error && permission.data === true;
     }
+    let allRowsMatched = true;
     resultRows.forEach(row => {
       const student = users.find(item => item.id === row.student_id);
       if (student) student.results.push({ ...row.data, remoteId:row.id });
+      else allRowsMatched = false;
     });
     return {
       database:{ classes:school.classes || [], users },
       currentUserId:profile.id,
+      // Lets the teacher live view continue from here instead of re-downloading every result.
+      resultsCursor:allRowsMatched && resultRows.length ? resultRows[resultRows.length - 1].created_at || null : null,
     };
   }
 
