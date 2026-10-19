@@ -59,8 +59,8 @@
 
   const MODULES = {
     clock: {
-      css: ["clock.css?v=20261019-clock-minute-steps1"],
-      js: ["clock-core.js?v=20261019-clock-minute-steps1", "clock-course.js?v=20261019-clock-minute-steps1", "clock.js?v=20261019-clock-minute-steps1"],
+      css: ["clock.css?v=20261019-clock-minute-size2"],
+      js: ["clock-core.js?v=20261019-clock-minute-size2", "clock-course.js?v=20261019-clock-minute-size2", "clock.js?v=20261019-clock-minute-size2"],
       ready: () => !!window.JacobClock && !!window.JacobClockCore && !!window.JacobClockCourse,
     },
     marley: {
