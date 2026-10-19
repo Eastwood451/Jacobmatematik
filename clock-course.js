@@ -53,6 +53,24 @@
       const message=e.side==='to'?'På den blå side siger vi den næste time. Prøv at føre viseren tilbage.':'På den røde side siger vi den time, den lille viser har passeret.';
       if(q('.cl-explore-status').textContent!==message)q('.cl-explore-status').textContent=message;
       q('[data-course="explore-hour"]').textContent=e.index===0?'Begynd ved 10':'Begynd ved 3';
+      positionDragTip();
+    }
+    function positionDragTip(){
+      if(disposed||phase!=='explore')return;
+      const dial=q('.cl-interactive-dial'),bubble=q('.cl-drag-tip'),svg=q('.cl-clock'),shape=q('.cl-minute-hand path:not(.cl-minute-grip)');
+      if(!dial||!bubble||!svg||!shape)return;
+      const parent=dial.getBoundingClientRect(),clock=svg.getBoundingClientRect(),view=svg.viewBox.baseVal;
+      if(!parent.width||!parent.height)return;
+      const radius=200-shape.getBBox().y,angle=exploration.angle*Math.PI/180;
+      const x=clock.left-parent.left+(200+Math.sin(angle)*radius-view.x)*clock.width/view.width;
+      const y=clock.top-parent.top+(200-Math.cos(angle)*radius-view.y)*clock.height/view.height;
+      bubble.classList.toggle('is-compact',parent.width<360);
+      const width=bubble.offsetWidth,height=bubble.offsetHeight,below=y>=clock.top-parent.top+clock.height/2;
+      const left=Math.max(8,Math.min(parent.width-width-8,x-width/2));
+      const top=Math.max(8,Math.min(parent.height-height-8,below?y+12:y-height-12));
+      bubble.dataset.placement=below?'below':'above';
+      bubble.style.left=`clamp(8px, ${left}px, calc(100% - ${width}px - 8px))`;bubble.style.top=`${top}px`;
+      bubble.style.setProperty('--cl-tip-arrow-x',`${Math.max(12,Math.min(width-12,x-left))}px`);
     }
     function moveExploration(angle){
       const e=exploration;if(phase!=='explore')return;
@@ -178,8 +196,9 @@
     }
     root.addEventListener('click',click);document.addEventListener('keydown',keyboard,true);
     root.addEventListener('pointerdown',pointerDown);root.addEventListener('pointermove',pointerMove);root.addEventListener('pointerup',pointerEnd);root.addEventListener('pointercancel',pointerEnd);root.addEventListener('lostpointercapture',pointerEnd);
+    const tipResizeObserver=new ResizeObserver(positionDragTip);tipResizeObserver.observe(root);
     if(phase==='finish')renderFinish();else renderIntro();
-    return ()=>{disposed=true;root.removeEventListener('click',click);document.removeEventListener('keydown',keyboard,true);const hand=q('[data-clock-drag]');if(dragPointer!==null&&hand?.hasPointerCapture(dragPointer))hand.releasePointerCapture(dragPointer);dragPointer=null;root.removeEventListener('pointerdown',pointerDown);root.removeEventListener('pointermove',pointerMove);root.removeEventListener('pointerup',pointerEnd);root.removeEventListener('pointercancel',pointerEnd);root.removeEventListener('lostpointercapture',pointerEnd);};
+    return ()=>{disposed=true;tipResizeObserver.disconnect();root.removeEventListener('click',click);document.removeEventListener('keydown',keyboard,true);const hand=q('[data-clock-drag]');if(dragPointer!==null&&hand?.hasPointerCapture(dragPointer))hand.releasePointerCapture(dragPointer);dragPointer=null;root.removeEventListener('pointerdown',pointerDown);root.removeEventListener('pointermove',pointerMove);root.removeEventListener('pointerup',pointerEnd);root.removeEventListener('pointercancel',pointerEnd);root.removeEventListener('lostpointercapture',pointerEnd);};
   }
   window.JacobClockCourse=Object.freeze({mount});
 })();
