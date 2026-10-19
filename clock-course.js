@@ -8,22 +8,23 @@
     const counts=core.LESSONS.map(lesson=>Math.min(10,(options.user?.results||[]).filter(r=>r.topic==='clock'&&String(r.problem).startsWith(`Urkursus [${lesson.id}] `)).length));
     let stageIndex=counts.findIndex(n=>n<10),phase='intro',task=null,taskMode='hour',deck=[],previous='',answers={},active='hour',failed=false,firstAnswers=null,done=false,busy=false,disposed=false,help=true,started=0;
     let exploration=null,dragPointer=null;
+    const savedLessons=new Map();
     if(stageIndex<0){stageIndex=core.LESSONS.length-1;phase='finish';}
     const stage=()=>core.LESSONS[stageIndex];
     const mode=()=>taskMode;
     const needed=()=>core.fields(task,mode());
     const q=s=>root.querySelector(s);
     const escape=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-    function header(){return `<header class="cl-header"><div><span class="cl-eyebrow">LÆR KLOKKEN MED LUIGI</span><h1>${phase==='finish'?'Du kan aflæse uret!':phase==='explore'?'Prøv selv: OVER eller I?':escape(stage().title)}</h1><p>Én ting ad gangen. Først hver viser for sig.</p></div><div class="cl-course-actions"><button type="button" class="cl-button cl-quiet" data-course="practice">Fri træning</button><button type="button" class="cl-button cl-quiet" data-course="exit">← Tilbage</button></div></header><ol class="cl-chapters" aria-label="Kursets fire dele">${chapters.map((title,i)=>`<li class="${phase==='finish'||stage().chapter>i+1?'is-complete':stage().chapter===i+1?'is-current':''}" ${stage().chapter===i+1&&phase!=='finish'?'aria-current="step"':''}><span>${i+1}</span>${title}</li>`).join('')}</ol>`;}
+    function header(){return `<header class="cl-header"><div><span class="cl-eyebrow">LÆR KLOKKEN MED LUIGI</span><h1>${phase==='finish'?'Du kan aflæse uret!':phase==='explore'?'Prøv selv: OVER eller I?':escape(stage().title)}</h1><p>Én ting ad gangen. Først hver viser for sig.</p></div><div class="cl-course-toolbar"><nav class="cl-course-nav" aria-label="Skift øvelse"><button type="button" class="cl-button" data-course="previous" aria-label="Forrige øvelse" ${busy||stageIndex===0&&phase!=='finish'?'disabled':''}>← Tilbage</button><button type="button" class="cl-button" data-course="forward" aria-label="Næste øvelse" ${busy||stageIndex===core.LESSONS.length-1?'disabled':''}>Frem →</button></nav><div class="cl-course-actions"><button type="button" class="cl-button cl-quiet" data-course="practice">Fri træning</button><button type="button" class="cl-button cl-quiet" data-course="exit">Til oversigten</button></div></div></header><ol class="cl-chapters" aria-label="Kursets fire dele">${chapters.map((title,i)=>`<li class="${core.LESSONS.every((lesson,j)=>lesson.chapter!==i+1||counts[j]>=10)?'is-complete':stage().chapter===i+1?'is-current':''}" ${stage().chapter===i+1&&phase!=='finish'?'aria-current="step"':''}><span>${i+1}</span>${title}</li>`).join('')}</ol>`;}
     function coach(paragraphs,small=false){return `<aside class="cl-coach ${small?'cl-coach-small':''}" aria-label="Luigi Lækkermat forklarer"><img src="${luigi}" alt="Luigi Lækkermat" width="120" height="144"><div><strong>Luigi Lækkermat</strong>${paragraphs.map(p=>`<p>${escape(p)}</p>`).join('')}</div></aside>`;}
     function halves(){return stage().type==='whole'?'':`<div class="cl-halves" aria-label="De to måder at sige minutter"><span class="cl-side-to ${stage().type==='to'?'is-active':''}">Minutter I</span><span class="cl-side-over ${stage().type==='over'?'is-active':''}">Minutter OVER</span></div>`;}
     function svg(t){return window.JacobClock.clockSvg(t,stage().hands==='both'&&stage().type!=='whole'&&help,{hands:stage().hands,sectors:stage().type!=='whole'});}
     function renderIntro(){
       const example=core.describe(stage().hands==='minute'?12:stage().id==='hours'?8:stage().id==='whole'?6:3,stage().type==='whole'?0:stage().type==='over'?20:40,stage().type);
-      root.innerHTML=`<section class="cl-module cl-course" data-lesson="${stage().id}" data-phase="intro">${header()}<div class="cl-course-intro"><div class="cl-dial">${halves()}${svg(example)}<p class="cl-intro-caption">${stage().hands==='hour'?'Kun den lille timeviser':stage().hands==='minute'?'Kun den store minutviser':stage().type==='whole'?'Stor viser opad · lille viser på timen':'Nu bruger vi begge visere'}</p></div><div>${coach(stage().intro)}<p class="cl-course-goal">${10-counts[stageIndex]} korrekte svar ${counts[stageIndex]?'tilbage i denne del':'i denne del'}. Du kan rette et forkert svar.</p><button type="button" class="cl-button cl-course-start" data-course="start">${counts[stageIndex]?'Fortsæt øvelsen':'Start øvelsen'} →</button></div></div></section>`;
+      root.innerHTML=`<section class="cl-module cl-course" data-lesson="${stage().id}" data-phase="intro">${header()}<div class="cl-course-intro"><div class="cl-dial">${halves()}${svg(example)}<p class="cl-intro-caption">${stage().hands==='hour'?'Kun den lille timeviser':stage().hands==='minute'?'Kun den store minutviser':stage().type==='whole'?'Stor viser opad · lille viser på timen':'Nu bruger vi begge visere'}</p></div><div>${coach(stage().intro)}<p class="cl-course-goal">${counts[stageIndex]===10?'Du har klaret denne del. Du kan øve den igen.':`${10-counts[stageIndex]} korrekte svar ${counts[stageIndex]?'tilbage i denne del':'i denne del'}. Du kan rette et forkert svar.`}</p><button type="button" class="cl-button cl-course-start" data-course="start">${counts[stageIndex]===10?'Øv igen':counts[stageIndex]?'Fortsæt øvelsen':'Start øvelsen'} →</button></div></div></section>`;
     }
-    function beginExploration(){
-      phase='explore';exploration={index:0,angle:120,turns:0,side:'over'};
+    function beginExploration(resume=false){
+      phase='explore';if(!resume||!exploration)exploration={index:0,angle:120,turns:0,side:'over'};
       const example=core.describe(3,20,'over');
       root.innerHTML=`<section class="cl-module cl-course cl-explore" data-lesson="both-over" data-phase="explore">${header()}<div class="cl-course-intro"><div class="cl-dial"><div class="cl-halves" aria-label="De to måder at sige minutter"><span class="cl-side-to">Minutter I</span><span class="cl-side-over is-active">Minutter OVER</span></div>${window.JacobClock.clockSvg(example,false,{hands:'both',sectors:true,draggableMinute:true})}<p class="cl-intro-caption">Grib den lange viser og træk den rundt.<br>Du kan også bruge piletasterne.</p></div><div>${coach(['',''])}<div class="cl-explore-card"><p class="cl-explore-round"></p><strong class="cl-explore-choice"></strong><p class="cl-explore-progress"></p><p class="cl-explore-status" role="status" aria-live="polite"></p></div><div class="cl-course-actions"><button type="button" class="cl-button cl-quiet" data-course="explore-hour">Prøv mellem 10 og 11</button><button type="button" class="cl-button cl-course-start" data-course="explore-next">Start opgaverne →</button></div></div></div></section>`;
       const circle=document.createElementNS('http://www.w3.org/2000/svg','circle');
@@ -44,8 +45,8 @@
       q('.cl-side-over').classList.toggle('is-active',e.side==='over');q('.cl-side-to').classList.toggle('is-active',e.side==='to');
       const paragraphs=root.querySelectorAll('.cl-coach p');
       paragraphs[0].textContent=`Den lille viser står mellem ${hour} og ${nextHour}. På den røde OVER-side siger vi ${hour}. På den blå I-side siger vi ${nextHour}. Se cirklen om tallet!`;
-      paragraphs[1].textContent='Grib den lange viser. Drej den rundt med eller mod uret, så mange gange du vil. Den lille viser følger med. Tryk på Start opgaverne, når du er klar.';
-      q('.cl-explore-round').textContent='Fri øvelse · drej uret begge veje';
+      paragraphs[1].textContent='Grib den lange viser. Drej den rundt, og udforsk alle 12 timer! Den lille viser følger med. Du kan dreje både frem og tilbage, så længe du vil. Tryk på Start opgaverne, når du er klar.';
+      q('.cl-explore-round').textContent='Fri øvelse · udforsk alle 12 timer';
       q('.cl-explore-choice').textContent=`Minutter ${e.side==='over'?'OVER':'I'} → ${namedHour}`;
       q('.cl-explore-progress').textContent='Øv dig så længe, du vil.';
       const message=e.side==='to'?'På den blå side siger vi den næste time. Prøv at føre viseren tilbage.':'På den røde side siger vi den time, den lille viser har passeret.';
@@ -82,6 +83,24 @@
       const hand=q('[data-clock-drag]');dragPointer=null;hand?.classList.remove('is-dragging');
       if(hand?.hasPointerCapture(event.pointerId))hand.releasePointerCapture(event.pointerId);
     }
+    function navigateLesson(direction){
+      if(disposed||busy)return;
+      const destination=phase==='finish'&&direction<0?stageIndex:stageIndex+direction;
+      if(destination<0||destination>=core.LESSONS.length)return;
+      if(phase!=='finish')savedLessons.set(stageIndex,{phase,task,taskMode,deck:[...deck],previous,answers:{...answers},active,failed,firstAnswers:firstAnswers&&{...firstAnswers},done,help,elapsed:Date.now()-started,exploration:exploration&&{...exploration},feedback:q('.cl-feedback')?.textContent,feedbackClass:q('.cl-feedback')?.className,checkText:q('[data-course="check"]')?.textContent});
+      if(dragPointer!==null)pointerEnd({pointerId:dragPointer});
+      stageIndex=destination;
+      const saved=savedLessons.get(stageIndex);
+      if(!saved){phase='intro';task=null;deck=[];previous='';answers={};done=false;help=true;renderIntro();}
+      else{
+        ({phase,task,taskMode,previous,active,failed,done,help}=saved);deck=[...saved.deck];answers={...saved.answers};firstAnswers=saved.firstAnswers&&{...saved.firstAnswers};exploration=saved.exploration&&{...saved.exploration};started=Date.now()-saved.elapsed;
+        if(phase==='explore')beginExploration(true);
+        else if(phase==='intro')renderIntro();
+        else{renderTask();q('.cl-feedback').textContent=saved.feedback;q('.cl-feedback').className=saved.feedbackClass;q('[data-course="check"]').textContent=saved.checkText;q('.cl-keypad').hidden=done;}
+      }
+      const focus=q(`[data-course="${direction<0?'previous':'forward'}"]`);
+      (focus.disabled?q(`[data-course="${direction<0?'forward':'previous'}"]`):focus).focus({preventScroll:true});
+    }
     function renderFinish(){root.innerHTML=`<section class="cl-module cl-course" data-phase="finish">${header()}<div class="cl-course-finish"><span class="cl-finish-stars">★★★</span>${coach(['Du har lært timeviseren og minutviseren hver for sig. Du har øvet minutter OVER og minutter I, sat viserne sammen og lært hele timer.','Nu kan du øve videre i fri træning. Her finder du også halv og kvart.'])}<div class="cl-course-actions"><button type="button" class="cl-button" data-course="practice">Gå til fri træning</button><button type="button" class="cl-button cl-quiet" data-course="restart">Begynd kurset forfra</button></div></div></section>`;}
     function sentence(){
       const ns=needed();
@@ -113,10 +132,10 @@
     }
     function feedback(message,good=false){q('.cl-feedback').textContent=message;q('.cl-feedback').className=`cl-feedback ${good?'is-good':'is-wrong'}`;}
     function key(k){if(busy||done||phase!=='exercise')return;if(k==='clear')answers[active]='';else if(k==='back')answers[active]=answers[active].slice(0,-1);else if(/^\d$/.test(k)&&answers[active].length<2)answers[active]+=k;sentence();}
-    function lock(value){busy=value;root.querySelectorAll('[data-course-key],[data-course-field],[data-course="check"]').forEach(el=>{el.disabled=value;});}
+    function lock(value){busy=value;root.querySelectorAll('[data-course-key],[data-course-field],[data-course="check"]').forEach(el=>{el.disabled=value;});q('[data-course="previous"]').disabled=value||stageIndex===0;q('[data-course="forward"]').disabled=value||stageIndex===core.LESSONS.length-1;}
     async function check(){
       if(disposed||busy||phase!=='exercise')return;
-      if(done){if(counts[stageIndex]>=10){stageIndex++;deck=[];previous='';if(stageIndex>=core.LESSONS.length){stageIndex=core.LESSONS.length-1;phase='finish';renderFinish();}else{phase='intro';renderIntro();}}else next();return;}
+      if(done){if(counts[stageIndex]>=10){stageIndex++;deck=[];previous='';if(stageIndex>=core.LESSONS.length){const remaining=counts.findIndex(n=>n<10);if(remaining<0){stageIndex=core.LESSONS.length-1;phase='finish';renderFinish();}else{stageIndex=remaining;phase='intro';renderIntro();}}else{phase='intro';renderIntro();}}else next();return;}
       const result=core.validate(task,mode(),answers);
       if(result.missing.length){active=result.missing[0];sentence();feedback('Udfyld det tomme felt først.');return;}
       if(!firstAnswers)firstAnswers={...answers};
@@ -126,7 +145,7 @@
       lock(true);
       try{await options.onResult?.(record);}catch(error){if(!disposed){lock(false);feedback('Svaret kunne ikke gemmes. Tryk Tjek svar for at prøve igen.');}return;}
       if(disposed)return;
-      lock(false);done=true;counts[stageIndex]++;sentence();progress();q('.cl-keypad').hidden=true;
+      lock(false);done=true;counts[stageIndex]=Math.min(10,counts[stageIndex]+1);sentence();progress();q('.cl-keypad').hidden=true;
       const phrase=stage().hands==='hour'?`Pilen peger på ${task.hour}.`:stage().hands==='minute'?`${task.count} ${task.count===1?'minut':'minutter'} ${stage().type==='over'?'over':'i'}.`:`Klokken er ${task.phrase}.`;
       feedback(`Rigtigt! ${phrase}`,true);q('[data-course="check"]').textContent=counts[stageIndex]>=10?'Videre til næste del →':'Næste ur';q('[data-course="check"]').focus({preventScroll:true});
     }
@@ -135,6 +154,8 @@
       if(button.dataset.courseKey!==undefined)key(button.dataset.courseKey);
       if(button.dataset.courseField&&!busy&&!done){active=button.dataset.courseField;sentence();}
       const action=button.dataset.course;
+      if(action==='previous')navigateLesson(-1);
+      if(action==='forward')navigateLesson(1);
       if(action==='exit')options.onExit?.();
       if(action==='practice')options.onPractice?.();
       if(action==='start'&&phase==='intro'){if(stage().id==='both-over')beginExploration();else next();}
@@ -142,13 +163,13 @@
       if(action==='explore-hour'&&phase==='explore')switchExplorationHour();
       if(action==='check')void check();
       if(action==='help'&&!busy){help=!help;draw();}
-      if(action==='restart'){counts.fill(0);stageIndex=0;phase='intro';deck=[];previous='';renderIntro();}
+      if(action==='restart'){savedLessons.clear();counts.fill(0);stageIndex=0;phase='intro';deck=[];previous='';renderIntro();}
     }
     function keyboard(event){
       if(phase==='explore'&&!disposed&&!event.ctrlKey&&!event.metaKey&&!event.altKey&&event.target.closest('[data-clock-drag]')){
         if(['ArrowRight','ArrowUp','ArrowLeft','ArrowDown'].includes(event.key)){event.preventDefault();event.stopPropagation();moveExploration(exploration.angle+(['ArrowRight','ArrowUp'].includes(event.key)?15:-15));}return;
       }
-      if(disposed||phase!=='exercise'||event.ctrlKey||event.metaKey||event.altKey||event.target.closest('[data-course="exit"],[data-course="practice"],[data-course="help"]'))return;
+      if(disposed||phase!=='exercise'||event.ctrlKey||event.metaKey||event.altKey||event.target.closest('[data-course="exit"],[data-course="practice"],[data-course="help"],.cl-course-nav'))return;
       if(/^\d$/.test(event.key)){event.preventDefault();event.stopPropagation();key(event.key);}
       else if(event.key==='Backspace'||event.key==='Delete'){event.preventDefault();event.stopPropagation();key(event.key==='Backspace'?'back':'clear');}
       else if(event.key==='Enter'){event.preventDefault();event.stopPropagation();void check();}

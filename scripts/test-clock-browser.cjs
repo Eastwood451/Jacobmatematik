@@ -47,7 +47,7 @@ assert(app.includes('window.__clockTest='));
     assert.equal(await page.locator('.cl-course').getAttribute('data-phase'),'explore');
     const continuation=page.locator('[data-course="explore-next"]');
     assert(await continuation.isEnabled());
-    const point=async angle=>{const box=await page.locator('.cl-clock').boundingBox(),r=angle*Math.PI/180;return {x:box.x+(240+Math.sin(r)*145)*box.width/480,y:box.y+(240-Math.cos(r)*145)*box.height/480};};
+    const point=async angle=>{const box=await page.locator('.cl-clock').boundingBox(),r=angle*Math.PI/180;return {x:box.x+(240+Math.sin(r)*100)*box.width/480,y:box.y+(240-Math.cos(r)*100)*box.height/480};};
     const move=async angle=>{const p=await point(angle);await page.mouse.move(p.x,p.y,{steps:10});};
     const ring=page.locator('.cl-explore-hour-ring');
     const marked=async(hour,color)=>{assert.equal(await ring.getAttribute('data-highlight-hour'),String(hour));assert.equal(await ring.getAttribute('stroke'),color);};
@@ -229,7 +229,7 @@ assert(app.includes('window.__clockTest='));
   elapsedMinutes=200;
   const mouseMove=async angle=>{
    const b=await page.locator('.cl-clock').boundingBox(),a=angle*Math.PI/180;
-   await page.mouse.move(b.x+(240+Math.sin(a)*145)*b.width/480,b.y+(240-Math.cos(a)*145)*b.height/480,{steps:8});
+   await page.mouse.move(b.x+(240+Math.sin(a)*100)*b.width/480,b.y+(240-Math.cos(a)*100)*b.height/480,{steps:8});
   };
   for(const direction of [1,-1]){
    await mouseMove(120);await page.mouse.down();
@@ -244,7 +244,7 @@ assert(app.includes('window.__clockTest='));
   await page.locator('.cl-clock').scrollIntoViewIfNeeded();
   const touch=await page.context().newCDPSession(page);
   await touch.send('Emulation.setTouchEmulationEnabled',{enabled:true,maxTouchPoints:1});
-  const touchPoint=async angle=>{const b=await page.locator('.cl-clock').boundingBox(),a=angle*Math.PI/180;return {x:b.x+(240+Math.sin(a)*145)*b.width/480,y:b.y+(240-Math.cos(a)*145)*b.height/480,id:1};};
+  const touchPoint=async angle=>{const b=await page.locator('.cl-clock').boundingBox(),a=angle*Math.PI/180;return {x:b.x+(240+Math.sin(a)*100)*b.width/480,y:b.y+(240-Math.cos(a)*100)*b.height/480,id:1};};
   const touchMove=async(angle,verify=true)=>{
    await touch.send('Input.dispatchTouchEvent',{type:'touchMove',touchPoints:[await touchPoint(angle)]});
    if(verify)await page.waitForFunction(angle=>Number(document.querySelector('[data-clock-drag]').getAttribute('aria-valuenow'))===angle,angle);
