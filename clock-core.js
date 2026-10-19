@@ -55,17 +55,18 @@
   }
   const LESSONS = Object.freeze([
     {id:"hours",chapter:1,title:"Lær timeviseren",hands:"hour",type:"whole",intro:["Et ur har to visere. Vi begynder med den lille viser. Den viser timerne.","Her peger pilen lige på et timetal. Skriv det tal, pilen peger på. Læs 10 timer, før vi går videre."],prompt:"Hvilken time peger pilen på?"},
-    {id:"minutes-over",chapter:2,title:"Minutter OVER",hands:"minute",type:"over",intro:["Voksne SIGER klokken på to måder: minutter OVER og minutter I. Nu ser vi kun på den store viser. Den viser minutterne.","I den røde højre halvcirkel tæller vi fra toppen og rundt med uret: 5, 10, 15, 20, 25 minutter OVER. Vi øver kun OVER først."],prompt:"Hvor mange minutter OVER?"},
-    {id:"minutes-to",chapter:2,title:"Minutter I",hands:"minute",type:"to",intro:["På den blå side tæller vi den MODSATTE vej af “minutter OVER”. Start ved toppen, og tæl ned langs den blå side: 5, 10, 15, 20, 25.","Stop, når du møder den store viser. Tallet fortæller, hvor mange minutter der er tilbage, før klokken bliver hel. Det kalder vi “minutter I”!"],prompt:"Hvor mange minutter I?"},
+    {id:"minutes-over",chapter:2,title:"Minutter OVER",hands:"minute",type:"over",intro:["Voksne SIGER klokken på to måder: minutter OVER og minutter I. Nu ser vi kun på den store viser. Den viser minutterne.","I den røde højre halvcirkel tæller vi fra toppen og rundt med uret: 5, 10, 15, 20, 25 minutter OVER. Vi øver kun OVER først.","Først får du 5 spørgsmål med hele femmere. Derefter skal du tælle de små streger mellem tallene. Hver lille streg er 1 minut."],prompt:"Hvor mange minutter OVER?"},
+    {id:"minutes-to",chapter:2,title:"Minutter I",hands:"minute",type:"to",intro:["På den blå side tæller vi den MODSATTE vej af “minutter OVER”. Start ved toppen, og tæl ned langs den blå side: 5, 10, 15, 20, 25.","Stop, når du møder den store viser. Tallet fortæller, hvor mange minutter der er tilbage, før klokken bliver hel. Det kalder vi “minutter I”!","Først får du 5 spørgsmål med hele femmere. Derefter skal du tælle de små streger mellem tallene. Hver lille streg er 1 minut."],prompt:"Hvor mange minutter I?"},
     {id:"both-over",chapter:3,title:"Begge visere · OVER",hands:"both",type:"over",intro:["Nu sætter vi viserne sammen. Den store viser fortæller minutterne. Den lille viser fortæller timen.","Når den store viser er i OVER-halvcirklen, siger vi timen FØR den lille viser. Den lille viser har allerede passeret det timetal. Følg pilen baglæns til tallet."],prompt:"Hvad er klokken?"},
     {id:"both-to",chapter:3,title:"Begge visere · I",hands:"both",type:"to",intro:["Når den store viser er i I-halvcirklen, siger vi timen EFTER den lille viser.","Den lille viser er på vej mod det timetal. Følg pilen frem til tallet. Nu siger vi først minutter I og derefter den kommende time."],prompt:"Hvad er klokken?"},
     {id:"whole",chapter:4,title:"Hele klokkeslæt",hands:"both",type:"whole",intro:["Når den store viser peger lige op på 12, er klokken hel.","Så siger vi bare det tal, den lille viser peger på. Peger den lille viser på 6, siger vi: Klokken er 6."],prompt:"Hvad er klokken?"},
   ]);
-  function lessonDeck(id, random=Math.random) {
+  function lessonDeck(id, random=Math.random, solved=0) {
     const lesson=LESSONS.find(item=>item.id===id);
     if(!lesson)throw new RangeError("Invalid clock lesson");
-    const deck=makeDeck(lesson.type,5,random);
-    return lesson.hands === "minute" ? deck.filter(task=>task.hour===12) : deck;
+    const betweenFives=lesson.hands === "minute" && solved>=5;
+    const deck=makeDeck(lesson.type,betweenFives?1:5,random);
+    return lesson.hands === "minute" ? deck.filter(task=>task.hour===12 && (!betweenFives || task.minute%5!==0)) : deck;
   }
   function lessonMode(id, solved) {
     const lesson=LESSONS.find(item=>item.id===id);

@@ -86,7 +86,7 @@
     function sentence(){
       const ns=needed();
       const field=(key,value)=>ns.includes(key)?`<button type="button" class="cl-blank ${active===key?'is-active':''}" data-course-field="${key}" aria-pressed="${active===key}" aria-label="${key==='hour'?'Timetal':'Minutter'}: ${answers[key]||'tomt felt'}" ${busy||done?'disabled':''}>${answers[key]||'?'}</button>`:String(value);
-      q('.cl-sentence').innerHTML=stage().hands==='hour'||stage().type==='whole'?field('hour',task.hour):stage().hands==='minute'?`${field('minutes',task.count)} <span>minutter ${stage().type==='over'?'over':'i'}</span>`:`${field('minutes',task.count)} <span>minutter ${stage().type==='over'?'over':'i'}</span> ${field('hour',task.namedHour)}`;
+      q('.cl-sentence').innerHTML=stage().hands==='hour'||stage().type==='whole'?field('hour',task.hour):stage().hands==='minute'?`${field('minutes',task.count)} <span>${task.count===1?'minut':'minutter'} ${stage().type==='over'?'over':'i'}</span>`:`${field('minutes',task.count)} <span>minutter ${stage().type==='over'?'over':'i'}</span> ${field('hour',task.namedHour)}`;
     }
     function progress(){q('.cl-progress').textContent=`${'★'.repeat(counts[stageIndex])}${'☆'.repeat(10-counts[stageIndex])} · ${counts[stageIndex]} af 10 korrekte`;}
     function draw(){
@@ -99,11 +99,13 @@
     function renderTask(){
       const words=stage().hands==='hour'?'TIMEVISEREN PEGER PÅ':stage().hands==='minute'?'DEN STORE VISER VISER':'KLOKKEN ER';
       const explanation=stage().hands==='hour'?'Den lille viser er en pil. Læs tallet ved spidsen.':stage().hands==='minute'?stage().type==='over'?'Brug den røde OVER-halvcirkel. Tæl fra toppen med uret.':'På den blå I-side tæller vi den MODSATTE vej af OVER-siden. Start ved toppen, og tæl ned langs den blå side, indtil du møder den store viser.':stage().type==='whole'?'Den store viser står på 12. Sig bare det tal, den lille viser peger på.':core.hourGuide(task).rule;
-      root.innerHTML=`<section class="cl-module cl-course" data-lesson="${stage().id}" data-phase="exercise">${header()}<h2 class="cl-course-question">${stage().prompt}</h2><div class="cl-progress" aria-live="polite"></div><div class="cl-play"><div class="cl-dial">${halves()}<div class="cl-svg"></div><div class="cl-legend">${stage().hands!=='minute'?'<span><i class="cl-hour-dot"></i>Kort, bred pil · timeviser</span>':''}${stage().hands!=='hour'?'<span><i class="cl-minute-dot"></i>Lang, smal pil · minutviser</span>':''}</div>${stage().hands==='both'&&stage().type!=='whole'?'<button type="button" class="cl-button cl-quiet" data-course="help" aria-pressed="true">Skjul hjælpelinjer</button><p class="cl-course-guide"></p>':''}${coach([explanation],true)}</div><div class="cl-answer"><span class="cl-eyebrow">${words}</span><div class="cl-sentence"></div><p class="cl-instruction">${needed().length===2?'Udfyld både minutter og timetal.':needed()[0]==='minutes'?'Skriv antallet af minutter.':'Skriv timetallet.'}</p><div class="cl-keypad">${[1,2,3,4,5,6,7,8,9,'clear',0,'back'].map(k=>`<button type="button" data-course-key="${k}" aria-label="${k==='clear'?'Ryd felt':k==='back'?'Slet sidste ciffer':k}">${k==='clear'?'C':k==='back'?'⌫':k}</button>`).join('')}</div><button type="button" class="cl-button cl-check" data-course="check">Tjek svar</button><p class="cl-feedback" role="status" aria-live="polite"></p></div></div></section>`;
+      const minuteDetail=stage().hands==='minute'&&counts[stageIndex]>=5?' Nu peger viseren mellem de store tal. Hver lille streg er 1 minut. Tæl stregerne med.':'';
+      root.innerHTML=`<section class="cl-module cl-course" data-lesson="${stage().id}" data-phase="exercise">${header()}<h2 class="cl-course-question">${stage().prompt}</h2><div class="cl-progress" aria-live="polite"></div><div class="cl-play"><div class="cl-dial">${halves()}<div class="cl-svg"></div><div class="cl-legend">${stage().hands!=='minute'?'<span><i class="cl-hour-dot"></i>Kort pil · timeviser</span>':''}${stage().hands!=='hour'?'<span><i class="cl-minute-dot"></i>Lang pil · minutviser</span>':''}</div>${stage().hands==='both'&&stage().type!=='whole'?'<button type="button" class="cl-button cl-quiet" data-course="help" aria-pressed="true">Skjul hjælpelinjer</button><p class="cl-course-guide"></p>':''}${coach([explanation+minuteDetail],true)}</div><div class="cl-answer"><span class="cl-eyebrow">${words}</span><div class="cl-sentence"></div><p class="cl-instruction">${needed().length===2?'Udfyld både minutter og timetal.':needed()[0]==='minutes'?'Skriv antallet af minutter.':'Skriv timetallet.'}</p><div class="cl-keypad">${[1,2,3,4,5,6,7,8,9,'clear',0,'back'].map(k=>`<button type="button" data-course-key="${k}" aria-label="${k==='clear'?'Ryd felt':k==='back'?'Slet sidste ciffer':k}">${k==='clear'?'C':k==='back'?'⌫':k}</button>`).join('')}</div><button type="button" class="cl-button cl-check" data-course="check">Tjek svar</button><p class="cl-feedback" role="status" aria-live="polite"></p></div></div></section>`;
       draw();
     }
     function next(){
-      if(!deck.length)deck=core.lessonDeck(stage().id);
+      if(stage().hands==='minute'&&counts[stageIndex]===5)deck=[];
+      if(!deck.length)deck=core.lessonDeck(stage().id,Math.random,counts[stageIndex]);
       task=deck.pop();
       const signature=t=>stage().hands==='minute'?String(t.minute):`${t.hour}:${t.minute}`;
       if(signature(task)===previous&&deck.length){deck.unshift(task);task=deck.pop();}
@@ -125,7 +127,7 @@
       try{await options.onResult?.(record);}catch(error){if(!disposed){lock(false);feedback('Svaret kunne ikke gemmes. Tryk Tjek svar for at prøve igen.');}return;}
       if(disposed)return;
       lock(false);done=true;counts[stageIndex]++;sentence();progress();q('.cl-keypad').hidden=true;
-      const phrase=stage().hands==='hour'?`Pilen peger på ${task.hour}.`:stage().hands==='minute'?`${task.count} minutter ${stage().type==='over'?'over':'i'}.`:`Klokken er ${task.phrase}.`;
+      const phrase=stage().hands==='hour'?`Pilen peger på ${task.hour}.`:stage().hands==='minute'?`${task.count} ${task.count===1?'minut':'minutter'} ${stage().type==='over'?'over':'i'}.`:`Klokken er ${task.phrase}.`;
       feedback(`Rigtigt! ${phrase}`,true);q('[data-course="check"]').textContent=counts[stageIndex]>=10?'Videre til næste del →':'Næste ur';q('[data-course="check"]').focus({preventScroll:true});
     }
     function click(event){

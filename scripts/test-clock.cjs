@@ -86,3 +86,18 @@ assert.equal(clock.describe(12,0).phrase,'12');
 assert.equal(clock.describe(6,0).phrase,'6');
 assert.throws(()=>clock.describe(6,0,'over'));
 console.log('PASS: six ordered lesson phases, isolated hands, 10-answer scaffolding and whole hours.');
+
+for(const id of ['minutes-over','minutes-to']){
+ for(let solved=0;solved<10;solved++){
+  const deck=clock.lessonDeck(id,()=>0.5,solved);
+  assert.equal(deck.length,solved<5?5:24);
+  assert.equal(new Set(deck.map(t=>t.count)).size,deck.length);
+  for(const task of deck){
+   assert.equal(task.hour,12);
+   assert.equal(task.count%5===0,solved<5);
+   assert(task.count>=1&&task.count<=29);
+  }
+ }
+ assert.deepEqual(clock.lessonDeck(id,()=>0.5,4).map(t=>t.count).sort((a,b)=>a-b),[5,10,15,20,25]);
+}
+console.log('PASS: first five minute questions use whole fives; last five use individual minutes, including resumed lessons.');

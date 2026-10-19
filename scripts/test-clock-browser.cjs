@@ -20,7 +20,7 @@ assert(app.includes('window.__clockTest='));
   await page.evaluate(()=>{
    window.JacobBackend={configured:false};window.__records=[];
    const original=window.JacobClockCore;
-   window.JacobClockCore={...original,makeDeck(type){const m={'mixed':40,'over':20,'to':40,'half':30,'quarter-over':15,'quarter-to':45,'whole':0}[type];return [original.describe(12,m,type==='mixed'?undefined:type)];},lessonDeck(id){const lesson=original.LESSONS.find(x=>x.id===id),m=lesson.type==='whole'?0:lesson.type==='over'?20:40;window.__courseTask=original.describe(12,m,lesson.type);return [window.__courseTask];}};
+   window.JacobClockCore={...original,makeDeck(type){const m={'mixed':40,'over':20,'to':40,'half':30,'quarter-over':15,'quarter-to':45,'whole':0}[type];return [original.describe(12,m,type==='mixed'?undefined:type)];},lessonDeck(id,random,solved=0){const lesson=original.LESSONS.find(x=>x.id===id);if(lesson.hands==='minute'){const deck=original.lessonDeck(id,random,solved),pop=deck.pop;deck.pop=function(){window.__courseTask=pop.call(this);return window.__courseTask;};return deck;}const m=lesson.type==='whole'?0:lesson.type==='over'?20:40;window.__courseTask=original.describe(12,m,lesson.type);return [window.__courseTask];}};
   });
   await page.addScriptTag({content:fs.readFileSync('clock-course.js','utf8')});
   await page.addScriptTag({content:fs.readFileSync('clock.js','utf8')});
@@ -98,6 +98,18 @@ assert(app.includes('window.__clockTest='));
    await page.screenshot({path:`test-results/clock/course-${id}-mobile.png`,fullPage:true});
    await page.setViewportSize({width:1280,height:900});
    for(let n=0;n<10;n++){
+    if(id.startsWith('minutes-')&&n===4){
+     await page.locator('[data-course="exit"]').click();
+     await page.locator('[data-action="clock"]').click();
+     assert.equal(await page.locator('.cl-course').getAttribute('data-lesson'),id);
+     await page.locator('[data-course="start"]').click();
+    }
+    if(id.startsWith('minutes-')){
+     const count=await page.evaluate(()=>window.__courseTask.count);
+     assert.equal(count%5===0,n<5,'only the first five questions use whole fives');
+     if(n>=5)assert.match(await page.locator('.cl-coach').textContent(),/Hver lille streg er 1 minut/);
+     if(n===5)await page.screenshot({path:'test-results/clock/'+id+'-single-minutes.png',fullPage:true});
+    }
     const keys=await page.locator('[data-course-field]').evaluateAll(elements=>elements.map(el=>el.dataset.courseField));
     const expectedMode=await page.evaluate(({id,n})=>window.JacobClockCore.lessonMode(id,n),{id,n});
     assert.deepEqual(keys,expectedMode==='both'?['minutes','hour']:[expectedMode]);
