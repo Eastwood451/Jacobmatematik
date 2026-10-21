@@ -129,16 +129,18 @@ for (const f of ["skak.js", "skak-core.js", "skak-chess-lib.js"]) {
 assert.match(loader, /skak\.css/);
 assert.doesNotMatch(index, /href=["']skak\.css/);
 assert.match(app, /ensureModule\("skak", "skak"\)/);
-assert.match(app, /SKAK_PROFILE_IDS = new Set\(\["c8b8e1c4-3264-40e9-a43d-0eb6214a0183"/);
+assert.match(app, /const canPlaySkak = \(\) => gameModuleEnabled\(state\.user\)/);
 assert.match(app, /state\.view==="skak"\) renderSkak\(\)/);
-// Gating-funktionen: kun Jacob + testelev
-const gate = app.match(/const SKAK_PROFILE_IDS = [^\n]+\n\s*const canPlaySkak = [^\n]+/)[0];
+// Gating-funktionen: Skak er udgivet til alle roller (elev, lærer, gæst), men kræver en bruger
+const gate = [app.match(/const gameModuleEnabled = [^\n]+/)[0], app.match(/const canPlaySkak = [^\n]+/)[0]].join("\n");
 const gateFn = vm.runInNewContext(`(state => { ${gate}; return canPlaySkak; })`, {});
 const canPlay = user => gateFn({ user })();
 assert.equal(canPlay({ id: "c8b8e1c4-3264-40e9-a43d-0eb6214a0183", role: "teacher" }), true);
 assert.equal(canPlay({ id: "3af639de-b0e0-496a-a5b7-b732e49d1fa7", role: "student" }), true);
-assert.equal(canPlay({ id: "someone-else", role: "teacher" }), false);
-assert.equal(canPlay({ id: "guest-1", role: "guest" }), false);
+assert.equal(canPlay({ id: "someone-else", role: "teacher" }), true);
+assert.equal(canPlay({ id: "guest-1", role: "guest" }), true);
+assert.equal(canPlay({ id: "x", role: "admin" }), false);
+assert.equal(canPlay({ role: "student" }), false);
 assert.equal(canPlay(null), false);
 // Loader-kortet
 const sandbox = { window: {}, document: { querySelectorAll: () => [], scripts: [], head: { appendChild() {} }, createElement: () => ({}) } };
