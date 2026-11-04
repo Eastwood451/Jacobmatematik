@@ -63,12 +63,17 @@
     if (!production || started) return;
     started = true;
     // Fixed page names and URLs exclude login tokens, query strings, pupil names and scores.
-    const path = location.pathname === '/fps.html' ? '/fps.html' : location.pathname === '/privatliv.html' ? '/privatliv.html' : '/';
+    const landing = { '/gangetabeller/':'Gangetabeller', '/gangetabel-spil/':'Gangetabel spil', '/broeker/':'Brøker', '/regnehierarki/':'Regnehierarki', '/til-elever/':'Til elever', '/til-laerere/':'Til lærere' };
+    const pathname = location.pathname.endsWith('/index.html') ? location.pathname.slice(0, -10) : location.pathname.replace(/([^/])$/, '$1/');
+    const path = location.pathname === '/fps.html' ? '/fps.html' : location.pathname === '/privatliv.html' ? '/privatliv.html' : landing[pathname] ? pathname : '/';
+    // Only the referring site's origin is kept (enough for GA to see Google/Bing), never its path or query.
+    let referrer = '';
+    try { if (document.referrer) { const ref = new URL(document.referrer); if (ref.hostname !== location.hostname) referrer = ref.origin + '/'; } } catch (_) { /* No referrer. */ }
     gtag('js', new Date());
     gtag('config', measurementId, {
       page_location: 'https://jacobmatematik.dk' + path,
-      page_title: path === '/fps.html' ? 'Erling FPS' : path === '/privatliv.html' ? 'Cookies og privatliv' : 'Jacob Matematik',
-      page_referrer: '',
+      page_title: path === '/fps.html' ? 'Erling FPS' : path === '/privatliv.html' ? 'Cookies og privatliv' : landing[path] || 'Jacob Matematik',
+      page_referrer: referrer,
       allow_google_signals: false,
       allow_ad_personalization_signals: false,
       cookie_expires: lifetime / 1000,
@@ -79,7 +84,6 @@
     const script = document.createElement('script');
     script.async = true;
     script.src = 'https://www.googletagmanager.com/gtag/js?id=' + measurementId;
-    script.referrerPolicy = 'no-referrer';
     document.head.append(script);
   }
 

@@ -1342,7 +1342,16 @@ multiplicationColumn: {
       <p class="topic-tower-base"><span aria-hidden="true">▰</span> Grundforståelse · dit fundament</p>
     </section>${extraCards ? `<h2 class="section-label">Andre genveje</h2><section class="topic-tower-extras" aria-label="Andre genveje">${extraCards}</section>` : ""}`;
   }
-  function renderStudentHome() { syncTrackedExercise();
+  // Deep link from the static landing pages, e.g. /?start=tableDrill. Whitelisted; used once, after login or guest start.
+  const DEEP_LINK_STARTS = { tableDrill:'[data-topic="tableDrill"]', multiplication:'[data-topic="multiplication"]', pemdas:'[data-topic="pemdas"]', addition:'[data-topic="addition"]', fractions:'[data-action="learn-fractions"]' };
+  let pendingDeepLink = (() => { try { const key = new URLSearchParams(location.search).get("start"); return Object.hasOwn(DEEP_LINK_STARTS, key) ? key : null; } catch (_) { return null; } })();
+  function consumeDeepLink() {
+    if (!pendingDeepLink || !state.user || state.view === "teacher") return;
+    const selector = DEEP_LINK_STARTS[pendingDeepLink]; pendingDeepLink = null;
+    try { const url = new URL(location.href); url.searchParams.delete("start"); history.replaceState(history.state, "", url.pathname + url.search + url.hash); } catch (_) { /* Keep going without URL cleanup. */ }
+    document.querySelector(`#app ${selector}`)?.click();
+  }
+  function renderStudentHome() { queueMicrotask(consumeDeepLink); syncTrackedExercise();
     const availableTopics = isGuest() ? Object.keys(TOPICS).filter(topic => GUEST_TOPICS.has(topic)) : Object.keys(TOPICS);
     const stats = availableTopics.map(topic => ({ topic, ...getStats(state.user, topic) }));
     const total = practiceResults(state.user).length;
