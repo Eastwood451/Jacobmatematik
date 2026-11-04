@@ -27,6 +27,22 @@
   const denied = { analytics_storage: 'denied', ad_storage: 'denied', ad_user_data: 'denied', ad_personalization: 'denied' };
   gtag('consent', 'default', denied);
 
+  // Exercise events. No-op unless the visitor opted in on production. Only whitelisted, non-personal params are sent.
+  const allowedParams = ['exercise_id', 'exercise_name', 'tasks_answered', 'correct_answers', 'duration_seconds'];
+  window.jmTrack = (name, params = {}) => {
+    try {
+      if (choice?.value !== 'granted' || !production || !started) return;
+      if (!/^[a-z_]{1,40}$/.test(String(name))) return;
+      const clean = {};
+      for (const key of allowedParams) {
+        const value = params[key];
+        if (typeof value === 'number' && Number.isFinite(value)) clean[key] = Math.round(value);
+        else if (typeof value === 'string' && value) clean[key] = value.slice(0, 80);
+      }
+      gtag('event', name, clean);
+    } catch (_) { /* Analytics must never break the app. */ }
+  };
+
   function clearAnalyticsCookies() {
     for (const cookie of document.cookie.split(';')) {
       const name = cookie.trim().split('=')[0];

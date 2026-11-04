@@ -13,3 +13,22 @@ Test with `node scripts/test-analytics.cjs` with Playwright in `NODE_PATH` and C
 Deployment: GitHub Pages publishes the root of `main`. After deployment, accept statistics on the live site and check GA Realtime for `page_view`. Tag installation checkers may report a missing tag when they have not accepted cookies. Standard reports are delayed.
 
 References: https://developers.google.com/tag-platform/security/guides/consent and https://developers.google.com/analytics/devguides/collection/ga4/reference/config
+
+## Øvelseshændelser (GA4)
+
+`analytics.js` eksponerer `window.jmTrack(name, params)`. Den gør ingenting, medmindre besøgende har accepteret statistik på jacobmatematik.dk, og den sender kun disse parametre: `exercise_id`, `exercise_name`, `tasks_answered`, `correct_answers`, `duration_seconds`. Navne, e-mails, profil-ID'er og svar sendes aldrig.
+
+`app.js` sender hændelserne centralt, når visningen skifter (render-funktionerne), så modulfilerne ikke er ændret:
+
+| Hændelse | Hvornår | Parametre |
+|---|---|---|
+| `exercise_start` | Eleven åbner en øvelse | `exercise_id`, `exercise_name` |
+| `exercise_complete` | Eleven forlader en øvelse, der blev gennemført (Gange-/Division-drill færdig, Minus-drill uden flere fejl) | + `tasks_answered`, `correct_answers`, `duration_seconds` |
+| `exercise_end` | Eleven forlader en øvelse midtvejs (tilbage til forsiden, andet modul, log ud, lukker fanen) | samme som ovenfor |
+
+`exercise_id` er emnenøglen i snake_case, f.eks. `table_drill`, `subtraction_drill`, `addition_column`, `mixed`, samt moduler: `clock`, `plus_penalhus`, `marley_addition`, `ten_friends`, `skak`, `learn_fractions`, `foodtruck`, `sandbox`. `tasks_answered`/`correct_answers` tælles fra de resultater, appen allerede gemmer; moduler der ikke gemmer resultater rapporterer 0 (tiden er stadig med).
+
+### Opsætning i GA4 (én gang)
+Administrator → Datavisning → Tilpassede definitioner → Opret tilpassede dimensioner:
+- Dimensioner (omfang: Hændelse): `exercise_id`, `exercise_name`
+- Metrics (fanen Tilpassede metrics, omfang: Hændelse, måleenhed Standard/Sekunder): `tasks_answered`, `correct_answers`, `duration_seconds`

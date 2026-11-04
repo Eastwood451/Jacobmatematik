@@ -535,7 +535,7 @@ multiplicationColumn: {
   let disposeClock = null;
   const canLearnClock = () => gameModuleEnabled(state.user);
   function leaveClock() { disposeClock?.(); disposeClock = null; }
-  async function renderClock() {
+  async function renderClock() { syncTrackedExercise();
     leaveClock();
     if (!canLearnClock()) { state.view=homeView(); render(); return; }
     app.innerHTML=`${header()}<div id="clock-root"><p class="seo-loading" data-module-loading>Indlæser uret...</p></div>`;
@@ -591,7 +591,7 @@ multiplicationColumn: {
   function moduleLoadError(message) {
     return `${header()}<div class="page"><section class="loading-card"><p>${message}</p><button class="btn" type="button" data-action="home">Tilbage</button></section></div>`;
   }
-  async function renderMarleyAddition() {
+  async function renderMarleyAddition() { syncTrackedExercise();
     leaveMarleyAddition();
     if (!canPlayMarleyAddition()) { state.view=state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
     app.innerHTML=`${header()}<div id="marley-addition-root"><p class="seo-loading" data-module-loading>Indlæser...</p></div>`;
@@ -624,7 +624,7 @@ multiplicationColumn: {
   let disposePlusPenalhus = null;
   const canPlayPlusPenalhus = () => gameModuleEnabled(state.user);
   function leavePlusPenalhus() { disposePlusPenalhus?.(); disposePlusPenalhus = null; }
-  async function renderPlusPenalhus() {
+  async function renderPlusPenalhus() { syncTrackedExercise();
     leavePlusPenalhus();
     if (!canPlayPlusPenalhus()) { state.view=state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
     app.innerHTML=`${header()}<div id="plus-penalhus-root"><p class="seo-loading" data-module-loading>Indlæser...</p></div>`;
@@ -654,7 +654,7 @@ multiplicationColumn: {
       onExit() { leavePlusPenalhus(); state.view=state.user?.role==='teacher'&&!jacobFrontend ? "teacher" : "student"; render(); window.scrollTo(0,0); }
     });
   }
-  async function renderTenFriends() {
+  async function renderTenFriends() { syncTrackedExercise();
     leaveTenFriends();
     if (!canPlayTenFriends()) { state.view=state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
     app.innerHTML=`${header()}<div id="pizza-friends-root"><p class="seo-loading" data-module-loading>Indlæser...</p></div>`;
@@ -697,7 +697,7 @@ multiplicationColumn: {
   const canPlaySkak = () => gameModuleEnabled(state.user);
   let disposeSkak = null;
   function leaveSkak() { disposeSkak?.(); disposeSkak = null; }
-  async function renderSkak() {
+  async function renderSkak() { syncTrackedExercise();
     leaveSkak();
     if (!canPlaySkak()) { state.view=state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
     app.innerHTML=`${header()}<div id="skak-root"><p class="seo-loading" data-module-loading>Indlæser...</p></div>`;
@@ -729,7 +729,7 @@ multiplicationColumn: {
   function leaveFractionLesson() {
     disposeFractionLesson?.(); disposeFractionLesson = null;
   }
-  async function renderFractionLesson() {
+  async function renderFractionLesson() { syncTrackedExercise();
     leaveFractionLesson();
     if (!canLearnFractions()) { state.view = state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
     jacobFrontend = isFractionTester();
@@ -746,7 +746,7 @@ multiplicationColumn: {
       onExit() { leaveFractionLesson(); state.view=state.user?.role === "teacher" && !jacobFrontend ? "teacher" : "student"; render(); window.scrollTo(0,0); },
     });
   }
-  async function renderMarley() {
+  async function renderMarley() { syncTrackedExercise();
     if (!isFractionTester()) { state.view=homeView(); render(); return; }
     disposeMarley?.();
     app.innerHTML = `${header()}<div id="marley-root"><p class="seo-loading" data-module-loading>Indlæser...</p></div>`;
@@ -760,7 +760,7 @@ multiplicationColumn: {
     disposeMarley = window.MarleyMath.mount(document.getElementById("marley-root"), {onExit() { disposeMarley?.(); disposeMarley=null; returnFromModule(); }});
   }
   const canUseSandbox = () => isFractionTester();
-  function renderSandbox() {
+  function renderSandbox() { syncTrackedExercise();
     if (!canUseSandbox()) { state.view=homeView(); render(); return; }
     app.innerHTML = `${header()}<div class="page sandbox-page"><section class="sandbox-head"><div><span class="eyebrow">Udvikling</span><h1>Sandbox</h1><p>Her prøver du moduler, før de udgives til eleverne.</p></div><button type="button" class="btn secondary" data-action="home">← Tilbage</button></section><section class="sandbox-grid" aria-label="Moduler under udvikling">${isFractionTester() ? `<button type="button" class="sandbox-card" data-action="marley"><span class="sandbox-icon" aria-hidden="true">🐶</span><span class="sandbox-tag">Under udvikling</span><strong>Marleys butik</strong><span>Regn, tjen mønter, og klæd Marley på.</span></button>` : ""}${canPlaySkak() ? `<button type="button" class="sandbox-card" data-action="skak"><span class="sandbox-icon" aria-hidden="true">♞</span><span class="sandbox-tag">Beta</span><strong>Skak</strong><span>Spil mod computeren eller test online med en kampkode.</span></button>` : ""}${isFractionTester() ? `<a class="sandbox-card" href="marley-3d-preview.html"><span class="sandbox-icon" aria-hidden="true">🐾</span><span class="sandbox-tag">Grafikprøve</span><strong>Marley i 3D</strong><span>Separat prøve af modellen og bevægelserne.</span></a>` : ""}</section></div>`;
   }
@@ -899,7 +899,7 @@ multiplicationColumn: {
     disposeFoodtruck?.(); disposeFoodtruck = null;
     document.body.classList.remove("foodtruck-active");
   }
-  async function renderFoodtruck() {
+  async function renderFoodtruck() { syncTrackedExercise();
     leaveFoodtruck();
     if (!state.user || isGuest()) return renderLogin();
     document.body.classList.add("foodtruck-active");
@@ -992,7 +992,7 @@ multiplicationColumn: {
     audio.addEventListener("error",finish,{once:true});
     audio.play().catch(finish);
   }
-  function renderLogin() {
+  function renderLogin() { syncTrackedExercise();
     document.body.classList.remove("site-authenticated");
     leaveMarleyAddition(); leavePlusPenalhus(); leaveTenFriends(); leaveFractionLesson(); jacobFrontend=false;
     leaveFoodtruck();
@@ -1342,7 +1342,7 @@ multiplicationColumn: {
       <p class="topic-tower-base"><span aria-hidden="true">▰</span> Grundforståelse · dit fundament</p>
     </section>${extraCards ? `<h2 class="section-label">Andre genveje</h2><section class="topic-tower-extras" aria-label="Andre genveje">${extraCards}</section>` : ""}`;
   }
-  function renderStudentHome() {
+  function renderStudentHome() { syncTrackedExercise();
     const availableTopics = isGuest() ? Object.keys(TOPICS).filter(topic => GUEST_TOPICS.has(topic)) : Object.keys(TOPICS);
     const stats = availableTopics.map(topic => ({ topic, ...getStats(state.user, topic) }));
     const total = practiceResults(state.user).length;
@@ -1350,7 +1350,7 @@ multiplicationColumn: {
     app.innerHTML = `${header()}<div class="page student-home-layout">${renderMathTower(availableTopics)}<div class="student-home-content"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section>${renderPracticeLeaderboardCard()}${isGuest() ? "" : `<nav class="home-game-links" aria-label="Matematikspil"><a class="fps-trial-entry home-fps-card" href="fps.html" aria-label="Spil Erling FPS"><div class="fps-trial-entry-copy"><h3>ERLING FPS</h3><p>Regn. Tjen blyanter. Vind over haterne.</p><span class="fps-trial-entry-cta">SPIL NU ✎</span></div><div class="fps-trial-entry-scene" aria-hidden="true"><img class="fps-trial-entry-erling" src="assets/figurer/erling-aergerlig.webp" alt=""></div></a><a class="foodtruck-card" href="#foodtruck" data-action="foodtruck"><img src="assets/figurer/luigi-laekkermat-cutout.webp" alt="" width="78" height="94"><span><strong>Luigis Foodtruck</strong><small>Del råvarerne med brøker, og byg din egen burger.</small></span><span aria-hidden="true">→</span></a></nav>`}<h2 class="section-label">Vælg et område</h2>${renderTopicTower(availableTopics)}<h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div></div>`;
     if (usingCentralDatabase && !isGuest()) void refreshPracticeLeaderboard({ prompt:true });
   }
-  function renderStudentPassword() {
+  function renderStudentPassword() { syncTrackedExercise();
     app.innerHTML = `${header()}<div class="page"><section class="class-manager"><div class="class-manager-title"><div><span class="eyebrow">Min profil</span><h1>Skift adgangskode</h1><p>Vælg en ny adgangskode til din bruger.</p></div></div><form id="student-password-form" class="student-form"><div class="field"><label for="current-password">Nuværende adgangskode</label><input id="current-password" name="currentPassword" type="password" autocomplete="current-password" required></div><div class="field"><label for="new-password">Ny adgangskode</label><input id="new-password" name="newPassword" type="password" autocomplete="new-password" required></div><div class="field"><label for="confirm-password">Gentag ny adgangskode</label><input id="confirm-password" name="confirmPassword" type="password" autocomplete="new-password" required></div><p id="password-error" class="student-error" role="alert"></p><div class="student-manager-buttons"><button class="btn" type="submit">Gem adgangskode</button><button class="btn secondary" type="button" data-action="home">Annuller</button></div></form></section></div>`;
     document.getElementById("current-password").focus();
   }
@@ -1472,20 +1472,20 @@ multiplicationColumn: {
     matrixDrillTimerId = setInterval(updateMatrixDrillTimer, 1000);
     newTask();
   }
-  function newTask() {
+  function newTask() { syncTrackedExercise();
     if (!state.user || state.view !== "exercise") return;
     const topic = state.selectedTopic === "mixed" ? chooseWeightedTopic(state.user) : state.selectedTopic;
     if (topic === "subtractionDrill" && state.subtractionDrillTroubles) {
       const remaining=syncSubtractionDrillTroubles(state.user);
       if (!remaining.length) {
-        state.task=null; state.answered=false; renderSubtractionDrillComplete(); return;
+        state.task=null; state.answered=false; markTrackedExerciseComplete(); renderSubtractionDrillComplete(); return;
       }
     }
     if (MATRIX_DRILL_TOPICS.has(topic)) {
       const drill = state.matrixDrill;
       const pair = drill?.pairs[drill.currentIndex];
       if (!pair) {
-        if (drill && !drill.completedAt) { drill.completedAt=Date.now(); finalizeMatrixDrillSession("completed"); }
+        if (drill && !drill.completedAt) { drill.completedAt=Date.now(); finalizeMatrixDrillSession("completed"); markTrackedExerciseComplete(); }
         stopMatrixDrillTimer(); state.task=null; state.answered=false; renderMatrixDrill(); return;
       }
       state.task = topic === "divisionDrill"
@@ -3350,7 +3350,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     }
   }
 
-  function renderTeacher() {
+  function renderTeacher() { syncTrackedExercise();
     const classes = db.classes || [];
     const unassignedStudents = db.users.filter(user => user.role === "student" && user.classId == null);
     const showUnassigned = Boolean(state.user?.canManageRegistrations || unassignedStudents.length);
@@ -3463,7 +3463,39 @@ function finishColumnAdditionDrag(event, cancelled = false) {
   function renderLocalConsent() {
     app.innerHTML = `${header()}<div class="page"><section class="class-manager local-consent-card"><h1>Gem dine resultater på denne enhed</h1><p>Din bruger er selvoprettet. Dine resultater gemmes kun i denne browser, så du kan fortsætte næste gang. De sendes ikke til læreren eller vores server og følger ikke med til andre enheder.</p><p>Du kan slette resultaterne med “Slet data” under tårnet. De forsvinder også, hvis browserens webstedsdata slettes.</p><form id="local-consent-form"><label class="local-consent"><input type="checkbox" name="localConsent" required><span>Jeg giver samtykke til lokal lagring af mine resultater på denne enhed.</span></label><p id="local-consent-error" role="alert"></p><button class="btn" type="submit">Gem på denne enhed og fortsæt</button><button class="btn secondary" type="button" data-action="logout">Log ud</button></form></section></div>`;
   }
-  function render() { if (state.view !== "clock") leaveClock(); if (isLocalStudent() && !backend.hasLocalConsent()) { renderLocalConsent(); return; } if (state.view !== "marley-addition") leaveMarleyAddition(); if (state.view !== "plus-penalhus") leavePlusPenalhus(); if (state.view !== "ten-friends") leaveTenFriends(); if (state.view !== "learn-fractions") leaveFractionLesson(); if (state.view !== "skak") leaveSkak(); if (!state.user) renderLogin(); else if (state.view==="clock") renderClock(); else if (state.view==="sandbox") renderSandbox(); else if (state.view==="marley-addition") renderMarleyAddition(); else if (state.view==="plus-penalhus") renderPlusPenalhus(); else if (state.view==="ten-friends") renderTenFriends(); else if (state.view==="skak") renderSkak(); else if (state.view==="learn-fractions") renderFractionLesson(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="marley") renderMarley(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
+  // GA4 exercise events (analytics.js, consent-gated). Never sends names, emails or profile IDs.
+  const TRACKED_VIEWS = { clock:"Lær klokken", "marley-addition":"Godbidder til Marley", "plus-penalhus":"Plus-penalhus", "ten-friends":"Luigis 10’er-venner", skak:"Skak", "learn-fractions":"Brøker", foodtruck:"Foodtruck", sandbox:"Sandkasse" };
+  let trackedExercise = null;
+  const snakeId = key => String(key).replace(/[^A-Za-z0-9]+/g, "_").replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+  function currentTrackedExercise() {
+    if (!state.user) return null;
+    if (state.view === "exercise" && state.selectedTopic) {
+      const key = state.selectedTopic;
+      return { key:`exercise:${key}`, exercise_id:snakeId(key), exercise_name:key === "mixed" ? "Blandede opgaver" : (TOPICS[key]?.name || key) };
+    }
+    if (TRACKED_VIEWS[state.view]) return { key:`view:${state.view}`, exercise_id:snakeId(state.view), exercise_name:TRACKED_VIEWS[state.view] };
+    return null;
+  }
+  function endTrackedExercise() {
+    const session = trackedExercise; trackedExercise = null;
+    if (!session) return;
+    try {
+      const results = (state.user === session.user ? state.user?.results?.slice(session.resultIndex) : []) || [];
+      window.jmTrack?.(session.completed ? "exercise_complete" : "exercise_end", { exercise_id:session.exercise_id, exercise_name:session.exercise_name, tasks_answered:results.length, correct_answers:results.filter(result => result?.correct).length, duration_seconds:(Date.now() - session.startedAt) / 1000 });
+    } catch (_) { /* Analytics must never break the app. */ }
+  }
+  function markTrackedExerciseComplete() { if (trackedExercise) trackedExercise.completed = true; }
+  function syncTrackedExercise() {
+    try {
+      const next = currentTrackedExercise();
+      if (trackedExercise && next?.key === trackedExercise.key && state.user === trackedExercise.user) return;
+      endTrackedExercise();
+      if (!next) return;
+      trackedExercise = { ...next, user:state.user, resultIndex:state.user?.results?.length || 0, startedAt:Date.now(), completed:false };
+      window.jmTrack?.("exercise_start", { exercise_id:next.exercise_id, exercise_name:next.exercise_name });
+    } catch (_) { trackedExercise = null; }
+  }
+  function render() { syncTrackedExercise(); if (state.view !== "clock") leaveClock(); if (isLocalStudent() && !backend.hasLocalConsent()) { renderLocalConsent(); return; } if (state.view !== "marley-addition") leaveMarleyAddition(); if (state.view !== "plus-penalhus") leavePlusPenalhus(); if (state.view !== "ten-friends") leaveTenFriends(); if (state.view !== "learn-fractions") leaveFractionLesson(); if (state.view !== "skak") leaveSkak(); if (!state.user) renderLogin(); else if (state.view==="clock") renderClock(); else if (state.view==="sandbox") renderSandbox(); else if (state.view==="marley-addition") renderMarleyAddition(); else if (state.view==="plus-penalhus") renderPlusPenalhus(); else if (state.view==="ten-friends") renderTenFriends(); else if (state.view==="skak") renderSkak(); else if (state.view==="learn-fractions") renderFractionLesson(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="marley") renderMarley(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
 
   document.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -4083,6 +4115,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     }
   });
   window.addEventListener("pagehide", () => {
+    endTrackedExercise();
     leaveClock();
     leaveSkak(); disposeMarley?.(); disposeMarley=null;
     leaveMarleyAddition();
