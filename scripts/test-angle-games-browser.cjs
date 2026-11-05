@@ -75,9 +75,13 @@ async function shot(page, name) {
       await page.waitForSelector(".ag-grid");
       await page.waitForTimeout(150);
       await shot(page, `02-battleship-board-${label}.png`);
+      // No 0° tiles — a single ray is not a meaningful angle
+      const zeroTiles = await page.locator('.ag-tile[data-deg="0"]').count();
+      assert.equal(zeroTiles, 0, "no 0° tiles");
       // Tap correct tile
       const targetText = await page.locator(".ag-target strong").textContent();
       const deg = Number(String(targetText).replace("°", ""));
+      assert.ok(deg > 0 && deg <= 180, "target in 1..180");
       await page.locator(`.ag-tile[data-deg="${deg}"]`).first().click();
       await page.waitForTimeout(500);
       await shot(page, `03-battleship-hit-${label}.png`);
@@ -93,8 +97,12 @@ async function shot(page, name) {
       // Level 1: go 4 east
       await page.locator('[data-ag="steps"][data-v="4"]').click();
       await page.locator('[data-ag="add-go"]').click();
+      // Queued command chip visible
+      await page.waitForSelector('.ag-cmd-chip');
       await page.locator('[data-ag="run"]').click();
-      await page.waitForTimeout(2500);
+      await page.waitForTimeout(700);
+      await shot(page, `05b-dennis-mid-walk-${label}.png`);
+      await page.waitForTimeout(2200);
       await shot(page, `05-dennis-after-run-${label}.png`);
       await page.locator('[data-ag="exit"]').click();
       await page.waitForSelector("[data-ang-hub]");
@@ -105,20 +113,23 @@ async function shot(page, name) {
       await page.waitForTimeout(200);
       await shot(page, `06-ninja-ready-${label}.png`);
       await page.locator('[data-ag="start"]').click();
-      await page.waitForTimeout(900);
-      // Simulate a swipe on canvas
+      await page.waitForTimeout(500);
+      await shot(page, `07a-ninja-air-${label}.png`);
+      // Simulate a swipe on canvas (45° CCW from horizontal)
       const canvas = page.locator("[data-ag-canvas]");
       const box = await canvas.boundingBox();
       assert.ok(box);
-      const x0 = box.x + box.width * 0.3;
-      const y0 = box.y + box.height * 0.5;
-      const x1 = box.x + box.width * 0.3 + box.width * 0.2 * Math.cos(Math.PI / 4);
-      const y1 = box.y + box.height * 0.5 - box.width * 0.2 * Math.sin(Math.PI / 4);
+      const x0 = box.x + box.width * 0.25;
+      const y0 = box.y + box.height * 0.55;
+      const x1 = box.x + box.width * 0.55;
+      const y1 = box.y + box.height * 0.25;
       await page.mouse.move(x0, y0);
       await page.mouse.down();
-      await page.mouse.move(x1, y1, { steps: 8 });
+      await page.mouse.move(x1, y1, { steps: 12 });
       await page.mouse.up();
-      await page.waitForTimeout(600);
+      await page.waitForTimeout(180);
+      await shot(page, `07b-ninja-mid-slice-${label}.png`);
+      await page.waitForTimeout(700);
       await shot(page, `07-ninja-play-${label}.png`);
       await page.locator('[data-ag="exit"]').first().click();
       await page.waitForSelector("[data-ang-hub]");
@@ -135,15 +146,48 @@ async function shot(page, name) {
       await shot(page, `10-words-answer-${label}.png`);
       await page.locator('[data-ag="exit"]').first().click();
       await page.waitForSelector("[data-ang-hub]");
+
+      // --- Ram vinklen (stop) ---
+      await page.locator('[data-ang-hub="stop"]').click();
+      await page.waitForSelector("[data-ag-stop]");
+      await page.waitForTimeout(200);
+      await shot(page, `11-stop-ready-${label}.png`);
+      await page.locator('[data-ag="go"]').click();
+      await page.waitForSelector('[data-ag="stop"]');
+      await page.waitForTimeout(1200); // ~22° opened
+      await shot(page, `12-stop-running-${label}.png`);
+      await page.locator('[data-ag="stop"]').click({ force: true });
+      await page.waitForSelector(".ag-stop-result");
+      await page.waitForTimeout(250);
+      await shot(page, `13-stop-result-${label}.png`);
+      // Scoring helpers smoke-check in page
+      const pts = await page.evaluate(() => {
+        const S = window.JacobAngleStop;
+        return {
+          exact: S.pointsForDelta(0),
+          ten: S.pointsForDelta(10),
+          twenty: S.pointsForDelta(20),
+          twentyOne: S.pointsForDelta(21),
+          speed: S.SPEED_DEG_PER_S,
+        };
+      });
+      assert.strictEqual(pts.exact, 100);
+      assert.strictEqual(pts.ten, 50);
+      assert.strictEqual(pts.twenty, 0);
+      assert.strictEqual(pts.twentyOne, 0);
+      assert.strictEqual(pts.speed, 18);
+      await page.locator('[data-ag="exit"]').first().click();
+      await page.waitForSelector("[data-ang-hub]");
       await shot(page, `08-hub-again-${label}.png`);
 
-      // Tracking: battleship + dennis + ninja + words starts
+      // Tracking: battleship + dennis + ninja + words + stop starts
       const tracks = await page.evaluate(() => window.__tracks);
       const ids = tracks.filter((t) => t.e === "exercise_start").map((t) => t.exercise_id);
       assert.ok(ids.includes("angle_battleship"), "battleship start");
       assert.ok(ids.includes("dennis_blindfold"), "dennis start");
       assert.ok(ids.includes("angle_ninja"), "ninja start");
       assert.ok(ids.includes("angle_words"), "words start");
+      assert.ok(ids.includes("angle_stop"), "stop start");
       console.log("ok", label, "tracks", ids.join(","));
       await context.close();
     }

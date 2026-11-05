@@ -1,4 +1,4 @@
-/* Vinkel-slagskibe – tryk hurtigt på den rigtige vinkel (0–180°). */
+/* Vinkel-slagskibe – tryk hurtigt på den rigtige vinkel (45–180°, ingen 0°). */
 (() => {
   "use strict";
 
@@ -37,12 +37,13 @@
     </svg>`;
   }
 
-  function fleetHtml(shipsLeft, label, side) {
+  function fleetHtml(shipsLeft, label, side, justSank) {
     const ships = Array.from({ length: CORE().SHIP_COUNT }, (_, i) => {
       const sunk = i >= shipsLeft;
-      return `<span class="ag-ship ${sunk ? "is-sunk" : ""}" title="${sunk ? "sænket" : "afloat"}">🚢</span>`;
+      const sinking = justSank && sunk && i === shipsLeft; // the ship that just went under
+      return `<span class="ag-ship ${sunk ? "is-sunk" : ""} ${sinking ? "is-sinking" : ""}" title="${sunk ? "sænket" : "afloat"}">🚢</span>`;
     }).join("");
-    return `<div class="ag-fleet" data-side="${side}"><strong>${label}</strong><div class="ag-ships">${ships}</div><small>${shipsLeft} skib${shipsLeft === 1 ? "" : "e"} tilbage</small></div>`;
+    return `<div class="ag-fleet ${justSank ? "is-splash" : ""}" data-side="${side}"><strong>${label}</strong><div class="ag-ships">${ships}</div><small>${shipsLeft} skib${shipsLeft === 1 ? "" : "e"} tilbage</small></div>`;
   }
 
   function mount(root, options = {}) {
@@ -65,6 +66,7 @@
     let correct = 0;
     let winner = null;
     let lastMsg = "";
+    let lastSinkSide = null;
 
     track("exercise_start");
 
@@ -122,13 +124,14 @@
         round = core.ROUND_INCREMENTS.length - 1;
       }
       const inc = core.ROUND_INCREMENTS[Math.min(round, core.ROUND_INCREMENTS.length - 1)];
-      const vary = round >= 1;
-      tiles = core.makeAngleTiles(inc, 16, vary);
+      // Always rotate tiles so duplicate angles look different (esp. round 1).
+      tiles = core.makeAngleTiles(inc, 16, true);
       // Prefer a target that appears on the board
       const pool = [...new Set(tiles.map((t) => t.degrees))];
       target = pool[Math.floor(Math.random() * pool.length)];
       awaiting = true;
       frozenUntil = 0;
+      lastSinkSide = null;
       clearTimeout(cpuTimer);
       renderBoard();
       if (mode === "cpu") scheduleCpu();
@@ -172,9 +175,11 @@
       if (who === "player") {
         foeShips = Math.max(0, foeShips - 1);
         lastMsg = "Ram! Du sænkede et skib 🚢💥";
+        lastSinkSide = "foe";
       } else {
         playerShips = Math.max(0, playerShips - 1);
         lastMsg = mode === "cpu" ? "Computeren sænkede dit skib!" : "Spiller 2 sænkede et skib!";
+        lastSinkSide = "you";
       }
       if (foeShips <= 0) {
         winner = "player";
@@ -200,15 +205,15 @@
       const frozen = Date.now() < frozenUntil;
       stage.innerHTML = `
         <div class="ag-hud">
-          ${fleetHtml(playerShips, youLabel, "you")}
+          ${fleetHtml(playerShips, youLabel, "you", lastSinkSide === "you")}
           <div class="ag-target-wrap">
             <div class="ag-round">Runde ${Math.min(round + 1, 5)} · trin ${inc}°</div>
             <div class="ag-target" aria-live="assertive">Tryk på <strong>${target}°</strong></div>
             <p class="ag-msg" role="status">${lastMsg}${frozen ? " (frosset)" : ""}</p>
           </div>
-          ${fleetHtml(foeShips, foeLabel, "foe")}
+          ${fleetHtml(foeShips, foeLabel, "foe", lastSinkSide === "foe")}
         </div>
-        <div class="ag-grid" role="group" aria-label="Vinkelknapper">
+        <div class="ag-grid ag-sea" role="group" aria-label="Vinkelknapper">
           ${tiles.map((t) => `
             <button type="button" class="ag-tile" data-ag-tile="${t.id}" data-deg="${t.degrees}" ${!awaiting || frozen ? "disabled" : ""}>
               ${tileSvg(t)}

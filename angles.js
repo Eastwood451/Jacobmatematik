@@ -668,6 +668,7 @@
     dennis: { name: "angle-dennis", api: "JacobAngleDennis", title: "Dennis med bind for øjnene" },
     ninja: { name: "angle-ninja", api: "JacobAngleNinja", title: "Villy Vinkelninja" },
     words: { name: "angle-words", api: "JacobAngleWords", title: "Vinkel-ord" },
+    stop: { name: "angle-stop", api: "JacobAngleStop", title: "Ram vinklen" },
   };
 
   async function loadGameModule(key) {
@@ -732,6 +733,11 @@
                 <strong>Vinkel-ord</strong>
                 <small>Spids, ret, stump eller lige?</small>
               </button>
+              <button type="button" class="ag-hub-card" data-ang-hub="stop">
+                <span class="ag-hub-icon">🎯</span>
+                <strong>Ram vinklen</strong>
+                <small>Stop den åbnende vinkel tættest på målet.</small>
+              </button>
             </div>
           </div>
         </section>`;
@@ -776,7 +782,7 @@
       if (act === "exit") { options.onExit?.(); return; }
       if (act === "back" || act === "hub") { showHub(); return; }
       if (act === "lesson") { void openLesson(); return; }
-      if (act === "battleship" || act === "dennis" || act === "ninja" || act === "words") { void openGame(act); return; }
+      if (act === "battleship" || act === "dennis" || act === "ninja" || act === "words" || act === "stop") { void openGame(act); return; }
     }
 
     root.addEventListener("click", onClick);

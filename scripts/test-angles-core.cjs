@@ -11,6 +11,7 @@ assert.equal(core.hintDirection(50, 60), "more");
 const a45 = core.anglesForIncrement(45, 16);
 assert.equal(a45.length, 16);
 assert.ok(a45.every((d) => d % 45 === 0 || d === 180));
+assert.ok(a45.every((d) => d > 0), "no 0° angles");
 
 const tiles = core.makeAngleTiles(30, 16, true);
 assert.equal(tiles.length, 16);

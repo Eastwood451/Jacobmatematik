@@ -582,6 +582,8 @@ multiplicationColumn: {
     if (name === "angle-battleship") return !!window.JacobAngleBattleship && !!window.JacobAnglesCore;
     if (name === "angle-dennis") return !!window.JacobAngleDennis && !!window.JacobAnglesCore;
     if (name === "angle-ninja") return !!window.JacobAngleNinja && !!window.JacobAnglesCore;
+    if (name === "angle-words") return !!window.JacobAngleWords && !!window.JacobAnglesCore;
+    if (name === "angle-stop") return !!window.JacobAngleStop && !!window.JacobAnglesCore;
     return false;
   }
   async function ensureModule(name, view) {

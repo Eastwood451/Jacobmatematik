@@ -75,9 +75,10 @@
   function anglesForIncrement(increment, count = 16) {
     const inc = Math.max(1, Number(increment) || 45);
     const set = [];
-    for (let a = 0; a <= 180; a += inc) set.push(a);
+    // Skip 0° — a single ray is not a meaningful angle for kids.
+    for (let a = inc; a <= 180; a += inc) set.push(a);
     if (set[set.length - 1] !== 180 && 180 % inc !== 0) set.push(180);
-    const unique = [...new Set(set)].filter((a) => a >= 0 && a <= 180);
+    const unique = [...new Set(set)].filter((a) => a > 0 && a <= 180);
     if (unique.length >= count) return shuffle(unique).slice(0, count);
     const out = [];
     while (out.length < count) out.push(...shuffle(unique));

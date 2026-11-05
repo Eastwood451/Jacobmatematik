@@ -146,6 +146,11 @@
       js: ["angles-core.js?v=20261105-angles2", "angle-words.js?v=20261105-angles2"],
       ready: () => !!window.JacobAngleWords && !!window.JacobAnglesCore,
     },
+    "angle-stop": {
+      css: ["angles.css?v=20261105-angles2", "angle-games.css?v=20261105-angles2"],
+      js: ["angles-core.js?v=20261105-angles2", "angle-stop.js?v=20261105-angles3"],
+      ready: () => !!window.JacobAngleStop && !!window.JacobAnglesCore,
+    },
     "dennis-audio": {
       css: [],
       js: ["dennis-audio.js?v=20261007-lyd1"],
