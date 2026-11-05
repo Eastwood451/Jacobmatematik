@@ -29,6 +29,23 @@ async function fulfillFromDisk(route, urlPath) {
   return route.fulfill({ status: 200, contentType: MIME[ext] || 'application/octet-stream', body });
 }
 
+async function tanGroovePixels(page) {
+  return page.evaluate(() => {
+    const canvas = document.querySelector("[data-ang-canvas]");
+    if (!canvas) return 0;
+    const ctx = canvas.getContext("2d");
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let n = 0;
+    for (let i = 0; i < data.length; i += 16) {
+      const r = data[i], g = data[i + 1], b = data[i + 2], a = data[i + 3];
+      if (a < 180) continue;
+      if (r > 190 && g < 140) continue;
+      if (r > 120 && g > 80 && b < 160 && g > b && r - b > 30) n += 1;
+    }
+    return n;
+  });
+}
+
 async function dragRay(page, degrees) {
   await page.evaluate((degrees) => {
     const canvas = document.querySelector('[data-ang-canvas]');
@@ -81,6 +98,8 @@ async function dragRay(page, degrees) {
     await page.waitForSelector('[data-ang-root]', { timeout: 10000 });
     await page.waitForTimeout(500);
     await page.screenshot({ path: path.join(OUT, '01-intro-desktop.png'), fullPage: true });
+    const introGroove = await tanGroovePixels(page);
+    assert.ok(introGroove > 40, `intro should still show the teaching groove, got ${introGroove}`);
 
     for (let i = 0; i < 5; i++) {
       const next = page.locator('[data-ang="intro-next"]');
@@ -100,6 +119,8 @@ async function dragRay(page, degrees) {
     }
     await page.waitForSelector('[data-ang="check-feel"]');
     await page.screenshot({ path: path.join(OUT, '04-feel-45-desktop.png'), fullPage: true });
+    const feelGroove = await tanGroovePixels(page);
+    assert.ok(feelGroove < 8, `feel step has no target groove, got ${feelGroove}`);
 
     for (const target of [45, 90, 60]) {
       await dragRay(page, target - 3);
@@ -109,10 +130,24 @@ async function dragRay(page, degrees) {
     }
     await page.waitForSelector('[data-ang="check-pipe"]');
     await page.screenshot({ path: path.join(OUT, '05-pipe-desktop.png'), fullPage: true });
+    assert.equal(await page.getAttribute("[data-ang-canvas]", "data-ang-groove"), "hidden");
+
+    await dragRay(page, 38);
+    await page.waitForTimeout(80);
+    const hiddenGroove = await tanGroovePixels(page);
+    assert.ok(hiddenGroove < 8, `groove hidden before Tilfreds, got ${hiddenGroove}`);
+    assert.equal(await page.locator('[data-ang="check-pipe"]').innerText(), "Tilfreds");
+    await page.screenshot({ path: path.join(OUT, '05b-pipe-before-tilfreds-desktop.png'), fullPage: true });
+    await page.locator('[data-ang="check-pipe"]').click();
+    await page.waitForSelector('[data-ang-groove="revealed"]');
+    const shownGroove = await tanGroovePixels(page);
+    assert.ok(shownGroove > 40, `groove visible after Tilfreds, got ${shownGroove}`);
+    await page.screenshot({ path: path.join(OUT, '05c-pipe-after-tilfreds-desktop.png'), fullPage: true });
+    await page.waitForFunction(() => /Lidt/.test(document.querySelector("[data-ang-feedback]")?.textContent || ""));
 
     await dragRay(page, 58);
     await page.locator('[data-ang="check-pipe"]').click();
-    await page.waitForTimeout(1000);
+    await page.waitForTimeout(2200);
     await page.waitForSelector('.ang-finish');
     await page.screenshot({ path: path.join(OUT, '06-done-desktop.png'), fullPage: true });
 
@@ -151,6 +186,30 @@ async function dragRay(page, degrees) {
     await mpage.waitForSelector('[data-ang="check-precise"]');
     await mpage.waitForTimeout(200);
     await mpage.screenshot({ path: path.join(OUT, '08-precise-mobile.png'), fullPage: true });
+    for (const target of [60, 45, 15]) {
+      await dragRay(mpage, target);
+      await mpage.waitForTimeout(80);
+      await mpage.locator('[data-ang="check-precise"]').click();
+      await mpage.waitForTimeout(500);
+    }
+    await mpage.waitForSelector('[data-ang="check-feel"]');
+    for (const target of [45, 90, 60]) {
+      await dragRay(mpage, target - 3);
+      await mpage.waitForTimeout(80);
+      await mpage.locator('[data-ang="check-feel"]').click();
+      await mpage.waitForTimeout(900);
+    }
+    await mpage.waitForSelector('[data-ang="check-pipe"]');
+    await dragRay(mpage, 38);
+    await mpage.waitForTimeout(80);
+    const mobileHidden = await tanGroovePixels(mpage);
+    assert.ok(mobileHidden < 8, `mobile groove hidden, got ${mobileHidden}`);
+    await mpage.screenshot({ path: path.join(OUT, '09-pipe-before-tilfreds-mobile.png'), fullPage: true });
+    await mpage.locator('[data-ang="check-pipe"]').click();
+    await mpage.waitForSelector('[data-ang-groove="revealed"]');
+    const mobileShown = await tanGroovePixels(mpage);
+    assert.ok(mobileShown > 40, `mobile groove shown, got ${mobileShown}`);
+    await mpage.screenshot({ path: path.join(OUT, '10-pipe-after-tilfreds-mobile.png'), fullPage: true });
     await mobile.close();
     await page.close();
   } finally {
