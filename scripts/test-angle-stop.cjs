@@ -15,4 +15,14 @@ assert.strictEqual(S.SPEED_DEG_PER_S, 18);
 assert.match(S.tierLabel(2).text, /PERFEKT/);
 assert.match(S.tierLabel(5).text, /GODT/);
 assert.match(S.tierLabel(25).text, /FORBI/);
+// Live degree is opt-in and must not be drawn while the angle is opening.
+assert.match(code, /opts\.showNumber === true/);
+assert.doesNotMatch(code, /hideLive/);
+assert.match(code, /Du stoppede ved/);
+const tick = code.slice(code.indexOf("function tick"), code.indexOf("function startRun"));
+assert.match(tick, /drawFigure\(current\)/);
+assert.doesNotMatch(tick, /showNumber|°/);
+const running = code.slice(code.indexOf('phase === "running"'), code.indexOf('phase === "result"'));
+assert.match(running, /aria-label="Åbnende vinkel"/);
+assert.doesNotMatch(running, /showNumber|\$\{current\}|\$\{Math\.round\(current\)\}/);
 console.log("angle-stop unit checks passed");

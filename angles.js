@@ -52,6 +52,7 @@
     let introAnim = { t: 0, mode: "pipe" };
     let resultsLogged = 0;
     let pipeAngle = 20;
+    let pipeReveal = 0; // 0 = rille skjult, 1 = rille helt fremme
     let reducedMotion = false;
     try { reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches; } catch (_) {}
 
@@ -229,27 +230,42 @@
       return { cx, cy, R };
     }
 
-    function drawPipeScene(ctx, w, h, bendDeg, grooveDeg, fitted) {
+    function drawPipeScene(ctx, w, h, bendDeg, grooveDeg, fitted, opts = {}) {
       ctx.clearRect(0, 0, w, h);
       const cx = w * 0.55;
       const cy = h * 0.58;
       const len = Math.min(w, h) * 0.34;
+      // Introen viser rillen (reveal udeladt). I opgaven er den skjult, indtil eleven er tilfreds.
+      const reveal = Math.max(0, Math.min(1, opts.reveal == null ? 1 : opts.reveal));
 
-      // groove (fixed 60°)
-      const g0 = polar(cx, cy, len * 1.05, 0);
-      const g1 = polar(cx, cy, len * 1.05, grooveDeg);
-      ctx.beginPath();
-      ctx.moveTo(g0.x, g0.y);
-      ctx.lineTo(cx, cy);
-      ctx.lineTo(g1.x, g1.y);
-      ctx.strokeStyle = fitted ? "#117e79" : "#c4a574";
-      ctx.lineWidth = 18;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.stroke();
-      ctx.strokeStyle = fitted ? "#0b7161" : "#8b6432";
-      ctx.lineWidth = 4;
-      ctx.stroke();
+      if (reveal > 0.02) {
+        ctx.save();
+        ctx.globalAlpha = reveal;
+        // Glid ud fra hjørnet, så vinklen er den rigtige med det samme.
+        const glen = len * 1.05 * (0.18 + 0.82 * reveal);
+        const g0 = polar(cx, cy, glen, 0);
+        const g1 = polar(cx, cy, glen, grooveDeg);
+        ctx.beginPath();
+        ctx.moveTo(g0.x, g0.y);
+        ctx.lineTo(cx, cy);
+        ctx.lineTo(g1.x, g1.y);
+        ctx.strokeStyle = fitted ? "#117e79" : "#c4a574";
+        ctx.lineWidth = 18;
+        ctx.lineCap = "round";
+        ctx.lineJoin = "round";
+        ctx.stroke();
+        ctx.strokeStyle = fitted ? "#0b7161" : "#8b6432";
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        if (reveal > 0.72) {
+          ctx.globalAlpha = reveal;
+          ctx.fillStyle = "#301946";
+          ctx.font = "800 18px system-ui";
+          ctx.textAlign = "center";
+          ctx.fillText(`Rille: ${grooveDeg}°`, w / 2, 28);
+        }
+        ctx.restore();
+      }
 
       // pipe cleaner
       const p0 = polar(cx, cy, len, 0);
@@ -280,11 +296,6 @@
       ctx.strokeStyle = "#fff";
       ctx.lineWidth = 3;
       ctx.stroke();
-
-      ctx.fillStyle = "#301946";
-      ctx.font = "800 18px system-ui";
-      ctx.textAlign = "center";
-      ctx.fillText(`Rille: ${grooveDeg}°`, w / 2, 28);
     }
 
     function drawIntroFrame(ctx, w, h) {
@@ -406,6 +417,26 @@
         else { animating = false; angle = target; onFrame?.(angle); onDone?.(); }
       };
       raf = requestAnimationFrame(tick);
+    }
+
+    function tween(duration, onFrame) {
+      return new Promise((resolve) => {
+        if (disposed) { resolve(); return; }
+        if (duration <= 0) {
+          onFrame(1);
+          resolve();
+          return;
+        }
+        const start = performance.now();
+        const tick = (now) => {
+          if (disposed) { resolve(); return; }
+          const p = Math.min(1, (now - start) / duration);
+          onFrame(1 - Math.pow(1 - p, 3));
+          if (p < 1) raf = requestAnimationFrame(tick);
+          else resolve();
+        };
+        raf = requestAnimationFrame(tick);
+      });
     }
 
     // ---------- Screens ----------
@@ -552,56 +583,93 @@
 
     function renderPipe() {
       titleEl.textContent = "Piberenseren";
-      leadEl.textContent = "Luk cirklen: bøj, så den passer i rillen.";
+      leadEl.textContent = "Bøj den cirka. Rillen kommer først, når du er tilfreds.";
       setDots();
       pipeAngle = 25;
+      pipeReveal = 0;
       stage.innerHTML = `
         <h2 class="ang-stage-title">Bøj piberenseren</h2>
-        <p class="ang-sub">Træk i enden, så den passer i rillen på ${core.PIPE_TARGET} grader.</p>
-        <div class="ang-canvas-wrap"><canvas width="520" height="520" data-ang-canvas aria-label="Bøj piberenseren"></canvas></div>
+        <p class="ang-sub">Sæt piberenseren på cirka ${core.PIPE_TARGET} grader. Tryk Tilfreds, når den ser rigtig ud.</p>
+        <div class="ang-canvas-wrap"><canvas width="520" height="520" data-ang-canvas data-ang-groove="hidden" aria-label="Piberenser. Rillen er skjult, indtil du trykker Tilfreds."></canvas></div>
         <p class="ang-feedback" data-ang-feedback role="status"></p>
         <div class="ang-actions">
-          <button type="button" class="ang-btn ang-teal" data-ang="check-pipe">Passer den?</button>
+          <button type="button" class="ang-btn ang-teal" data-ang="check-pipe">Tilfreds</button>
         </div>`;
       const canvas = stage.querySelector("[data-ang-canvas]");
       const ctx = canvas.getContext("2d");
-      const redraw = (fitted = false) => drawPipeScene(ctx, canvas.width, canvas.height, pipeAngle, core.PIPE_TARGET, fitted);
-      redraw(false);
+      const paint = (fitted = false) => {
+        drawPipeScene(ctx, canvas.width, canvas.height, pipeAngle, core.PIPE_TARGET, fitted, { reveal: pipeReveal });
+        canvas.dataset.angGroove = pipeReveal >= 0.98 ? "revealed" : "hidden";
+        canvas.setAttribute("aria-label", pipeReveal >= 0.98
+          ? "Rillen er synlig. Se om piberenseren passer."
+          : "Piberenser. Rillen er skjult, indtil du trykker Tilfreds.");
+      };
+      paint(false);
       unbindDrag?.();
-      unbindDrag = bindDrag(canvas, () => pipeAngle, (a) => { pipeAngle = a; redraw(false); }, () => {});
+      unbindDrag = bindDrag(canvas, () => pipeAngle, (a) => {
+        pipeAngle = a;
+        if (pipeReveal > 0) {
+          pipeReveal = 0;
+          const fb = stage.querySelector("[data-ang-feedback]");
+          if (fb) { fb.textContent = ""; fb.className = "ang-feedback"; }
+        }
+        paint(false);
+      }, () => {});
       playStem("pipe-intro");
     }
 
     async function checkPipe() {
+      if (animating || disposed || screen !== 4) return;
       const fb = stage.querySelector("[data-ang-feedback]");
       const canvas = stage.querySelector("[data-ang-canvas]");
+      const confirmBtn = stage.querySelector('[data-ang="check-pipe"]');
+      if (!canvas || !fb) return;
+      if (confirmBtn) confirmBtn.disabled = true;
       const ctx = canvas.getContext("2d");
-      if (core.withinTolerance(pipeAngle, core.PIPE_TARGET, core.PIPE_TOL)) {
-        // snap + drop
-        await new Promise((r) => {
-          animating = true;
-          const from = pipeAngle;
-          const start = performance.now();
-          const tick = (now) => {
-            const p = Math.min(1, (now - start) / 400);
-            pipeAngle = from + (core.PIPE_TARGET - from) * (1 - Math.pow(1 - p, 3));
-            drawPipeScene(ctx, canvas.width, canvas.height, pipeAngle, core.PIPE_TARGET, p > 0.6);
-            if (p < 1) raf = requestAnimationFrame(tick);
-            else { animating = false; r(); }
-          };
-          raf = requestAnimationFrame(tick);
-        });
+      const answered = pipeAngle;
+      const within = core.withinTolerance(answered, core.PIPE_TARGET, core.PIPE_TOL);
+      const paintAt = (bend, fitted, reveal) => {
+        pipeReveal = reveal;
+        drawPipeScene(ctx, canvas.width, canvas.height, bend, core.PIPE_TARGET, fitted, { reveal });
+        canvas.dataset.angGroove = reveal >= 0.98 ? "revealed" : "hidden";
+      };
+      animating = true;
+      try {
+        // Først rillen, mens benet bliver liggende. Snap først bagefter, og kun hvis den er tæt nok på.
+        await tween(reducedMotion ? 0 : 460, (e) => paintAt(answered, false, e));
+        if (disposed) return;
+        paintAt(answered, false, 1);
+        canvas.setAttribute("aria-label", "Rillen er synlig. Se om piberenseren passer.");
+        fb.className = "ang-feedback";
+        fb.textContent = "Her er rillen.";
+        await tween(reducedMotion ? 280 : 780, () => paintAt(answered, false, 1));
+        if (disposed) return;
+        if (within) {
+          await tween(reducedMotion ? 0 : 380, (e) => {
+            pipeAngle = answered + (core.PIPE_TARGET - answered) * e;
+            paintAt(pipeAngle, e > 0.65, 1);
+          });
+          if (disposed) return;
+          pipeAngle = core.PIPE_TARGET;
+          paintAt(pipeAngle, true, 1);
+        }
+      } finally {
+        animating = false;
+      }
+      if (disposed) return;
+      if (within) {
         fb.className = "ang-feedback is-good";
         fb.textContent = "Perfekt! Piberenseren passer!";
-        await logResult("Piberenser i 60° rille", Math.round(pipeAngle), core.PIPE_TARGET, true);
+        await logResult("Piberenser i 60° rille", Math.round(answered), core.PIPE_TARGET, true);
         await playStem("pipe-done");
         if (disposed) return;
         screen = 5;
         renderDone();
       } else {
-        const dir = core.hintDirection(pipeAngle, core.PIPE_TARGET);
+        const dir = core.hintDirection(answered, core.PIPE_TARGET);
         fb.className = "ang-feedback is-hint";
         fb.textContent = dir === "more" ? "Lidt mere." : "Lidt mindre.";
+        if (confirmBtn) confirmBtn.disabled = false;
         playStem(dir === "more" ? "hint-more" : "hint-less");
       }
     }
