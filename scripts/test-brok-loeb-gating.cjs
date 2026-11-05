@@ -82,7 +82,22 @@ const css = ["styles.css", "cinematic-theme.css", "brok-loeb.css"].map((p) => fs
     assert.deepEqual(last.slice(-2), ["exercise_start", "exercise_end"], "afbrudt → exercise_end: " + last);
     await user("c8b8e1c4-3264-40e9-a43d-0eb6214a0183", "teacher");
     await page.evaluate(() => { window.__t.state.view = "student"; window.__t.render(); });
-    for (const [id, role] of [["ordinary-student", "student"], ["ordinary-teacher", "teacher"], ["guest-1", "guest"]]) {
+    assert.equal(await page.locator('[data-action="fraction-runner"]').count(), 1, "Jacobs lærerprofil ser kortet");
+    await page.locator('[data-action="fraction-runner"]').click();
+    await page.locator("#brok-loeb-root [data-bl-start]").waitFor();
+    await page.locator("[data-bl-ready]").waitFor();
+    await page.locator("[data-bl-start] [data-bl-exit]").click();
+    assert.equal(await page.locator("#brok-loeb-root").count(), 0, "Jacobs lærerprofil forlader spillet");
+    for (const [id, role] of [
+      ["ordinary-student", "student"],
+      ["11111111-2222-3333-4444-555555555555", "student"],
+      ["ordinary-teacher", "teacher"],
+      ["99999999-2222-3333-4444-555555555555", "teacher"],
+      ["guest-1", "guest"],
+      ["c8b8e1c4-3264-40e9-a43d-0eb6214a0183", "guest"],
+      ["3af639de-b0e0-496a-a5b7-b732e49d1fa7", "guest"],
+      ["admin-1", "admin"],
+    ]) {
       await user(id, role);
       await page.evaluate(() => { window.__t.state.view = "student"; window.__t.render(); });
       assert.equal(await page.locator('[data-action="fraction-runner"]').count(), 0, `${role} ${id} ser ikke kortet`);
