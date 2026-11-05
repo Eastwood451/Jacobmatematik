@@ -84,14 +84,39 @@
 @keyframes ag-splash{0%{transform:scale(1)}40%{transform:scale(1.04)}100%{transform:scale(1)}}
 @keyframes ag-sink{0%{transform:translateY(0) rotate(0);opacity:1}100%{transform:translateY(14px) rotate(25deg);opacity:.2}}
 
-/* —— polish: Dennis —— */
-.ag-map-snow{background:linear-gradient(180deg,#e3f2fd,#bbdefb);border:2px solid #90caf9}
+/* —— polish: Dennis landscape —— */
+.ag-map-wrap{overflow:auto;max-width:100%;display:flex;justify-content:center;border-radius:18px;padding:10px}
+.ag-map-land{background:linear-gradient(180deg,#87ceeb 0%,#b8e0a8 45%,#6faf4a 100%);border:3px solid #4a7c3a;box-shadow:inset 0 0 0 2px #ffffff55,0 10px 28px #30194622}
+.ag-dennis-controls{display:grid;gap:12px;margin-top:12px}
+.ag-go-row{display:flex;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
+.ag-go-btn{appearance:none;border:0;cursor:pointer;min-width:min(280px,78vw);min-height:64px;padding:16px 40px;border-radius:20px;font:900 clamp(22px,5vw,32px)/1 system-ui;letter-spacing:.04em;color:#fff9ef;background:linear-gradient(180deg,#5ad0b0,#0b7161);box-shadow:0 6px 0 #065046,0 12px 28px #0b716166;transition:transform .12s ease,filter .12s}
+.ag-go-btn:hover,.ag-go-btn:focus-visible{filter:brightness(1.06);outline:3px solid #e9a63c;outline-offset:3px}
+.ag-go-btn:active{transform:translateY(3px);box-shadow:0 3px 0 #065046,0 8px 16px #0b716166}
+.ag-go-btn:disabled{opacity:.55;cursor:default;transform:none;filter:none}
+.ag-deg-row .ag-chip[data-v="0"]{background:#e0f2f1;border-color:#117e79}
+.ag-deg-row .ag-chip[data-v="0"].is-on{background:#117e79;color:#fff}
+.ag-heading-badge text{pointer-events:none}
+.ag-sway1,.ag-sway2,.ag-sway3{transform-box:fill-box;transform-origin:50% 100%}
+.ag-sway1{animation:ag-sway 4.5s ease-in-out infinite}
+.ag-sway2{animation:ag-sway 5.2s ease-in-out infinite reverse}
+.ag-sway3{animation:ag-sway 3.8s ease-in-out infinite}
+@keyframes ag-sway{0%,100%{transform:rotate(-1.6deg)}50%{transform:rotate(1.8deg)}}
+.ag-ripple{animation:ag-ripple 3.2s ease-in-out infinite}
+.ag-ripple2{animation:ag-ripple 4s ease-in-out infinite reverse}
+@keyframes ag-ripple{0%,100%{opacity:.55;transform:scale(1)}50%{opacity:.9;transform:scale(1.06)}}
+.ag-duck{animation:ag-bob 2.4s ease-in-out infinite}
+.ag-bunny{animation:ag-bob 2.8s ease-in-out infinite reverse}
+@keyframes ag-bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-3px)}}
+.ag-flower{animation:ag-bob 3.4s ease-in-out infinite}
 .ag-cmd-chips{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:0;padding:10px;background:#eee7f7;border-radius:12px;max-height:160px;overflow:auto}
 .ag-cmd-chip{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid #cbb9e0;border-radius:999px;padding:6px 8px 6px 12px;font:750 13px system-ui;color:#301946}
 .ag-cmd-chip[data-kind="turn"]{border-color:#e3a521;background:#fff8e1}
 .ag-cmd-chip[data-kind="go"]{border-color:#117e79;background:#e0f2f1}
 .ag-cmd-chip button{border:0;background:#30194618;border-radius:999px;width:26px;height:26px;cursor:pointer;font-weight:900;line-height:1}
 .ag-cmd-chips .ag-empty{background:transparent;border:0;color:#6d5c7e;padding:4px 2px}
+@media(prefers-reduced-motion:reduce){
+  .ag-sway1,.ag-sway2,.ag-sway3,.ag-ripple,.ag-ripple2,.ag-duck,.ag-bunny,.ag-flower{animation:none}
+}
 
 /* —— polish: ninja —— */
 .ag-ninja-target{display:flex;align-items:center;gap:10px;justify-content:center}

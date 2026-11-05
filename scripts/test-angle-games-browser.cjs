@@ -89,21 +89,25 @@ async function shot(page, name) {
       await page.locator('[data-ag="exit"]').click();
       await page.waitForSelector("[data-ang-hub]");
 
-      // --- Dennis ---
+      // --- Dennis (vælg vinkel → Gå) ---
       await page.locator('[data-ang-hub="dennis"]').click();
       await page.waitForSelector("[data-ag-dennis]");
       await page.waitForTimeout(200);
       await shot(page, `04-dennis-level1-${label}.png`);
-      // Level 1: go 4 east
-      await page.locator('[data-ag="steps"][data-v="4"]').click();
-      await page.locator('[data-ag="add-go"]').click();
-      // Queued command chip visible
-      await page.waitForSelector('.ag-cmd-chip');
+      // Level 1: ligeud several times toward pizza (start x=1 → goal x=6)
+      await page.locator('[data-ag="deg"][data-v="0"]').click();
       await page.locator('[data-ag="run"]').click();
-      await page.waitForTimeout(700);
+      await page.waitForTimeout(550);
       await shot(page, `05b-dennis-mid-walk-${label}.png`);
-      await page.waitForTimeout(2200);
+      for (let i = 0; i < 4; i++) {
+        await page.waitForSelector('[data-ag="run"]:not([disabled])', { timeout: 5000 });
+        await page.locator('[data-ag="deg"][data-v="0"]').click();
+        await page.locator('[data-ag="run"]').click();
+        await page.waitForTimeout(650);
+      }
+      await page.waitForTimeout(400);
       await shot(page, `05-dennis-after-run-${label}.png`);
+      // May already advanced to level 2 — exit either way
       await page.locator('[data-ag="exit"]').click();
       await page.waitForSelector("[data-ang-hub]");
 
