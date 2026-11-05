@@ -117,3 +117,32 @@
   .sk-shop-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
 }
 @media (max-width:480px){.sk-teams{grid-template-columns:1fr}.sk-rank,.sk-file{font-size:9px}.sk-piece-role{width:12px;height:12px;font-size:9px}}
+/* Mobil på langs: brættet til venstre, regnefeltet til højre – alt synligt uden at scrolle siden */
+@media (orientation:landscape) and (max-height:540px) and (hover:none),(orientation:landscape) and (max-height:540px) and (pointer:coarse){
+  body:has(.sk-play) .topbar{display:none}
+  body:has(.sk-play),body:has(.sk-play) #app,body:has(.sk-play) #skak-root{margin:0;padding:0;min-height:0}
+  .sk-game.sk-play{--sk-nav:38px;--sk-board:min(calc(100dvh - var(--sk-nav) - 40px),55vw);max-width:none;height:100dvh;margin:0;padding:6px max(8px,env(safe-area-inset-right)) 6px max(8px,env(safe-area-inset-left));border:0;border-radius:0;box-shadow:none;display:flex;flex-direction:column;overflow:hidden}
+  .sk-play .sk-nav{height:var(--sk-nav);margin:0 0 6px;flex:none}
+  .sk-play .sk-nav>button{padding:5px 10px;font-size:14px}
+  .sk-play .sk-title{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sk-play .sk-layout{flex:1;min-height:0;display:grid;grid-template-columns:auto minmax(0,1fr);gap:10px;align-items:stretch}
+  .sk-play .sk-board-wrap{order:0;width:var(--sk-board);display:flex;flex-direction:column;min-height:0}
+  .sk-play .sk-board{flex:none;width:var(--sk-board);height:var(--sk-board);border-width:4px;border-radius:8px;margin:0}
+  .sk-play .sk-piece,.sk-play .sk-piece-fallback{font-size:calc(var(--sk-board) / 11)}
+  .sk-play .sk-piece-role{width:12px;height:12px;font-size:9px}
+  .sk-play .sk-status{font-size:12px;margin:2px 0 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sk-play .sk-status.over{font-size:14px}
+  .sk-play .sk-side{display:flex;flex-direction:column;gap:8px;min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding-bottom:8px}
+  .sk-play .sk-side>*{order:0;flex:none}
+  .sk-play .sk-problem{order:-2;padding:8px 10px;border-radius:14px}
+  .sk-play .sk-feedback{order:-1;padding:6px 10px;font-size:14px}
+  .sk-play .sk-problem-label{margin-bottom:4px;font-size:11px}
+  .sk-play .sk-problem-row{gap:8px;flex-wrap:nowrap}
+  .sk-play .sk-problem-text{font-size:24px}
+  .sk-play .sk-problem input{font-size:22px;width:4em;padding:4px;min-height:42px}
+  .sk-play .sk-problem .btn{min-height:42px;padding:0 14px}
+  .sk-play .sk-obbe img{width:42px}
+  .sk-play .sk-obbe p{font-size:13px;padding:6px 10px}
+  .sk-play .sk-shop,.sk-play .sk-log{padding:8px 10px}
+  .sk-play .sk-shop-item .sk-character{height:40px}
+}

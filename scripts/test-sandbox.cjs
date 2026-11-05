@@ -18,7 +18,7 @@ const css=['styles.css','cinematic-theme.css'].map(p=>fs.readFileSync(p,'utf8'))
    window.JacobBackend={configured:false};
    window.__exits={};
    function mount(root,options){root.innerHTML='<button type="button" class="test-exit">Tilbage fra modul</button>';root.querySelector('button').onclick=()=>options.onExit();return ()=>{};}
-   window.MarleyMath={mount};window.JacobSkak={mount};
+   window.MarleyMath={mount};window.JacobSkak={mount};window.JacobAnglesCore={};window.JacobAngles={mount};
   });
   await page.addScriptTag({content:source});
   const user=async(id,role)=>page.evaluate(({id,role})=>{
@@ -30,11 +30,20 @@ const css=['styles.css','cinematic-theme.css'].map(p=>fs.readFileSync(p,'utf8'))
   assert.equal(await page.locator('.topbar [data-action="plus-penalhus"]').count(),0);
   await page.locator('[data-action="sandbox"]').click();
   await page.locator('.sandbox-page').waitFor();
-  for(const action of ['marley','skak']){
-   await page.locator('.sandbox-page [data-action="'+action+'"]').click();
+  assert.equal(await page.locator('.sandbox-page [data-action="angles"]').count(),6);
+  assert.equal(await page.locator('.sandbox-page [data-angles-start="battleship"]').count(),1);
+  assert.equal(await page.locator('.sandbox-page [data-angles-start="dennis"]').count(),1);
+  assert.equal(await page.locator('.sandbox-page [data-angles-start="ninja"]').count(),1);
+  assert.equal(await page.locator('.sandbox-page [data-angles-start="words"]').count(),1);
+  assert.equal(await page.locator('.sandbox-page [data-angles-start="stop"]').count(),1);
+  for(const action of ['marley','skak','angles']){
+   await page.locator('.sandbox-page [data-action="'+action+'"]').first().click();
    await page.locator('.test-exit').click();
    await page.locator('.sandbox-page').waitFor();
   }
+  await page.locator('.sandbox-page [data-angles-start="battleship"]').click();
+  await page.locator('.test-exit').click();
+  await page.locator('.sandbox-page').waitFor();
   await page.locator('.jacob-view-switch').click();
   assert.equal(await page.locator('.jacob-view-switch').getAttribute('aria-checked'),'true');
   assert.equal(await page.locator('.student-home-layout').count(),1);

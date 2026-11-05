@@ -729,8 +729,9 @@ multiplicationColumn: {
   const ANGLES_PROFILE_IDS = new Set(["c8b8e1c4-3264-40e9-a43d-0eb6214a0183", "3af639de-b0e0-496a-a5b7-b732e49d1fa7"]);
   const canLearnAngles = () => Boolean(state.user?.id && ANGLES_PROFILE_IDS.has(state.user.id) && ["teacher","student"].includes(state.user.role));
   let disposeAngles = null;
-  function leaveAngles() { disposeAngles?.(); disposeAngles = null; }
+  function leaveAngles() { disposeAngles?.(); disposeAngles = null; state.anglesStart = null; }
   async function renderAngles() { syncTrackedExercise();
+    const anglesStart=state.anglesStart || null;
     leaveAngles();
     if (!canLearnAngles()) { state.view=state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
     app.innerHTML=`${header()}<div id="angles-root"><p class="seo-loading" data-module-loading>Indlæser...</p></div>`;
@@ -744,6 +745,7 @@ multiplicationColumn: {
     const learner=state.user;
     disposeAngles=window.JacobAngles.mount(document.getElementById("angles-root"), {
       user:learner,
+      start:anglesStart,
       async onResult(result) {
         if(state.user!==learner) throw new Error("Brugeren er skiftet.");
         learner.results.push(result);
@@ -848,7 +850,7 @@ multiplicationColumn: {
   const canUseSandbox = () => isFractionTester();
   function renderSandbox() { syncTrackedExercise();
     if (!canUseSandbox()) { state.view=homeView(); render(); return; }
-    app.innerHTML = `${header()}<div class="page sandbox-page"><section class="sandbox-head"><div><span class="eyebrow">Udvikling</span><h1>Sandbox</h1><p>Her prøver du moduler, før de udgives til eleverne.</p></div><button type="button" class="btn secondary" data-action="home">← Tilbage</button></section><section class="sandbox-grid" aria-label="Moduler under udvikling">${isFractionTester() ? `<button type="button" class="sandbox-card" data-action="marley"><span class="sandbox-icon" aria-hidden="true">🐶</span><span class="sandbox-tag">Under udvikling</span><strong>Marleys butik</strong><span>Regn, tjen mønter, og klæd Marley på.</span></button>` : ""}${canPlaySkak() ? `<button type="button" class="sandbox-card" data-action="skak"><span class="sandbox-icon" aria-hidden="true">♞</span><span class="sandbox-tag">Beta</span><strong>Skak</strong><span>Spil mod computeren eller test online med en kampkode.</span></button>` : ""}${isFractionTester() ? `<a class="sandbox-card" href="marley-3d-preview.html"><span class="sandbox-icon" aria-hidden="true">🐾</span><span class="sandbox-tag">Grafikprøve</span><strong>Marley i 3D</strong><span>Separat prøve af modellen og bevægelserne.</span></a>` : ""}</section></div>`;
+    app.innerHTML = `${header()}<div class="page sandbox-page"><section class="sandbox-head"><div><span class="eyebrow">Udvikling</span><h1>Sandbox</h1><p>Her prøver du moduler, før de udgives til eleverne.</p></div><button type="button" class="btn secondary" data-action="home">← Tilbage</button></section><section class="sandbox-grid" aria-label="Moduler under udvikling">${isFractionTester() ? `<button type="button" class="sandbox-card" data-action="marley"><span class="sandbox-icon" aria-hidden="true">🐶</span><span class="sandbox-tag">Under udvikling</span><strong>Marleys butik</strong><span>Regn, tjen mønter, og klæd Marley på.</span></button>` : ""}${canPlaySkak() ? `<button type="button" class="sandbox-card" data-action="skak"><span class="sandbox-icon" aria-hidden="true">♞</span><span class="sandbox-tag">Beta</span><strong>Skak</strong><span>Spil mod computeren eller test online med en kampkode.</span></button>` : ""}${canLearnAngles() ? `<button type="button" class="sandbox-card" data-action="angles"><span class="sandbox-icon" aria-hidden="true">∠</span><span class="sandbox-tag">Beta</span><strong>Vinkler</strong><span>Lektion og hub for alle vinkelspil.</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="battleship"><span class="sandbox-icon" aria-hidden="true">🚢</span><span class="sandbox-tag">Spil</span><strong>Vinkel-slagskibe</strong><span>Tryk hurtigt på den rigtige vinkel og sænk skibe.</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="dennis"><span class="sandbox-icon" aria-hidden="true">🐧</span><span class="sandbox-tag">Spil</span><strong>Dennis med bind for øjnene</strong><span>Drej og gå – find fisken på kortet.</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="ninja"><span class="sandbox-icon" aria-hidden="true">🥷</span><span class="sandbox-tag">Spil</span><strong>Villy Vinkelninja</strong><span>Fruit Ninja-snit: swipe den rigtige vinkel.</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="words"><span class="sandbox-icon" aria-hidden="true">📝</span><span class="sandbox-tag">Spil</span><strong>Vinkel-ord</strong><span>Spids, ret, stump eller lige?</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="stop"><span class="sandbox-icon" aria-hidden="true">🎯</span><span class="sandbox-tag">Spil</span><strong>Ram vinklen</strong><span>Stop den åbnende vinkel tættest på målet.</span></button>` : ""}${isFractionTester() ? `<a class="sandbox-card" href="marley-3d-preview.html"><span class="sandbox-icon" aria-hidden="true">🐾</span><span class="sandbox-tag">Grafikprøve</span><strong>Marley i 3D</strong><span>Separat prøve af modellen og bevægelserne.</span></a>` : ""}</section></div>`;
   }
   function jacobViewButton() {
     const sandboxLink=canUseSandbox() ? `<button type="button" class="btn secondary sandbox-link" data-action="sandbox" aria-current="${state.view === "sandbox" ? "page" : "false"}">Sandbox</button>` : "";
@@ -3887,7 +3889,10 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     if (["clock", "ten-friends", "marley-addition", "plus-penalhus", "skak", "angles", "fraction-runner"].includes(action)) {
       event.preventDefault();
       const allowed=action === "clock" ? canLearnClock : action === "marley-addition" ? canPlayMarleyAddition : action === "plus-penalhus" ? canPlayPlusPenalhus : action === "skak" ? canPlaySkak : action === "angles" ? canLearnAngles : action === "fraction-runner" ? canPlayRunner : canPlayTenFriends;
-      if (!allowed() || state.view === action || switchingJacobView) return;
+      const anglesStart=action === "angles" ? (actionButton.dataset.anglesStart || null) : null;
+      // Re-open angles from sandbox with another start target even if already on the angles view.
+      if (!allowed() || switchingJacobView) return;
+      if (state.view === action && !(action === "angles" && anglesStart)) return;
       switchingJacobView=true;
       const userId=state.user.id;
       try {
@@ -3897,6 +3902,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
         stopErlingAudio(); stopKaptajnAudio(); stopLuigiAudio(); stopLetterLearningAudio();
         clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); clearColumnAdditionDrag(); clearColumnMultiplicationDrag();
         moduleReturnView=state.view === "sandbox" ? "sandbox" : null;
+        if (action === "angles") state.anglesStart = anglesStart;
         state.task=null; state.matrixDrill=null; state.view=action;
         render(); window.scrollTo(0,0);
       } finally { switchingJacobView=false; }
