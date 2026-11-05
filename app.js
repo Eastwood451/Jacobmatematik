@@ -579,6 +579,9 @@ multiplicationColumn: {
     if (name === "obbe-coach") return !!window.ObbeCoach;
     if (name === "skak") return !!window.JacobSkak;
     if (name === "angles") return !!window.JacobAngles && !!window.JacobAnglesCore;
+    if (name === "angle-battleship") return !!window.JacobAngleBattleship && !!window.JacobAnglesCore;
+    if (name === "angle-dennis") return !!window.JacobAngleDennis && !!window.JacobAnglesCore;
+    if (name === "angle-ninja") return !!window.JacobAngleNinja && !!window.JacobAnglesCore;
     return false;
   }
   async function ensureModule(name, view) {
@@ -756,7 +759,7 @@ multiplicationColumn: {
     });
   }
   function anglesCard() {
-    return canLearnAngles() ? `<button type="button" class="topic-card angles-card" data-action="angles"><span class="topic-icon">∠ 90°</span><strong>Vinkler</strong><small>Hvad er en vinkel? Træk, mål og bøj piberenseren.</small></button>` : "";
+    return canLearnAngles() ? `<button type="button" class="topic-card angles-card" data-action="angles"><span class="topic-icon">∠ 90°</span><strong>Vinkler</strong><small>Lær vinkler, slagskibe, Dennis og Villy-ninja.</small></button>` : "";
   }
   const appendCurrentPracticeResult = async result => {
     if (isGuest()) return null; // Guest sessions are memory-only and must never reach Supabase.

@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Vinkel-spil preview</title>
+  <link rel="stylesheet" href="angles.css"/>
+  <link rel="stylesheet" href="angle-games.css"/>
+</head>
+<body style="margin:0;background:#1a1028;min-height:100vh">
+  <div id="root"></div>
+  <script src="angles-core.js"></script>
+  <script src="module-loader.js"></script>
+  <script src="angles.js"></script>
+  <script src="angle-battleship.js"></script>
+  <script src="angle-dennis.js"></script>
+  <script src="angle-ninja.js"></script>
+  <script>
+    window.__tracks = [];
+    window.jmTrack = (e, p) => window.__tracks.push({ e, ...p });
+    window.__results = [];
+    const root = document.getElementById("root");
+    window.__dispose = window.JacobAngles.mount(root, {
+      user: { id: "c8b8e1c4-3264-40e9-a43d-0eb6214a0183", role: "teacher", name: "Jacob" },
+      async onResult(r) { window.__results.push(r); },
+      onComplete() { window.__anglesDone = true; },
+      onExit() { document.body.dataset.exited = "1"; },
+    });
+  </script>
+</body>
+</html>

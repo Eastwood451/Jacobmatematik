@@ -1,4 +1,4 @@
-/* Pure angle-lesson helpers (no DOM). Used by angles.js and unit tests. */
+/* Pure angle-lesson helpers (no DOM). Used by angles.js, games, and unit tests. */
 (() => {
   "use strict";
 
@@ -18,17 +18,33 @@
   }
 
   function angleFromPoint(cx, cy, x, y) {
-    // 0° = ray to the right (east); increases counter-clockwise (math convention for kids: open from the fixed ray).
-    // For UI we use the absolute angle of the movable ray from the positive x-axis, 0..180 for the lesson.
-    const rad = Math.atan2(cy - y, x - cx); // screen y grows down → flip
+    // 0° = ray to the right (east); increases counter-clockwise.
+    const rad = Math.atan2(cy - y, x - cx);
     let deg = (rad * 180) / Math.PI;
     if (deg < 0) deg += 360;
-    // Clamp interactive lessons to the upper half (0..180) so kids drag a clean wedge.
-    if (deg > 180) {
-      // Mirror below the x-axis into 0..180 for the wedge size kids are building.
-      deg = 360 - deg;
-    }
+    if (deg > 180) deg = 360 - deg;
     return Math.round(deg);
+  }
+
+  /** Absolute screen heading of a point from center (0° = east, CCW, 0..360). */
+  function headingFromPoint(cx, cy, x, y) {
+    const rad = Math.atan2(cy - y, x - cx);
+    let deg = (rad * 180) / Math.PI;
+    if (deg < 0) deg += 360;
+    return normalizeDeg(deg);
+  }
+
+  /** Acute/obtuse wedge (0..180) between two absolute headings. */
+  function wedgeBetween(a, b) {
+    let d = Math.abs(normalizeDeg(a) - normalizeDeg(b));
+    if (d > 180) d = 360 - d;
+    return Math.round(d);
+  }
+
+  /** Angle of a swipe line vs a reference heading (default 0° = horizontal right). */
+  function swipeAngleVsReference(x0, y0, x1, y1, refDeg = 0) {
+    const heading = headingFromPoint(x0, y0, x1, y1);
+    return wedgeBetween(heading, refDeg);
   }
 
   function withinTolerance(actual, target, tol) {
@@ -42,6 +58,46 @@
     return a < t ? "more" : "less";
   }
 
+  function shuffle(arr) {
+    const a = arr.slice();
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  /**
+   * Build up to `count` distinct angles as multiples of `increment` in 0..180.
+   * When fewer distinct values exist, duplicates are allowed; callers should
+   * vary rotation so identical angles look different.
+   */
+  function anglesForIncrement(increment, count = 16) {
+    const inc = Math.max(1, Number(increment) || 45);
+    const set = [];
+    for (let a = 0; a <= 180; a += inc) set.push(a);
+    if (set[set.length - 1] !== 180 && 180 % inc !== 0) set.push(180);
+    const unique = [...new Set(set)].filter((a) => a >= 0 && a <= 180);
+    if (unique.length >= count) return shuffle(unique).slice(0, count);
+    const out = [];
+    while (out.length < count) out.push(...shuffle(unique));
+    return out.slice(0, count);
+  }
+
+  /** Round descriptors: base ray rotation (deg) + angle size. */
+  function makeAngleTiles(increment, count = 16, varyRotation = true) {
+    const sizes = anglesForIncrement(increment, count);
+    return sizes.map((size, i) => ({
+      id: i,
+      degrees: size,
+      // Random base orientation so the same angle is not always horizontal.
+      baseDeg: varyRotation ? Math.floor(Math.random() * 360) : 0,
+    }));
+  }
+
+  const ROUND_INCREMENTS = [45, 30, 15, 10, 5];
+  const SHIP_COUNT = 5;
+
   const PRECISE_TASKS = [60, 45, 15];
   const FEEL_TASKS = [45, 90, 60];
   const PRECISE_TOL = 2;
@@ -53,8 +109,16 @@
     normalizeDeg,
     shortestDelta,
     angleFromPoint,
+    headingFromPoint,
+    wedgeBetween,
+    swipeAngleVsReference,
     withinTolerance,
     hintDirection,
+    shuffle,
+    anglesForIncrement,
+    makeAngleTiles,
+    ROUND_INCREMENTS,
+    SHIP_COUNT,
     PRECISE_TASKS,
     FEEL_TASKS,
     PRECISE_TOL,

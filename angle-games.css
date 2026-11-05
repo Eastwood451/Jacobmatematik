@@ -1,0 +1,60 @@
+/* Shared styles for Vinkel-spil (slagskibe, Dennis, ninja). Builds on angles.css tokens. */
+.ag-game .ang-stage{min-height:460px}
+.ag-menu{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:18px}
+.ag-hub{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-top:8px}
+.ag-hub-card{display:flex;flex-direction:column;gap:8px;text-align:left;padding:18px;border-radius:18px;border:1px solid #30194622;background:#fff;color:#301946;cursor:pointer;font:inherit;box-shadow:0 8px 24px #30194614;transition:transform .15s ease,box-shadow .15s}
+.ag-hub-card:hover,.ag-hub-card:focus-visible{transform:translateY(-2px);box-shadow:0 12px 28px #30194622;outline:3px solid #e9a63c;outline-offset:2px}
+.ag-hub-card .ag-hub-icon{font-size:28px;line-height:1}
+.ag-hub-card strong{font-size:17px}
+.ag-hub-card small{color:#6d5c7e;line-height:1.4}
+
+.ag-hud{display:grid;grid-template-columns:1fr auto 1fr;gap:10px;align-items:center;margin-bottom:10px}
+.ag-fleet{background:#eee7f7;border-radius:14px;padding:10px 12px;text-align:center}
+.ag-fleet[data-side="foe"]{background:#fde8e4}
+.ag-ships{display:flex;justify-content:center;gap:4px;font-size:20px;margin:4px 0}
+.ag-ship.is-sunk{opacity:.25;filter:grayscale(1)}
+.ag-target-wrap{text-align:center}
+.ag-round{font-size:12px;font-weight:800;letter-spacing:.06em;color:#6d5c7e;text-transform:uppercase}
+.ag-target{font-size:clamp(22px,4vw,32px);font-weight:900;color:#301946}
+.ag-msg{min-height:1.4em;margin:4px 0 0;font-weight:750;color:#117e79;font-size:14px}
+.ag-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.ag-tile{position:relative;border:2px solid #d9cce8;border-radius:14px;background:#fff9ef;padding:4px;cursor:pointer;min-height:72px}
+.ag-tile:disabled{opacity:.7;cursor:default}
+.ag-tile.is-wrong{border-color:#c62828;background:#ffebee;animation:ag-shake .35s}
+.ag-tile.is-right{border-color:#0b7161;background:#e0f2f1}
+.ag-tile-sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.ag-tile svg{width:100%;height:auto;display:block}
+@keyframes ag-shake{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+
+.ag-dennis-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.ag-heading{background:#eee7f7;border-radius:12px;padding:8px 12px;font-weight:800}
+.ag-map-wrap{overflow:auto;max-width:100%;display:flex;justify-content:center;background:#e8f5e9;border-radius:16px;padding:8px}
+.ag-map{max-width:100%;height:auto;touch-action:manipulation}
+.ag-cmd-builder{display:grid;gap:10px}
+.ag-chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.ag-chip-label{font-weight:850;margin-right:4px}
+.ag-chip{border:1px solid #cbb9e0;background:#fff;border-radius:999px;padding:8px 12px;font:700 13px system-ui;color:#301946;cursor:pointer;min-height:40px}
+.ag-chip.is-on{background:#5b4bda;color:#fff;border-color:#5b4bda}
+.ag-add{min-height:40px;padding:8px 12px}
+.ag-cmd-list{margin:0;padding:10px 10px 10px 28px;background:#eee7f7;border-radius:12px;max-height:140px;overflow:auto}
+.ag-cmd-list li{margin:4px 0}
+.ag-cmd-list button{margin-left:8px;border:0;background:#ffffff88;border-radius:8px;cursor:pointer}
+.ag-empty{list-style:none;margin-left:-18px;color:#6d5c7e}
+
+.ag-ninja-stage{position:relative}
+.ag-ninja-hud{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;font-weight:850;color:#301946}
+.ag-ninja-target{font-size:clamp(18px,3vw,26px)}
+.ag-ninja-canvas-wrap{position:relative;width:100%;max-width:720px;margin:0 auto;border-radius:16px;overflow:hidden;background:#1a0f28;aspect-ratio:720/480;touch-action:none}
+.ag-ninja-canvas-wrap canvas{width:100%;height:100%;display:block;touch-action:none}
+.ag-ninja-villy{position:absolute;left:8px;bottom:8px;pointer-events:none;opacity:.9}
+.ag-ninja-over{position:absolute;inset:0;display:grid;place-content:center;gap:10px;background:#170c2bcc;color:#fff9ef;text-align:center;padding:20px}
+
+@media(max-width:700px){
+  .ag-hud{grid-template-columns:1fr 1fr;grid-template-rows:auto auto}
+  .ag-target-wrap{grid-column:1/-1;order:-1}
+  .ag-grid{gap:6px}
+  .ag-tile{min-height:64px;padding:2px}
+}
+@media(prefers-reduced-motion:reduce){
+  .ag-hub-card,.ag-tile.is-wrong{transition:none;animation:none}
+}

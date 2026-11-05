@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Vinkler preview</title>
+  <link rel="stylesheet" href="angles.css"/>
+  <link rel="stylesheet" href="angle-games.css"/>
+</head>
+<body style="margin:0;background:#1a1028">
+  <div id="root"></div>
+  <script src="angles-core.js"></script>
+  <script src="module-loader.js"></script>
+  <script src="angles.js"></script>
+  <script>
+    window.__anglesResults = [];
+    window.Audio = function () {
+      const a = { play(){ setTimeout(()=>a._onended&&a._onended(),40); return Promise.resolve(); }, pause(){}, load(){}, removeAttribute(){},
+        set onended(fn){a._onended=fn;}, get onended(){return a._onended;}, set onerror(fn){}, get onerror(){return null;} };
+      return a;
+    };
+    window.JacobAngles.mount(document.getElementById('root'), {
+      async onResult(r){ window.__anglesResults.push(r); },
+      onComplete(){ window.__anglesDone = true; },
+      onExit(){},
+    });
+  </script>
+</body>
+</html>

@@ -34,7 +34,7 @@
     return `M ${cx} ${cy} L ${start.x} ${start.y} A ${r} ${r} 0 ${large} ${sweep >= 0 ? 0 : 1} ${end.x} ${end.y} Z`;
   }
 
-  function mount(root, options = {}) {
+  function mountLesson(root, options = {}) {
     if (!root) return () => {};
     const core = CORE();
     if (!core) throw new Error("JacobAnglesCore mangler");
@@ -662,5 +662,128 @@
     };
   }
 
-  window.JacobAngles = { mount };
+
+  const GAME_MODULES = {
+    battleship: { name: "angle-battleship", api: "JacobAngleBattleship", title: "Vinkel-slagskibe" },
+    dennis: { name: "angle-dennis", api: "JacobAngleDennis", title: "Dennis med bind for øjnene" },
+    ninja: { name: "angle-ninja", api: "JacobAngleNinja", title: "Villy Vinkelninja" },
+  };
+
+  async function loadGameModule(key) {
+    const meta = GAME_MODULES[key];
+    if (!meta) throw new Error("Ukendt spil: " + key);
+    if (window[meta.api]?.mount) return window[meta.api];
+    if (!window.JacobModules?.load) throw new Error("Module loader mangler");
+    await window.JacobModules.load(meta.name);
+    const api = window[meta.api];
+    if (!api?.mount) throw new Error("Spillet indlæste ikke: " + meta.title);
+    return api;
+  }
+
+  function mount(root, options = {}) {
+    if (!root) return () => {};
+    let childDispose = null;
+    let disposed = false;
+
+    function clearChild() {
+      try { childDispose?.(); } catch (_) {}
+      childDispose = null;
+    }
+
+    function showHub() {
+      clearChild();
+      if (disposed) return;
+      root.innerHTML = `
+        <section class="ang-module" data-ang-hub>
+          <header class="ang-header">
+            <div>
+              <span class="ang-eyebrow">VINKLER</span>
+              <h1>Vinkler</h1>
+              <p>Lær hvad en vinkel er – og spil dig til at kunne måle og beskrive dem.</p>
+            </div>
+            <button type="button" class="ang-btn ang-quiet" data-ang-hub="exit">← Tilbage</button>
+          </header>
+          <div class="ang-stage">
+            <h2 class="ang-stage-title">Vælg</h2>
+            <div class="ag-hub">
+              <button type="button" class="ag-hub-card" data-ang-hub="lesson">
+                <span class="ag-hub-icon">∠</span>
+                <strong>Vinkel hvadfornoget?</strong>
+                <small>Intro, træk vinklen, fornemmelse og piberenser.</small>
+              </button>
+              <button type="button" class="ag-hub-card" data-ang-hub="battleship">
+                <span class="ag-hub-icon">🚢</span>
+                <strong>Vinkel-slagskibe</strong>
+                <small>Tryk hurtigt på den rigtige vinkel og sænk skibe.</small>
+              </button>
+              <button type="button" class="ag-hub-card" data-ang-hub="dennis">
+                <span class="ag-hub-icon">🐧</span>
+                <strong>Dennis med bind for øjnene</strong>
+                <small>Drej og gå – find fisken på kortet.</small>
+              </button>
+              <button type="button" class="ag-hub-card" data-ang-hub="ninja">
+                <span class="ag-hub-icon">🥷</span>
+                <strong>Villy Vinkelninja</strong>
+                <small>Fruit Ninja-snit: swipe den rigtige vinkel.</small>
+              </button>
+            </div>
+          </div>
+        </section>`;
+    }
+
+    async function openLesson() {
+      clearChild();
+      childDispose = mountLesson(root, {
+        ...options,
+        onExit() { showHub(); },
+        // Keep onComplete/onResult from parent for lesson tracking.
+      });
+    }
+
+    async function openGame(key) {
+      clearChild();
+      root.innerHTML = `<section class="ang-module"><div class="ang-stage"><p class="ang-sub">Indlæser spil…</p></div></section>`;
+      try {
+        const api = await loadGameModule(key);
+        if (disposed) return;
+        childDispose = api.mount(root, {
+          user: options.user,
+          onResult: options.onResult,
+          onComplete: options.onComplete,
+          onExit() { showHub(); },
+        });
+      } catch (err) {
+        console.error(err);
+        if (disposed) return;
+        root.innerHTML = `<section class="ang-module"><div class="ang-stage">
+          <p class="ang-sub">Spillet kunne ikke indlæses. Prøv igen.</p>
+          <div class="ang-actions"><button type="button" class="ang-btn ang-quiet" data-ang-hub="back">Tilbage</button></div>
+        </div></section>`;
+      }
+    }
+
+    function onClick(e) {
+      const btn = e.target.closest("button");
+      if (!btn || !root.contains(btn)) return;
+      const act = btn.dataset.angHub;
+      if (!act) return;
+      if (act === "exit") { options.onExit?.(); return; }
+      if (act === "back" || act === "hub") { showHub(); return; }
+      if (act === "lesson") { void openLesson(); return; }
+      if (act === "battleship" || act === "dennis" || act === "ninja") { void openGame(act); return; }
+    }
+
+    root.addEventListener("click", onClick);
+    showHub();
+
+    return function dispose() {
+      disposed = true;
+      clearChild();
+      root.removeEventListener("click", onClick);
+      root.innerHTML = "";
+    };
+  }
+
+  window.JacobAngles = { mount, mountLesson };
 })();
+

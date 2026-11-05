@@ -75,6 +75,9 @@ async function dragRay(page, degrees) {
     const page = await context.newPage();
     page.on('pageerror', (e) => console.error('PAGEERROR', e.message));
     await page.goto('http://angles.local/angles-preview.html', { waitUntil: 'domcontentloaded' });
+    await page.waitForSelector('[data-ang-hub]', { timeout: 10000 });
+    await page.waitForTimeout(200);
+    await page.locator('[data-ang-hub="lesson"]').click();
     await page.waitForSelector('[data-ang-root]', { timeout: 10000 });
     await page.waitForTimeout(500);
     await page.screenshot({ path: path.join(OUT, '01-intro-desktop.png'), fullPage: true });
@@ -139,7 +142,9 @@ async function dragRay(page, degrees) {
     });
     const mpage = await mobile.newPage();
     await mpage.goto('http://angles.local/angles-preview.html', { waitUntil: 'domcontentloaded' });
-    await mpage.waitForSelector('[data-ang-root]');
+    await mpage.waitForSelector('[data-ang-hub]', { timeout: 10000 });
+    await mpage.locator('[data-ang-hub="lesson"]').click();
+    await mpage.waitForSelector('[data-ang-root]', { timeout: 10000 });
     await mpage.waitForTimeout(300);
     await mpage.screenshot({ path: path.join(OUT, '07-intro-mobile.png'), fullPage: true });
     await mpage.locator('[data-ang="intro-skip"]').click();
