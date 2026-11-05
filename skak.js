@@ -118,17 +118,27 @@
         placePiece(sq);
       }
     }
+    function boardEl() { return root.querySelector(".sk-board"); }
+    function runMoveFx(firsts, info, dropSq) {
+      const Anim = window.SkakAnim;
+      const board = boardEl();
+      if (!Anim || !board) return Promise.resolve();
+      if (dropSq) return Anim.playDropPop(board, dropSq);
+      if (firsts && info) return Anim.playFlip(board, firsts, info);
+      return Promise.resolve();
+    }
     function makeMove(from, to) {
       let result;
       try { result = Core.applyMove(s.fen, from, to, "q"); } catch (_) { s.selected = null; s.targets = []; render(); return; }
-      finishMyTurn(result.fen, { by: s.myColor, san: result.san, from, to }, false);
+      const firsts = window.SkakAnim?.captureFirsts(boardEl(), result) || null;
+      finishMyTurn(result.fen, { by: s.myColor, san: result.san, from, to, promotion: result.promotion || null }, false, { firsts, info: result });
     }
     function placePiece(sq) {
       let result;
       try { result = Core.applyDrop(s.fen, s.myColor, s.buyType, sq); } catch (_) { return; }
-      finishMyTurn(result.fen, { by: s.myColor, drop: s.buyType, square: sq, san: `+${DROP_LETTER[s.buyType]}@${sq}` }, true);
+      finishMyTurn(result.fen, { by: s.myColor, drop: s.buyType, square: sq, san: `+${DROP_LETTER[s.buyType]}@${sq}` }, true, { dropSq: sq });
     }
-    function finishMyTurn(fen, record, bought) {
+    function finishMyTurn(fen, record, bought, fx = {}) {
       s.meta = { ...s.meta, [s.myColor]: Core.recordTurn(s.meta[s.myColor], { bought }) };
       s.fen = fen; s.moves = [...s.moves, record];
       s.lastMove = record.drop ? { to: record.square } : { from: record.from, to: record.to };
@@ -136,10 +146,14 @@
       s.status = Core.gameStatus(fen);
       if (s.status.over) s.phase = "over"; else s.phase = "wait";
       if (bought) s.obbe = "Ny brik på brættet! Nu er det modstanderens tur.";
+      const animMs = bought ? 280 : (window.SkakAnim?.timingFor(fx.info) || 0);
       if (s.mode === "cpu") {
         render();
-        if (!s.status.over) later(computerTurn, 450);
+        runMoveFx(fx.firsts, fx.info, fx.dropSq);
+        if (!s.status.over) later(computerTurn, 450 + Math.min(animMs, 900));
       } else {
+        render();
+        runMoveFx(fx.firsts, fx.info, fx.dropSq);
         sendOnlineMove(record);
       }
     }
@@ -147,13 +161,15 @@
       const move = Core.chooseComputerMove(s.fen, s.aiLevel);
       if (!move) { startMyTurn(); return; }
       const result = Core.applyMove(s.fen, move.from, move.to, move.promotion || "q");
+      const firsts = window.SkakAnim?.captureFirsts(boardEl(), result) || null;
       const color = Core.turnOf(s.fen);
       s.meta = { ...s.meta, [color]: Core.recordTurn(s.meta[color]) };
-      s.fen = result.fen; s.moves = [...s.moves, { by: color, san: result.san, from: result.from, to: result.to }];
+      s.fen = result.fen; s.moves = [...s.moves, { by: color, san: result.san, from: result.from, to: result.to, promotion: result.promotion || null }];
       s.lastMove = { from: result.from, to: result.to };
       if (result.captured) s.obbe = `Av, computeren slog din ${Core.PIECE_NAMES[result.captured]}. Regn videre!`;
       else s.obbe = "Computeren har flyttet. Din tur!";
       startMyTurn();
+      runMoveFx(firsts, result, null);
     }
 
     // ---------- online ----------
@@ -201,24 +217,47 @@
     function applyRemote(game, force = false) {
       const prev = s.online.game;
       if (!force && prev && prev.version === game.version) return;
+      const prevFen = s.fen;
+      const prevMovesLen = Array.isArray(s.moves) ? s.moves.length : 0;
       s.online.game = game;
       if (game.status === "waiting") { s.screen = "lobby"; render(); return; }
       s.screen = "game";
-      s.fen = game.fen; s.meta = normalizeMeta(game.meta); s.moves = Array.isArray(game.moves) ? game.moves : [];
-      const last = s.moves[s.moves.length - 1];
+      const nextMoves = Array.isArray(game.moves) ? game.moves : [];
+      const last = nextMoves[nextMoves.length - 1];
+      let firsts = null, info = null, dropSq = null;
+      // Animer kun nyt træk fra modstanderen (ikke eget echo). Kræver eksisterende bræt-DOM (FLIP).
+      const boardBefore = boardEl();
+      if (boardBefore && nextMoves.length > prevMovesLen && last && game.fen !== prevFen && last.by && last.by !== s.myColor) {
+        if (last.drop && last.square) {
+          dropSq = last.square;
+        } else if (last.from && last.to) {
+          try {
+            info = Core.applyMove(prevFen, last.from, last.to, last.promotion || "q");
+            firsts = window.SkakAnim?.captureFirsts(boardBefore, info) || null;
+          } catch (_) { firsts = null; info = null; }
+        }
+      }
+      s.fen = game.fen; s.meta = normalizeMeta(game.meta); s.moves = nextMoves;
       s.lastMove = last ? (last.drop ? { to: last.square } : { from: last.from, to: last.to }) : null;
-      if (game.status === "finished") { s.phase = "over"; s.status = Core.gameStatus(s.fen); stopPolling(); render(); return; }
+      if (game.status === "finished") {
+        s.phase = "over"; s.status = Core.gameStatus(s.fen); stopPolling();
+        render();
+        runMoveFx(firsts, info, dropSq);
+        return;
+      }
       if (Core.turnOf(s.fen) === s.myColor) {
         const midTurn = ["move", "buy-solve", "place"].includes(s.phase) || (s.phase === "solve" && s.problem) || Date.now() < s.lockUntil;
         if (!midTurn || force) {
           s.obbe = last ? `${opponentName()} har flyttet (${last.san || ""}). Din tur!` : "Du starter. Regn for at købe dit første træk!";
           startMyTurn();
+          runMoveFx(firsts, info, dropSq);
           return;
         }
       } else {
         s.phase = "wait";
       }
       render();
+      runMoveFx(firsts, info, dropSq);
     }
     function opponentName() {
       const g = s.online.game;
