@@ -728,7 +728,7 @@
               <button type="button" class="ag-hub-card" data-ang-hub="dennis">
                 <span class="ag-hub-icon">🐧</span>
                 <strong>Dennis med bind for øjnene</strong>
-                <small>Drej og gå – find fisken på kortet.</small>
+                <small>Vælg vinkel, tryk Gå – hjælp Dennis til pizzaen.</small>
               </button>
               <button type="button" class="ag-hub-card" data-ang-hub="ninja">
                 <span class="ag-hub-icon">🥷</span>

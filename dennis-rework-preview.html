@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>Dennis rework preview</title>
+  <link rel="stylesheet" href="angles.css"/>
+  <link rel="stylesheet" href="angle-games.css"/>
+</head>
+<body style="margin:0;background:#1a1028;min-height:100vh">
+  <div id="root"></div>
+  <script src="angles-core.js"></script>
+  <script src="angle-dennis.js"></script>
+  <script>
+    window.__tracks = [];
+    window.jmTrack = (e, p) => window.__tracks.push({ e, ...p });
+    window.JacobAngleDennis.mount(document.getElementById("root"), {
+      async onResult() {},
+      onComplete() {},
+      onExit() { document.body.dataset.exited = "1"; },
+    });
+  </script>
+</body>
+</html>
