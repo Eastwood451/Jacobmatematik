@@ -26,7 +26,7 @@ References: https://developers.google.com/tag-platform/security/guides/consent a
 | `exercise_complete` | Eleven forlader en øvelse, der blev gennemført (Gange-/Division-drill færdig, Minus-drill uden flere fejl) | + `tasks_answered`, `correct_answers`, `duration_seconds` |
 | `exercise_end` | Eleven forlader en øvelse midtvejs (tilbage til forsiden, andet modul, log ud, lukker fanen) | samme som ovenfor |
 
-`exercise_id` er emnenøglen i snake_case, f.eks. `table_drill`, `subtraction_drill`, `addition_column`, `mixed`, samt moduler: `clock`, `plus_penalhus`, `marley_addition`, `ten_friends`, `skak`, `learn_fractions`, `foodtruck`, `sandbox`. `tasks_answered`/`correct_answers` tælles fra de resultater, appen allerede gemmer; moduler der ikke gemmer resultater rapporterer 0 (tiden er stadig med).
+`exercise_id` er emnenøglen i snake_case, f.eks. `table_drill`, `subtraction_drill`, `addition_column`, `mixed`, samt moduler: `clock`, `plus_penalhus`, `marley_addition`, `ten_friends`, `skak`, `angles`, `learn_fractions`, `foodtruck`, `sandbox`. `tasks_answered`/`correct_answers` tælles fra de resultater, appen allerede gemmer; moduler der ikke gemmer resultater rapporterer 0 (tiden er stadig med).
 
 ### Opsætning i GA4 (én gang)
 Administrator → Datavisning → Tilpassede definitioner → Opret tilpassede dimensioner:

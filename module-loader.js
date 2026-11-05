@@ -121,6 +121,11 @@
       js: ["skak-chess-lib.js?v=20261009-skak1", "skak-core.js?v=20261009-skak1", "skak.js?v=20261010-skak-figurer1"],
       ready: () => !!window.JacobSkak && !!window.SkakCore,
     },
+    angles: {
+      css: ["angles.css?v=20261105-angles1"],
+      js: ["angles-core.js?v=20261105-angles1", "angles.js?v=20261105-angles1"],
+      ready: () => !!window.JacobAngles && !!window.JacobAnglesCore,
+    },
     "dennis-audio": {
       css: [],
       js: ["dennis-audio.js?v=20261007-lyd1"],
