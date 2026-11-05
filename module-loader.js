@@ -116,10 +116,10 @@
       ready: () => true,
     },
     skak: {
-      css: ["skak.css?v=20261010-skak-figurer1"],
-      // chess.js (BSD-2) → ren spillogik → UI
-      js: ["skak-chess-lib.js?v=20261009-skak1", "skak-core.js?v=20261009-skak1", "skak.js?v=20261010-skak-figurer1"],
-      ready: () => !!window.JacobSkak && !!window.SkakCore,
+      css: ["skak.css?v=20261105-skak-anim1"],
+      // chess.js (BSD-2) → ren spillogik → animationer → UI
+      js: ["skak-chess-lib.js?v=20261009-skak1", "skak-core.js?v=20261105-skak-anim1", "skak-anim.js?v=20261105-skak-anim1", "skak.js?v=20261105-skak-anim1"],
+      ready: () => !!window.JacobSkak && !!window.SkakCore && !!window.SkakAnim,
     },
     angles: {
       css: ["angles.css?v=20261105-angles2", "angle-games.css?v=20261105-angles2"],
