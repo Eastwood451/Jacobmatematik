@@ -35,7 +35,7 @@ const lazyJs = [
   'marley.js', 'marley-addition.js', 'plus-penalhus.js', 'foodtruck.js',
   'pizza-friends.js', 'fraction-lesson.js', 'fraction-simplify.js',
   'fraction-add-subtract.js', 'fraction-obbe.js', 'fps-trial-entry.js',
-  'dennis-audio.js', 'obbe-coach.js', 'skak.js', 'skak-core.js', 'skak-chess-lib.js',
+  'dennis-audio.js', 'obbe-coach.js', 'skak.js', 'skak-core.js', 'skak-chess-lib.js', 'angles.js', 'angles-core.js',
 ];
 for (const name of lazyJs) {
   assert.doesNotMatch(index, new RegExp(`src=["']${name.replace('.', '\\.')}`));
@@ -45,7 +45,7 @@ for (const name of lazyJs) {
 const lazyCss = [
   'marley.css', 'marley-addition.css', 'plus-penalhus.css', 'foodtruck.css',
   'pizza-friends.css', 'fraction-lesson.css', 'fraction-multiply.css',
-  'fraction-simplify.css', 'fraction-add-subtract.css', 'fraction-obbe.css', 'skak.css',
+  'fraction-simplify.css', 'fraction-add-subtract.css', 'fraction-obbe.css', 'skak.css', 'angles.css',
 ];
 for (const name of lazyCss) {
   assert.doesNotMatch(index, new RegExp(`href=["']${name.replace('.', '\\.')}`));
@@ -68,7 +68,7 @@ const sandbox = { window: {}, document: {
 sandbox.document.scripts = [];
 vm.runInNewContext(loaderSrc, sandbox);
 assert.equal(typeof sandbox.window.JacobModules.load, 'function');
-for (const key of ['marley', 'marley-addition', 'plus-penalhus', 'ten-friends', 'foodtruck', 'learn-fractions', 'obbe-coach', 'fps-trial-entry', 'dennis-audio', 'skak']) {
+for (const key of ['marley', 'marley-addition', 'plus-penalhus', 'ten-friends', 'foodtruck', 'learn-fractions', 'obbe-coach', 'fps-trial-entry', 'dennis-audio', 'skak', 'angles']) {
   assert.ok(sandbox.window.JacobModules.modules[key], `missing module map: ${key}`);
 }
 
@@ -80,6 +80,7 @@ assert.match(app, /ensureModule\("learn-fractions"/);
 assert.match(app, /ensureModule\("marley"/);
 assert.match(app, /ensureModule\("foodtruck"/);
 assert.match(app, /ensureModule\("skak"/);
+assert.match(app, /ensureModule\("angles"/);
 assert.match(app, /gameModuleEnabled/);
 assert.match(app, /JacobModules\?\.load\("fps-trial-entry"\)/);
 assert.match(app, /JacobModules\?\.load\("dennis-audio"\)/);
