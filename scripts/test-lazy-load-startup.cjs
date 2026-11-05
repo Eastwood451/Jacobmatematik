@@ -16,6 +16,7 @@ assert.match(index, /Start gratis træning/);
 // Eager scripts: auth + shell only (plus analytics/install).
 const eagerScripts = [...index.matchAll(/<script src="([^"]+)"/g)].map(m => m[1].split('?')[0]);
 const allowed = new Set([
+  'lang.js',
   'analytics.js',
   'install-app.js',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
