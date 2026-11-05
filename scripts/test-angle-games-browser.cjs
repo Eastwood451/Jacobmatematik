@@ -152,13 +152,55 @@ async function shot(page, name) {
       await page.waitForSelector("[data-ag-stop]");
       await page.waitForTimeout(200);
       await shot(page, `11-stop-ready-${label}.png`);
+      const readyFig = await page.evaluate(() => {
+        const fig = document.querySelector(".ag-stop-figure");
+        return {
+          texts: [...fig.querySelectorAll("text, title")].map((n) => (n.textContent || "").trim()).filter(Boolean),
+          label: fig.getAttribute("aria-label") || "",
+          hasDeg: fig.innerHTML.includes("°"),
+        };
+      });
+      assert.deepEqual(readyFig.texts, []);
+      assert.equal(readyFig.hasDeg, false);
+      assert.doesNotMatch(readyFig.label, /\d/);
       await page.locator('[data-ag="go"]').click();
       await page.waitForSelector('[data-ag="stop"]');
-      await page.waitForTimeout(1200); // ~22° opened
+      await page.waitForTimeout(4000); // ~72° opened, still no live number
+      const live = await page.evaluate(() => {
+        const fig = document.querySelector("[data-ag-figure]");
+        const stage = document.querySelector("[data-ag-stage]");
+        return {
+          texts: [...fig.querySelectorAll("text, title")].map((n) => (n.textContent || "").trim()).filter(Boolean),
+          titles: [...fig.querySelectorAll("[title]")].map((n) => n.getAttribute("title")),
+          label: fig.getAttribute("aria-label") || "",
+          title: fig.getAttribute("title") || "",
+          hasDeg: fig.innerHTML.includes("°"),
+          target: document.querySelector(".ag-stop-target")?.textContent || "",
+          stageText: stage.innerText,
+        };
+      });
+      assert.deepEqual(live.texts, []);
+      assert.deepEqual(live.titles, []);
+      assert.equal(live.title, "");
+      assert.equal(live.hasDeg, false);
+      assert.equal(live.label, "Åbnende vinkel");
+      assert.match(live.target, /Stop ved \d+°/);
+      assert.doesNotMatch(live.stageText, /Du stoppede/);
       await shot(page, `12-stop-running-${label}.png`);
       await page.locator('[data-ag="stop"]').click({ force: true });
       await page.waitForSelector(".ag-stop-result");
       await page.waitForTimeout(250);
+      const revealed = await page.evaluate(() => {
+        const fig = document.querySelector(".ag-stop-figure");
+        return {
+          texts: [...fig.querySelectorAll("text")].map((n) => (n.textContent || "").trim()),
+          status: document.querySelector(".ag-stop-result").innerText,
+          target: document.querySelector(".ag-stop-target")?.textContent || "",
+        };
+      });
+      assert.ok(revealed.texts.some((t) => /^\d+°$/.test(t)), "stopped angle revealed on figure");
+      assert.match(revealed.status, /Du stoppede ved \d+°/);
+      assert.match(revealed.target, /Stop ved \d+°/);
       await shot(page, `13-stop-result-${label}.png`);
       // Scoring helpers smoke-check in page
       const pts = await page.evaluate(() => {

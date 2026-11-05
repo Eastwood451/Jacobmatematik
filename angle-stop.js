@@ -70,7 +70,6 @@
     let current = 0;
     let running = false;
     let lastT = 0;
-    let hideLive = false;
     let score = 0;
     let best = loadBest();
     let tasks = 0;
@@ -112,7 +111,6 @@
       const pool = opts.length ? opts : [inc, Math.min(180 - inc, inc * 2)];
       target = pool[Math.floor(Math.random() * pool.length)];
       baseDeg = round >= 1 ? Math.floor(Math.random() * 360) : 0;
-      hideLive = round >= 2; // from round 3 (0-indexed 2): by feel
       current = 0;
       lastResult = null;
       phase = "ready";
@@ -136,10 +134,13 @@
         overlay = `<path d="${tArc}" fill="none" stroke="#e3a521" stroke-width="3" stroke-dasharray="6 4"/>
           <line x1="${cx}" y1="${cy}" x2="${t1.x.toFixed(1)}" y2="${t1.y.toFixed(1)}" stroke="#e3a521" stroke-width="3" stroke-linecap="round" stroke-dasharray="5 4"/>`;
       }
-      const liveLabel = opts.hideNumber
-        ? ""
-        : `<text x="${cx}" y="${cy + r + 28}" text-anchor="middle" font-size="22" font-weight="800" fill="#117e79">${Math.round(degrees)}°</text>`;
-      return `<svg class="ag-stop-svg" viewBox="0 0 ${size} ${size + 36}" width="${size}" height="${size + 20}" aria-hidden="true">
+      // Gradtallet er opt-in. Under åbning må det ikke stå på figuren, i title eller i tilgængelighedstekst.
+      const showNumber = opts.showNumber === true;
+      const liveLabel = showNumber
+        ? `<text x="${cx}" y="${cy + r + 28}" text-anchor="middle" font-size="22" font-weight="800" fill="#117e79">${Math.round(degrees)}°</text>`
+        : "";
+      const extra = showNumber ? 36 : 10;
+      return `<svg class="ag-stop-svg" viewBox="0 0 ${size} ${size + extra}" width="${size}" height="${size + (showNumber ? 20 : 6)}" aria-hidden="true">
         <circle cx="${cx}" cy="${cy}" r="${r + 12}" fill="#fff9ef" stroke="#d9cce8" stroke-width="2"/>
         <path d="${arc}" fill="#5b4bda44" stroke="none"/>
         ${overlay}
@@ -176,30 +177,31 @@
       let body = "";
       if (phase === "ready") {
         body = `
-          <div class="ag-stop-figure">${drawFigure(0, { hideNumber: hideLive })}</div>
-          <p class="ang-sub" style="text-align:center">${hideLive ? "Ingen live-tal – stop på fornemmelsen!" : "Vinklen starter ved 0° og åbner jævnt."}</p>
+          <div class="ag-stop-figure" role="img" aria-label="Vinkel klar til at åbne">${drawFigure(0)}</div>
+          <p class="ang-sub" style="text-align:center">Vinklen åbner jævnt. Tryk STOP! når den ligner målet.</p>
           <div class="ang-actions">
             <button type="button" class="ang-btn ang-teal" data-ag="go">Start</button>
           </div>`;
       } else if (phase === "running") {
         body = `
-          <div class="ag-stop-figure" data-ag-figure>${drawFigure(current, { hideNumber: hideLive })}</div>
+          <div class="ag-stop-figure" data-ag-figure role="img" aria-label="Åbnende vinkel">${drawFigure(current)}</div>
           <div class="ang-actions">
             <button type="button" class="ang-btn ag-stop-btn" data-ag="stop">STOP!</button>
           </div>`;
       } else if (phase === "result" && lastResult) {
+        const stopped = Math.round(lastResult.actual);
         const tier = lastResult.miss
           ? { text: "FORBI – den nåede 180°", cls: "is-miss" }
           : tierLabel(lastResult.delta);
         body = `
-          <div class="ag-stop-figure">${drawFigure(lastResult.actual, {
-            hideNumber: false,
+          <div class="ag-stop-figure" role="img" aria-label="Vinklen du stoppede ved, ${stopped} grader">${drawFigure(lastResult.actual, {
+            showNumber: true,
             showTarget: true,
             targetDeg: lastResult.target,
           })}</div>
           <div class="ag-stop-result ${tier.cls}" role="status">
             <div class="ag-stop-tier">${tier.text}</div>
-            <p>Du stoppede på <strong>${Math.round(lastResult.actual)}°</strong> · mål <strong>${lastResult.target}°</strong></p>
+            <p>Du stoppede ved <strong>${stopped}°</strong> · mål <strong>${lastResult.target}°</strong></p>
             <p>+${lastResult.pts} point</p>
           </div>
           <div class="ang-actions">
@@ -223,7 +225,7 @@
       lastT = now;
       current = Math.min(MISS_AT, current + SPEED_DEG_PER_S * dt);
       const fig = stage.querySelector("[data-ag-figure]");
-      if (fig) fig.innerHTML = drawFigure(current, { hideNumber: hideLive });
+      if (fig) fig.innerHTML = drawFigure(current);
       if (current >= MISS_AT - 0.001) {
         running = false;
         finishStop(MISS_AT, true);
