@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="robots" content="noindex"/>
+  <title>Brøk-løb preview</title>
+  <link rel="stylesheet" href="styles.css"/>
+  <link rel="stylesheet" href="brok-loeb.css"/>
+</head>
+<body>
+  <div id="root"></div>
+  <script src="brok-loeb-core.js"></script>
+  <script src="brok-loeb.js"></script>
+  <script>
+    window.__results = [];
+    window.__dispose = window.JacobBrokLoeb.mount(document.getElementById("root"), {
+      async onResult(r) { window.__results.push(r); },
+      onComplete(s) { window.__done = s; },
+      onExit() { document.body.dataset.exited = "1"; },
+    });
+  </script>
+</body>
+</html>

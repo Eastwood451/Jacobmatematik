@@ -579,6 +579,7 @@ multiplicationColumn: {
     if (name === "obbe-coach") return !!window.ObbeCoach;
     if (name === "skak") return !!window.JacobSkak;
     if (name === "angles") return !!window.JacobAngles && !!window.JacobAnglesCore;
+    if (name === "fraction-runner") return !!window.JacobBrokLoeb && !!window.JacobBrokLoebCore;
     if (name === "angle-battleship") return !!window.JacobAngleBattleship && !!window.JacobAnglesCore;
     if (name === "angle-dennis") return !!window.JacobAngleDennis && !!window.JacobAnglesCore;
     if (name === "angle-ninja") return !!window.JacobAngleNinja && !!window.JacobAnglesCore;
@@ -764,6 +765,45 @@ multiplicationColumn: {
   }
   function anglesCard() {
     return canLearnAngles() ? `<button type="button" class="topic-card angles-card" data-action="angles"><span class="topic-icon">∠ 90°</span><strong>Vinkler</strong><small>Lær vinkler, slagskibe, Dennis, Villy-ninja og vinkel-ord.</small></button>` : "";
+  }
+  // Brøk-løb (Subway Surfers-agtigt brøkløb med Øbbe). Beta: kun Jacobs profiler, samme gating som Vinkler; ?start=runner virker kun via kortet.
+  const RUNNER_PROFILE_IDS = new Set(["c8b8e1c4-3264-40e9-a43d-0eb6214a0183", "3af639de-b0e0-496a-a5b7-b732e49d1fa7"]);
+  const canPlayRunner = () => Boolean(state.user?.id && RUNNER_PROFILE_IDS.has(state.user.id) && ["teacher","student"].includes(state.user.role));
+  let disposeRunner = null;
+  function leaveRunner() { disposeRunner?.(); disposeRunner = null; }
+  async function renderRunner() { syncTrackedExercise();
+    leaveRunner();
+    if (!canPlayRunner()) { state.view=state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
+    app.innerHTML=`${header()}<div id="brok-loeb-root"><p class="seo-loading" data-module-loading>Indlæser...</p></div>`;
+    try {
+      if (!(await ensureModule("fraction-runner", "fraction-runner"))) return;
+    } catch (error) {
+      console.error(error);
+      app.innerHTML = moduleLoadError("Brøk-løb kunne ikke indlæses. Prøv igen.");
+      return;
+    }
+    const learner=state.user;
+    disposeRunner=window.JacobBrokLoeb.mount(document.getElementById("brok-loeb-root"), {
+      user:learner,
+      async onResult(result) {
+        if(state.user!==learner) throw new Error("Brugeren er skiftet.");
+        learner.results.push(result);
+        try {
+          if(learner.role==='teacher'||learner.role==='guest') return;
+          if(usingCentralDatabase) result.remoteId=await appendCurrentPracticeResult(result);
+          else await save();
+        } catch(error) {
+          const index=learner.results.indexOf(result);
+          if(index>=0)learner.results.splice(index,1);
+          throw error;
+        }
+      },
+      onComplete() { markTrackedExerciseComplete(); },
+      onExit() { leaveRunner(); returnFromModule(); }
+    });
+  }
+  function runnerCard() {
+    return canPlayRunner() ? `<button type="button" class="topic-card runner-card" data-action="fraction-runner"><span class="topic-icon">🏃 ½</span><strong>Brøk-løb</strong><small>Løb med Øbbe – svar på brøkregler, når Erling, Dummo, Gunnar og Else spærrer vejen.</small></button>` : "";
   }
   const appendCurrentPracticeResult = async result => {
     if (isGuest()) return null; // Guest sessions are memory-only and must never reach Supabase.
@@ -1379,7 +1419,7 @@ multiplicationColumn: {
     const fractionCard = fractionPilotCard();
     const towerTopics = new Set(levels.flat());
     const otherTopics = availableTopics.filter(key => !towerTopics.has(key));
-    const extraCards = otherTopics.map(card).join("") + skakCard() + anglesCard() + (isGuest() ? "" : `<button type="button" class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`);
+    const extraCards = otherTopics.map(card).join("") + skakCard() + anglesCard() + runnerCard() + (isGuest() ? "" : `<button type="button" class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`);
     return `<section class="topic-tower" aria-label="Byg din matematik nedefra">
       <p class="topic-tower-intro"><span aria-hidden="true">↑</span> Byg videre på det, du kan. Start med Tallene nederst.</p>
       ${fractionCard ? `<div class="topic-tower-row">${fractionCard}</div>` : ""}
@@ -1391,7 +1431,7 @@ multiplicationColumn: {
     </section>${extraCards ? `<h2 class="section-label">Andre genveje</h2><section class="topic-tower-extras" aria-label="Andre genveje">${extraCards}</section>` : ""}`;
   }
   // Deep link from the static landing pages, e.g. /?start=tableDrill. Whitelisted; used once, after login or guest start.
-  const DEEP_LINK_STARTS = { tableDrill:'[data-topic="tableDrill"]', multiplication:'[data-topic="multiplication"]', pemdas:'[data-topic="pemdas"]', addition:'[data-topic="addition"]', fractions:'[data-action="learn-fractions"]', angles:'[data-action="angles"]' };
+  const DEEP_LINK_STARTS = { tableDrill:'[data-topic="tableDrill"]', multiplication:'[data-topic="multiplication"]', pemdas:'[data-topic="pemdas"]', addition:'[data-topic="addition"]', fractions:'[data-action="learn-fractions"]', angles:'[data-action="angles"]', runner:'[data-action="fraction-runner"]' };
   let pendingDeepLink = (() => { try { const key = new URLSearchParams(location.search).get("start"); return Object.hasOwn(DEEP_LINK_STARTS, key) ? key : null; } catch (_) { return null; } })();
   function consumeDeepLink() {
     if (!pendingDeepLink || !state.user || state.view === "teacher") return;
@@ -3521,7 +3561,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     app.innerHTML = `${header()}<div class="page"><section class="class-manager local-consent-card"><h1>Gem dine resultater på denne enhed</h1><p>Din bruger er selvoprettet. Dine resultater gemmes kun i denne browser, så du kan fortsætte næste gang. De sendes ikke til læreren eller vores server og følger ikke med til andre enheder.</p><p>Du kan slette resultaterne med “Slet data” under tårnet. De forsvinder også, hvis browserens webstedsdata slettes.</p><form id="local-consent-form"><label class="local-consent"><input type="checkbox" name="localConsent" required><span>Jeg giver samtykke til lokal lagring af mine resultater på denne enhed.</span></label><p id="local-consent-error" role="alert"></p><button class="btn" type="submit">Gem på denne enhed og fortsæt</button><button class="btn secondary" type="button" data-action="logout">Log ud</button></form></section></div>`;
   }
   // GA4 exercise events (analytics.js, consent-gated). Never sends names, emails or profile IDs.
-  const TRACKED_VIEWS = { clock:"Lær klokken", "marley-addition":"Godbidder til Marley", "plus-penalhus":"Plus-penalhus", "ten-friends":"Luigis 10’er-venner", skak:"Skak", angles:"Vinkler", "learn-fractions":"Brøker", foodtruck:"Foodtruck", sandbox:"Sandkasse" };
+  const TRACKED_VIEWS = { clock:"Lær klokken", "marley-addition":"Godbidder til Marley", "plus-penalhus":"Plus-penalhus", "ten-friends":"Luigis 10’er-venner", skak:"Skak", angles:"Vinkler", "fraction-runner":"Brøk-løb", "learn-fractions":"Brøker", foodtruck:"Foodtruck", sandbox:"Sandkasse" };
   let trackedExercise = null;
   const snakeId = key => String(key).replace(/[^A-Za-z0-9]+/g, "_").replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
   function currentTrackedExercise() {
@@ -3552,7 +3592,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       window.jmTrack?.("exercise_start", { exercise_id:next.exercise_id, exercise_name:next.exercise_name });
     } catch (_) { trackedExercise = null; }
   }
-  function render() { syncTrackedExercise(); if (state.view !== "clock") leaveClock(); if (isLocalStudent() && !backend.hasLocalConsent()) { renderLocalConsent(); return; } if (state.view !== "marley-addition") leaveMarleyAddition(); if (state.view !== "plus-penalhus") leavePlusPenalhus(); if (state.view !== "ten-friends") leaveTenFriends(); if (state.view !== "learn-fractions") leaveFractionLesson(); if (state.view !== "skak") leaveSkak(); if (state.view !== "angles") leaveAngles(); if (!state.user) renderLogin(); else if (state.view==="clock") renderClock(); else if (state.view==="sandbox") renderSandbox(); else if (state.view==="marley-addition") renderMarleyAddition(); else if (state.view==="plus-penalhus") renderPlusPenalhus(); else if (state.view==="ten-friends") renderTenFriends(); else if (state.view==="skak") renderSkak(); else if (state.view==="angles") renderAngles(); else if (state.view==="learn-fractions") renderFractionLesson(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="marley") renderMarley(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
+  function render() { syncTrackedExercise(); if (state.view !== "clock") leaveClock(); if (isLocalStudent() && !backend.hasLocalConsent()) { renderLocalConsent(); return; } if (state.view !== "marley-addition") leaveMarleyAddition(); if (state.view !== "plus-penalhus") leavePlusPenalhus(); if (state.view !== "ten-friends") leaveTenFriends(); if (state.view !== "learn-fractions") leaveFractionLesson(); if (state.view !== "skak") leaveSkak(); if (state.view !== "angles") leaveAngles(); if (state.view !== "fraction-runner") leaveRunner(); if (!state.user) renderLogin(); else if (state.view==="clock") renderClock(); else if (state.view==="sandbox") renderSandbox(); else if (state.view==="marley-addition") renderMarleyAddition(); else if (state.view==="plus-penalhus") renderPlusPenalhus(); else if (state.view==="ten-friends") renderTenFriends(); else if (state.view==="skak") renderSkak(); else if (state.view==="angles") renderAngles(); else if (state.view==="fraction-runner") renderRunner(); else if (state.view==="learn-fractions") renderFractionLesson(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="marley") renderMarley(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
 
   document.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -3830,7 +3870,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       try {
         if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned");
         if (state.user?.id !== userId || !canUseSandbox()) return;
-        leaveMarleyAddition(); leavePlusPenalhus(); leaveTenFriends(); leaveSkak(); leaveAngles(); leaveFractionLesson(); leaveFoodtruck();
+        leaveMarleyAddition(); leavePlusPenalhus(); leaveTenFriends(); leaveSkak(); leaveAngles(); leaveRunner(); leaveFractionLesson(); leaveFoodtruck();
         disposeMarley?.(); disposeMarley=null;
         stopMatrixDrillTimer(); stopTeacherLiveUpdates();
         stopErlingAudio(); stopKaptajnAudio(); stopLuigiAudio(); stopLetterLearningAudio();
@@ -3842,13 +3882,13 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     }
     if (action === "marley") {
       if (!isFractionTester()) return;
-      leaveMarleyAddition(); leavePlusPenalhus(); leaveTenFriends(); leaveSkak(); leaveAngles(); leaveFractionLesson(); leaveFoodtruck(); stopTeacherLiveUpdates();
+      leaveMarleyAddition(); leavePlusPenalhus(); leaveTenFriends(); leaveSkak(); leaveAngles(); leaveRunner(); leaveFractionLesson(); leaveFoodtruck(); stopTeacherLiveUpdates();
       moduleReturnView=state.view === "sandbox" ? "sandbox" : null;
       state.view="marley"; renderMarley(); window.scrollTo(0,0); return;
     }
-    if (["clock", "ten-friends", "marley-addition", "plus-penalhus", "skak", "angles"].includes(action)) {
+    if (["clock", "ten-friends", "marley-addition", "plus-penalhus", "skak", "angles", "fraction-runner"].includes(action)) {
       event.preventDefault();
-      const allowed=action === "clock" ? canLearnClock : action === "marley-addition" ? canPlayMarleyAddition : action === "plus-penalhus" ? canPlayPlusPenalhus : action === "skak" ? canPlaySkak : action === "angles" ? canLearnAngles : canPlayTenFriends;
+      const allowed=action === "clock" ? canLearnClock : action === "marley-addition" ? canPlayMarleyAddition : action === "plus-penalhus" ? canPlayPlusPenalhus : action === "skak" ? canPlaySkak : action === "angles" ? canLearnAngles : action === "fraction-runner" ? canPlayRunner : canPlayTenFriends;
       const anglesStart=action === "angles" ? (actionButton.dataset.anglesStart || null) : null;
       // Re-open angles from sandbox with another start target even if already on the angles view.
       if (!allowed() || switchingJacobView) return;
@@ -3868,7 +3908,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       } finally { switchingJacobView=false; }
       return;
     }
-    if (["logout", "home", "change-password", "foodtruck", "learn-fractions", "toggle-jacob-view"].includes(action)) { leaveMarleyAddition(); leavePlusPenalhus(); leaveTenFriends(); leaveSkak(); leaveAngles(); }
+    if (["logout", "home", "change-password", "foodtruck", "learn-fractions", "toggle-jacob-view"].includes(action)) { leaveMarleyAddition(); leavePlusPenalhus(); leaveTenFriends(); leaveSkak(); leaveAngles(); leaveRunner(); }
     if (["toggle-jacob-view", "learn-fractions"].includes(action)) {
       event.preventDefault();
       const allowed=() => action === "learn-fractions" ? canLearnFractions() : isFractionTester();
@@ -4178,7 +4218,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
   window.addEventListener("pagehide", () => {
     endTrackedExercise();
     leaveClock();
-    leaveSkak(); leaveAngles(); disposeMarley?.(); disposeMarley=null;
+    leaveSkak(); leaveAngles(); leaveRunner(); disposeMarley?.(); disposeMarley=null;
     leaveMarleyAddition();
     leavePlusPenalhus();
     leaveTenFriends();
