@@ -122,14 +122,28 @@ async function shot(page, name) {
       await shot(page, `07-ninja-play-${label}.png`);
       await page.locator('[data-ag="exit"]').first().click();
       await page.waitForSelector("[data-ang-hub]");
+
+      // --- Words ---
+      await page.locator('[data-ang-hub="words"]').click();
+      await page.waitForSelector("[data-ag-words]");
+      await page.waitForTimeout(200);
+      await shot(page, `09-words-play-${label}.png`);
+      const correctKind = await page.getAttribute("[data-ag-words]", "data-ag-correct");
+      assert.ok(correctKind, "data-ag-correct");
+      await page.locator(`[data-ag-word="${correctKind}"]`).click();
+      await page.waitForTimeout(700);
+      await shot(page, `10-words-answer-${label}.png`);
+      await page.locator('[data-ag="exit"]').first().click();
+      await page.waitForSelector("[data-ang-hub]");
       await shot(page, `08-hub-again-${label}.png`);
 
-      // Tracking: battleship + dennis + ninja starts
+      // Tracking: battleship + dennis + ninja + words starts
       const tracks = await page.evaluate(() => window.__tracks);
       const ids = tracks.filter((t) => t.e === "exercise_start").map((t) => t.exercise_id);
       assert.ok(ids.includes("angle_battleship"), "battleship start");
       assert.ok(ids.includes("dennis_blindfold"), "dennis start");
       assert.ok(ids.includes("angle_ninja"), "ninja start");
+      assert.ok(ids.includes("angle_words"), "words start");
       console.log("ok", label, "tracks", ids.join(","));
       await context.close();
     }

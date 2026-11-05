@@ -95,6 +95,41 @@
     }));
   }
 
+
+  const ANGLE_REAL_NAMES = ["spids", "ret", "stump", "lige"];
+  const ANGLE_DECOY_NAMES = ["åben", "hel", "ulige", "skarp", "flad", "kantet", "skrå", "bred", "skjult"];
+
+  /** Classify 0..180 (excl. 0) into Danish school terms. */
+  function nameAngleKind(degrees) {
+    const d = Math.round(Number(degrees));
+    if (!(d > 0 && d <= 180)) return null;
+    if (d < 90) return "spids";
+    if (d === 90) return "ret";
+    if (d < 180) return "stump";
+    return "lige";
+  }
+
+  function explainAngleKind(kind) {
+    const map = {
+      spids: "Spids betyder mindre end 90°.",
+      ret: "Ret betyder præcis 90° – som hjørnet af et bord.",
+      stump: "Stump betyder større end 90° men mindre end 180°.",
+      lige: "Lige betyder præcis 180° – som en flad linje.",
+    };
+    return map[kind] || "";
+  }
+
+  /**
+   * Build 9 word buttons: always the correct real name + 2 other reals + 6 decoys.
+   * "lige" is never treated as a decoy (only as a real term).
+   */
+  function wordsForRound(correctKind) {
+    const reals = ANGLE_REAL_NAMES.filter((n) => n !== correctKind);
+    const otherReals = shuffle(reals).slice(0, 2);
+    const decoys = shuffle(ANGLE_DECOY_NAMES).slice(0, 6);
+    return shuffle([correctKind, ...otherReals, ...decoys]);
+  }
+
   const ROUND_INCREMENTS = [45, 30, 15, 10, 5];
   const SHIP_COUNT = 5;
 
@@ -117,6 +152,11 @@
     shuffle,
     anglesForIncrement,
     makeAngleTiles,
+    nameAngleKind,
+    explainAngleKind,
+    wordsForRound,
+    ANGLE_REAL_NAMES,
+    ANGLE_DECOY_NAMES,
     ROUND_INCREMENTS,
     SHIP_COUNT,
     PRECISE_TASKS,

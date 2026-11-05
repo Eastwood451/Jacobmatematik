@@ -759,7 +759,7 @@ multiplicationColumn: {
     });
   }
   function anglesCard() {
-    return canLearnAngles() ? `<button type="button" class="topic-card angles-card" data-action="angles"><span class="topic-icon">∠ 90°</span><strong>Vinkler</strong><small>Lær vinkler, slagskibe, Dennis og Villy-ninja.</small></button>` : "";
+    return canLearnAngles() ? `<button type="button" class="topic-card angles-card" data-action="angles"><span class="topic-icon">∠ 90°</span><strong>Vinkler</strong><small>Lær vinkler, slagskibe, Dennis, Villy-ninja og vinkel-ord.</small></button>` : "";
   }
   const appendCurrentPracticeResult = async result => {
     if (isGuest()) return null; // Guest sessions are memory-only and must never reach Supabase.

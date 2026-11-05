@@ -22,3 +22,15 @@ assert.deepEqual(core.ROUND_INCREMENTS, [45, 30, 15, 10, 5]);
 assert.equal(core.SHIP_COUNT, 5);
 
 console.log("angles-core checks passed");
+const { nameAngleKind, wordsForRound, ANGLE_DECOY_NAMES } = require("../angles-core.js");
+assert.equal(nameAngleKind(30), "spids");
+assert.equal(nameAngleKind(90), "ret");
+assert.equal(nameAngleKind(135), "stump");
+assert.equal(nameAngleKind(180), "lige");
+assert.equal(nameAngleKind(0), null);
+const w = wordsForRound("spids");
+assert.equal(w.length, 9);
+assert.ok(w.includes("spids"));
+assert.equal(w.filter((x) => ANGLE_DECOY_NAMES.includes(x)).length, 6);
+assert.ok(!ANGLE_DECOY_NAMES.includes("lige"));
+console.log("angles-core nameAngle checks passed");

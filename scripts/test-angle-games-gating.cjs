@@ -11,9 +11,11 @@ assert.match(app, /data-action="angles"/);
 assert.match(ml, /"angle-battleship"/);
 assert.match(ml, /"angle-dennis"/);
 assert.match(ml, /"angle-ninja"/);
+assert.match(ml, /"angle-words"/);
 assert.match(angles, /data-ang-hub="battleship"/);
 assert.match(angles, /data-ang-hub="dennis"/);
 assert.match(angles, /data-ang-hub="ninja"/);
+assert.match(angles, /data-ang-hub="words"/);
 assert.match(angles, /loadGameModule/);
 // No ungated topic cards for the three games
 assert.doesNotMatch(app, /data-action="angle-battleship"/);
@@ -23,12 +25,15 @@ assert.doesNotMatch(app, /data-action="dennis_blindfold"/);
 const bs = fs.readFileSync("angle-battleship.js", "utf8");
 const den = fs.readFileSync("angle-dennis.js", "utf8");
 const nin = fs.readFileSync("angle-ninja.js", "utf8");
+const words = fs.readFileSync("angle-words.js", "utf8");
 assert.match(bs, /exercise_id: EX_ID|exercise_id: "angle_battleship"/);
 assert.match(bs, /angle_battleship/);
 assert.match(den, /dennis_blindfold/);
 assert.match(nin, /angle_ninja/);
+assert.match(words, /angle_words/);
 assert.match(bs, /jmTrack/);
 assert.match(den, /jmTrack/);
 assert.match(nin, /jmTrack/);
+assert.match(words, /jmTrack/);
 
 console.log("angle games gating checks passed");
