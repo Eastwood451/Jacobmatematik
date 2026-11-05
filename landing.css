@@ -29,3 +29,9 @@ summary{font-weight:700;cursor:pointer}
 .lp-related ul{display:flex;flex-wrap:wrap;gap:8px;padding:0;list-style:none}
 .lp-related a{display:inline-block;padding:6px 12px;border-radius:999px;background:#fff;border:1px solid #c5cfc3;text-decoration:none}
 .lp-footer{display:flex;flex-wrap:wrap;gap:16px;justify-content:center;padding:24px;font-size:14px;color:var(--muted);border-top:1px solid var(--line)}
+
+.lp-lang{display:flex;align-items:center;gap:6px;font-size:14px;font-weight:800;letter-spacing:.04em;margin-left:auto}
+.lp-lang a{color:var(--muted);text-decoration:none}
+.lp-lang a:hover,.lp-lang a[aria-current]{color:var(--purple-dark)}
+.lp-header{gap:8px 16px}
+@media(max-width:720px){.lp-lang{order:3;width:100%;justify-content:flex-end}}

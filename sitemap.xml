@@ -1,43 +1,114 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:xhtml="http://www.w3.org/1999/xhtml">
   <url>
     <loc>https://jacobmatematik.dk/</loc>
-    <lastmod>2026-11-04</lastmod>
+    <lastmod>2026-11-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="da" href="https://jacobmatematik.dk/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jacobmatematik.dk/en/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jacobmatematik.dk/en/"/>
+  </url>
+  <url>
+    <loc>https://jacobmatematik.dk/en/</loc>
+    <lastmod>2026-11-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="da" href="https://jacobmatematik.dk/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jacobmatematik.dk/en/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jacobmatematik.dk/en/"/>
   </url>
   <url>
     <loc>https://jacobmatematik.dk/gangetabeller/</loc>
-    <lastmod>2026-11-04</lastmod>
+    <lastmod>2026-11-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="da" href="https://jacobmatematik.dk/gangetabeller/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jacobmatematik.dk/en/times-tables/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jacobmatematik.dk/en/times-tables/"/>
+  </url>
+  <url>
+    <loc>https://jacobmatematik.dk/en/times-tables/</loc>
+    <lastmod>2026-11-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="da" href="https://jacobmatematik.dk/gangetabeller/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jacobmatematik.dk/en/times-tables/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jacobmatematik.dk/en/times-tables/"/>
   </url>
   <url>
     <loc>https://jacobmatematik.dk/gangetabel-spil/</loc>
-    <lastmod>2026-11-04</lastmod>
+    <lastmod>2026-11-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="da" href="https://jacobmatematik.dk/gangetabel-spil/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jacobmatematik.dk/en/times-tables-games/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jacobmatematik.dk/en/times-tables-games/"/>
+  </url>
+  <url>
+    <loc>https://jacobmatematik.dk/en/times-tables-games/</loc>
+    <lastmod>2026-11-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="da" href="https://jacobmatematik.dk/gangetabel-spil/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jacobmatematik.dk/en/times-tables-games/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jacobmatematik.dk/en/times-tables-games/"/>
   </url>
   <url>
     <loc>https://jacobmatematik.dk/broeker/</loc>
-    <lastmod>2026-11-04</lastmod>
+    <lastmod>2026-11-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="da" href="https://jacobmatematik.dk/broeker/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jacobmatematik.dk/en/fractions/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jacobmatematik.dk/en/fractions/"/>
+  </url>
+  <url>
+    <loc>https://jacobmatematik.dk/en/fractions/</loc>
+    <lastmod>2026-11-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="da" href="https://jacobmatematik.dk/broeker/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jacobmatematik.dk/en/fractions/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jacobmatematik.dk/en/fractions/"/>
   </url>
   <url>
     <loc>https://jacobmatematik.dk/regnehierarki/</loc>
-    <lastmod>2026-11-04</lastmod>
+    <lastmod>2026-11-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="da" href="https://jacobmatematik.dk/regnehierarki/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jacobmatematik.dk/en/order-of-operations/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jacobmatematik.dk/en/order-of-operations/"/>
+  </url>
+  <url>
+    <loc>https://jacobmatematik.dk/en/order-of-operations/</loc>
+    <lastmod>2026-11-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="da" href="https://jacobmatematik.dk/regnehierarki/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jacobmatematik.dk/en/order-of-operations/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jacobmatematik.dk/en/order-of-operations/"/>
   </url>
   <url>
     <loc>https://jacobmatematik.dk/til-elever/</loc>
-    <lastmod>2026-11-04</lastmod>
+    <lastmod>2026-11-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="da" href="https://jacobmatematik.dk/til-elever/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jacobmatematik.dk/en/for-students/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jacobmatematik.dk/en/for-students/"/>
+  </url>
+  <url>
+    <loc>https://jacobmatematik.dk/en/for-students/</loc>
+    <lastmod>2026-11-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="da" href="https://jacobmatematik.dk/til-elever/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jacobmatematik.dk/en/for-students/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jacobmatematik.dk/en/for-students/"/>
   </url>
   <url>
     <loc>https://jacobmatematik.dk/til-laerere/</loc>
-    <lastmod>2026-11-04</lastmod>
+    <lastmod>2026-11-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="da" href="https://jacobmatematik.dk/til-laerere/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jacobmatematik.dk/en/for-teachers/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jacobmatematik.dk/en/for-teachers/"/>
+  </url>
+  <url>
+    <loc>https://jacobmatematik.dk/en/for-teachers/</loc>
+    <lastmod>2026-11-05</lastmod>
+    <xhtml:link rel="alternate" hreflang="da" href="https://jacobmatematik.dk/til-laerere/"/>
+    <xhtml:link rel="alternate" hreflang="en" href="https://jacobmatematik.dk/en/for-teachers/"/>
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://jacobmatematik.dk/en/for-teachers/"/>
   </url>
   <url>
     <loc>https://jacobmatematik.dk/fps.html</loc>
-    <lastmod>2026-11-04</lastmod>
+    <lastmod>2026-11-05</lastmod>
   </url>
   <url>
     <loc>https://jacobmatematik.dk/privatliv.html</loc>
-    <lastmod>2026-11-04</lastmod>
+    <lastmod>2026-11-05</lastmod>
   </url>
   <url>
     <loc>https://jacobmatematik.dk/rettigheder.html</loc>
-    <lastmod>2026-11-04</lastmod>
+    <lastmod>2026-11-05</lastmod>
   </url>
 </urlset>
