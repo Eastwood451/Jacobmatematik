@@ -35,7 +35,7 @@ const lazyJs = [
   'marley.js', 'marley-addition.js', 'plus-penalhus.js', 'foodtruck.js',
   'pizza-friends.js', 'fraction-lesson.js', 'fraction-simplify.js',
   'fraction-add-subtract.js', 'fraction-obbe.js', 'fps-trial-entry.js',
-  'dennis-audio.js', 'obbe-coach.js', 'skak.js', 'skak-core.js', 'skak-chess-lib.js', 'angles.js', 'angles-core.js',
+  'dennis-audio.js', 'obbe-coach.js', 'skak.js', 'skak-core.js', 'skak-chess-lib.js', 'skak-anim.js', 'angles.js', 'angles-core.js',
 ];
 for (const name of lazyJs) {
   assert.doesNotMatch(index, new RegExp(`src=["']${name.replace('.', '\\.')}`));

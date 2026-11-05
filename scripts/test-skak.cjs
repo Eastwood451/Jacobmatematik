@@ -145,7 +145,7 @@ assert.equal(canPlay(null), false);
 // Loader-kortet
 const sandbox = { window: {}, document: { querySelectorAll: () => [], scripts: [], head: { appendChild() {} }, createElement: () => ({}) } };
 vm.runInNewContext(loader, sandbox);
-assert.equal(sandbox.window.JacobModules.modules.skak.js.map(s => s.split("?")[0]).join(","), "skak-chess-lib.js,skak-core.js,skak.js");
+assert.equal(sandbox.window.JacobModules.modules.skak.js.map(s => s.split("?")[0]).join(","), "skak-chess-lib.js,skak-core.js,skak-anim.js,skak.js");
 
 // Online-kontrakt: RPC'er i UI findes i migrationen, og tabellen har RLS
 const ui = fs.readFileSync("skak.js", "utf8");
@@ -161,5 +161,38 @@ assert.match(sql, /alter table public\.chess_games enable row level security/);
 assert.match(sql, /revoke all on table public\.chess_games from anon, authenticated/);
 assert.match(sql, /using \(\(select auth\.uid\(\)\) = white_id or \(select auth\.uid\(\)\) = black_id\)/);
 assert.doesNotMatch(sql, /grant (insert|update|delete)[^;]*chess_games/i, "ingen direkte skriveadgang");
+
+// ---------- træk-metadata til animationer ----------
+{
+  const m = S.applyMove(S.START_FEN, "e2", "e4");
+  assert.equal(m.captured, null);
+  assert.equal(m.capturedSq, null);
+  assert.equal(m.rookFrom, null);
+  assert.ok(m.flags);
+}
+{
+  // Capture
+  const fen = "r1bqkbnr/1ppp1ppp/p1n5/1B2p3/4P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 4";
+  const m = S.applyMove(fen, "b5", "c6");
+  assert.equal(m.captured, "n");
+  assert.equal(m.capturedSq, "c6");
+  assert.ok(m.flags.includes("c"));
+}
+{
+  // Kingside castle
+  const fen = "r1bqkb1r/1ppp1ppp/p1n2n2/4p3/B3P3/5N2/PPPP1PPP/RNBQK2R w KQkq - 2 5";
+  const m = S.applyMove(fen, "e1", "g1");
+  assert.equal(m.rookFrom, "h1");
+  assert.equal(m.rookTo, "f1");
+  assert.ok(m.flags.includes("k"));
+}
+{
+  // En passant
+  const fen = "rnbqkbnr/ppp1p1pp/8/3pPp2/8/8/PPPP1PPP/RNBQKBNR w KQkq f6 0 3";
+  const m = S.applyMove(fen, "e5", "f6");
+  assert.equal(m.captured, "p");
+  assert.equal(m.capturedSq, "f5");
+  assert.ok(m.flags.includes("e"));
+}
 
 console.log("skak checks passed");

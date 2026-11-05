@@ -146,3 +146,34 @@
   .sk-play .sk-shop,.sk-play .sk-log{padding:8px 10px}
   .sk-play .sk-shop-item .sk-character{height:40px}
 }
+
+/* --- Træk- og slag-animationer (WAAPI + CSS; rent visuelt) --- */
+.sk-board-wrap{position:relative}
+.sk-fx-layer{position:absolute;inset:0;pointer-events:none;z-index:8;overflow:visible}
+.sk-piece.sk-flying,.sk-piece.sk-victory,.sk-piece.sk-drop-pop{z-index:6;position:relative;will-change:transform;filter:drop-shadow(0 10px 10px #1a102866)}
+.sk-sq.sk-anim-flash{box-shadow:inset 0 0 0 100px #ffe56688}
+.sk-sq.last{box-shadow:inset 0 0 0 100px #f5d76e77;transition:box-shadow .25s ease}
+.sk-victim-ghost{position:absolute;pointer-events:none;z-index:7;transform-origin:center bottom}
+.sk-victim-ghost .sk-piece{width:100%;height:100%}
+.sk-slime-blob{position:absolute;border-radius:60% 40% 55% 45%;transform:translate(-50%,-50%) scale(.2);opacity:0;pointer-events:none;box-shadow:inset -2px -2px 0 #ffffff55;animation:sk-slime-burst .7s cubic-bezier(.2,.8,.2,1) forwards}
+.sk-slime-drip{position:absolute;width:7px;height:16px;border-radius:40% 40% 60% 60%;transform:translate(-50%,0) scaleY(.2);opacity:0;pointer-events:none;animation:sk-slime-drip .85s ease-in forwards}
+.sk-slime-stain{position:absolute;width:42px;height:18px;border-radius:50%;background:radial-gradient(ellipse at center,#8cdb28cc 0%,#50a51e88 45%,transparent 72%);transform:translate(-50%,-50%) scale(.4);opacity:0;pointer-events:none;animation:sk-slime-stain 1.1s ease-out forwards}
+@keyframes sk-slime-burst{
+  0%{transform:translate(-50%,-50%) scale(.15);opacity:0}
+  25%{opacity:1}
+  100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1);opacity:0}
+}
+@keyframes sk-slime-drip{
+  0%{transform:translate(-50%,0) scaleY(.2);opacity:0}
+  20%{opacity:1}
+  100%{transform:translate(-50%,28px) scaleY(1.4);opacity:0}
+}
+@keyframes sk-slime-stain{
+  0%{transform:translate(-50%,-50%) scale(.3);opacity:0}
+  30%{opacity:.95;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1.15)}
+}
+@media (prefers-reduced-motion:reduce){
+  .sk-slime-blob,.sk-slime-drip,.sk-slime-stain,.sk-victim-ghost{animation:none!important;opacity:0!important}
+  .sk-piece.sk-flying,.sk-piece.sk-victory,.sk-piece.sk-drop-pop{filter:none}
+}
