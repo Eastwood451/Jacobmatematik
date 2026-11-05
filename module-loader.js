@@ -151,6 +151,11 @@
       js: ["angles-core.js?v=20261105-angles2", "angle-stop.js?v=20261105-angles3"],
       ready: () => !!window.JacobAngleStop && !!window.JacobAnglesCore,
     },
+    "fraction-runner": {
+      css: ["brok-loeb.css?v=20261105-runner1"],
+      js: ["brok-loeb-core.js?v=20261105-runner1", "brok-loeb.js?v=20261105-runner1"],
+      ready: () => !!window.JacobBrokLoeb && !!window.JacobBrokLoebCore,
+    },
     "dennis-audio": {
       css: [],
       js: ["dennis-audio.js?v=20261007-lyd1"],
