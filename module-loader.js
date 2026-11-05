@@ -121,6 +121,36 @@
       js: ["skak-chess-lib.js?v=20261009-skak1", "skak-core.js?v=20261009-skak1", "skak.js?v=20261010-skak-figurer1"],
       ready: () => !!window.JacobSkak && !!window.SkakCore,
     },
+    angles: {
+      css: ["angles.css?v=20261105-angles2", "angle-games.css?v=20261105-angles2"],
+      js: ["angles-core.js?v=20261105-angles2", "angles.js?v=20261105-angles2"],
+      ready: () => !!window.JacobAngles && !!window.JacobAnglesCore,
+    },
+    "angle-battleship": {
+      css: ["angles.css?v=20261105-angles2", "angle-games.css?v=20261105-angles2"],
+      js: ["angles-core.js?v=20261105-angles2", "angle-battleship.js?v=20261105-angles2"],
+      ready: () => !!window.JacobAngleBattleship && !!window.JacobAnglesCore,
+    },
+    "angle-dennis": {
+      css: ["angles.css?v=20261105-angles2", "angle-games.css?v=20261105-angles2"],
+      js: ["angles-core.js?v=20261105-angles2", "angle-dennis.js?v=20261105-angles2"],
+      ready: () => !!window.JacobAngleDennis && !!window.JacobAnglesCore,
+    },
+    "angle-ninja": {
+      css: ["angles.css?v=20261105-angles2", "angle-games.css?v=20261105-angles2"],
+      js: ["angles-core.js?v=20261105-angles2", "angle-ninja.js?v=20261105-angles2"],
+      ready: () => !!window.JacobAngleNinja && !!window.JacobAnglesCore,
+    },
+    "angle-words": {
+      css: ["angles.css?v=20261105-angles2", "angle-games.css?v=20261105-angles2"],
+      js: ["angles-core.js?v=20261105-angles2", "angle-words.js?v=20261105-angles2"],
+      ready: () => !!window.JacobAngleWords && !!window.JacobAnglesCore,
+    },
+    "angle-stop": {
+      css: ["angles.css?v=20261105-angles2", "angle-games.css?v=20261105-angles2"],
+      js: ["angles-core.js?v=20261105-angles2", "angle-stop.js?v=20261105-angles3"],
+      ready: () => !!window.JacobAngleStop && !!window.JacobAnglesCore,
+    },
     "dennis-audio": {
       css: [],
       js: ["dennis-audio.js?v=20261007-lyd1"],

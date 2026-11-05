@@ -1,0 +1,18 @@
+const assert = require("assert");
+const fs = require("fs");
+const vm = require("vm");
+const code = fs.readFileSync("angle-stop.js", "utf8");
+const sandbox = { window: { JacobAnglesCore: { ROUND_INCREMENTS: [45,30,15,10,5], anglesForIncrement: () => [45,90,135] } }, console };
+vm.createContext(sandbox);
+vm.runInContext(code, sandbox);
+const S = sandbox.window.JacobAngleStop;
+assert.strictEqual(S.pointsForDelta(0), 100);
+assert.strictEqual(S.pointsForDelta(10), 50);
+assert.strictEqual(S.pointsForDelta(-10), 50);
+assert.strictEqual(S.pointsForDelta(20), 0);
+assert.strictEqual(S.pointsForDelta(25), 0);
+assert.strictEqual(S.SPEED_DEG_PER_S, 18);
+assert.match(S.tierLabel(2).text, /PERFEKT/);
+assert.match(S.tierLabel(5).text, /GODT/);
+assert.match(S.tierLabel(25).text, /FORBI/);
+console.log("angle-stop unit checks passed");
