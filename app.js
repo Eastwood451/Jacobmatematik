@@ -719,7 +719,9 @@ multiplicationColumn: {
     return canPlaySkak() ? `<button type="button" class="topic-card skak-card" data-action="skak"><span class="topic-icon">♞ 7 × 8</span><strong>Skak</strong><small>Regn for at købe dit træk. Sværere stykker giver ekstra brikker.</small></button>` : "";
   }
   // Vinkler: samme gating som skak/klokken (student/teacher/guest). Ligger under Andre genveje.
-  const canLearnAngles = () => gameModuleEnabled(state.user);
+  // Beta: Vinkler er kun synlig for Jacobs profiler (som Skak i #50). Andre elever, lærere, gæster og ikke-loggede ser intet; ?start=angles falder tilbage til normal start.
+  const ANGLES_PROFILE_IDS = new Set(["c8b8e1c4-3264-40e9-a43d-0eb6214a0183", "3af639de-b0e0-496a-a5b7-b732e49d1fa7"]);
+  const canLearnAngles = () => Boolean(state.user?.id && ANGLES_PROFILE_IDS.has(state.user.id) && ["teacher","student"].includes(state.user.role));
   let disposeAngles = null;
   function leaveAngles() { disposeAngles?.(); disposeAngles = null; }
   async function renderAngles() { syncTrackedExercise();
