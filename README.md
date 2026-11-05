@@ -87,10 +87,11 @@ Genopbyg med `python scripts/generate_fps_audio.py` (kræver `edge-tts` og
 
 ## Sandbox
 
-Upublicerede moduler åbnes fra knappen Sandbox: Marleys butik og skakbetaen.
-Adgangen følger de eksisterende testprofiler; de almindelige elevøvelser er
-stadig offentligt tilgængelige for de samme brugerroller. Lærere kan åbne
-de færdige øvelser under “Prøv elevernes øvelser” i lærerportalen.
+Upublicerede moduler åbnes fra knappen Sandbox: Marleys butik, skakbetaen
+og Vinkler (lektion + de fem vinkelspil). Adgangen følger de eksisterende
+testprofiler; de almindelige elevøvelser er stadig offentligt tilgængelige
+for de samme brugerroller. Lærere kan åbne de færdige øvelser under
+“Prøv elevernes øvelser” i lærerportalen.
 
 ## Rettigheder
 

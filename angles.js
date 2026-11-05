@@ -684,12 +684,19 @@
 
   function mount(root, options = {}) {
     if (!root) return () => {};
+    const startKey = typeof options.start === "string" ? options.start : "";
+    const directStart = startKey && startKey !== "hub" ? startKey : null;
     let childDispose = null;
     let disposed = false;
 
     function clearChild() {
       try { childDispose?.(); } catch (_) {}
       childDispose = null;
+    }
+
+    function leaveOrHub() {
+      if (directStart) options.onExit?.();
+      else showHub();
     }
 
     function showHub() {
@@ -747,7 +754,7 @@
       clearChild();
       childDispose = mountLesson(root, {
         ...options,
-        onExit() { showHub(); },
+        onExit() { leaveOrHub(); },
         // Keep onComplete/onResult from parent for lesson tracking.
       });
     }
@@ -762,7 +769,7 @@
           user: options.user,
           onResult: options.onResult,
           onComplete: options.onComplete,
-          onExit() { showHub(); },
+          onExit() { leaveOrHub(); },
         });
       } catch (err) {
         console.error(err);
@@ -780,13 +787,19 @@
       const act = btn.dataset.angHub;
       if (!act) return;
       if (act === "exit") { options.onExit?.(); return; }
-      if (act === "back" || act === "hub") { showHub(); return; }
+      if (act === "back" || act === "hub") {
+        if (directStart) { options.onExit?.(); return; }
+        showHub();
+        return;
+      }
       if (act === "lesson") { void openLesson(); return; }
       if (act === "battleship" || act === "dennis" || act === "ninja" || act === "words" || act === "stop") { void openGame(act); return; }
     }
 
     root.addEventListener("click", onClick);
-    showHub();
+    if (directStart === "lesson") void openLesson();
+    else if (directStart && GAME_MODULES[directStart]) void openGame(directStart);
+    else showHub();
 
     return function dispose() {
       disposed = true;
