@@ -1740,7 +1740,7 @@ body{
 .home-game-links .foodtruck-card>span:last-child{margin-left:auto;font-size:25px}
 .home-game-links .foodtruck-card:hover{background:#f5d28a}
 .home-game-links{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,360px),1fr));gap:20px;margin:0 0 28px;padding:0 8px 8px 0}
-.home-game-links>.fps-trial-entry,.home-game-links>.foodtruck-card{width:100%;min-width:0;max-width:none;min-height:176px;margin:0;transform:none}
+.home-game-links>.fps-trial-entry,.home-game-links>.foodtruck-card,.home-game-links>.home-game-banner{width:100%;min-width:0;max-width:none;min-height:176px;margin:0;transform:none}
 .home-game-links>.foodtruck-card{padding:20px;gap:16px}
 .home-game-links>.foodtruck-card strong{font-size:clamp(21px,2vw,24px)}
 .home-game-links>.foodtruck-card>span:not(:last-child){min-width:0}
@@ -1752,6 +1752,26 @@ body{
 .home-game-links .fps-trial-entry-erling{right:8%;height:110%}
 .home-game-links>.fps-trial-entry:focus-visible{outline:3px solid #1a7358;outline-offset:5px}
 @media(max-width:560px){.home-game-links>.foodtruck-card{padding:16px;gap:14px}.home-game-links .fps-trial-entry-copy{padding-left:15px}}
+.home-game-links>.home-game-banner{position:relative;display:block;isolation:isolate;overflow:hidden;border-radius:18px;color:#fffdf8;text-decoration:none;box-shadow:0 12px 28px rgba(29,22,48,.16)}
+.home-game-links .home-game-banner-copy{position:relative;z-index:5;width:56%;padding:20px 12px 18px 18px}
+.home-game-links .home-game-banner h3{margin:0 0 6px;color:#fffdf8;font:900 clamp(26px,3vw,36px)/.95 system-ui,sans-serif;letter-spacing:-.045em}
+.home-game-links .home-game-banner p{margin:0;max-width:100%;color:#fff7ea;font:800 14px/1.35 system-ui,sans-serif}
+.home-game-links .home-game-banner-cta{display:inline-block;margin-top:12px;padding:8px 11px;border:2px solid #171c22;border-radius:8px;background:linear-gradient(135deg,#ffd36b,#e99c2e);color:#111a27;box-shadow:3px 3px 0 #171c22;font:900 12px/1 system-ui,sans-serif}
+.home-game-links .home-game-banner-scene{position:absolute;z-index:2;right:0;top:0;width:44%;height:100%;overflow:hidden;pointer-events:none}
+.home-game-links .home-game-banner-scene img{position:absolute;width:auto;max-width:none;object-fit:contain;user-select:none;pointer-events:none;filter:drop-shadow(0 6px 2px #0006)}
+.home-game-links>.home-game-banner:hover{filter:brightness(1.06)}
+.home-game-links>.home-game-banner:focus-visible{outline:3px solid #1a7358;outline-offset:5px}
+.home-game-links .runner-banner{border:3px solid #2a2148;background:linear-gradient(100deg,#2a1658 0%,#3c2788 58%,#3c2788 58%)}
+.home-game-links .runner-banner .home-game-banner-scene{background:linear-gradient(#8ecfff 0 36%,#69b15c 36% 50%,#555863 50% 100%)}
+.home-game-links .runner-banner .home-game-banner-scene::before{content:"";position:absolute;left:46%;top:50%;bottom:0;width:8px;background:repeating-linear-gradient(#ffe27a 0 12px,transparent 12px 22px)}
+.home-game-links .runner-banner-obbe{right:-2%;bottom:-8px;height:104%;z-index:3}
+.home-game-links .runner-banner-obstacle{left:4%;bottom:30%;height:44%;z-index:4}
+.home-game-links .skak-banner{border:3px solid #d7a441;background:linear-gradient(100deg,#172033 0%,#243044 58%,#243044 58%)}
+.home-game-links .skak-banner .home-game-banner-scene{background:repeating-conic-gradient(#f6f0e4 0% 25%,#2f6a45 0% 50%) 0 0/40px 40px}
+.home-game-links .skak-banner-hero{right:-8%;bottom:-8px;height:112%;z-index:3}
+.home-game-links .skak-banner-poodle{left:-2%;bottom:-2px;height:64%;z-index:2}
+.home-game-links .skak-banner-penguin{left:2%;top:2px;height:34%;z-index:1}
+@media(max-width:560px){.home-game-links .home-game-banner-copy{width:54%;padding:16px 8px 16px 14px}.home-game-links .home-game-banner-scene{width:46%}.home-game-links .home-game-banner h3{font-size:26px}.home-game-links .home-game-banner p{font-size:13px}.home-game-links .skak-banner-penguin,.home-game-links .skak-banner-poodle{display:none}.home-game-links .skak-banner-hero{right:-4%;bottom:-6px;height:104%}.home-game-links .runner-banner-obstacle{left:2%;height:40%;bottom:32%}}
 
 /* Home cards: published skak + visual clock guide */
 .clock-home-card{display:grid;grid-template-columns:minmax(105px,42%) 1fr;align-items:center;gap:12px;text-align:left}
