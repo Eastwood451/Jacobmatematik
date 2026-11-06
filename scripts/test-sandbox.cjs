@@ -66,8 +66,8 @@ const css=['styles.css','cinematic-theme.css'].map(p=>fs.readFileSync(p,'utf8'))
   await user('ordinary-student','student');
   assert.equal(await page.locator('[data-action="sandbox"]').count(),0);
   assert.equal(await page.locator('.skak-card').count(),1,'skak-kortet er stadig offentligt');
-  assert.equal(await page.locator('.skak-banner').count(),0,'skak-banneret er lukket for andre elever');
-  assert.equal(await page.locator('.runner-banner').count(),0);
+  assert.equal(await page.locator('.skak-banner').count(),1,'skak-banneret er åbent for andre elever');
+  assert.equal(await page.locator('.runner-banner').count(),1,'brøk-løb-banneret er åbent for andre elever');
   await page.evaluate(()=>{window.__sandboxTest.state.view='sandbox';window.__sandboxTest.render();});
   assert.equal(await page.locator('.sandbox-page').count(),0,'forcing the view must not bypass the gate');
   assert.equal(await page.locator('.student-home-layout').count(),1);
