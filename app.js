@@ -766,11 +766,12 @@ multiplicationColumn: {
   function anglesCard() {
     return canLearnAngles() ? `<button type="button" class="topic-card angles-card" data-action="angles"><span class="topic-icon">∠ 90°</span><strong>Vinkler</strong><small>Lær vinkler, slagskibe, Dennis, Villy-ninja og vinkel-ord.</small></button>` : "";
   }
-  // Brøk-løb (Subway Surfers-agtigt brøkløb med Øbbe). Beta: kun Jacobs profiler, samme gating som Vinkler. ?start=runner klikker [data-action=fraction-runner] (banneret står først, kortet har samme action).
+  // Brøk-løb (Subway Surfers-agtigt brøkløb med Øbbe). RUNNER_PUBLIC åbner det for alle, der kan spille de andre spil (elev, lærer og gæst). Sæt flaget til false for at lukke det til Jacobs profiler igen. ?start=runner klikker [data-action=fraction-runner] (banneret står først, kortet har samme action).
   const RUNNER_PROFILE_IDS = new Set(["c8b8e1c4-3264-40e9-a43d-0eb6214a0183", "3af639de-b0e0-496a-a5b7-b732e49d1fa7"]);
-  const canPlayRunner = () => Boolean(state.user?.id && RUNNER_PROFILE_IDS.has(state.user.id) && ["teacher","student"].includes(state.user.role));
-  // Skak-banneret følger de samme to profiler som Brøk-løb. Sæt flaget til true for at vise det for alle, der kan spille skak.
-  const SKAK_BANNER_PUBLIC = false;
+  const RUNNER_PUBLIC = true;
+  const canPlayRunner = () => RUNNER_PUBLIC ? gameModuleEnabled(state.user) : Boolean(state.user?.id && RUNNER_PROFILE_IDS.has(state.user.id) && ["teacher","student"].includes(state.user.role));
+  // Skak-banneret vises for alle, der kan spille skak. Sæt flaget til false for kun at vise det sammen med Brøk-løb.
+  const SKAK_BANNER_PUBLIC = true;
   const canSeeSkakBanner = () => SKAK_BANNER_PUBLIC ? canPlaySkak() : canPlayRunner();
   let disposeRunner = null;
   function leaveRunner() { disposeRunner?.(); disposeRunner = null; }

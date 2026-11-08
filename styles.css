@@ -1412,21 +1412,9 @@ body{
   background:linear-gradient(180deg,#fff7d8,#f7e9bd);
   color:#624a18;
 }
-.student-home-layout{
-  position:relative;
-}
-.student-home-layout::before{
-  content:"";
-  position:absolute;
-  z-index:-1;
-  inset:-28px -30px auto 250px;
-  height:230px;
-  border-radius:38px;
-  pointer-events:none;
-  background:
-    radial-gradient(circle at 80% 20%,rgba(241,166,55,.14),transparent 30%),
-    radial-gradient(circle at 15% 20%,rgba(105,72,232,.09),transparent 34%);
-  filter:blur(1px);
+/* Hjemskærmen deler én lodret gradient. Hjørneglødene gav en lodret farveovergang mellem tårnet og træningen. */
+body.site-authenticated:has(.student-home-layout){
+  background:linear-gradient(180deg,#fcf7ee 0%,#f7efe3 55%,#faf4ea 100%);
 }
 .student-home-content .eyebrow,
 .math-tower>.eyebrow{
@@ -1572,9 +1560,6 @@ body{
 }
 .foodtruck-card small{
   color:#695022!important;
-}
-@media(max-width:760px){
-  .student-home-layout::before{display:none}
 }
 
 
