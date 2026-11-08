@@ -90,7 +90,8 @@
     x.fillStyle = "#5b4bda"; for (let i = -2; i < 12; i++) { x.beginPath(); x.moveTo(i * 30, 88); x.lineTo(i * 30 + 16, 88); x.lineTo(i * 30 + 46, 10); x.lineTo(i * 30 + 30, 10); x.fill(); }
     x.restore();
     x.fillStyle = "#fff7e6"; x.beginPath(); x.roundRect(64, 24, 132, 50, 10); x.fill(); x.stroke();
-    x.fillStyle = "#1d1630"; x.font = "900 34px system-ui, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("DUK!", 130, 50);
+    const duckLabel = window.JacobI18n && JacobI18n.has("runner_canvas_duck") ? JacobI18n.t("runner_canvas_duck") : "DUK!";
+    x.fillStyle = "#1d1630"; x.font = "900 34px system-ui, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(duckLabel, 130, 50);
     return c;
   }
   function spriteShark() {
@@ -279,12 +280,37 @@
       hydrant: spriteHydrant(), wall: spriteWall(), bar: spriteBar(), shark: spriteShark(), orange: spriteOrange(), star: spriteStar(),
       houses: [0, 1, 2, 3, 4, 5].map(spriteHouse), school: spriteSchool(), trees: [0, 1].map(spriteTree), lamp: spriteLamp(),
     };
+    const tr = (s) => (window.JacobI18n && JacobI18n.lang() === "en" ? JacobI18n.translate(s) : s);
+    const trFrac = (s) => C.fracHtml(tr(s));
     function schoolWord() {
       return window.JacobI18n && JacobI18n.has("runner_canvas_school") ? JacobI18n.t("runner_canvas_school") : "SKOLE";
     }
+    function refreshQuestionDom() {
+      if (!S || !S.question || (S.mode !== "question" && S.mode !== "feedback")) return;
+      const q = S.question;
+      const who = CHARS[S.gate.key];
+      $("[data-bl-q-who]").textContent = tr(`${who.name} spærrer vejen! Svar rigtigt for at komme forbi.`);
+      $("[data-bl-q-text]").innerHTML = trFrac(q.q);
+      const optBtns = qBox.querySelectorAll(".bl-opt");
+      optBtns.forEach((btn, idx) => {
+        const spans = btn.querySelectorAll("span");
+        if (spans[1] && q.options[idx] != null) spans[1].innerHTML = trFrac(q.options[idx]);
+      });
+      if (S.mode === "feedback") {
+        const rule = C.RULES[q.rule];
+        const fb = $("[data-bl-q-feedback]");
+        fb.innerHTML = `<p class="bl-fb-title">${tr("Ikke helt! Det rigtige svar er")} <b>${trFrac(q.a)}</b></p><p class="bl-fb-rule"><b>${esc(tr(rule.title))}:</b> ${trFrac(rule.rule)}</p><p class="bl-fb-ex">${tr("Eksempel:")} ${trFrac(rule.ex)}</p><button type="button" class="btn bl-next" data-bl-next>${tr("Videre")}</button>`;
+      }
+    }
     function refreshSchoolSprite() {
       spr.school = spriteSchool();
+      spr.bar = spriteBar();
+      if (S) {
+        for (const sc of S.scenery) if (sc.kind === "school") sc.sp = spr.school;
+        for (const ob of S.obstacles) if (ob.kind === "bar") ob.sp = spr.bar;
+      }
       canvas.dataset.i18nSchool = schoolWord();
+      refreshQuestionDom();
     }
     canvas.dataset.i18nSchool = schoolWord();
     document.addEventListener("jm-langchange", refreshSchoolSprite);
@@ -496,8 +522,8 @@
       const who = CHARS[S.gate.key];
       $("[data-bl-q-img]").src = ASSET + who.src;
       $("[data-bl-q-who]").textContent = `${who.name} spærrer vejen! Svar rigtigt for at komme forbi.`;
-      $("[data-bl-q-text]").innerHTML = C.fracHtml(q.q);
-      $("[data-bl-q-options]").innerHTML = q.options.map((o, i) => `<button type="button" class="bl-opt" data-bl-opt="${i}"><span class="bl-key">${i + 1}</span><span>${C.fracHtml(o)}</span></button>`).join("");
+      $("[data-bl-q-text]").innerHTML = trFrac(q.q);
+      $("[data-bl-q-options]").innerHTML = q.options.map((o, i) => `<button type="button" class="bl-opt" data-bl-opt="${i}"><span class="bl-key">${i + 1}</span><span>${trFrac(o)}</span></button>`).join("");
       const fb = $("[data-bl-q-feedback]"); fb.hidden = true; fb.innerHTML = "";
       qBox.hidden = false; qBox.classList.remove("is-right", "is-wrong");
       requestAnimationFrame(() => qBox.querySelector(".bl-opt")?.focus({ preventScroll: true }));
@@ -532,7 +558,7 @@
         sound.bad();
         const rule = C.RULES[q.rule];
         const fb = $("[data-bl-q-feedback]");
-        fb.innerHTML = `<p class="bl-fb-title">Ikke helt! Det rigtige svar er <b>${C.fracHtml(q.a)}</b></p><p class="bl-fb-rule"><b>${esc(rule.title)}:</b> ${C.fracHtml(rule.rule)}</p><p class="bl-fb-ex">Eksempel: ${C.fracHtml(rule.ex)}</p><button type="button" class="btn bl-next" data-bl-next>Videre</button>`;
+        fb.innerHTML = `<p class="bl-fb-title">${tr("Ikke helt! Det rigtige svar er")} <b>${trFrac(q.a)}</b></p><p class="bl-fb-rule"><b>${esc(tr(rule.title))}:</b> ${trFrac(rule.rule)}</p><p class="bl-fb-ex">${tr("Eksempel:")} ${trFrac(rule.ex)}</p><button type="button" class="btn bl-next" data-bl-next>${tr("Videre")}</button>`;
         fb.hidden = false;
         S.mode = "feedback"; S.feedbackTimer = 9;
         requestAnimationFrame(() => fb.querySelector("[data-bl-next]")?.focus({ preventScroll: true }));
@@ -563,7 +589,7 @@
       const score = Math.floor(S.score), record = saveBest(score), best = loadBest();
       const rules = Object.keys(S.seen);
       const recap = rules.length
-        ? rules.map((k) => { const r = C.RULES[k], s = S.seen[k]; return `<li><span class="bl-rc-head"><b>${esc(r.title)}</b><span class="bl-rc-score">${s.ok} ✓ · ${s.bad} ✗</span></span><span>${C.fracHtml(r.rule)}</span><small>${C.fracHtml(r.ex)}</small></li>`; }).join("")
+        ? rules.map((k) => { const r = C.RULES[k], s = S.seen[k]; return `<li><span class="bl-rc-head"><b>${esc(tr(r.title))}</b><span class="bl-rc-score">${s.ok} ✓ · ${s.bad} ✗</span></span><span>${trFrac(r.rule)}</span><small>${trFrac(r.ex)}</small></li>`; }).join("")
         : `<li><span>Du nåede ikke frem til en brøk-forhindring denne gang. Løb igen – Erling venter!</span></li>`;
       $("[data-bl-over-card]").innerHTML = `
         <img class="bl-hero" src="assets/figurer/obbe-ovdig.png" alt="" width="110" height="110">
@@ -810,11 +836,12 @@
         if (p && !g.smashed && z < 18) {
           const fs = clamp(0.16 * p.s, 11, 22);
           ctx.font = `800 ${fs}px system-ui, sans-serif`;
-          const tw = ctx.measureText(def.line).width + fs * 1.2;
+          const lineText = tr(def.line);
+          const tw = ctx.measureText(lineText).width + fs * 1.2;
           const bx = p.x - tw / 2, by = p.y - h * p.s - fs * 2.4;
           ctx.fillStyle = "#fff"; ctx.strokeStyle = "#1d1630"; ctx.lineWidth = 2;
           ctx.beginPath(); ctx.roundRect(bx, by, tw, fs * 1.8, fs * 0.6); ctx.fill(); ctx.stroke();
-          ctx.fillStyle = "#1d1630"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(def.line, p.x, by + fs * 0.92);
+          ctx.fillStyle = "#1d1630"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.fillText(lineText, p.x, by + fs * 0.92);
         }
       }
     }
@@ -869,7 +896,7 @@
         const q = project(S.x, 2.3 + (1.1 - p.life) * 0.8, 0); if (!q) continue;
         ctx.globalAlpha = clamp(p.life * 2, 0, 1);
         ctx.font = `900 ${Math.round(clamp(W / 22, 18, 34))}px system-ui, sans-serif`; ctx.textAlign = "center"; ctx.textBaseline = "middle";
-        ctx.lineWidth = 5; ctx.strokeStyle = "#fff"; ctx.strokeText(p.text, q.x, q.y); ctx.fillStyle = p.color; ctx.fillText(p.text, q.x, q.y);
+        const popText = tr(p.text); ctx.lineWidth = 5; ctx.strokeStyle = "#fff"; ctx.strokeText(popText, q.x, q.y); ctx.fillStyle = p.color; ctx.fillText(popText, q.x, q.y);
       }
       ctx.globalAlpha = 1;
       // Slowmotion-vignet (CSS-lag, billigt)

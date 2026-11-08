@@ -6,11 +6,14 @@ const vm = require("node:vm");
 
 const root = path.resolve(__dirname, "..");
 const context = {};
+context.window = context;
+context.globalThis = context;
 vm.createContext(context);
 vm.runInContext(fs.readFileSync(path.join(root, "lang.js"), "utf8"), context);
 vm.runInContext(fs.readFileSync(path.join(root, "i18n-strings.js"), "utf8"), context);
 vm.runInContext(fs.readFileSync(path.join(root, "i18n-en.js"), "utf8"), context);
 vm.runInContext(fs.readFileSync(path.join(root, "i18n.js"), "utf8"), context);
+vm.runInContext(fs.readFileSync(path.join(root, "brok-loeb-core.js"), "utf8"), context);
 context.JacobLang = { get() { return context.__lang || "da"; } };
 
 const resolve = context.JacobLangResolve;
@@ -53,19 +56,52 @@ assert.equal(context.JacobI18n.t("exercise_hint_type_below"), "Skriv dit svar ne
 context.__lang = "en";
 assert.equal(context.JacobI18n.t("exercise_hint_type_below"), "Type your answer below.");
 assert.equal(context.JacobI18n.t("exercise_question_n", { n: 4 }), "Question 4");
+assert.equal(context.JacobI18n.t("angles_canvas_groove", { deg: 60 }), "Groove: 60°");
+assert.equal(context.JacobI18n.t("angles_canvas_pipe_to_groove"), "Pipe cleaner → groove");
+assert.equal(context.JacobI18n.t("runner_canvas_duck"), "DUCK!");
+assert.equal(context.JacobI18n.t("runner_canvas_school"), "SCHOOL");
+assert.equal(context.JacobI18n.t("exercise_undefined_answer"), "Cannot be calculated");
 assert.equal(context.JacobI18n.t("not_a_semantic_key"), null);
 assert.equal(t("Skriv dit svar nedenfor."), "Type your answer below.");
 assert.equal(t("Gang før plus."), "Multiply before you add.");
+
 const coverage = context.JacobI18n.coverage();
-assert.equal(coverage.legacyIsNotSemantic, true);
+assert.equal(coverage.legacyPhrases, 0, "All static phrases must live under semantic keys in window.JacobI18nStrings");
+assert.equal(coverage.legacyIsNotSemantic, false);
+assert.ok(coverage.semanticKeys.length >= 1350, "Expected at least 1350 semantic keys");
 assert.ok(coverage.semanticKeys.includes("home_prompt"));
 assert.ok(coverage.semanticKeys.includes("runner_canvas_school"));
-assert.ok(coverage.legacyPhrases > coverage.semanticKeys.length);
+assert.ok(coverage.semanticKeys.includes("runner_canvas_duck"));
+assert.ok(coverage.semanticKeys.includes("angles_canvas_groove"));
+assert.ok(coverage.semanticKeys.includes("exercise_undefined_answer"));
 for (const key of coverage.semanticKeys) {
   const entry = context.JacobI18nStrings[key];
   assert.equal(typeof entry.da, "string", key);
   assert.equal(typeof entry.en, "string", key);
+  assert.ok(entry.da.length > 0, key + ".da must not be empty");
+  assert.ok(entry.en.length > 0, key + ".en must not be empty");
 }
+
+// Verify all BrokLoebCore levels, rules, questions, and verbal answers/distractors translate cleanly
+const brokCore = context.window.JacobBrokLoebCore;
+for (const lv of brokCore.LEVELS) {
+  assert.notEqual(t(lv.name), lv.name, "Untranslated BrokLoeb level: " + lv.name);
+}
+for (const [rk, rv] of Object.entries(brokCore.RULES)) {
+  assert.notEqual(t(rv.title), rv.title, "Untranslated BrokLoeb rule title: " + rk);
+  assert.notEqual(t(rv.rule), rv.rule, "Untranslated BrokLoeb rule body: " + rk);
+}
+for (const item of brokCore.BANK) {
+  if (/[a-zæøå]/i.test(item.q)) {
+    assert.notEqual(t(item.q), item.q, "Untranslated BrokLoeb question: " + item.q);
+  }
+  for (const opt of [item.a, ...item.d]) {
+    if (/[a-zæøå]/i.test(opt)) {
+      assert.notEqual(t(opt), opt, "Untranslated BrokLoeb option: " + opt);
+    }
+  }
+}
+
 context.__lang = "da";
 assert.equal(t("Skriv dit svar nedenfor."), "Type your answer below.");
 assert.equal(t("Vælg eller skriv et svar først."), "Choose or type an answer first.");
@@ -106,4 +142,4 @@ const englishLanding = fs.readFileSync(path.join(root, "en/index.html"), "utf8")
 assert.match(englishLanding, /href="\/\?lang=en"/);
 assert.doesNotMatch(englishLanding, /JacobI18nStrings/);
 
-console.log("i18n tests passed");
+console.log("i18n tests passed (" + coverage.semanticKeys.length + " semantic keys verified)");

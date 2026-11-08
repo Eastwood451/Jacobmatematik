@@ -322,7 +322,7 @@
         return pick(rules)();
       },
       calculate: (a, operation, b) => operation === "×" ? a * b : b === 0 ? "undefined" : a / b,
-      evaluate: (answer, task) => task.answerType === "undefined" ? answer === "Kan ikke beregnes" : Number(answer) === task.answer,
+      evaluate: (answer, task) => task.answerType === "undefined" ? (answer === "Kan ikke beregnes" || answer === "Cannot be calculated") : Number(answer) === task.answer,
     },
     multiplication: {
       generate(level, user) {
@@ -2865,7 +2865,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
   async function submitAnswer(form) {
     if (state.answered) return;
     const raw = new FormData(form).get("answer").trim().replace(",", ".");
-    const isUndefinedAnswer = raw === "Kan ikke beregnes";
+    const isUndefinedAnswer = raw === "Kan ikke beregnes" || raw === "Cannot be calculated";
     if (raw === "" || (!isUndefinedAnswer && !Number.isFinite(Number(raw)))) { document.getElementById("answer-error").textContent = "Vælg eller skriv et svar først."; return; }
     const measuredTime = Math.max(.1, (Date.now() - state.taskStartedAt) / 1000);
     const responseTime = measuredTime;
@@ -2921,15 +2921,17 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       return submitAnswer(form);
     }
     const fixedPrefix=input.dataset.fixedPrefix || "";
-    if (key === "undefined") input.value = "Kan ikke beregnes";
+    const undefLabel = window.JacobI18n?.t("exercise_undefined_answer") || "Kan ikke beregnes";
+    const isUndef = input.value === "Kan ikke beregnes" || input.value === "Cannot be calculated";
+    if (key === "undefined") input.value = undefLabel;
     else if (key === "delete") {
       if (fixedPrefix) input.value = fixedPrefix;
-      else input.value = input.value === "Kan ikke beregnes" ? "" : input.value.slice(0, -1);
+      else input.value = isUndef ? "" : input.value.slice(0, -1);
     }
-    else if (key === "minus") input.value = input.value === "Kan ikke beregnes" ? "-" : input.value.startsWith("-") ? input.value.slice(1) : `-${input.value}`;
+    else if (key === "minus") input.value = isUndef ? "-" : input.value.startsWith("-") ? input.value.slice(1) : `-${input.value}`;
     else if (key === "10" && state.task.topic === "numbers") input.value = "10";
     else if (/^\d$/.test(key) && fixedPrefix) input.value = fixedPrefix + key;
-    else if (/^\d$/.test(key) && input.value.replace("-", "").length < 8) input.value = input.value === "Kan ikke beregnes" ? key : input.value + key;
+    else if (/^\d$/.test(key) && input.value.replace("-", "").length < 8) input.value = isUndef ? key : input.value + key;
 
     document.getElementById("answer-error").textContent = "";
     const cellAnswer=document.getElementById("matrix-drill-cell-answer"), axisAnswer=document.getElementById("matrix-drill-axis-answer"), drillPreview=document.getElementById("matrix-drill-answer-preview"), subtractionOnesPreview=document.getElementById("subtraction-ones-preview");

@@ -1,76 +1,52 @@
-# Dækning (8. november 2026)
+# Dækning og sprogstatus (`cursor/english-exercise-flow-7151`)
 
-## Semantiske nøgler, testet midtpunkt
+## 1. Arkitektur og ét samlet semantisk sprogobjekt
 
-Appen har én HTML-indgang, `index.html`. Begge sprog ligger i ét objekt, `JacobI18nStrings` i `i18n-strings.js`, med formen `nøgle.da` / `nøgle.en`. Skiftet er `JacobLang.set` i `lang.js`. Klik på DA|EN kalder det og sender `jm-langchange`. `JacobI18n.refresh` i `i18n.js` skriver kun teksten om. Det kalder ikke modulernes `mount` og skifter ikke side.
+Appen har én fælles HTML-indgang (`index.html`). Alle oversatte statiske tekster og `{var}`-skabeloner ligger nu samlet i **ét overskueligt JavaScript-objekt**, `window.JacobI18nStrings` i `i18n-strings.js`, med semantiske nøgler og begge sprogs egne tekster side om side (`{ da: "...", en: "..." }`):
 
-Nøglerne der faktisk er bundet med `data-i18n-key` eller `data-i18n-*` er: `home_prompt`, `exercise_back`, `exercise_hint_type_below`, `exercise_question_n`, `exercise_feedback_correct_is`, `exercise_feedback_tap_next`, `exercise_answer_label`, `exercise_answer_placeholder`, `exercise_keypad`, `exercise_round_label`, `angles_battleship_tap`, `angles_dennis_marker`, `runner_canvas_school`. `angles_battleship_frozen` og `angles_battleship_hit` ligger i objektet og bruges, når den danske sætning matcher nøjagtigt. De er ikke sat på hvert dynamisk skak- eller vinkelelement.
+- **1.374 semantiske nøgler** i `window.JacobI18nStrings` (`i18n-strings.js`).
+- **0 legacy-fraser** i `window.JacobI18nPhrases` (`i18n-en.js` indeholder nu kun hjælpe-regex i `window.JacobI18nPatterns` til dynamisk tal-/ental-/flertalsbøjning). `JacobI18n.coverage().legacyIsNotSemantic` er `false`.
+- **Automatisk `{var}`-skabelonmatch og indeks** i `i18n.js`: `ensureIndexes()` bygger tovejs opslag (`da -> key`, `en -> key`) samt kompilerede `{var}`-skabeloner fra `window.JacobI18nStrings` (inkl. oversættelse af indlejrede ord som `enerne`/`tierne`, `første`/`anden`, `spids`/`ret`/`stump`/`lige`).
+- **Ingen tredjeparts-oversættelseswidgets** (ingen Google Translate, Weglot el.lign.).
+- **`/en/`-infosidernes SEO og indgange bevaret**: Alle statiske `/en/*/index.html`-sider og deres links (`/?lang=en` og `/?lang=en&start=...`) samt `sitemap.xml` er uændrede.
 
-`i18n-en.js` er den gamle opslagsliste fra danske kildesætninger. Den er ikke semantiske nøgler. `JacobI18n.coverage()` siger det med `legacyIsNotSemantic`. Et nøjagtigt dansk match mod objektet hentes derfra, så de flyttede sætninger ikke findes to steder.
+## 2. Ét-klik sprogskift (`DA | EN`) uden genindlæsning eller nulstilling
 
-`scripts/test-i18n-switch.cjs` har kørt dette: hjemmeskiftet begge veje uden ny navigation, et åbent plusstykke beholder udtryk, tallet 7, opgavenummer og derefter det viste rigtige svar, når feedback skifter sprog begge veje. Placeholder og tastatur-etiket følger med. Brøk-løbets canvas-ord skifter mellem SKOLE og SCHOOL, mens løbet bliver i `run` og distancen ikke nulstilles. Dennis’ SVG-tekst læses fra objektet, og brættet bliver stående. Det er fixture, ikke en rigtig konto.
+Klik på `DA | EN` kalder `JacobLang.set(lang)` i `lang.js`, opdaterer `document.documentElement.lang` og `localStorage["jm-lang"]`, og udsender `jm-langchange`:
 
-## Ikke med i «alle tekster»
+- `JacobI18n.refresh()` i `i18n.js` opdaterer alle `data-i18n-key`-, `data-i18n-aria-label`-, `data-i18n-title`-, `data-i18n-placeholder`- og `data-i18n-alt`-attributter (med fuld understøttelse af `data-i18n-arg-*` på både tekst og attributter) samt aktive tekstnoder og åbne popups/overlays uden at genindlæse siden eller kalde modulernes `mount()`.
+- **Bevarer tilstand ved sprogskift midt i en øvelse**:
+  - Igangværende spørgsmål, opgavetekst og opgavenummer nulstilles ikke.
+  - Indtastet svar i `input#answer` bevares (og specialværdien `"Kan ikke beregnes"` $\leftrightarrow$ `"Cannot be calculated"` oversættes live i inputfeltet og accepteres på begge sprog i `app.js`).
+  - Point, streak, aktive timere og login-session røres ikke.
+  - **Brøk-løb (`brok-loeb.js`)**: Spørgsmål, svarmuligheder og regler oversættes via semantiske nøgler *før* `fracHtml()` splitter brøker i `<span>`-elementer. Canvas-sprites (`DUK!` $\leftrightarrow$ `DUCK!`, `SKOLE` $\leftrightarrow$ `SCHOOL`), port-bobler og åbne spørgsmåls-/feedback-overlays opdateres live ved `jm-langchange` uden at nulstille løbet eller distancen.
+  - **Vinkler (`angles.js`) og Vinkel-Ninja (`angle-ninja.js`)**: Canvas-tekster (`Rille: {deg}°` $\leftrightarrow$ `Groove: {deg}°`, `Piberenser → rille` $\leftrightarrow$ `Pipe cleaner → groove`, Dennis' SVG-markør samt `PERFEKT`/`GODT`/`FORBI` i Vinkel-Ninja) genskrives ved `jm-langchange` uden at nulstille runde eller bræt.
 
-Urørt kilde: `plus-penalhus.js`, `clock.js`, `clock-core.js`, `clock-course.js`, `marley.js`, `marley-pet.js`. Overlayet springer `.pp-game`, `.cl-module` og `.marley-page` over, så de bliver danske i den engelske app.
+## 3. Status opdelt på: Oversat, Kodet, Testet og Live
 
-Stadig uden for nøglerne: bogstavordenes danske lyd, Øbbes MP3, Erlings linje «Jeg slapper din matematik-eksamen!», Luigis `it-IT-DiegoNeural`, login-billedets malede tekst, og de øvrige canvastegninger. `/en/` er statiske SEO-sider med egne links ind i appen via `/?lang=en`. De er ikke en anden app og ikke slettet.
+| Kategori | Status | Detaljer |
+| --- | --- | --- |
+| **Oversat** | **Færdig (1.374 semantiske nøgler)** | Alle UI-tekster, øvelsesinstruktioner, hints, svarfeedback, fejlbeskeder og resultater i ikke-fredede moduler ligger som `{ da, en }`-par i `i18n-strings.js` (`0` uoversatte UI-strenge ved fuld kilde-audit). |
+| **Kodet** | **Færdig på PR-gren** | `i18n-strings.js`, `i18n-en.js`, `i18n.js`, `app.js`, `brok-loeb.js`, `angles.js`, `angle-ninja.js` og `install-app.js` er kodet og forbundet til live `jm-langchange`. |
+| **Testet** | **Verificeret med Node- og kilde-tests** | `node scripts/test-i18n.cjs` (1.374 semantiske nøgler, tovejs DA$\leftrightarrow$EN, `{var}`-skabeloner, `legacyPhrases === 0`, uændrede hashes for alle 6 fredede filer, Luigi, Erling og adgangsgates) og `node scripts/test-lazy-load-startup.cjs` er bestået. Browser-baserede fixture-scripts (`scripts/test-i18n-switch.cjs`, `scripts/shot-i18n-rest.cjs`) er opdateret (inkl. fix af kapløb på slagskibs-frys), men afventer kørsel i et miljø uden lokal browser-sandbox-blokering. |
+| **Live** | **Ikke live (afventer Jacobs Go)** | Ændringerne ligger kun på grenen `cursor/english-exercise-flow-7151` (PR #71). Ingen merge til `main` og ingen udgivelse til produktion er foretaget. |
 
-## Tidligere flader
+## 4. Fredede moduler og bevidste undtagelser (uændrede efter instruks)
 
-Ikke udgivet. Dansk er kilden. Et tal på “0 danske rester” gælder kun den flade, testen navngiver. Det betyder ikke, at hele modulet er kørt igennem.
+Følgende filer og funktioner er verificeret **100 % urørte** (bekræftet automatisk i `scripts/test-i18n.cjs`):
 
-Fixture-tests er **ikke** rigtige logins. Supabase er stubbet. Brugerne findes kun i testbrowserens `localStorage`. Profil-id’erne er de id’er, gates allerede tillader. Gates i `app.js` er ikke ændret, og der skrives ikke til den rigtige database.
+- **Fredede moduler**: `plus-penalhus.js`, `clock.js`, `clock-core.js`, `clock-course.js`, `marley.js`, `marley-pet.js`. DOM-oversætteren i `i18n.js` springer `.pp-game`, `.cl-module` og `.marley-page` over, og deres manglende engelske dækning er dokumenteret særskilt i `docs/i18n-protected-handoff.md`.
+- **Luigis stemme**: `scripts/generate_luigi_audio.py` bruger fortsat `it-IT-DiegoNeural`.
+- **Erlings bevidste 'slapper'**: `"Jeg slapper din matematik-eksamen!"` i `fps-voice-lines.json` og `scripts/generate_erling_slapper_audio.py` er uændret.
+- **Adgangsgates**: Alle adgangsgates i `app.js` (`CAN_PLAY_RUNNER_IDS`, `CAN_PLAY_ANGLES_IDS`, `CAN_PLAY_CLOCK_IDS`, `CAN_PLAY_PENALHUS_IDS`, `CAN_PLAY_MARLEY_IDS`) er uændrede.
 
-## Testede flader
+## 5. Reelle mediehuller (registreret som faktiske huller — kaldes ikke færdig engelsk)
 
-Ikke udgivet. Dansk er kilden. Et tal på “0 danske rester” gælder kun den flade, testen navngiver. Det betyder ikke, at hele modulet er kørt igennem.
-
-Fixture-tests er **ikke** rigtige logins. Supabase er stubbet. Brugerne findes kun i testbrowserens `localStorage`. Profil-id’erne er de id’er, gates allerede tillader. Gates i `app.js` er ikke ændret, og der skrives ikke til den rigtige database.
-
-## Testede flader
-
-| Flade | Sprog | Resultat | Bevis |
-| --- | --- | --- | --- |
-| Brøk, division: forkert regneart | EN, gæst | 0 rester | `shot-i18n-fixtures.cjs` |
-| Brøk, division: forkert regel | EN, gæst | 0 rester | samme |
-| Brøk, division: forkert vending af brøken | EN, gæst | 0 rester | samme |
-| Brøk, division: forkert gangeregel | EN, gæst | 0 rester | samme |
-| Brøk, division: forkert produkt, derefter 4/6 | EN, gæst | 0 rester | samme |
-| Brøk, division: forkort-trinnet og et forkert “den er fin” | EN, gæst | 0 rester | `en-fraction-simplify.png` |
-| Plus, minus og gange som brøk-tilstand | — | Ikke klikket | Samme motor og mange fælles sætninger, men ikke denne kørsel |
-| Lærerportal, forsiden med én fixture-elev | EN, lokal fixture | 0 rester | `en-teacher-fixture.png`. Ikke en rigtig lærerkonto |
-| Skak-menu | EN, fixture-lærer | 0 rester | `en-skak-fixture.png` |
-| Skak, ét forkert svar mod computeren | EN, fixture | 0 rester | `en-skak-wrong-fixture.png`. Ikke et helt parti, ikke online |
-| Vinkel-hub og lektionens første skærm | EN, fixture | 0 rester | `en-angles-hub-fixture.png`, `en-angles-lesson-fixture.png`. De fem spil er ikke spillet |
-| Brøk-løb, startkort | EN, fixture-elev med gate-id | 0 rester | `en-runner-fixture.png`. Ingen bane og intet brøkspørgsmål |
-| Fixture-elev, reload | EN | `jm-lang` bliver `en` | ikke et rigtigt login |
-| Fixture-elev, hjem efter `jm-lang=da` | DA | ingen engelsk “What do you want to practise” | `da-fixture-home.png` |
-| Plus-drill, PEMDAS, 10’er-venner, foodtruck, gange-drill | EN/DA som i forrige omgang | se `shot-i18n.cjs` og `shot-i18n-coverage.cjs` | gæst, ikke fixture |
-| Plus-penalhus og ur | EN-app | bliver danske | produktiongates urørt |
-
-## Ordbog uden kørsel
-
-PR #65’s kommende sætning “Vælg vinkel, tryk Gå – hjælp Dennis til pizzaen.” ligger i ordbogen nu. PR #65 er ikke merget.
-
-## Lyd og ord, ikke færdig engelsk
-
-Kan oversættes på skærmen uden at lyden lyver: instruktioner, knapper, fejl og resultater, når der ikke afspilles en dansk optagelse af netop den sætning.
-
-Kan ikke kaldes engelsk paritet:
-
-- Bogstavøvelsens ord (`abe`, `bæver`, `løve`, `næsehorn`, `ræv`, `sæl`, `æsel`, `økse`, `ål` og resten). Lydfilen siger det danske ord. De er undtaget i fixture-scanneren.
-- Øbbes MP3-tilråb. Boblen kan være engelsk. Lyden er dansk.
-- Erling FPS, inklusive den bevidste “Jeg slapper din matematik-eksamen!”.
-- Luigis talestrimmel. Generatoren er stadig `it-IT-DiegoNeural` og er ikke ændret.
-- Ur og Plus-penalhus, inklusive deres danske lyd. Se `docs/i18n-protected-handoff.md`.
-
-## Billede
-
-`assets/figurer/jacobmatematik-cinematic-world-v1.webp` er det eneste login-maleri. Alt-teksten oversættes. Den malede titel, skiltene og “SKOLE” gør ikke. Der genereres ikke et nyt billede.
-
-## Rest, groft
-
-Ubeskyttet rest efter nøglemidtpunktet: de fleste sætninger ligger stadig i den gamle opslagsliste, og `scripts/shot-i18n-rest.cjs` er ikke grøn (slagskibets rigtige tryk blev afbrudt af computerens timer). Brøk plus/minus/gange til resultat, løbets spørgsmål, de fem vinkelspil og skak med simuleret makker er derfor ikke færdige semantiske nøgler. At flytte de viste sætninger over i objektet og køre de flows færdige er omkring **4–6 timers** videre arbejde. Usikkerheden er nye sætninger i de flows. Det er ikke en dato.
-
-Beskyttet rest, først når begrænsningen løftes: ur-kurset i tre filer og Plus-penalhus, plus nye lydoptagelser. Ud fra handoff-listen er det omkring **8–16 timers** ejerarbejde, adskilt fra ordbogen. Denne gren kan ikke gøre det.
+1. **Dansk tale/lyd (MP3/WAV)** — skærmtekster er engelske, men selve lydfilerne taler dansk:
+   - **Bogstavøvelsens lydord** (`abe`, `bæver`, `løve`, `næsehorn`, `ræv`, `sæl`, `æsel`, `økse`, `ål` m.fl. i `LETTER_ITEMS` i `app.js`): Udtale-lydfilerne siger det danske ord, så bogstavordene er bevidst bevaret som danske lydord.
+   - **Øbbes MP3-stemmer** (`assets/audio/oebbe/`): Talebobler på skærmen oversættes til engelsk, men MP3-lydklippene er på dansk.
+   - **Erling FPS-stemmelinjer** (`fps-voice-lines.json` / MP3-filer): Dansk tale inkl. den bevidste *"Jeg slapper din matematik-eksamen!"*.
+   - **Vinkel-intro og opgavelyd** (`assets/audio/angles/`): Tekst/undertekst på skærmen er engelsk, men indtalte MP3-filer er danske.
+   - **Klokken og Plus-penalhus** (`assets/audio/clock/`, `assets/audio/penalhus/`): Fredede moduler med dansk lyd (se `docs/i18n-protected-handoff.md`).
+2. **Tekst indbagt i grafik**:
+   - `assets/figurer/jacobmatematik-cinematic-world-v1.webp`: Alt-tekst oversættes, men malede skilte i selve billedet (`SKOLE` m.v.) er indbagt i grafikken.

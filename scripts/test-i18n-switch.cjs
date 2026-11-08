@@ -1,7 +1,50 @@
 /* Shared-app language switch. Not a real account.
    Proves one click does not navigate or reload, and an open question keeps
    its expression, typed answer, question number and correction. */
-const puppeteer = require("/tmp/node_modules/puppeteer-core");
+const fs = require("node:fs");
+const path = require("node:path");
+function loadPuppeteer() {
+  const candidates = [
+    process.env.PUPPETEER_MODULE,
+    "/tmp/node_modules/puppeteer-core",
+    "/tmp/jm-shot/node_modules/puppeteer-core",
+    "puppeteer-core",
+    "puppeteer",
+    "C:\\Users\\jacob\\AppData\\Local\\npm-cache\\_npx\\eb04a49c817a2f9c\\node_modules\\puppeteer-core"
+  ].filter(Boolean);
+  for (const mod of candidates) {
+    try { return require(mod); } catch (_) {}
+  }
+  throw new Error("Could not load puppeteer-core");
+}
+function findChrome() {
+  const candidates = [
+    process.env.CHROME_BIN,
+    "/opt/google/chrome/chrome",
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe"
+  ].filter(Boolean);
+  for (const bin of candidates) {
+    if (fs.existsSync(bin)) return bin;
+  }
+  return "/opt/google/chrome/chrome";
+}
+function launchOpts() {
+  const opts = {
+    executablePath: findChrome(),
+    headless: "new",
+    args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"]
+  };
+  if (process.env.JM_USER_DATA_DIR) {
+    const dir = path.join(process.env.JM_USER_DATA_DIR, "prof-" + Date.now() + "-" + Math.random().toString(36).slice(2));
+    fs.mkdirSync(dir, { recursive: true });
+    opts.userDataDir = dir;
+  }
+  return opts;
+}
+const puppeteer = loadPuppeteer();
 
 const BASE = process.env.JM_BASE || "http://127.0.0.1:8765";
 const TEACHER_ID = "c8b8e1c4-3264-40e9-a43d-0eb6214a0183";
@@ -75,11 +118,7 @@ async function snap(page) {
 }
 
 (async () => {
-  const browser = await puppeteer.launch({
-    executablePath: "/opt/google/chrome/chrome",
-    headless: "new",
-    args: ["--no-sandbox", "--disable-dev-shm-usage"],
-  });
+  const browser = await puppeteer.launch(launchOpts());
   const evidence = {};
 
   const page = await boot(browser, "da");

@@ -32,15 +32,52 @@
   }
 
   var resourceByDanish = null;
+  var templateMatchers = null;
+  function escapeRegex(s) {
+    return String(s).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  }
+  function ensureIndexes() {
+    if (resourceByDanish && templateMatchers) return;
+    resourceByDanish = {};
+    templateMatchers = [];
+    var strings = root.JacobI18nStrings || {};
+    Object.keys(strings).forEach(function (key) {
+      var entry = strings[key];
+      var da = entry && entry.da;
+      var en = entry && entry.en;
+      if (typeof da !== "string" || typeof en !== "string") return;
+      if (!Object.prototype.hasOwnProperty.call(resourceByDanish, da)) resourceByDanish[da] = key;
+      if (da.indexOf("{") !== -1 && /\{\w+\}/.test(da)) {
+        var vars = [];
+        var parts = da.split(/\{(\w+)\}/);
+        var regexStr = "^";
+        var literalLen = 0;
+        for (var p = 0; p < parts.length; p++) {
+          if (p % 2 === 0) {
+            literalLen += parts[p].length;
+            regexStr += escapeRegex(parts[p]);
+          } else {
+            vars.push(parts[p]);
+            regexStr += "(.+?)";
+          }
+        }
+        regexStr += "$";
+        if (literalLen >= 3) {
+          templateMatchers.push({
+            key: key,
+            re: new RegExp(regexStr),
+            vars: vars,
+            en: en,
+            literalLen: literalLen,
+          });
+        }
+      }
+    });
+    templateMatchers.sort(function (a, b) { return b.literalLen - a.literalLen; });
+  }
+
   function danishResourceKey(core) {
-    if (!resourceByDanish) {
-      resourceByDanish = {};
-      var strings = root.JacobI18nStrings || {};
-      Object.keys(strings).forEach(function (key) {
-        var da = strings[key] && strings[key].da;
-        if (typeof da === "string" && !Object.prototype.hasOwnProperty.call(resourceByDanish, da)) resourceByDanish[da] = key;
-      });
-    }
+    ensureIndexes();
     return resourceByDanish[core] || null;
   }
 
@@ -77,6 +114,23 @@
         ? core.replace(pattern, replacement)
         : core.replace(pattern, replacement);
       return applyNames(next);
+    }
+    ensureIndexes();
+    for (var m = 0; m < templateMatchers.length; m++) {
+      var tm = templateMatchers[m];
+      var match = core.match(tm.re);
+      if (!match) continue;
+      var vars = {};
+      for (var v = 0; v < tm.vars.length; v++) {
+        var captured = match[v + 1];
+        if ((depth || 0) < 1) {
+          var subKey = danishResourceKey(captured);
+          if (subKey && has(subKey)) captured = root.JacobI18nStrings[subKey].en;
+          else if (Object.prototype.hasOwnProperty.call(PHRASES, captured)) captured = PHRASES[captured];
+        }
+        vars[tm.vars[v]] = captured;
+      }
+      return applyNames(fill(tm.en, vars));
     }
     if (depth < 1) {
       var tower = core.match(/^(.+): (\d+) %, ([^.]+)\. ([^.]+)\.(?: (Klik for at øve|Log ind for at øve)\.)?$/);
@@ -226,11 +280,16 @@
         if (skipped(node)) continue;
         var attrKey = node.getAttribute("data-i18n-" + name);
         if (!has(attrKey)) continue;
-        var value = t(attrKey);
+        var value = t(attrKey, argsFrom(node));
         if (value == null || node.getAttribute(name) === value) continue;
         node.setAttribute(name, value);
       }
     });
+    var answerInput = scope.querySelector ? scope.querySelector("#answer") : null;
+    if (answerInput && (answerInput.value === "Kan ikke beregnes" || answerInput.value === "Cannot be calculated")) {
+      var undefLabel = t("exercise_undefined_answer") || (lang() === "en" ? "Cannot be calculated" : "Kan ikke beregnes");
+      if (answerInput.value !== undefLabel) answerInput.value = undefLabel;
+    }
   }
 
   var scheduled = false;
@@ -291,7 +350,7 @@
         semanticKeys: Object.keys(root.JacobI18nStrings || {}),
         legacyPhrases: Object.keys(PHRASES).length,
         legacyPatterns: PATTERNS.length,
-        legacyIsNotSemantic: true,
+        legacyIsNotSemantic: Object.keys(PHRASES).length > 0,
       };
     },
   };

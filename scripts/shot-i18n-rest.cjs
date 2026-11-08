@@ -3,10 +3,51 @@
    Delete and remove dialogs are dismissed, so nothing is removed. */
 const fs = require("node:fs");
 const path = require("node:path");
-const puppeteer = require("/tmp/node_modules/puppeteer-core");
+function loadPuppeteer() {
+  const candidates = [
+    process.env.PUPPETEER_MODULE,
+    "/tmp/node_modules/puppeteer-core",
+    "/tmp/jm-shot/node_modules/puppeteer-core",
+    "puppeteer-core",
+    "puppeteer",
+    "C:\\Users\\jacob\\AppData\\Local\\npm-cache\\_npx\\eb04a49c817a2f9c\\node_modules\\puppeteer-core"
+  ].filter(Boolean);
+  for (const mod of candidates) {
+    try { return require(mod); } catch (_) {}
+  }
+  throw new Error("Could not load puppeteer-core");
+}
+function findChrome() {
+  const candidates = [
+    process.env.CHROME_BIN,
+    "/opt/google/chrome/chrome",
+    "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+    "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+    "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe"
+  ].filter(Boolean);
+  for (const bin of candidates) {
+    if (fs.existsSync(bin)) return bin;
+  }
+  return "/opt/google/chrome/chrome";
+}
+function launchOpts() {
+  const opts = {
+    executablePath: findChrome(),
+    headless: "new",
+    args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"]
+  };
+  if (process.env.JM_USER_DATA_DIR) {
+    const dir = path.join(process.env.JM_USER_DATA_DIR, "prof-" + Date.now() + "-" + Math.random().toString(36).slice(2));
+    fs.mkdirSync(dir, { recursive: true });
+    opts.userDataDir = dir;
+  }
+  return opts;
+}
+const puppeteer = loadPuppeteer();
 
 const BASE = process.env.JM_BASE || "http://127.0.0.1:8765";
-const OUT = "/opt/cursor/artifacts";
+const OUT = process.env.JM_OUT || "/opt/cursor/artifacts";
 const LABEL = "FIXTURE-NOT-REAL-ACCOUNT";
 const TEACHER_ID = "c8b8e1c4-3264-40e9-a43d-0eb6214a0183";
 const STUDENT_GATE_ID = "3af639de-b0e0-496a-a5b7-b732e49d1fa7";
@@ -129,11 +170,7 @@ async function waitText(page, pattern, timeout = 8000) {
 
 (async () => {
   fs.mkdirSync(OUT, { recursive: true });
-  const browser = await puppeteer.launch({
-    executablePath: "/opt/google/chrome/chrome",
-    headless: "new",
-    args: ["--no-sandbox", "--disable-dev-shm-usage"],
-  });
+  const browser = await puppeteer.launch(launchOpts());
   const report = { label: LABEL, realAccount: false, productionWrites: false, surfaces: [], limitations: [] };
   const failures = [];
 
@@ -397,11 +434,14 @@ async function waitText(page, pattern, timeout = 8000) {
   }, target);
   await waitText(teacher, /frozen/i);
   await mark(teacher, "battleship wrong");
-  await teacher.waitForFunction(deg => {
-    const el = document.querySelector(`[data-deg="${deg}"]`);
-    return el && !el.disabled;
-  }, {}, target);
-  await teacher.evaluate(deg => document.querySelector(`[data-deg="${deg}"]`).click(), target);
+  await teacher.waitForFunction(() => {
+    const tiles = [...document.querySelectorAll("[data-ag-tile]")];
+    return tiles.length > 0 && tiles.some(el => !el.disabled);
+  });
+  await teacher.evaluate(() => {
+    const currentTarget = document.querySelector(".ag-target strong")?.textContent.replace("°", "").trim();
+    document.querySelector(`[data-deg="${currentTarget}"]`)?.click();
+  });
   await waitText(teacher, /sank a ship|Hit!/i);
   await mark(teacher, "battleship hit");
   await clickSel(teacher, '[data-ag="exit"]');
