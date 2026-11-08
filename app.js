@@ -322,7 +322,7 @@
         return pick(rules)();
       },
       calculate: (a, operation, b) => operation === "×" ? a * b : b === 0 ? "undefined" : a / b,
-      evaluate: (answer, task) => task.answerType === "undefined" ? answer === "Kan ikke beregnes" : Number(answer) === task.answer,
+      evaluate: (answer, task) => task.answerType === "undefined" ? (answer === "Kan ikke beregnes" || answer === "Cannot be calculated") : Number(answer) === task.answer,
     },
     multiplication: {
       generate(level, user) {
@@ -1454,7 +1454,7 @@ multiplicationColumn: {
     const stats = availableTopics.map(topic => ({ topic, ...getStats(state.user, topic) }));
     const total = practiceResults(state.user).length;
     const guestCopy = isGuest() ? `<p class="guest-session-note">Din træning er midlertidig og slettes, når du forlader siden.</p>` : "";
-    app.innerHTML = `${header()}<div class="page student-home-layout">${renderMathTower(availableTopics)}<div class="student-home-content"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p>Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section>${renderPracticeLeaderboardCard()}${homeGameLinks()}<h2 class="section-label">Vælg et område</h2>${renderTopicTower(availableTopics)}<h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div></div>`;
+    app.innerHTML = `${header()}<div class="page student-home-layout">${renderMathTower(availableTopics)}<div class="student-home-content"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p data-i18n-key="home_prompt">Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section>${renderPracticeLeaderboardCard()}${homeGameLinks()}<h2 class="section-label">Vælg et område</h2>${renderTopicTower(availableTopics)}<h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div></div>`;
     if (usingCentralDatabase && !isGuest()) void refreshPracticeLeaderboard({ prompt:true });
   }
   function renderStudentPassword() { syncTrackedExercise();
@@ -2214,10 +2214,10 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     const subtractionDigitPreview = task.topic === "subtractionDrill" ? `<div class="subtraction-answer-positions" aria-label="Svar opdelt i tier og ener">${subtractionAnswerPrefix ? `<span class="subtraction-fixed-digit"><strong>${subtractionAnswerPrefix}</strong><small>udfyldt</small></span>` : ""}<span class="subtraction-input-digit"><strong id="subtraction-ones-preview">?</strong><small>skriv her</small></span></div>` : "";
     const answerSection = `<form class="answer-area ${task.topic === "subtractionDrill" ? "subtraction-drill-answer-area" : ""}" id="answer-form">
           ${subtractionModeToggle}
-          <label class="${task.topic === "subtractionDrill" ? "subtraction-answer-label" : "sr-only"}" for="answer">${task.topic === "subtractionDrill" ? "SKRIV ÉNEREN" : subtractionAnswerPrefix ? `Tiercifret ${subtractionAnswerPrefix} er udfyldt. Skriv enercifret.` : "Dit svar"}</label>
+          <label class="${task.topic === "subtractionDrill" ? "subtraction-answer-label" : "sr-only"}" for="answer"${task.topic !== "subtractionDrill" && !subtractionAnswerPrefix ? ' data-i18n-key="exercise_answer_label"' : ""}>${task.topic === "subtractionDrill" ? "SKRIV ÉNEREN" : subtractionAnswerPrefix ? `Tiercifret ${subtractionAnswerPrefix} er udfyldt. Skriv enercifret.` : "Dit svar"}</label>
           ${subtractionDigitPreview}
-          <input class="answer-input ${task.topic === "subtractionDrill" ? "sr-only" : ""} ${subtractionAnswerPrefix ? "subtraction-prefilled-answer" : ""}" id="answer" name="answer" inputmode="none" autocomplete="off" value="${subtractionAnswerPrefix}" data-fixed-prefix="${subtractionAnswerPrefix}" placeholder="Dit svar" readonly>
-          <div class="keypad ${task.topic === "subtractionDrill" ? "subtraction-drill-keypad" : ""}" aria-label="Taltastatur">
+          <input class="answer-input ${task.topic === "subtractionDrill" ? "sr-only" : ""} ${subtractionAnswerPrefix ? "subtraction-prefilled-answer" : ""}" id="answer" name="answer" inputmode="none" autocomplete="off" value="${subtractionAnswerPrefix}" data-fixed-prefix="${subtractionAnswerPrefix}" placeholder="Dit svar" data-i18n-placeholder="exercise_answer_placeholder" readonly>
+          <div class="keypad ${task.topic === "subtractionDrill" ? "subtraction-drill-keypad" : ""}" aria-label="Taltastatur" data-i18n-aria-label="exercise_keypad">
             ${keypadNumbers.map(number => `<button class="key" type="button" data-key="${number}">${number}</button>`).join("")}
             ${signedKey}
             <button class="key utility" type="button" data-key="delete">Slet</button>
@@ -2230,8 +2230,8 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     const pairParts = task.topic === "multiplication" ? task.expression.split(" × ") : task.topic === "addition" ? task.expression.split(" + ") : [];
     const correctionOperator = task.topic === "addition" ? "+" : "×";
     const correctionSection = ["multiplication", "addition"].includes(task.topic) && pairParts.length === 2
-      ? `<section class="correction-area" role="alert"><p>Det korrekte svar er</p><button class="correction-wheel${task.topic === "multiplication" ? " correction-pizza" : ""}" type="button" data-action="continue-after-correction" aria-label="${escapeHtml(pairParts[0])} ${task.topic === "multiplication" ? "gange" : "plus"} ${escapeHtml(pairParts[1])} er ${escapeHtml(shownAnswer)}. Tryk for næste opgave"><strong>${escapeHtml(shownAnswer)}</strong><span class="correction-pair"><span>${escapeHtml(pairParts[0])}</span><i class="correction-operator" aria-hidden="true">${correctionOperator}</i><span>${escapeHtml(pairParts[1])}</span></span></button><small>Tryk på svaret for næste opgave</small></section>`
-      : `<section class="correction-area" role="alert"><p>Det korrekte svar er</p><button class="correction-answer" type="button" data-action="continue-after-correction">${escapeHtml(shownAnswer)}</button><small>Tryk på svaret for næste opgave</small></section>`;
+      ? `<section class="correction-area" role="alert"><p data-i18n-key="exercise_feedback_correct_is">Det korrekte svar er</p><button class="correction-wheel${task.topic === "multiplication" ? " correction-pizza" : ""}" type="button" data-action="continue-after-correction" aria-label="${escapeHtml(pairParts[0])} ${task.topic === "multiplication" ? "gange" : "plus"} ${escapeHtml(pairParts[1])} er ${escapeHtml(shownAnswer)}. Tryk for næste opgave"><strong>${escapeHtml(shownAnswer)}</strong><span class="correction-pair"><span>${escapeHtml(pairParts[0])}</span><i class="correction-operator" aria-hidden="true">${correctionOperator}</i><span>${escapeHtml(pairParts[1])}</span></span></button><small data-i18n-key="exercise_feedback_tap_next">Tryk på svaret for næste opgave</small></section>`
+      : `<section class="correction-area" role="alert"><p data-i18n-key="exercise_feedback_correct_is">Det korrekte svar er</p><button class="correction-answer" type="button" data-action="continue-after-correction">${escapeHtml(shownAnswer)}</button><small data-i18n-key="exercise_feedback_tap_next">Tryk på svaret for næste opgave</small></section>`;
     const taskVisual = task.topic === "numbers"
       ? task.countingMode === "hands"
         ? renderCountingHands(task.count)
@@ -2270,14 +2270,16 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       ? `<div class="subtraction-drill-stage"><strong>Niveau ${subtractionStageIndex + 1} af 3</strong><span>${escapeHtml(subtractionStage.name)}</span>${subtractionStageProgress ? `<small>${subtractionStageProgress.learned}/${subtractionStageProgress.total} lært</small>` : ""}</div>`
       : "";
 
+    const hintIsDefault = !task.hint;
+    const hintText = task.hint || "Skriv dit svar nedenfor.";
     app.innerHTML = `${header()}<div class="page exercise-page">
-      <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button>${exerciseLeaderboardLink(task.topic)}${subtractionTroubleAction}<span class="topic-tag">${TOPICS[task.topic].name}${state.subtractionDrillTroubles ? " · drillere" : ""}</span></div>
+      <div class="exercise-head"><button class="btn secondary" data-action="home" data-i18n-key="exercise_back">← Vælg emne</button>${exerciseLeaderboardLink(task.topic)}${subtractionTroubleAction}<span class="topic-tag">${TOPICS[task.topic].name}${state.subtractionDrillTroubles ? " · drillere" : ""}</span></div>
       ${task.topic === "multiplication" ? '<aside class="guided-multiplication-callout"><div><strong>Gangestykker trin for trin</strong><span>Prøv en opstilling med delprodukter og mente.</span></div><button class="btn secondary" type="button" data-topic="multiplicationColumn">Åbn gangeøvelsen →</button></aside>' : ""}
       <section class="question-card">
-        <div class="question-top"><span class="question-number">Opgave ${state.questionNumber}</span>${subtractionStageBadge}<div class="question-main ${attemptHistory ? "with-history" : ""}">${taskVisual}${attemptHistory}</div><p class="hint">${escapeHtml(task.hint || "Skriv dit svar nedenfor.")}</p></div>
+        <div class="question-top"><span class="question-number" data-i18n-key="exercise_question_n" data-i18n-arg-n="${state.questionNumber}">Opgave ${state.questionNumber}</span>${subtractionStageBadge}<div class="question-main ${attemptHistory ? "with-history" : ""}">${taskVisual}${attemptHistory}</div><p class="hint"${hintIsDefault ? ' data-i18n-key="exercise_hint_type_below"' : ""}>${escapeHtml(hintText)}</p></div>
         ${state.answered ? correctionSection : answerSection}
       </section>
-      <div class="progress-row" aria-label="Svar i denne runde">${Array.from({length:10},(_,i)=>`<i class="progress-dot ${cycleAnswers[i] === true ? "correct" : cycleAnswers[i] === false ? "wrong" : ""}"></i>`).join("")}</div>
+      <div class="progress-row" aria-label="Svar i denne runde" data-i18n-aria-label="exercise_round_label">${Array.from({length:10},(_,i)=>`<i class="progress-dot ${cycleAnswers[i] === true ? "correct" : cycleAnswers[i] === false ? "wrong" : ""}"></i>`).join("")}</div>
       ${additionHeatmap}
       ${subtractionHeatmap}
       ${luigiPlayground}
@@ -2864,7 +2866,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
   async function submitAnswer(form) {
     if (state.answered) return;
     const raw = new FormData(form).get("answer").trim().replace(",", ".");
-    const isUndefinedAnswer = raw === "Kan ikke beregnes";
+    const isUndefinedAnswer = raw === "Kan ikke beregnes" || raw === "Cannot be calculated";
     if (raw === "" || (!isUndefinedAnswer && !Number.isFinite(Number(raw)))) { document.getElementById("answer-error").textContent = "Vælg eller skriv et svar først."; return; }
     const measuredTime = Math.max(.1, (Date.now() - state.taskStartedAt) / 1000);
     const responseTime = measuredTime;
@@ -2920,15 +2922,17 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       return submitAnswer(form);
     }
     const fixedPrefix=input.dataset.fixedPrefix || "";
-    if (key === "undefined") input.value = "Kan ikke beregnes";
+    const undefLabel = window.JacobI18n?.t("exercise_undefined_answer") || "Kan ikke beregnes";
+    const isUndef = input.value === "Kan ikke beregnes" || input.value === "Cannot be calculated";
+    if (key === "undefined") input.value = undefLabel;
     else if (key === "delete") {
       if (fixedPrefix) input.value = fixedPrefix;
-      else input.value = input.value === "Kan ikke beregnes" ? "" : input.value.slice(0, -1);
+      else input.value = isUndef ? "" : input.value.slice(0, -1);
     }
-    else if (key === "minus") input.value = input.value === "Kan ikke beregnes" ? "-" : input.value.startsWith("-") ? input.value.slice(1) : `-${input.value}`;
+    else if (key === "minus") input.value = isUndef ? "-" : input.value.startsWith("-") ? input.value.slice(1) : `-${input.value}`;
     else if (key === "10" && state.task.topic === "numbers") input.value = "10";
     else if (/^\d$/.test(key) && fixedPrefix) input.value = fixedPrefix + key;
-    else if (/^\d$/.test(key) && input.value.replace("-", "").length < 8) input.value = input.value === "Kan ikke beregnes" ? key : input.value + key;
+    else if (/^\d$/.test(key) && input.value.replace("-", "").length < 8) input.value = isUndef ? key : input.value + key;
 
     document.getElementById("answer-error").textContent = "";
     const cellAnswer=document.getElementById("matrix-drill-cell-answer"), axisAnswer=document.getElementById("matrix-drill-axis-answer"), drillPreview=document.getElementById("matrix-drill-answer-preview"), subtractionOnesPreview=document.getElementById("subtraction-ones-preview");

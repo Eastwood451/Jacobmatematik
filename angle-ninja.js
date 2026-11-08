@@ -672,8 +672,9 @@
         ctx.textAlign = "center";
         ctx.strokeStyle = "#1a0f28";
         ctx.lineWidth = 4;
-        ctx.strokeText(pop.text, pop.x, pop.y);
-        ctx.fillText(pop.text, pop.x, pop.y);
+        const popLabel = window.JacobI18n && JacobI18n.lang() === "en" ? JacobI18n.translate(pop.text) : pop.text;
+        ctx.strokeText(popLabel, pop.x, pop.y);
+        ctx.fillText(popLabel, pop.x, pop.y);
       }
       ctx.globalAlpha = 1;
     }
