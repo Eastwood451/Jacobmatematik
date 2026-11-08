@@ -153,7 +153,7 @@
     },
     "fraction-runner": {
       css: ["brok-loeb.css?v=20261105-runner1"],
-      js: ["brok-loeb-core.js?v=20261105-runner1", "brok-loeb.js?v=20261105-runner1"],
+      js: ["brok-loeb-core.js?v=20261105-runner1", "brok-loeb.js?v=20261108-skakbrikker1"],
       ready: () => !!window.JacobBrokLoeb && !!window.JacobBrokLoebCore,
     },
     "dennis-audio": {

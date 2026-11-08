@@ -1,6 +1,7 @@
 /* Brøk-løb – Øbbe Øvdig løber (Subway Surfers-stil). Canvas 2D pseudo-3D, ingen eksterne biblioteker.
-   Forhindringer: brandhaner, mursten, bannere, hvidhajer, kæmpe-appelsiner – og Erling, Gunnar, Else og Kejser Dummo,
-   der spærrer vejen med et brøkspørgsmål i slowmotion. */
+   Forhindringer: brandhaner, mursten, bannere, kæmpe-appelsiner og de dumme skakbrikker
+   (Surling-bønder, Erling, Broder Brok, Gunnar, Else og Kejser Dummo).
+   Erling, Gunnar, Else og Kejser Dummo spærrer også vejen med et brøkspørgsmål i slowmotion. */
 (() => {
   "use strict";
 
@@ -22,6 +23,17 @@
     dummo: { src: "dummo.webp", name: "Kejser Dummo", h: 2.05, line: "NEJ! 2 + 2 = 5!" },
   };
   const CHAR_ORDER = ["erling", "gunnar", "else", "dummo"];
+  // De dumme (sorte) brikker fra skakspillet. Samme navne og originalkunst som skak.js.
+  // Hoppets top er 8.2²/(2·24) ≈ 1,40, så højderne ligger over et hop: typen "tall" matcher det, man ser.
+  const PIECE_ART = "assets/figurer/skak/";
+  const EVIL_PIECES = Object.freeze([
+    { id: "p", file: "b-p.webp", name: "Surling", role: "bonde", h: 1.72 },
+    { id: "n", file: "b-n.webp", name: "Erling Ærgerlig", role: "springer", h: 1.78 },
+    { id: "b", file: "b-b.webp", name: "Broder Brok", role: "løber", h: 1.88 },
+    { id: "r", file: "b-r.webp", name: "Gunnar Giderik", role: "tårn", h: 1.76 },
+    { id: "q", file: "b-q.webp", name: "Eksamens-Else", role: "dronning", h: 1.84 },
+    { id: "k", file: "b-k.webp", name: "Kejser Dummo", role: "konge", h: 1.96 },
+  ]);
 
   const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -49,6 +61,34 @@
     const c = document.createElement("canvas");
     c.width = w; c.height = h;
     return c;
+  }
+
+  // Klip gennemsigtig kant af originalkunsten, så perspektiv og hitbox følger selve brikken.
+  function trimSprite(image) {
+    const width = image.naturalWidth || image.width;
+    const height = image.naturalHeight || image.height;
+    if (!width || !height) return null;
+    const src = makeCanvas(width, height);
+    const sx = src.getContext("2d", { willReadFrequently: true });
+    sx.drawImage(image, 0, 0);
+    const data = sx.getImageData(0, 0, width, height).data;
+    let minX = width, minY = height, maxX = -1, maxY = -1;
+    for (let y = 0; y < height; y++) {
+      const row = y * width * 4;
+      for (let x = 0; x < width; x++) {
+        if (data[row + x * 4 + 3] > 8) {
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+    }
+    if (maxX < 0) return null;
+    const w = maxX - minX + 1, h = maxY - minY + 1;
+    const out = makeCanvas(w, h);
+    out.getContext("2d").drawImage(src, minX, minY, w, h, 0, 0, w, h);
+    return out;
   }
 
   // ---------- Procedurale sprites (tegnes én gang) ----------
@@ -91,23 +131,6 @@
     x.restore();
     x.fillStyle = "#fff7e6"; x.beginPath(); x.roundRect(64, 24, 132, 50, 10); x.fill(); x.stroke();
     x.fillStyle = "#1d1630"; x.font = "900 34px system-ui, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("DUK!", 130, 50);
-    return c;
-  }
-  function spriteShark() {
-    const c = makeCanvas(240, 260), x = c.getContext("2d");
-    outlineStyle(x);
-    // pool
-    x.fillStyle = "#43b7e8"; x.beginPath(); x.ellipse(120, 222, 112, 34, 0, 0, Math.PI * 2); x.fill(); x.stroke();
-    // body
-    x.fillStyle = "#9fb2c8";
-    x.beginPath(); x.moveTo(40, 220); x.quadraticCurveTo(50, 90, 120, 60); x.quadraticCurveTo(190, 90, 200, 220); x.closePath(); x.fill(); x.stroke();
-    x.beginPath(); x.moveTo(108, 66); x.lineTo(128, 6); x.lineTo(150, 74); x.closePath(); x.fill(); x.stroke();
-    x.fillStyle = "#f2f5f9"; x.beginPath(); x.moveTo(66, 220); x.quadraticCurveTo(120, 120, 174, 220); x.closePath(); x.fill();
-    // smile
-    x.fillStyle = "#fff"; x.beginPath(); x.moveTo(72, 150); x.quadraticCurveTo(120, 196, 168, 150); x.quadraticCurveTo(120, 170, 72, 150); x.fill(); x.stroke();
-    x.fillStyle = "#1d1630"; x.beginPath(); x.arc(92, 118, 9, 0, Math.PI * 2); x.arc(148, 118, 9, 0, Math.PI * 2); x.fill();
-    x.fillStyle = "#fff"; x.beginPath(); x.arc(95, 115, 3, 0, Math.PI * 2); x.arc(151, 115, 3, 0, Math.PI * 2); x.fill();
-    x.fillStyle = "#ffffffaa"; x.beginPath(); x.ellipse(120, 214, 80, 10, 0, 0, Math.PI * 2); x.fill();
     return c;
   }
   function spriteOrange() {
@@ -270,12 +293,20 @@
 
     // Billeder
     const img = { obbe: null, chars: {} };
+    const pieces = EVIL_PIECES.map((d) => ({ ...d, src: PIECE_ART + d.file, sp: null, aspect: 0.75 }));
+    let pieceBag = [];
     const ready = Promise.all([
       loadImage(ASSET + "obbe-back.webp").then((i) => { img.obbe = i; }),
       ...CHAR_ORDER.map((k) => loadImage(ASSET + CHARS[k].src).then((i) => { img.chars[k] = i; })),
+      ...pieces.map((p) => loadImage(p.src).then((i) => {
+        const sp = i ? trimSprite(i) : null;
+        if (!sp) return;
+        p.sp = sp;
+        p.aspect = sp.width / sp.height;
+      })),
     ]);
     const spr = {
-      hydrant: spriteHydrant(), wall: spriteWall(), bar: spriteBar(), shark: spriteShark(), orange: spriteOrange(), star: spriteStar(),
+      hydrant: spriteHydrant(), wall: spriteWall(), bar: spriteBar(), orange: spriteOrange(), star: spriteStar(),
       houses: [0, 1, 2, 3, 4, 5].map(spriteHouse), school: spriteSchool(), trees: [0, 1].map(spriteTree), lamp: spriteLamp(),
     };
     $("[data-bl-best-start]").textContent = loadBest() ? `Din bedste score: ${loadBest()} point` : "";
@@ -323,6 +354,7 @@
     // ---------- Spiltilstand ----------
     let S = null;
     function newState() {
+      pieceBag = [];
       return {
         mode: "ready", // ready | run | question | feedback | over
         paused: false,
@@ -334,7 +366,7 @@
         deck: C.createDeck(rand), correct: 0, wrong: 0, streak: 0, asked: 0,
         seen: {}, // rule -> {ok, bad}
         question: null, gate: null, qStartedAt: 0, feedbackTimer: 0, charIdx: Math.floor(rand() * CHAR_ORDER.length),
-        frameMs: [],
+        frameMs: [], seenPieces: [],
       };
     }
     S = newState();
@@ -361,11 +393,26 @@
         hydrant: { type: "low", w: 0.8, h: 1.05, sp: spr.hydrant },
         wall: { type: "low", w: 1.2, h: 0.85, sp: spr.wall },
         bar: { type: "high", w: 1.3, h: 2.0, sp: spr.bar },
-        shark: { type: "tall", w: 1.25, h: 1.4, sp: spr.shark },
         orange: { type: "tall", w: 1.25, h: 1.25, sp: spr.orange, roll: 4.5 },
       };
       const d = defs[kind];
       S.obstacles.push({ kind, lane, at, ...d, rot: 0, hit: false, vy: 0, fly: 0 });
+    }
+    function nextEvilPiece() {
+      const ready = pieces.filter((p) => p.sp);
+      if (!ready.length) return null;
+      if (!pieceBag.length) pieceBag = C.shuffle(ready, rand);
+      return pieceBag.pop();
+    }
+    function addEvilPiece(lane, at) {
+      const piece = nextEvilPiece();
+      if (!piece) { addObstacle("wall", lane, at); return null; }
+      const h = piece.h, w = h * piece.aspect;
+      const obstacle = { kind: "piece", pieceId: piece.id, name: piece.name, role: piece.role, lane, at, type: "tall", w, h, sp: piece.sp, rot: 0, hit: false, vy: 0, fly: 0 };
+      S.obstacles.push(obstacle);
+      S.seenPieces.push(piece.id);
+      if (S.seenPieces.length > 240) S.seenPieces.shift();
+      return obstacle;
     }
     function addCoins(lane, at, n, arc = false) {
       for (let i = 0; i < n; i++) {
@@ -384,15 +431,15 @@
         const kind = ["hydrant", "wall"][Math.floor(rand() * 2)];
         addObstacle(kind, lanes[0], at); addCoins(lanes[0], at - 4, 6, true); addCoins(lanes[1], at - 3, 4);
       } else if (r < 0.5) {
-        addObstacle(rand() < 0.5 ? "shark" : "wall", lanes[0], at);
-        addObstacle(rand() < 0.5 ? "hydrant" : "shark", lanes[1], at);
+        if (rand() < 0.5) addEvilPiece(lanes[0], at); else addObstacle("wall", lanes[0], at);
+        if (rand() < 0.5) addObstacle("hydrant", lanes[1], at); else addEvilPiece(lanes[1], at);
         addCoins(lanes[2], at - 5, 6);
       } else if (r < 0.68) {
         addObstacle("bar", lanes[0], at); addCoins(lanes[0], at - 2, 4); if (lv > 1) addObstacle("hydrant", lanes[1], at + 6);
       } else if (r < 0.85) {
         addObstacle("orange", lanes[0], at + 10); addCoins(lanes[1], at, 6);
       } else {
-        addObstacle("shark", lanes[0], at); addObstacle("bar", lanes[1], at + 7); addCoins(lanes[2], at - 2, 8);
+        addEvilPiece(lanes[0], at); addObstacle("bar", lanes[1], at + 7); addCoins(lanes[2], at - 2, 8);
       }
     }
 
@@ -593,6 +640,18 @@
       for (let i = 0; i < n; i++) S.particles.push({ x, y, z, vx: (rand() - 0.5) * 6, vy: rand() * 6 + 2, vz: 2 + rand() * 5, life: 0.9 + rand() * 0.5, c: colors[i % colors.length], s: 0.08 + rand() * 0.08 });
     }
 
+    // Brikker bruger deres synlige halvbredde. Øvrige forhindringer beholder banetjekket på 0,75.
+    function hitsPlayer(o) {
+      const z = o.at - S.dist;
+      if (z >= 0.55 || z <= -0.45) return false;
+      const half = o.kind === "piece" ? clamp(o.w * 0.5, 0.36, 0.68) : 0.75;
+      if (Math.abs(laneX(o.lane) - S.x) >= half) return false;
+      if (S.invuln > 0) return false;
+      if (o.type === "low") return S.y <= 0.75;
+      if (o.type === "high") return !(S.slide > 0 && S.y < 0.3);
+      return true;
+    }
+
     // ---------- Opdatering ----------
     function update(realDt) {
       // Slowmotion udglattes i realtid.
@@ -640,11 +699,8 @@
       for (const o of S.obstacles) {
         if (o.roll && !o.hit) { o.at -= o.roll * dt; o.rot -= dt * 5; }
         if (o.hit) { o.fly += dt; o.vy -= 18 * dt; o.y = (o.y || 0) + o.vy * dt; o.rot += dt * 8; continue; }
-        const z = o.at - S.dist;
-        if (z < 0.55 && z > -0.45 && Math.abs(laneX(o.lane) - px) < 0.75 && S.invuln <= 0) {
-          const clear = o.type === "low" ? S.y > 0.75 : o.type === "high" ? S.slide > 0 && S.y < 0.3 : false;
-          if (!clear) { o.hit = true; o.vy = 6; loseLife(false); if (S.lives <= 0) { gameOver(); return; } }
-        }
+        if (!hitsPlayer(o)) continue;
+        o.hit = true; o.vy = 6; loseLife(false); if (S.lives <= 0) { gameOver(); return; }
       }
       S.obstacles = S.obstacles.filter((o) => o.at - S.dist > -6 && (o.y || 0) > -4);
       // Stjerner
@@ -690,7 +746,7 @@
       ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.lineTo(c.x, c.y); ctx.lineTo(d.x, d.y); ctx.closePath(); ctx.fill();
     }
     function billboard(sp, x, y, z, w, h, opts = {}) {
-      const p = project(x, y, z); if (!p || !sp) return;
+      const p = project(x, y, z); if (!p || !sp || !sp.width) return;
       const pw = w * p.s, ph = h * p.s;
       if (p.x + pw < -50 || p.x - pw > W + 50) return;
       const fade = z > FAR - 18 ? clamp((FAR - z) / 18, 0, 1) : 1;
@@ -903,14 +959,65 @@
       sound.close();
     }
     // Test-krog (bruges af headless tests og preview-siden).
+    function pieceRecord(p) {
+      const ctx2 = p.sp ? p.sp.getContext("2d") : null;
+      let clear = 0, opaque = 0, mid = null;
+      if (ctx2) {
+        const width = p.sp.width, height = p.sp.height;
+        const data = ctx2.getImageData(0, 0, width, height).data;
+        for (let i = 3; i < data.length; i += 4) { if (data[i] < 8) clear++; else if (data[i] > 200) opaque++; }
+        const cx = Math.floor(width / 2), cy = Math.floor(height / 2);
+        mid = Array.from(ctx2.getImageData(cx, cy, 1, 1).data);
+      }
+      return {
+        id: p.id, name: p.name, role: p.role, src: p.src, loaded: !!p.sp,
+        w: p.sp ? p.sp.width : 0, h: p.sp ? p.sp.height : 0,
+        worldH: p.h, worldW: p.sp ? p.h * p.aspect : 0,
+        clear, opaque, mid,
+      };
+    }
     dispose.debug = {
       get state() { return S; },
       start: startRun, act, answer, fps,
       gateSoon() { if (S.gate && !S.gate.smashed) S.gate.at = S.dist + 16; else { S.nextGate = S.dist + 16; spawnGate(S.nextGate); S.nextGate += GATE_EVERY; } },
       setInvulnerable(v) { S.invuln = v ? 1e9 : 0; },
+      pieces: () => pieces.map(pieceRecord),
+      spawnPieces(n = 6, lane = 1, gap = 8) {
+        const ids = [];
+        for (let i = 0; i < n; i++) {
+          const made = addEvilPiece(lane, S.dist + 24 + i * gap);
+          if (made) ids.push(made.pieceId);
+        }
+        return ids;
+      },
+      spawnPatternAt(at) {
+        const prev = S.nextGate;
+        S.nextGate = at + 10000;
+        spawnPattern(at);
+        S.nextGate = prev;
+      },
+      lineup(ahead = 5.6) {
+        const loaded = pieces.filter((p) => p.sp);
+        loaded.forEach((piece, i) => {
+          const h = piece.h, w = h * piece.aspect;
+          const lane = i % 3, row = Math.floor(i / 3);
+          S.obstacles.push({
+            kind: "piece", pieceId: piece.id, name: piece.name, role: piece.role, lane,
+            at: S.dist + ahead + row * 6.4 + lane * 0.4,
+            type: "tall", w, h, sp: piece.sp, rot: 0, hit: false, vy: 0, fly: 0,
+          });
+        });
+        return loaded.map((p) => p.id);
+      },
+      tick(dt = 1 / 60) { if (S.mode !== "over") update(dt); },
+      park() {
+        S.obstacles = []; S.coins = []; S.gate = null; S.paused = false;
+        if (S.mode !== "over") S.mode = "run";
+        S.nextPattern = S.dist + 8000; S.nextGate = S.dist + 8000; S.invuln = 0;
+      },
     };
     return dispose;
   }
 
-  window.JacobBrokLoeb = Object.freeze({ mount, CHARS });
+  window.JacobBrokLoeb = Object.freeze({ mount, CHARS, EVIL_PIECES });
 })();
