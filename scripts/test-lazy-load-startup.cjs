@@ -17,6 +17,8 @@ assert.match(index, /Start gratis træning/);
 const eagerScripts = [...index.matchAll(/<script src="([^"]+)"/g)].map(m => m[1].split('?')[0]);
 const allowed = new Set([
   'lang.js',
+  'i18n-en.js',
+  'i18n.js',
   'analytics.js',
   'install-app.js',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',

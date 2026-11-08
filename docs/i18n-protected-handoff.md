@@ -4,7 +4,7 @@ Dette dokument er **ikke** en patch. Det må ikke køres, og det må ikke flette
 
 Det engelske lag i `i18n.js` springer `.pp-game`, `.cl-module` og `.marley-page` over. Det er et bevidst stop, ikke en oversættelse ad bagvejen. Kortene på forsiden kan være engelske. Indholdet inde i modulerne er stadig dansk.
 
-Checkpoint 8. november 2026. Intet er udgivet.
+Checkpoint 8. november 2026, stadig gældende efter tredje omgang. Intet er udgivet. Begrænsningen er ikke omgået: laget springer `.pp-game` og `.cl-module` over.
 
 ## Rør ikke
 

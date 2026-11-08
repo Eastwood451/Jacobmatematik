@@ -1,56 +1,52 @@
-# Dækning efter anden omgang (8. november 2026)
+# Dækning (8. november 2026, tredje omgang)
 
-Ikke færdigt. Ikke udgivet. Dansk er kilden. Engelsk er laget i `i18n-en.js`.
+Ikke udgivet. Dansk er kilden. Et tal på “0 danske rester” gælder kun den flade, testen navngiver. Det betyder ikke, at hele modulet er kørt igennem.
 
-## Matrix
+Fixture-tests er **ikke** rigtige logins. Supabase er stubbet. Brugerne findes kun i testbrowserens `localStorage`. Profil-id’erne er de id’er, gates allerede tillader. Gates i `app.js` er ikke ændret, og der skrives ikke til den rigtige database.
 
-| Modul | Implementeret | Testet | Mangler |
+## Testede flader
+
+| Flade | Sprog | Resultat | Bevis |
 | --- | --- | --- | --- |
-| Sprogvalg, `/en/`, reload | Ja | Enhedstest + browser | — |
-| Login, gæst, forkert login, cookie | Ja | Browser EN og DA | Malet tekst i login-billedet |
-| Plus-drill | Ja | Browser EN forkert/rigtigt, DA forkert, mobil | — |
-| PEMDAS | Ja | Browser EN forkert svar, DA bliver dansk | — |
-| Gange-drill og lille tabel | Ja | Browser EN, 0 danske rester i scanneren | — |
-| Brøk-lektion (forkert regneart) | Ja | Browser EN, 0 rester | Senere trin (vend, forkort, plus/minus) er i ordbogen, ikke klikket igennem |
-| 10’er-venner | Ja | Browser EN intro, hint og forkert makker, 0 rester | — |
-| Foodtruck | Ja | Browser EN hint og forkert svar, 0 rester. Gæster ser ikke kortet; testen monterede modulet uden at ændre gæste-gaten | — |
-| FPS-kort på login | Ja, kun kortets tekst | Browser: 0 danske rester i kortets tekst | Spillet og stemmerne er ikke oversat |
-| Lærerportal | Faste sætninger og anbefalinger i ordbogen | Ikke i browseren. Der er ikke et lærerkonto-login i testen | Dynamiske sætninger med elevnavn kan stadig have et hul, hvis de ikke matcher et mønster |
-| Skak, vinkler, vinkelspil, brøk-løb | Baseline-tekst i ordbogen | Ikke i browseren. Gaten for Jacobs profiler er uændret, så gæst kan ikke åbne dem | Nye sætninger, som PR #65 og #67 indfører, når de merges |
-| Plus-penalhus og ur | Nej, med vilje | Browser: stadig danske | Codex-handoff |
-| Marley-butik, PR #34 | Nej | Ikke åbnet | Parkeret |
-| Bogstav-ord og lyd | Instruktion kan være engelsk. Ordene er danske | Ikke kørt | Ikke engelsk paritet. Lyden siger det danske ord |
-| Øbbe-tilråb | Tekst oversat | Ikke kørt | MP3 er danske |
-| Erling FPS | Nej | Ikke kørt | Stemmer, “slapper”, bane |
+| Brøk, division: forkert regneart | EN, gæst | 0 rester | `shot-i18n-fixtures.cjs` |
+| Brøk, division: forkert regel | EN, gæst | 0 rester | samme |
+| Brøk, division: forkert vending af brøken | EN, gæst | 0 rester | samme |
+| Brøk, division: forkert gangeregel | EN, gæst | 0 rester | samme |
+| Brøk, division: forkert produkt, derefter 4/6 | EN, gæst | 0 rester | samme |
+| Brøk, division: forkort-trinnet og et forkert “den er fin” | EN, gæst | 0 rester | `en-fraction-simplify.png` |
+| Plus, minus og gange som brøk-tilstand | — | Ikke klikket | Samme motor og mange fælles sætninger, men ikke denne kørsel |
+| Lærerportal, forsiden med én fixture-elev | EN, lokal fixture | 0 rester | `en-teacher-fixture.png`. Ikke en rigtig lærerkonto |
+| Skak-menu | EN, fixture-lærer | 0 rester | `en-skak-fixture.png` |
+| Skak, ét forkert svar mod computeren | EN, fixture | 0 rester | `en-skak-wrong-fixture.png`. Ikke et helt parti, ikke online |
+| Vinkel-hub og lektionens første skærm | EN, fixture | 0 rester | `en-angles-hub-fixture.png`, `en-angles-lesson-fixture.png`. De fem spil er ikke spillet |
+| Brøk-løb, startkort | EN, fixture-elev med gate-id | 0 rester | `en-runner-fixture.png`. Ingen bane og intet brøkspørgsmål |
+| Fixture-elev, reload | EN | `jm-lang` bliver `en` | ikke et rigtigt login |
+| Fixture-elev, hjem efter `jm-lang=da` | DA | ingen engelsk “What do you want to practise” | `da-fixture-home.png` |
+| Plus-drill, PEMDAS, 10’er-venner, foodtruck, gange-drill | EN/DA som i forrige omgang | se `shot-i18n.cjs` og `shot-i18n-coverage.cjs` | gæst, ikke fixture |
+| Plus-penalhus og ur | EN-app | bliver danske | produktiongates urørt |
 
-## Indbrændt billede
+## Ordbog uden kørsel
 
-Der findes kun `assets/figurer/jacobmatematik-cinematic-world-v1.webp`. Ingen engelsk tvilling. Alt-teksten oversættes. Pixlerne (titlen, skiltene, “SKOLE”) kan ikke oversættes uden et nyt billede. Et CSS-lag ovenpå ville dække maleriet. Billedet står derfor uændret.
+PR #65’s kommende sætning “Vælg vinkel, tryk Gå – hjælp Dennis til pizzaen.” ligger i ordbogen nu. PR #65 er ikke merget.
 
-## Lyd, ærligt
+## Lyd og ord, ikke færdig engelsk
 
-- Luigis generator er stadig `it-IT-DiegoNeural`. Den fil er ikke ændret.
-- `Jeg slapper din matematik-eksamen!` er uændret.
-- Bogstaverne `abe`, `bæver`, `løve`, `næsehorn`, `ræv`, `sæl`, `æsel`, `økse`, `ål` og de andre danske ord er ikke oversat, fordi lydfilen siger det ord.
-- Øbbes og Erlings MP3-filer er danske. Engelsk tekst på skærmen er ikke den samme oplevelse som engelsk tale.
+Kan oversættes på skærmen uden at lyden lyver: instruktioner, knapper, fejl og resultater, når der ikke afspilles en dansk optagelse af netop den sætning.
 
-## Åbne PR’er, konkrete
+Kan ikke kaldes engelsk paritet:
 
-Ordbogen rører ikke `skak.js`, `angles.js`, `angle-dennis.js`, `app.js` eller `brok-loeb.js`. Derfor er der ingen git-konflikt med PR #64 i skak-filerne, og baseline-teksten kan oversættes alligevel.
+- Bogstavøvelsens ord (`abe`, `bæver`, `løve`, `næsehorn`, `ræv`, `sæl`, `æsel`, `økse`, `ål` og resten). Lydfilen siger det danske ord. De er undtaget i fixture-scanneren.
+- Øbbes MP3-tilråb. Boblen kan være engelsk. Lyden er dansk.
+- Erling FPS, inklusive den bevidste “Jeg slapper din matematik-eksamen!”.
+- Luigis talestrimmel. Generatoren er stadig `it-IT-DiegoNeural` og er ikke ændret.
+- Ur og Plus-penalhus, inklusive deres danske lyd. Se `docs/i18n-protected-handoff.md`.
 
-- PR #64 ændrer animation i skak. Ingen af de oversatte sætninger står som slettet tekst. Ingen blokering for den nuværende baseline.
-- PR #65 sletter Dennis-instruktionen “Giv ordrer: drej og gå – så finder Dennis fisken.” og sandbox-linjen om at dreje og gå. Den nye tekst er “Vælg vinkel, tryk Gå – hjælp Dennis til pizzaen.” Når #65 merges, er den nye sætning ikke i ordbogen, før nogen tilføjer den. PR #65 ændrer også `app.js`. Denne gren ændrer ikke `app.js`, så der er ingen konflikt i den fil.
-- PR #67 fjerner “Luk cirklen: bøj, så den passer i rillen.” fra ét sted og beholder “Bøj piberenseren”. Efter merge mangler den fjernede sætning bare, den blokerer ikke baseline.
-- PR #69 ændrer `index.html` (samme fil som sprog-scriptet) og `app.js`. Den konkrete git-konflikt er script-linjerne i `index.html`, hvis begge grene merges. Den blokerer ikke oversættelsen af den nuværende tekst.
+## Billede
 
-## Test i denne omgang
+`assets/figurer/jacobmatematik-cinematic-world-v1.webp` er det eneste login-maleri. Alt-teksten oversættes. Den malede titel, skiltene og “SKOLE” gør ikke. Der genereres ikke et nyt billede.
 
-- `node scripts/test-i18n.cjs`
-- `node scripts/shot-i18n.cjs` (EN/DA plus, reload, login-fejl, penalhus, ur)
-- `node scripts/shot-i18n-coverage.cjs` (brøk, 10’er-venner, foodtruck, PEMDAS, gange-drill, lille tabel, FPS-kort, dansk PEMDAS)
+## Rest, groft
 
-## Hvad der stadig er tilbage
+Ubeskyttet rest, hvis de uklikkede flader ligner dem, vi lige lukkede: brøk plus/minus/gange, ét brøkspørgsmål i løbet, de fem vinkelspil i spil, et skak-køb og lærerportalens dialoger (slet klasse, opret elev). Det er omkring **4–8 timers** videre test og ordbogsrettelser. Usikkerheden er, om de flader har mange nye sætninger. Det er ikke et løfte om en dato.
 
-Ubeskyttet, mindre end denne omgang: en lærerkonto i browseren, de brøk-trin der ikke blev klikket, og de sætninger PR #65 tilføjer når den merges. Plus ét nyt login-billede, hvis den malede tekst skal væk.
-
-Beskyttet, separat: hele ur-kurset i `clock.js`, `clock-core.js` og `clock-course.js`, plus hele `plus-penalhus.js` og deres danske lyd. Listen står i `docs/i18n-protected-handoff.md`. Det kan ikke gøres på denne gren.
+Beskyttet rest, først når begrænsningen løftes: ur-kurset i tre filer og Plus-penalhus, plus nye lydoptagelser. Ud fra handoff-listen er det omkring **8–16 timers** ejerarbejde, adskilt fra ordbogen. Denne gren kan ikke gøre det.

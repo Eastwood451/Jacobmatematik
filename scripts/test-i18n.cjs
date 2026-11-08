@@ -64,6 +64,7 @@ assert.equal(t("7 gange 8 er 56, forkert på 6.2 sekunder"), "7 times 8 is 56, w
 assert.equal(t("4 + 5"), "4 + 5");
 assert.equal(t("Jeg slapper din matematik-eksamen!"), "Jeg slapper din matematik-eksamen!");
 assert.equal(t("Må vi måle besøg?"), "May we measure visits?");
+assert.equal(t("Vælg vinkel, tryk Gå – hjælp Dennis til pizzaen."), "Choose an angle, press Go – help Dennis reach the pizza.");
 
 const luigi = fs.readFileSync(path.join(root, "scripts/generate_luigi_audio.py"), "utf8");
 assert.match(luigi, /it-IT-DiegoNeural/);
