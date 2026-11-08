@@ -123,7 +123,7 @@
     },
     angles: {
       css: ["angles.css?v=20261105-angles2", "angle-games.css?v=20261105-angles2"],
-      js: ["angles-core.js?v=20261105-angles2", "angles.js?v=20261105-angles2"],
+      js: ["angles-core.js?v=20261105-angles2", "angles.js?v=20261108-i18n2"],
       ready: () => !!window.JacobAngles && !!window.JacobAnglesCore,
     },
     "angle-battleship": {
@@ -138,7 +138,7 @@
     },
     "angle-ninja": {
       css: ["angles.css?v=20261105-angles2", "angle-games.css?v=20261105-angles2"],
-      js: ["angles-core.js?v=20261105-angles2", "angle-ninja.js?v=20261105-angles2"],
+      js: ["angles-core.js?v=20261105-angles2", "angle-ninja.js?v=20261108-i18n2"],
       ready: () => !!window.JacobAngleNinja && !!window.JacobAnglesCore,
     },
     "angle-words": {
@@ -153,7 +153,7 @@
     },
     "fraction-runner": {
       css: ["brok-loeb.css?v=20261105-runner1"],
-      js: ["brok-loeb-core.js?v=20261105-runner1", "brok-loeb.js?v=20261105-runner1"],
+      js: ["brok-loeb-core.js?v=20261105-runner1", "brok-loeb.js?v=20261108-i18n2"],
       ready: () => !!window.JacobBrokLoeb && !!window.JacobBrokLoebCore,
     },
     "dennis-audio": {

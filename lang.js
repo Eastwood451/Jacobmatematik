@@ -128,10 +128,10 @@
       var code = a.getAttribute("data-set-lang");
       var path = root.location.pathname || "/";
       var onApp = path === "/" || path === "/index.html";
-      if (a.tagName === "BUTTON" || onApp) ev.preventDefault();
+      var inAppSwitch = a.closest ? Boolean(a.closest(".jm-lang-switch, [data-jm-lang-switch]")) : false;
+      if (a.tagName === "BUTTON" || onApp || inAppSwitch) ev.preventDefault();
       set(code);
     }, true);
   }
-  if (root.document.readyState === "loading") root.document.addEventListener("DOMContentLoaded", wireSwitcher);
-  else wireSwitcher();
+  wireSwitcher();
 })(typeof window !== "undefined" ? window : globalThis);
