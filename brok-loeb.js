@@ -152,7 +152,8 @@
     x.fillStyle = "#fff"; x.beginPath(); x.arc(150, 44, 20, 0, Math.PI * 2); x.fill(); x.stroke();
     x.beginPath(); x.moveTo(150, 44); x.lineTo(150, 30); x.moveTo(150, 44); x.lineTo(160, 48); x.stroke();
     x.fillStyle = "#fff7e6"; x.fillRect(70, 84, 160, 34); x.strokeRect(70, 84, 160, 34);
-    x.fillStyle = "#4032ba"; x.font = "900 26px system-ui, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText("SKOLE", 150, 102);
+    const schoolLabel = window.JacobI18n && JacobI18n.has("runner_canvas_school") ? JacobI18n.t("runner_canvas_school") : "SKOLE";
+    x.fillStyle = "#4032ba"; x.font = "900 26px system-ui, sans-serif"; x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(schoolLabel, 150, 102);
     x.fillStyle = "#cfe6ff";
     for (let r = 0; r < 2; r++) for (let k = 0; k < 4; k++) { x.fillRect(28 + k * 66, 136 + r * 66, 44, 44); x.strokeRect(28 + k * 66, 136 + r * 66, 44, 44); }
     return c;
@@ -278,6 +279,15 @@
       hydrant: spriteHydrant(), wall: spriteWall(), bar: spriteBar(), shark: spriteShark(), orange: spriteOrange(), star: spriteStar(),
       houses: [0, 1, 2, 3, 4, 5].map(spriteHouse), school: spriteSchool(), trees: [0, 1].map(spriteTree), lamp: spriteLamp(),
     };
+    function schoolWord() {
+      return window.JacobI18n && JacobI18n.has("runner_canvas_school") ? JacobI18n.t("runner_canvas_school") : "SKOLE";
+    }
+    function refreshSchoolSprite() {
+      spr.school = spriteSchool();
+      canvas.dataset.i18nSchool = schoolWord();
+    }
+    canvas.dataset.i18nSchool = schoolWord();
+    document.addEventListener("jm-langchange", refreshSchoolSprite);
     $("[data-bl-best-start]").textContent = loadBest() ? `Din bedste score: ${loadBest()} point` : "";
 
     // ---------- Størrelse ----------
@@ -322,6 +332,9 @@
 
     // ---------- Spiltilstand ----------
     let S = null;
+    canvas.__jmRunState = function () {
+      return S ? { mode: S.mode, dist: S.dist, score: Math.floor(S.score), lives: S.lives } : { mode: "boot", dist: 0, score: 0, lives: 0 };
+    };
     function newState() {
       return {
         mode: "ready", // ready | run | question | feedback | over
@@ -894,6 +907,7 @@
     function dispose() {
       if (disposed) return;
       disposed = true;
+      document.removeEventListener("jm-langchange", refreshSchoolSprite);
       cancelAnimationFrame(raf);
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("resize", resize);

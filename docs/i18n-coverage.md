@@ -1,4 +1,28 @@
-# Dækning (8. november 2026, tredje omgang)
+# Dækning (8. november 2026)
+
+## Semantiske nøgler, testet midtpunkt
+
+Appen har én HTML-indgang, `index.html`. Begge sprog ligger i ét objekt, `JacobI18nStrings` i `i18n-strings.js`, med formen `nøgle.da` / `nøgle.en`. Skiftet er `JacobLang.set` i `lang.js`. Klik på DA|EN kalder det og sender `jm-langchange`. `JacobI18n.refresh` i `i18n.js` skriver kun teksten om. Det kalder ikke modulernes `mount` og skifter ikke side.
+
+Nøglerne der faktisk er bundet med `data-i18n-key` eller `data-i18n-*` er: `home_prompt`, `exercise_back`, `exercise_hint_type_below`, `exercise_question_n`, `exercise_feedback_correct_is`, `exercise_feedback_tap_next`, `exercise_answer_label`, `exercise_answer_placeholder`, `exercise_keypad`, `exercise_round_label`, `angles_battleship_tap`, `angles_dennis_marker`, `runner_canvas_school`. `angles_battleship_frozen` og `angles_battleship_hit` ligger i objektet og bruges, når den danske sætning matcher nøjagtigt. De er ikke sat på hvert dynamisk skak- eller vinkelelement.
+
+`i18n-en.js` er den gamle opslagsliste fra danske kildesætninger. Den er ikke semantiske nøgler. `JacobI18n.coverage()` siger det med `legacyIsNotSemantic`. Et nøjagtigt dansk match mod objektet hentes derfra, så de flyttede sætninger ikke findes to steder.
+
+`scripts/test-i18n-switch.cjs` har kørt dette: hjemmeskiftet begge veje uden ny navigation, et åbent plusstykke beholder udtryk, tallet 7, opgavenummer og derefter det viste rigtige svar, når feedback skifter sprog begge veje. Placeholder og tastatur-etiket følger med. Brøk-løbets canvas-ord skifter mellem SKOLE og SCHOOL, mens løbet bliver i `run` og distancen ikke nulstilles. Dennis’ SVG-tekst læses fra objektet, og brættet bliver stående. Det er fixture, ikke en rigtig konto.
+
+## Ikke med i «alle tekster»
+
+Urørt kilde: `plus-penalhus.js`, `clock.js`, `clock-core.js`, `clock-course.js`, `marley.js`, `marley-pet.js`. Overlayet springer `.pp-game`, `.cl-module` og `.marley-page` over, så de bliver danske i den engelske app.
+
+Stadig uden for nøglerne: bogstavordenes danske lyd, Øbbes MP3, Erlings linje «Jeg slapper din matematik-eksamen!», Luigis `it-IT-DiegoNeural`, login-billedets malede tekst, og de øvrige canvastegninger. `/en/` er statiske SEO-sider med egne links ind i appen via `/?lang=en`. De er ikke en anden app og ikke slettet.
+
+## Tidligere flader
+
+Ikke udgivet. Dansk er kilden. Et tal på “0 danske rester” gælder kun den flade, testen navngiver. Det betyder ikke, at hele modulet er kørt igennem.
+
+Fixture-tests er **ikke** rigtige logins. Supabase er stubbet. Brugerne findes kun i testbrowserens `localStorage`. Profil-id’erne er de id’er, gates allerede tillader. Gates i `app.js` er ikke ændret, og der skrives ikke til den rigtige database.
+
+## Testede flader
 
 Ikke udgivet. Dansk er kilden. Et tal på “0 danske rester” gælder kun den flade, testen navngiver. Det betyder ikke, at hele modulet er kørt igennem.
 
@@ -47,6 +71,6 @@ Kan ikke kaldes engelsk paritet:
 
 ## Rest, groft
 
-Ubeskyttet rest, hvis de uklikkede flader ligner dem, vi lige lukkede: brøk plus/minus/gange, ét brøkspørgsmål i løbet, de fem vinkelspil i spil, et skak-køb og lærerportalens dialoger (slet klasse, opret elev). Det er omkring **4–8 timers** videre test og ordbogsrettelser. Usikkerheden er, om de flader har mange nye sætninger. Det er ikke et løfte om en dato.
+Ubeskyttet rest efter nøglemidtpunktet: de fleste sætninger ligger stadig i den gamle opslagsliste, og `scripts/shot-i18n-rest.cjs` er ikke grøn (slagskibets rigtige tryk blev afbrudt af computerens timer). Brøk plus/minus/gange til resultat, løbets spørgsmål, de fem vinkelspil og skak med simuleret makker er derfor ikke færdige semantiske nøgler. At flytte de viste sætninger over i objektet og køre de flows færdige er omkring **4–6 timers** videre arbejde. Usikkerheden er nye sætninger i de flows. Det er ikke en dato.
 
 Beskyttet rest, først når begrænsningen løftes: ur-kurset i tre filer og Plus-penalhus, plus nye lydoptagelser. Ud fra handoff-listen er det omkring **8–16 timers** ejerarbejde, adskilt fra ordbogen. Denne gren kan ikke gøre det.

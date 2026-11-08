@@ -17,6 +17,7 @@ assert.match(index, /Start gratis træning/);
 const eagerScripts = [...index.matchAll(/<script src="([^"]+)"/g)].map(m => m[1].split('?')[0]);
 const allowed = new Set([
   'lang.js',
+  'i18n-strings.js',
   'i18n-en.js',
   'i18n.js',
   'analytics.js',

@@ -153,7 +153,7 @@
           <!-- blindfold -->
           <rect x="-22" y="-6" width="44" height="11" rx="3" fill="#301946" opacity=".92"/>
           <rect x="-22" y="-3" width="44" height="4" fill="#5b4bda"/>
-          <text x="0" y="34" text-anchor="middle" font-size="9" font-weight="800" fill="#01579b" font-family="system-ui">Dennis</text>
+          <text data-i18n-key="angles_dennis_marker" x="0" y="34" text-anchor="middle" font-size="9" font-weight="800" fill="#01579b" font-family="system-ui">${window.JacobI18n && JacobI18n.has("angles_dennis_marker") ? JacobI18n.t("angles_dennis_marker") : "Dennis"}</text>
         </g>`;
     }
 

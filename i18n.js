@@ -15,6 +15,7 @@
     ["Matematik-Marley", "Maths Marley"],
     ["Erling", "Isaac Isuck"],
     ["Øbbe", "Paul"],
+    ["Kejser Dummo", "Emperor Dummy"],
     ["Gæst", "Guest"],
   ];
   var SKIP = ".pp-game, .cl-module, .marley-page, [data-i18n-skip]";
@@ -30,8 +31,43 @@
     return next;
   }
 
+  var resourceByDanish = null;
+  function danishResourceKey(core) {
+    if (!resourceByDanish) {
+      resourceByDanish = {};
+      var strings = root.JacobI18nStrings || {};
+      Object.keys(strings).forEach(function (key) {
+        var da = strings[key] && strings[key].da;
+        if (typeof da === "string" && !Object.prototype.hasOwnProperty.call(resourceByDanish, da)) resourceByDanish[da] = key;
+      });
+    }
+    return resourceByDanish[core] || null;
+  }
+
+  function fill(template, vars) {
+    return String(template).replace(/\{(\w+)\}/g, function (_, name) {
+      return vars && Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : "{" + name + "}";
+    });
+  }
+
+  function has(key) {
+    var entry = (root.JacobI18nStrings || {})[key];
+    return Boolean(entry && typeof entry.da === "string" && typeof entry.en === "string");
+  }
+
+  function t(key, vars) {
+    var entry = (root.JacobI18nStrings || {})[key];
+    if (!entry) return null;
+    var text = entry[lang()];
+    if (typeof text !== "string") text = entry.da;
+    if (typeof text !== "string") return null;
+    return vars ? fill(text, vars) : text;
+  }
+
   function translateCore(core, depth) {
     if (!core) return core;
+    var fromObject = danishResourceKey(core);
+    if (fromObject && has(fromObject)) return applyNames(root.JacobI18nStrings[fromObject].en);
     if (Object.prototype.hasOwnProperty.call(PHRASES, core)) return applyNames(PHRASES[core]);
     for (var i = 0; i < PATTERNS.length; i++) {
       var pattern = PATTERNS[i][0];
@@ -85,6 +121,7 @@
       if (textOriginal.has(node)) node.nodeValue = textOriginal.get(node);
       return;
     }
+    if (parent.closest && parent.closest("[data-i18n-key]")) return;
     var original = textOriginal.has(node) ? textOriginal.get(node) : node.nodeValue;
     var next = lang() === "en" ? translate(original) : original;
     if (next !== node.nodeValue) {
@@ -105,6 +142,7 @@
     var store = attrOriginal.get(el) || {};
     ATTRS.forEach(function (name) {
       if (!el.hasAttribute(name)) return;
+      if (el.hasAttribute("data-i18n-" + name) && has(el.getAttribute("data-i18n-" + name))) return;
       var original = Object.prototype.hasOwnProperty.call(store, name) ? store[name] : el.getAttribute(name);
       var next = lang() === "en" ? translate(original) : original;
       if (next !== el.getAttribute(name)) {
@@ -160,13 +198,54 @@
     });
   }
 
+  function argsFrom(el) {
+    var vars = {};
+    for (var i = 0; i < el.attributes.length; i++) {
+      var name = el.attributes[i].name;
+      if (name.indexOf("data-i18n-arg-") === 0) vars[name.slice(14)] = el.attributes[i].value;
+    }
+    return vars;
+  }
+
+  function applyKeyed(scope) {
+    if (!scope || !scope.querySelectorAll) return;
+    var keyed = scope.querySelectorAll("[data-i18n-key]");
+    for (var i = 0; i < keyed.length; i++) {
+      var el = keyed[i];
+      if (skipped(el)) continue;
+      var key = el.getAttribute("data-i18n-key");
+      if (!has(key) || (el.children && el.children.length)) continue;
+      var next = t(key, argsFrom(el));
+      if (next == null || el.textContent === next) continue;
+      el.textContent = next;
+    }
+    ATTRS.forEach(function (name) {
+      var marked = scope.querySelectorAll("[data-i18n-" + name + "]");
+      for (var j = 0; j < marked.length; j++) {
+        var node = marked[j];
+        if (skipped(node)) continue;
+        var attrKey = node.getAttribute("data-i18n-" + name);
+        if (!has(attrKey)) continue;
+        var value = t(attrKey);
+        if (value == null || node.getAttribute(name) === value) continue;
+        node.setAttribute(name, value);
+      }
+    });
+  }
+
   var scheduled = false;
   function apply(target) {
     if (!root.document || !textOriginal) return;
     var rootEl = target && target.nodeType ? target : root.document.body;
     if (!rootEl) return;
+    applyKeyed(rootEl);
     walk(rootEl);
     ensureSwitcher();
+  }
+
+  function switchLang(code) {
+    if (!root.JacobLang || typeof root.JacobLang.set !== "function") return null;
+    return root.JacobLang.set(code);
   }
 
   function schedule() {
@@ -197,16 +276,43 @@
   }
 
   root.JacobI18n = {
+    strings: function () { return root.JacobI18nStrings || {}; },
+    t: t,
+    has: has,
     translate: translate,
     apply: apply,
+    refresh: apply,
+    switchLang: switchLang,
     scan: scan,
     lang: lang,
     skipSelector: SKIP,
+    coverage: function () {
+      return {
+        semanticKeys: Object.keys(root.JacobI18nStrings || {}),
+        legacyPhrases: Object.keys(PHRASES).length,
+        legacyPatterns: PATTERNS.length,
+        legacyIsNotSemantic: true,
+      };
+    },
   };
 
   if (!root.document || !root.document.documentElement) return;
 
+  function wrapDialog(name) {
+    var native = root[name];
+    if (typeof native !== "function" || native.__jmI18n) return;
+    var wrapped = function (message) {
+      var text = message;
+      try { if (lang() === "en") text = translate(message); } catch (e) { text = message; }
+      return native.call(root, text);
+    };
+    wrapped.__jmI18n = true;
+    root[name] = wrapped;
+  }
+
   function start() {
+    wrapDialog("confirm");
+    wrapDialog("alert");
     apply();
     if (typeof MutationObserver !== "function") return;
     var observer = new MutationObserver(function () { schedule(); });
