@@ -1,0 +1,20 @@
+/* In-app language switch. Marketing pages keep their own switcher. */
+.jm-app-lang {
+  display: inline-flex;
+  gap: .15rem;
+  align-items: center;
+  margin-right: .35rem;
+  font: 800 12px/1 system-ui, sans-serif;
+  letter-spacing: .04em;
+}
+.jm-app-lang button {
+  background: transparent;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  padding: .2rem .28rem;
+  font: inherit;
+}
+.jm-app-lang button[aria-pressed="true"] { text-decoration: underline; }
+.login-panel .jm-app-lang { display: flex; justify-content: flex-end; margin: 0 0 .6rem; }
+html.jm-lang-en.jm-has-session #app > .seo-landing::after { content: "Loading your practice…"; }
