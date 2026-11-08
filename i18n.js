@@ -43,11 +43,11 @@
       return applyNames(next);
     }
     if (depth < 1) {
-      var tower = core.match(/^(.+): (\d+) %, (.+)\. (.+)\. (Klik for at øve|Log ind for at øve)\.$/);
+      var tower = core.match(/^(.+): (\d+) %, ([^.]+)\. ([^.]+)\.(?: (Klik for at øve|Log ind for at øve)\.)?$/);
       if (tower) {
         var topics = tower[4].split(" og ").map(function (part) { return translateCore(part, 1); }).join(" and ");
-        var action = tower[5] === "Klik for at øve" ? "Click to practise." : "Log in to practise.";
-        return translateCore(tower[1], 1) + ": " + tower[2] + "%, " + translateCore(tower[3], 1) + ". " + topics + ". " + action;
+        var action = tower[5] === "Klik for at øve" ? " Click to practise." : tower[5] ? " Log in to practise." : "";
+        return translateCore(tower[1], 1) + ": " + tower[2] + "%, " + translateCore(tower[3], 1) + ". " + topics + "." + action;
       }
     }
     return applyNames(core);
