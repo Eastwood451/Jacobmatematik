@@ -208,7 +208,7 @@
           ${fleetHtml(playerShips, youLabel, "you", lastSinkSide === "you")}
           <div class="ag-target-wrap">
             <div class="ag-round">Runde ${Math.min(round + 1, 5)} · trin ${inc}°</div>
-            <div class="ag-target" aria-live="assertive">Tryk på <strong>${target}°</strong></div>
+            <div class="ag-target" aria-live="assertive"><span data-i18n-key="angles_battleship_tap">${window.JacobI18n && JacobI18n.has("angles_battleship_tap") ? JacobI18n.t("angles_battleship_tap") : "Tryk på"}</span> <strong>${target}°</strong></div>
             <p class="ag-msg" role="status">${lastMsg}${frozen ? " (frosset)" : ""}</p>
           </div>
           ${fleetHtml(foeShips, foeLabel, "foe", lastSinkSide === "foe")}

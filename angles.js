@@ -284,7 +284,8 @@
       ctx.fillStyle = "#301946";
       ctx.font = "800 18px system-ui";
       ctx.textAlign = "center";
-      ctx.fillText(`Rille: ${grooveDeg}°`, w / 2, 28);
+      const grooveLabel = window.JacobI18n && JacobI18n.has("angles_canvas_groove") ? JacobI18n.t("angles_canvas_groove", { deg: grooveDeg }) : `Rille: ${grooveDeg}°`;
+      ctx.fillText(grooveLabel, w / 2, 28);
     }
 
     function drawIntroFrame(ctx, w, h) {
@@ -301,7 +302,8 @@
           ctx.fillStyle = "#6d5c7e";
           ctx.font = "700 15px system-ui";
           ctx.textAlign = "center";
-          ctx.fillText("Piberenser → rille", w / 2, h - 18);
+          const pipeLabel = window.JacobI18n && JacobI18n.has("angles_canvas_pipe_to_groove") ? JacobI18n.t("angles_canvas_pipe_to_groove") : "Piberenser → rille";
+          ctx.fillText(pipeLabel, w / 2, h - 18);
         }
         return;
       }
@@ -649,7 +651,16 @@
       }
     }
 
+    function onLangChange() {
+      if (disposed) return;
+      const canvas = stage.querySelector("[data-ang-canvas]");
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      if (screen === 1) drawIntroFrame(ctx, canvas.width, canvas.height);
+      else if (screen === 4) drawPipeScene(ctx, canvas.width, canvas.height, pipeAngle, core.PIPE_TARGET, false);
+    }
     root.addEventListener("click", onClick);
+    document.addEventListener("jm-langchange", onLangChange);
     renderIntro();
 
     return function dispose() {
@@ -658,6 +669,7 @@
       stopAudio();
       unbindDrag?.();
       root.removeEventListener("click", onClick);
+      document.removeEventListener("jm-langchange", onLangChange);
       root.innerHTML = "";
     };
   }

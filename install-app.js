@@ -24,7 +24,7 @@
       dialog.setAttribute('aria-labelledby', 'install-app-title');
       const apple = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
       const samsung = /SamsungBrowser/.test(navigator.userAgent);
-      dialog.innerHTML = `<h2 id="install-app-title">Installer Jacobmatematik</h2><p>Få Jacobmatematik som en app på din hjemmeskærm.</p>${apple
+      dialog.innerHTML = `<h2 id="install-app-title" data-i18n-key="install_dialog_heading">Installer Jacobmatematik</h2><p data-i18n-key="install_dialog_sub">Få Jacobmatematik som en app på din hjemmeskærm.</p>${apple
         ? '<ol><li>Tryk på browserens <strong>Del</strong>-knap (firkanten med en pil op).</li><li>Vælg <strong>Føj til hjemmeskærm</strong>. Tryk eventuelt på <strong>Mere</strong> først.</li><li>Slå <strong>Åbn som webapp</strong> til, hvis valget vises, og tryk <strong>Tilføj</strong>.</li></ol><p>Kan du ikke finde valget? Åbn jacobmatematik.dk i Safari og følg trinnene.</p>'
         : samsung
           ? '<ol><li>Åbn browserens menu <strong>☰</strong>.</li><li>Vælg <strong>Føj side til → Startskærm</strong> eller <strong>Installer app</strong>.</li><li>Bekræft installationen.</li></ol>'
