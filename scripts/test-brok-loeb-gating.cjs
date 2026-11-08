@@ -1,7 +1,10 @@
 /* Brøk-løb er åbent for alle, der kan spille de andre spil, når RUNNER_PUBLIC er true.
    Gæster følger gameModuleEnabled (som skak): de kan spille, men hjemmebanner-rækken er skjult.
    Skak-banneret følger canPlaySkak, når SKAK_BANNER_PUBLIC er true.
-   Begge flag kan sættes til false igen. Statiske tjek + headless chromium med falske brugere. */
+   Begge flag kan sættes til false igen.
+   Browserdelen er en STUB-TEST: profiler sættes ind i hukommelsen. Der er intet Supabase-login
+   og dermed ingen rigtig kontotest. Skak-bannerets første klik bruger en stub-mount, så tracking
+   kan tælles; til sidst loades de rigtige skak-scripts, og både Brøk-løb og Skak åbnes. */
 const assert = require("node:assert/strict"); const fs = require("node:fs"); const vm = require("node:vm");
 const app = fs.readFileSync("app.js", "utf8");
 const enabled = app.match(/const gameModuleEnabled = [^\n]+/)[0];
@@ -210,6 +213,38 @@ const css = ["styles.css", "cinematic-theme.css", "brok-loeb.css"].map((p) => fs
     await page.evaluate(() => { window.__t.state.view = "fraction-runner"; window.__t.render(); });
     await page.waitForTimeout(80);
     assert.equal(await page.locator("#brok-loeb-root").count(), 0, "admin: tvunget view omgår ikke gaten");
+    // Rigtige modul-scripts. Brugerne er stadig indsat i hukommelsen — ikke et login.
+    await page.addStyleTag({ content: fs.readFileSync("skak.css", "utf8") });
+    await page.addScriptTag({ content: fs.readFileSync("skak-chess-lib.js", "utf8") });
+    await page.addScriptTag({ content: fs.readFileSync("skak-core.js", "utf8") });
+    await page.addScriptTag({ content: fs.readFileSync("skak.js", "utf8") });
+    assert.equal(await page.evaluate(() => typeof window.JacobSkak.mount), "function", "rigtig skak-mount er loadet");
+    for (const [id, role, label] of [
+      ["ordinary-student", "student", "almindelig elev uden allowlist"],
+      ["3af639de-b0e0-496a-a5b7-b732e49d1fa7", "student", "allowlist-elev"],
+      ["ordinary-teacher", "teacher", "almindelig lærer"],
+      ["c8b8e1c4-3264-40e9-a43d-0eb6214a0183", "teacher", "allowlist-lærer"],
+    ]) {
+      await user(id, role);
+      await page.evaluate(() => { window.__t.state.view = "student"; window.__t.render(); });
+      assert.equal(await page.locator(".runner-banner").count(), 1, `${label} ser Brøk-løb-banneret`);
+      assert.equal(await page.locator(".skak-banner").count(), 1, `${label} ser Skak-banneret`);
+      if (role === "student" && id === "ordinary-student") assert.equal(await page.locator(".angles-card").count(), 0, "vinkler er ikke åbnet for almindelige elever");
+      await page.locator(".runner-banner").click();
+      await page.locator("#brok-loeb-root [data-bl-start]").waitFor();
+      await page.locator("[data-bl-ready]").waitFor();
+      if (id === "ordinary-teacher") await page.screenshot({ path: OUT + "/laerer-brok-loeb-start.png" });
+      await page.locator("[data-bl-start] [data-bl-exit]").click();
+      assert.equal(await page.locator("#brok-loeb-root").count(), 0, `${label} forlader Brøk-løb`);
+      await page.evaluate(() => { window.__t.state.view = "student"; window.__t.render(); });
+      await page.locator(".skak-banner").click();
+      await page.locator("#skak-root [data-act='start-cpu']").waitFor();
+      assert.match(await page.locator("#skak-root").innerText(), /Start kamp/, `${label} er inde i rigtig skak-menu`);
+      if (id === "ordinary-student") await page.screenshot({ path: OUT + "/elev-skak-start.png" });
+      if (id === "c8b8e1c4-3264-40e9-a43d-0eb6214a0183") await page.screenshot({ path: OUT + "/allowlist-laerer-skak-start.png" });
+      await page.locator("#skak-root [data-act='exit']").click();
+      assert.equal(await page.locator("#skak-root").count(), 0, `${label} forlader Skak`);
+    }
     await page.evaluate(() => { window.__t.state.user = null; window.__t.render(); });
     assert.equal(await page.locator(".home-game-links").count(), 0, "ikke logget ind ser ingen spil-bannere");
     assert.equal(await page.locator('[data-action="fraction-runner"]').count(), 0, "ikke logget ind kan ikke starte Brøk-løb");
