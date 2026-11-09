@@ -512,7 +512,9 @@ multiplicationColumn: {
   const usingCentralDatabase = Boolean(backend?.configured);
 
   // Practice access and Jacob's teacher preview are independent of authorization roles.
-  const isFractionTester = () => state.user?.id === "c8b8e1c4-3264-40e9-a43d-0eb6214a0183" && state.user.role === "teacher";
+  const isJacobProfile = () => state.user?.id === "c8b8e1c4-3264-40e9-a43d-0eb6214a0183" && state.user.role === "teacher";
+  const isStudentView = () => isJacobProfile() && Boolean(window.JacobStudentView?.active());
+  const isFractionTester = () => isJacobProfile() && !isStudentView();
   const gameModuleEnabled = user => Boolean(user?.id && ["student","teacher","guest"].includes(user.role));
   const canLearnFractions = () => gameModuleEnabled(state.user);
   let jacobFrontend = false;
@@ -727,7 +729,7 @@ multiplicationColumn: {
   // Vinkler: samme gating som skak/klokken (student/teacher/guest). Ligger under Andre genveje.
   // Beta: Vinkler er kun synlig for Jacobs profiler (som Skak i #50). Andre elever, lærere, gæster og ikke-loggede ser intet; ?start=angles falder tilbage til normal start.
   const ANGLES_PROFILE_IDS = new Set(["c8b8e1c4-3264-40e9-a43d-0eb6214a0183", "3af639de-b0e0-496a-a5b7-b732e49d1fa7"]);
-  const canLearnAngles = () => Boolean(state.user?.id && ANGLES_PROFILE_IDS.has(state.user.id) && ["teacher","student"].includes(state.user.role));
+  const canLearnAngles = () => !isStudentView() && Boolean(state.user?.id && ANGLES_PROFILE_IDS.has(state.user.id) && ["teacher","student"].includes(state.user.role));
   let disposeAngles = null;
   function leaveAngles() { disposeAngles?.(); disposeAngles = null; state.anglesStart = null; }
   async function renderAngles() { syncTrackedExercise();
@@ -769,7 +771,7 @@ multiplicationColumn: {
   // Brøk-løb (Subway Surfers-agtigt brøkløb med Øbbe). RUNNER_PUBLIC åbner det for alle, der kan spille de andre spil (elev, lærer og gæst). Sæt flaget til false for at lukke det til Jacobs profiler igen. ?start=runner klikker [data-action=fraction-runner] (banneret står først, kortet har samme action).
   const RUNNER_PROFILE_IDS = new Set(["c8b8e1c4-3264-40e9-a43d-0eb6214a0183", "3af639de-b0e0-496a-a5b7-b732e49d1fa7"]);
   const RUNNER_PUBLIC = true;
-  const canPlayRunner = () => RUNNER_PUBLIC ? gameModuleEnabled(state.user) : Boolean(state.user?.id && RUNNER_PROFILE_IDS.has(state.user.id) && ["teacher","student"].includes(state.user.role));
+  const canPlayRunner = () => RUNNER_PUBLIC ? gameModuleEnabled(state.user) : !isStudentView() && Boolean(state.user?.id && RUNNER_PROFILE_IDS.has(state.user.id) && ["teacher","student"].includes(state.user.role));
   // Skak-banneret vises for alle, der kan spille skak. Sæt flaget til false for kun at vise det sammen med Brøk-løb.
   const SKAK_BANNER_PUBLIC = true;
   const canSeeSkakBanner = () => SKAK_BANNER_PUBLIC ? canPlaySkak() : canPlayRunner();
@@ -811,6 +813,7 @@ multiplicationColumn: {
   }
   const appendCurrentPracticeResult = async result => {
     if (isGuest()) return null; // Guest sessions are memory-only and must never reach Supabase.
+    if (isStudentView()) { window.JacobStudentView.save(); return null; }
     if (isFractionTester()) return null; // Teacher preview is session-only; never impersonate a student.
     const remoteId=await backend.appendResult(state.user.id, result);
     if (!isLocalStudent() && result?.correct === true && TOPICS[result?.topic]) {
@@ -824,7 +827,7 @@ multiplicationColumn: {
   async function renderFractionLesson() { syncTrackedExercise();
     leaveFractionLesson();
     if (!canLearnFractions()) { state.view = state.user?.role === "teacher" ? "teacher" : "student"; render(); return; }
-    jacobFrontend = isFractionTester();
+    jacobFrontend = isFractionTester() || isStudentView();
     app.innerHTML = `${header()}<div id="fraction-lesson-root"><p class="seo-loading" data-module-loading>Indlæser...</p></div>`;
     try {
       if (!(await ensureModule("learn-fractions", "learn-fractions"))) return;
@@ -857,9 +860,11 @@ multiplicationColumn: {
     app.innerHTML = `${header()}<div class="page sandbox-page"><section class="sandbox-head"><div><span class="eyebrow">Udvikling</span><h1>Sandbox</h1><p>Her prøver du moduler, før de udgives til eleverne.</p></div><button type="button" class="btn secondary" data-action="home">← Tilbage</button></section><section class="sandbox-grid" aria-label="Moduler under udvikling">${isFractionTester() ? `<button type="button" class="sandbox-card" data-action="marley"><span class="sandbox-icon" aria-hidden="true">🐶</span><span class="sandbox-tag">Under udvikling</span><strong>Marleys butik</strong><span>Regn, tjen mønter, og klæd Marley på.</span></button>` : ""}${canPlaySkak() ? `<button type="button" class="sandbox-card" data-action="skak"><span class="sandbox-icon" aria-hidden="true">♞</span><span class="sandbox-tag">Beta</span><strong>Skak</strong><span>Spil mod computeren eller test online med en kampkode.</span></button>` : ""}${canLearnAngles() ? `<button type="button" class="sandbox-card" data-action="angles"><span class="sandbox-icon" aria-hidden="true">∠</span><span class="sandbox-tag">Beta</span><strong>Vinkler</strong><span>Lektion og hub for alle vinkelspil.</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="battleship"><span class="sandbox-icon" aria-hidden="true">🚢</span><span class="sandbox-tag">Spil</span><strong>Vinkel-slagskibe</strong><span>Tryk hurtigt på den rigtige vinkel og sænk skibe.</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="dennis"><span class="sandbox-icon" aria-hidden="true">🐧</span><span class="sandbox-tag">Spil</span><strong>Dennis med bind for øjnene</strong><span>Drej og gå – find fisken på kortet.</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="ninja"><span class="sandbox-icon" aria-hidden="true">🥷</span><span class="sandbox-tag">Spil</span><strong>Villy Vinkelninja</strong><span>Fruit Ninja-snit: swipe den rigtige vinkel.</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="words"><span class="sandbox-icon" aria-hidden="true">📝</span><span class="sandbox-tag">Spil</span><strong>Vinkel-ord</strong><span>Spids, ret, stump eller lige?</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="stop"><span class="sandbox-icon" aria-hidden="true">🎯</span><span class="sandbox-tag">Spil</span><strong>Ram vinklen</strong><span>Stop den åbnende vinkel tættest på målet.</span></button>` : ""}${isFractionTester() ? `<a class="sandbox-card" href="marley-3d-preview.html"><span class="sandbox-icon" aria-hidden="true">🐾</span><span class="sandbox-tag">Grafikprøve</span><strong>Marley i 3D</strong><span>Separat prøve af modellen og bevægelserne.</span></a>` : ""}</section></div>`;
   }
   function jacobViewButton() {
+    if (isStudentView()) return "";
+    const studentButton = isJacobProfile() ? '<button type="button" class="btn secondary" data-action="student-view" data-i18n-key="student_view_enter">Se som elev</button>' : "";
     const sandboxLink=canUseSandbox() ? `<button type="button" class="btn secondary sandbox-link" data-action="sandbox" aria-current="${state.view === "sandbox" ? "page" : "false"}">Sandbox</button>` : "";
     if (!isFractionTester()) return sandboxLink;
-    return `${sandboxLink}<button type="button" class="jacob-view-switch" data-action="toggle-jacob-view" role="switch" aria-checked="${jacobFrontend}" aria-label="Front-end" title="Skift mellem front-end og back-end"><span class="jacob-view-option ${jacobFrontend ? "active" : ""}">Front-end</span><span class="jacob-view-option ${!jacobFrontend ? "active" : ""}">Back-end</span></button>`;
+    return `${studentButton}${sandboxLink}<button type="button" class="jacob-view-switch" data-action="toggle-jacob-view" role="switch" aria-checked="${jacobFrontend}" aria-label="Front-end" title="Skift mellem front-end og back-end"><span class="jacob-view-option ${jacobFrontend ? "active" : ""}">Front-end</span><span class="jacob-view-option ${!jacobFrontend ? "active" : ""}">Back-end</span></button>`;
   }
   function fractionPilotCard() {
     return canLearnFractions() ? `<button type="button" class="topic-card fraction-pilot-card" data-action="learn-fractions"><span class="topic-icon">½ : ¾</span><strong>Lær brøkregning</strong><small>Find regnearten, og vælg den rigtige regneregel.</small></button>` : "";
@@ -887,6 +892,7 @@ multiplicationColumn: {
   let teacherResultsSignature = "";
   let teacherResultsCursor = null;
   const save = () => {
+    if (isStudentView()) { window.JacobStudentView.save(); return Promise.resolve(); }
     if (isGuest()) return Promise.resolve(); // Guest progress disappears when the session ends.
     if (!usingCentralDatabase) { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); return Promise.resolve(); }
     if (state.user?.role !== "teacher") return Promise.resolve();
@@ -1008,7 +1014,8 @@ multiplicationColumn: {
   }
   function header() {
     document.body.classList.add("site-authenticated");
-    const userLabel = isFractionTester() && jacobFrontend ? "Jacob · Front-end" : state.user.role === "teacher" ? "Lærer" : isGuest() ? "Gæst" : `${escapeHtml(state.user.name)} · Elev`;
+    window.JacobStudentView?.bind(state.user, () => document.dispatchEvent(new CustomEvent("jm-exit-student-view")));
+    const userLabel = isStudentView() ? escapeHtml(state.user.name) : isFractionTester() && jacobFrontend ? "Jacob · Front-end" : state.user.role === "teacher" ? "Lærer" : isGuest() ? "Gæst" : `${escapeHtml(state.user.name)} · Elev`;
     const passwordButton = state.user.role === "student" ? `<button class="btn ghost" data-action="change-password">Skift adgangskode</button>` : "";
     return `<header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions"><button type="button" class="btn secondary" data-install-app>Installer som app</button><span class="user-pill">${userLabel}</span>${passwordButton}${jacobViewButton()}<button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
   }
@@ -1086,6 +1093,7 @@ multiplicationColumn: {
   }
   function renderLogin() { syncTrackedExercise();
     document.body.classList.remove("site-authenticated");
+    window.JacobStudentView?.bind(null);
     leaveMarleyAddition(); leavePlusPenalhus(); leaveTenFriends(); leaveFractionLesson(); jacobFrontend=false;
     leaveFoodtruck();
     const registrationEnabled = backend?.selfRegistrationEnabled === true;
@@ -1307,8 +1315,8 @@ multiplicationColumn: {
       document.body.insertAdjacentHTML("beforeend", `<div class="leaderboard-dialog-backdrop" id="exercise-leaderboard-dialog"><section class="leaderboard-dialog exercise-leaderboard-dialog" role="dialog" aria-modal="true"><button type="button" class="exercise-leaderboard-close" data-action="close-exercise-leaderboard" aria-label="Luk leaderboard">×</button><div class="leaderboard-dialog-medal">🏆</div><h2>Leaderboard</h2><p>Leaderboardet kræver forbindelse til databasen.</p></section></div>`);
       return;
     }
-    const teacherPreview=state.user?.role === "teacher" && jacobFrontend;
-    const studentView=state.user?.role === "student";
+    const teacherPreview=state.user?.role === "teacher" && jacobFrontend && !isStudentView();
+    const studentView=state.user?.role === "student" || isStudentView();
     if (!teacherPreview && !studentView) return;
     closeExerciseLeaderboard();
     const title=TOPICS[topic].name;
@@ -3461,7 +3469,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     }
   }
 
-  function renderTeacher() { syncTrackedExercise();
+  function renderTeacher() { if (isStudentView()) { state.view="student"; renderStudentHome(); return; } syncTrackedExercise();
     const classes = db.classes || [];
     const unassignedStudents = db.users.filter(user => user.role === "student" && user.classId == null);
     const showUnassigned = Boolean(state.user?.canManageRegistrations || unassignedStudents.length);
@@ -3610,6 +3618,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
 
   document.addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (isStudentView() && ["registration-search-form", "student-profile-form", "class-form", "class-rename-form", "student-form"].includes(event.target.id)) return;
     if (event.target.id === "local-consent-form") {
       if (!isLocalStudent() || new FormData(event.target).get("localConsent") !== "on") return;
       try { backend.grantLocalConsent(); state.user.results = backend.readLocalProgress().results; render(); }
@@ -3772,6 +3781,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       return;
     }
     const subtractionKeyButton=event.target.closest("[data-subtraction-key]"), borrowTenButton=event.target.closest("[data-borrow-ten]"), lollipopKeyButton=event.target.closest("[data-lollipop-key]"), pullDigitButton=event.target.closest("[data-pull-digit]"), additionKeyButton=event.target.closest("[data-addition-key]"), additionTokenButton=event.target.closest("[data-addition-token]"), additionDropButton=event.target.closest("[data-addition-drop]"), multiplicationSourceButton=event.target.closest("[data-multiply-source]"), multiplicationTargetButton=event.target.closest("[data-multiply-target]"), keyButton=event.target.closest("[data-key]"), luigiButton=event.target.closest("[data-luigi-surprise]"), luigiAudioButton=event.target.closest("[data-luigi-audio]"), erlingButton=event.target.closest("[data-erling-audio]"), kaptajnButton=event.target.closest("[data-kaptajn-audio]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), subtractionModeButton=event.target.closest("[data-subtraction-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
+    if (isStudentView() && (studentButton || classButton || tableAllButton || numberAllButton || letterAllButton || addendAllButton || reportTopicButton || ["open-registration-profile", "toggle-registrations", "refresh-registrations", "previous-registrations", "next-registrations", "close-topic-detail", "toggle-class-rename-form", "delete-class", "reset-topic-progress", "toggle-student-form", "remove-student", "reset-demo"].includes(actionButton?.dataset.action))) return;
     if (subtractionKeyButton) { await handleBorrowingSubtractionKey(subtractionKeyButton.dataset.subtractionKey); return; }
     if (borrowTenButton && event.detail === 0) { completeBorrowingSubtractionBorrow(); return; }
     if (lollipopKeyButton) { handleDivisionLollipopKey(lollipopKeyButton.dataset.lollipopKey); return; }
@@ -3922,10 +3932,10 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       } finally { switchingJacobView=false; }
       return;
     }
-    if (["logout", "home", "change-password", "foodtruck", "learn-fractions", "toggle-jacob-view"].includes(action)) { leaveMarleyAddition(); leavePlusPenalhus(); leaveTenFriends(); leaveSkak(); leaveAngles(); leaveRunner(); }
-    if (["toggle-jacob-view", "learn-fractions"].includes(action)) {
+    if (["logout", "home", "change-password", "foodtruck", "learn-fractions", "toggle-jacob-view", "student-view", "exit-student-view"].includes(action)) { leaveMarleyAddition(); leavePlusPenalhus(); leaveTenFriends(); leaveSkak(); leaveAngles(); leaveRunner(); }
+    if (["student-view", "exit-student-view", "toggle-jacob-view", "learn-fractions"].includes(action)) {
       event.preventDefault();
-      const allowed=() => action === "learn-fractions" ? canLearnFractions() : isFractionTester();
+      const allowed=() => action === "learn-fractions" ? canLearnFractions() : ["student-view", "exit-student-view"].includes(action) ? isJacobProfile() : isFractionTester();
       if (!allowed() || switchingJacobView) return;
       switchingJacobView=true;
       const userId=state.user.id;
@@ -3937,7 +3947,12 @@ function finishColumnAdditionDrag(event, cancelled = false) {
         clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); clearColumnAdditionDrag(); clearColumnMultiplicationDrag();
         state.task=null; state.matrixDrill=null;
         moduleReturnView=null;
-        jacobFrontend=action === "learn-fractions" ? isFractionTester() : !jacobFrontend;
+        if (["student-view", "exit-student-view"].includes(action)) {
+          closeExerciseLeaderboard(); closePracticeLeaderboardPrompt();
+          window.JacobStudentView.bind(state.user, () => document.dispatchEvent(new CustomEvent("jm-exit-student-view")));
+          window.JacobStudentView.set(action === "student-view");
+        }
+        jacobFrontend=action === "student-view" ? true : action === "exit-student-view" ? false : action === "learn-fractions" ? (isFractionTester() || isStudentView()) : !jacobFrontend;
         state.view=action === "learn-fractions" ? "learn-fractions" : jacobFrontend ? "student" : "teacher";
         render(); window.scrollTo(0,0);
       } finally { switchingJacobView=false; }
@@ -4020,7 +4035,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       return;
     }
     if (action === "logout") { registrations.request++; Object.assign(registrations, { open:false, rows:[], search:"", offset:0, more:false, loading:false, error:"", notice:"" }); }
-    if (action==="logout") { closeExerciseLeaderboard(); closePracticeLeaderboardPrompt(); practiceLeaderboard.request++; Object.assign(practiceLeaderboard,{rows:[],status:null,loading:false,promptOpen:false}); clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); clearColumnAdditionDrag(); clearColumnMultiplicationDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); stopTeacherLiveUpdates(); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,matrixDrill:null,subtractionDrillTroubles:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
+    if (action==="logout") { closeExerciseLeaderboard(); closePracticeLeaderboardPrompt(); practiceLeaderboard.request++; Object.assign(practiceLeaderboard,{rows:[],status:null,loading:false,promptOpen:false}); clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); clearColumnAdditionDrag(); clearColumnMultiplicationDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); stopTeacherLiveUpdates(); window.JacobStudentView?.set(false); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,matrixDrill:null,subtractionDrillTroubles:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
     if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
     if (action==="home") { clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); clearColumnAdditionDrag(); clearColumnMultiplicationDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); state.matrixDrill=null; state.subtractionDrillTroubles=null; state.task=null; state.view="student"; renderStudentHome(); }
     if (action==="subtraction-cannot" && state.task?.topic === "subtractionBorrowing") { startBorrowingSubtraction(); return; }
@@ -4122,6 +4137,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
   document.addEventListener("pointerup", event => { finishBorrowingSubtractionDrag(event); finishDivisionLollipopDrag(event); finishColumnAdditionDrag(event); finishColumnMultiplicationDrag(event); });
   document.addEventListener("pointercancel", event => { finishBorrowingSubtractionDrag(event,true); finishDivisionLollipopDrag(event,true); finishColumnMultiplicationDrag(event,true); finishColumnAdditionDrag(event,true); });
   document.addEventListener("change", event => {
+    if (isStudentView()) return; // This listener edits teacher assignments only.
     const letterStudentId = event.target.dataset?.letterStudent;
     if (letterStudentId) {
       const student = db.users.find(user => user.id === letterStudentId && user.role === "student");
@@ -4245,6 +4261,13 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     clearColumnAdditionDrag(); clearColumnMultiplicationDrag();
     if (state.matrixDrill && !state.matrixDrill.finalizedAt) finalizeMatrixDrillSession("abandoned");
   });
+  document.addEventListener("jm-exit-student-view", () => {
+    if (!isStudentView()) return;
+    const button = document.createElement("button");
+    button.dataset.action = "exit-student-view";
+    button.hidden = true;
+    app.appendChild(button); button.click(); button.remove();
+  });
   async function start() {
     if (!usingCentralDatabase) { render(); return; }
     try {
@@ -4252,7 +4275,9 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       db = normalizeDatabase(loaded.database, false);
       state.user = db.users.find(user => user.id === loaded.currentUserId);
       if (!state.user) throw new Error("Brugerprofilen mangler.");
-      state.view = state.user.role === "teacher" ? "teacher" : "student";
+      window.JacobStudentView?.bind(state.user);
+      if (isStudentView()) jacobFrontend = true;
+      state.view = homeView();
       if (state.user.role === "teacher") teacherResultsCursor = loaded.resultsCursor || null;
       render();
       // Sync the normalized school state in the background; the UI does not need to wait for it.

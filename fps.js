@@ -199,13 +199,14 @@ async function loadPlayerRules() {
       const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Spilleropslag timeout')), 3000));
       const session = await Promise.race([window.JacobBackend.loadDatabase(), timeout]);
       const current = session?.database?.users?.find(user => user.id === session.currentUserId);
+      window.JacobStudentView?.bind(current);
       if (current?.username) username = current.username;
     }
   } catch (error) {
     console.info('Spillerprofil kunne ikke hentes. Standardregler bruges.', error);
   }
   currentUsername = String(username || '').trim();
-  schoolyardKillTarget = ['jacob','jacobe'].includes(currentUsername.toLowerCase()) ? 3 : 50;
+  schoolyardKillTarget = !window.JacobStudentView?.active() && ['jacob','jacobe'].includes(currentUsername.toLowerCase()) ? 3 : 50;
   playerRulesReady = true;
   refreshStartButton();
 }
