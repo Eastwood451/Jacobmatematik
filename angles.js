@@ -698,6 +698,9 @@
     if (!root) return () => {};
     const startKey = typeof options.start === "string" ? options.start : "";
     const directStart = startKey && startKey !== "hub" ? startKey : null;
+    const publicOnly = Boolean(options.publicOnly);
+    const publicGames = new Set(["lesson", "words", "stop"]);
+    const allowed = key => !publicOnly || publicGames.has(key);
     let childDispose = null;
     let disposed = false;
 
@@ -732,21 +735,21 @@
                 <strong>Vinkel hvadfornoget?</strong>
                 <small>Intro, træk vinklen, fornemmelse og piberenser.</small>
               </button>
-              <button type="button" class="ag-hub-card" data-ang-hub="battleship">
+              ${publicOnly ? "" : `              <button type="button" class="ag-hub-card" data-ang-hub="battleship">
                 <span class="ag-hub-icon">🚢</span>
                 <strong>Vinkel-slagskibe</strong>
                 <small>Tryk hurtigt på den rigtige vinkel og sænk skibe.</small>
-              </button>
-              <button type="button" class="ag-hub-card" data-ang-hub="dennis">
+              </button>`}
+              ${publicOnly ? "" : `              <button type="button" class="ag-hub-card" data-ang-hub="dennis">
                 <span class="ag-hub-icon">🐧</span>
                 <strong>Dennis med bind for øjnene</strong>
                 <small>Drej og gå – find fisken på kortet.</small>
-              </button>
-              <button type="button" class="ag-hub-card" data-ang-hub="ninja">
+              </button>`}
+              ${publicOnly ? "" : `              <button type="button" class="ag-hub-card" data-ang-hub="ninja">
                 <span class="ag-hub-icon">🥷</span>
                 <strong>Villy Vinkelninja</strong>
                 <small>Fruit Ninja-snit: swipe den rigtige vinkel.</small>
-              </button>
+              </button>`}
               <button type="button" class="ag-hub-card" data-ang-hub="words">
                 <span class="ag-hub-icon">📝</span>
                 <strong>Vinkel-ord</strong>
@@ -772,6 +775,7 @@
     }
 
     async function openGame(key) {
+      if (!allowed(key)) { showHub(); return; }
       clearChild();
       root.innerHTML = `<section class="ang-module"><div class="ang-stage"><p class="ang-sub">Indlæser spil…</p></div></section>`;
       try {
@@ -804,12 +808,14 @@
         showHub();
         return;
       }
+      if (!allowed(act)) return;
       if (act === "lesson") { void openLesson(); return; }
       if (act === "battleship" || act === "dennis" || act === "ninja" || act === "words" || act === "stop") { void openGame(act); return; }
     }
 
     root.addEventListener("click", onClick);
-    if (directStart === "lesson") void openLesson();
+    if (directStart && !allowed(directStart)) showHub();
+    else if (directStart === "lesson") void openLesson();
     else if (directStart && GAME_MODULES[directStart]) void openGame(directStart);
     else showHub();
 
