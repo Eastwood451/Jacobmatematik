@@ -12,7 +12,7 @@ const gate = app.match(/const RUNNER_PROFILE_IDS = [^\n]+\n\s*const RUNNER_PUBLI
 const angleIds = app.match(/const ANGLES_PROFILE_IDS = new Set\((\[[^\]]+\])\)/)[1];
 assert.match(gate, /const RUNNER_PUBLIC = true/);
 assert.ok(gate.includes(angleIds), "profil-id'erne er bevaret, så flaget kan lukke igen");
-const gateFn = vm.runInNewContext(`(state => { ${enabled}\n${gate}; return canPlayRunner; })`, {});
+const gateFn = vm.runInNewContext(`(state => { const isStudentView = () => false; ${enabled}\n${gate}; return canPlayRunner; })`, {});
 const can = (user) => gateFn({ user })();
 assert.equal(can({ id: "c8b8e1c4-3264-40e9-a43d-0eb6214a0183", role: "teacher" }), true);
 assert.equal(can({ id: "3af639de-b0e0-496a-a5b7-b732e49d1fa7", role: "student" }), true);
@@ -25,7 +25,7 @@ assert.equal(can({ id: "c8b8e1c4-3264-40e9-a43d-0eb6214a0183", role: "guest" }),
 assert.equal(can({ id: "admin-1", role: "admin" }), false, "admin er ikke en spilrolle");
 assert.equal(can({ role: "student" }), false, "elev uden id");
 assert.equal(can(null), false, "ikke logget ind");
-const closedRunner = vm.runInNewContext(`(state => { ${enabled}\n${gate.replace("const RUNNER_PUBLIC = true", "const RUNNER_PUBLIC = false")}; return canPlayRunner; })`, {});
+const closedRunner = vm.runInNewContext(`(state => { const isStudentView = () => false; ${enabled}\n${gate.replace("const RUNNER_PUBLIC = true", "const RUNNER_PUBLIC = false")}; return canPlayRunner; })`, {});
 const closedCan = (user) => closedRunner({ user })();
 assert.equal(closedCan({ id: "c8b8e1c4-3264-40e9-a43d-0eb6214a0183", role: "teacher" }), true, "flaget kan lukke til Jacob igen");
 assert.equal(closedCan({ id: "3af639de-b0e0-496a-a5b7-b732e49d1fa7", role: "student" }), true, "flaget kan lukke til Jacob igen");
@@ -52,7 +52,7 @@ assert.match(app, /assets\/figurer\/skak\/w-q\.webp/, "superhelt-brik");
 assert.match(app, /Løb med Øbbe og knus brøkreglerne!/);
 assert.match(app, /Slå brikkerne og regn dig til sejren!/);
 const bannerGate = [enabled, app.match(/const canPlaySkak = [^\n]+/)[0], gate, app.match(/const SKAK_BANNER_PUBLIC = [^\n]+\n\s*const canSeeSkakBanner = [^\n]+/)[0]].join("\n");
-const seeBanner = vm.runInNewContext(`(state => { ${bannerGate}; return canSeeSkakBanner; })`, {});
+const seeBanner = vm.runInNewContext(`(state => { const isStudentView = () => false; ${bannerGate}; return canSeeSkakBanner; })`, {});
 const see = (user) => seeBanner({ user })();
 assert.equal(see({ id: "c8b8e1c4-3264-40e9-a43d-0eb6214a0183", role: "teacher" }), true);
 assert.equal(see({ id: "3af639de-b0e0-496a-a5b7-b732e49d1fa7", role: "student" }), true);
@@ -62,7 +62,7 @@ assert.equal(see({ id: "guest-1", role: "guest" }), true, "flaget følger canPla
 assert.equal(see({ id: "admin-1", role: "admin" }), false, "admin kan ikke spille skak");
 assert.equal(see(null), false, "ikke logget ind");
 const closedBannerSrc = bannerGate.replace("const RUNNER_PUBLIC = true", "const RUNNER_PUBLIC = false").replace("const SKAK_BANNER_PUBLIC = true", "const SKAK_BANNER_PUBLIC = false");
-const seeClosed = vm.runInNewContext(`(state => { ${closedBannerSrc}; return canSeeSkakBanner; })`, {});
+const seeClosed = vm.runInNewContext(`(state => { const isStudentView = () => false; ${closedBannerSrc}; return canSeeSkakBanner; })`, {});
 const closedSee = (user) => seeClosed({ user })();
 assert.equal(closedSee({ id: "3af639de-b0e0-496a-a5b7-b732e49d1fa7", role: "student" }), true, "begge flag fra slår Jacob-profilen til igen");
 assert.equal(closedSee({ id: "ordinary-student", role: "student" }), false, "begge flag fra skjuler banneret for andre");

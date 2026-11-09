@@ -6,6 +6,7 @@
   // Supports {var} interpolation via JacobI18n.t(key, vars) and automatic
   // reverse lookup + {var} template matching via JacobI18n.translate(text).
   root.JacobI18nStrings = {
+    "student_view_enter": { da: "Se som elev", en: "View as student" },
     "home_prompt": { da: "Hvad vil du øve i dag?", en: "What do you want to practise today?" },
     "exercise_back": { da: "← Vælg emne", en: "← Choose a topic" },
     "exercise_hint_type_below": { da: "Skriv dit svar nedenfor.", en: "Type your answer below." },

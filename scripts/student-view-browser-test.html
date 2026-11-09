@@ -1,0 +1,71 @@
+<!doctype html><html lang="da"><meta charset="utf-8"><title>Student view integration checks</title><style>body{font:16px system-ui}iframe{height:800px;border:1px solid #aaa;max-width:100%}.fail{color:#a00}.pass{color:#060}</style><h1>Student view integration checks</h1><pre id="results">Running…</pre><div id="frames"></div><script>
+(async () => {
+ const output=document.querySelector('#results'); output.textContent='';
+ if(!['localhost','127.0.0.1','[::1]'].includes(location.hostname)) {output.textContent='Run this fixture on localhost only.';return;}
+ const assert=(value,message)=>{if(!value)throw Error(message);output.textContent+='PASS '+message+'\n';};
+ const wait=()=>new Promise(r=>setTimeout(r,150));
+ const JACOB='c8b8e1c4-3264-40e9-a43d-0eb6214a0183';
+ const app=await (await fetch('/app.js')).text();
+ const instrumented=app.replace('  start();','  window.testApp={state,db,render,canLearnAngles,canUseSandbox,save,appendCurrentPracticeResult};\n  start();');
+ async function mount(role='teacher',id=JACOB,width=1280,reset=true) {
+  if(reset) {sessionStorage.removeItem('jm-student-view');localStorage.removeItem('jm-student-view-results:'+JACOB);localStorage.setItem('jm-lang','da');}
+  const iframe=document.createElement('iframe');iframe.width=width;document.querySelector('#frames').replaceChildren(iframe);
+  iframe.srcdoc=`<!doctype html><html lang="da"><head><base href="/"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/cinematic-theme.css"><link rel="stylesheet" href="/student-view.css"></he${"ad"}><body><main id="app"></main></bo${"dy"}></html>`;
+  await new Promise(r=>iframe.onload=r);
+  const w=iframe.contentWindow,d=w.document;
+  w.errors=[];w.addEventListener('error',e=>w.errors.push(e.message));
+  w.writes=[];w.signouts=0;w.schoolWrites=0;
+  const users=[{id,role,name:'Jacob',username:'jacob',results:[],canManageRegistrations:true},{id:'fixture-student',role:'student',name:'Fixture',classId:'c1',results:[]}];
+  w.JacobBackend={configured:true,loadDatabase:async()=>({database:JSON.parse(JSON.stringify({classes:[{id:'c1',name:'Class'}],users})),currentUserId:id}),saveSchoolState:async()=>w.schoolWrites++,loadResults:async()=>[],loadSchoolState:async()=>({users:[]}),appendResult:async(...args)=>w.writes.push(args),getPracticeLeaderboard:async()=>[],getPracticeLeaderboardStatus:async()=>null,signOut:async()=>w.signouts++};
+  for(const file of ['lang.js','i18n-strings.js','i18n-en.js','i18n.js','student-view.js','module-loader.js']) {const script=d.createElement('script');script.textContent=await(await fetch('/'+file)).text();d.body.append(script);}
+  const script=d.createElement('script');script.textContent=instrumented;d.body.append(script);await wait();
+  return {w,d,iframe};
+ }
+ try {
+ for(const width of [1280,390]) {
+  const {w,d}=await mount('teacher',JACOB,width),t=w.testApp,original=t.state.user;
+  const students=JSON.stringify(t.db.users.filter(u=>u.role==='student'));const baseline=w.schoolWrites;
+  assert(d.querySelector('[data-action="student-view"]'),'Jacob has entry at '+width);
+  d.querySelector('[data-action="student-view"]').click();await wait();
+  assert(t.state.user===original && original.role==='teacher' && original.id===JACOB,'Identity and role unchanged');
+  assert(d.querySelector('.student-home-layout') && !d.querySelector('.dashboard-head'),'Ordinary student home');
+  assert(!t.canLearnAngles() && !t.canUseSandbox() && !d.querySelector('[data-action="toggle-jacob-view"]'),'Beta and teacher controls hidden');
+  assert(d.querySelector('#jm-student-view-banner').textContent.includes('Du ser som elev'),'Danish persistent banner');
+  const box=d.querySelector('#jm-student-view-banner button').getBoundingClientRect();assert(box.x>=0 && box.right<=width && box.height>=44,'Return button fits viewport '+width);
+  d.querySelector('[data-topic="addition"]').click();await wait();
+  assert(t.state.view==='exercise' && d.querySelector('#jm-student-view-banner'),'Banner survives exercise navigation');
+  const input=d.querySelector('#answer');input.value=String(t.state.task.answer);d.querySelector('#answer-form').dispatchEvent(new w.Event('submit',{bubbles:true,cancelable:true}));await wait();
+  w.JacobStudentView.save();
+  assert(original.results.length>0 && JSON.parse(localStorage.getItem('jm-student-view-results:'+JACOB)).length>0,'Answer saved under Jacob only');
+  assert(w.writes.length===0 && w.schoolWrites===baseline && w.signouts===0,'No server writes or auth changes during preview');
+  assert(JSON.stringify(t.db.users.filter(u=>u.role==='student'))===students,'Student records unchanged');
+  w.JacobLang.set('en');await wait();
+  assert(d.querySelector('#jm-student-view-banner button').textContent==='Back to my view','English return control');
+  w.JacobLang.set('da');await wait();
+  // Simulate a module return and a denied beta deep link through the real renderer.
+  t.state.view='angles';t.render();await wait();
+  assert(d.querySelector('.student-home-layout') && !d.querySelector('#angles-root'),'Beta route falls back to student view');
+  d.querySelector('#jm-student-view-banner button').click();await wait();
+  assert(d.querySelector('.dashboard-head') && !d.querySelector('#jm-student-view-banner'),'Return restores teacher view');
+  assert(t.state.user===original && original.results.length>0,'Return retains identity and own progress');
+  assert(t.canUseSandbox() && t.canLearnAngles(),'Return restores existing beta access');
+  d.querySelector('[data-action="student-view"]').click();await wait();
+  d.querySelector('[data-action="logout"]').click();await wait();
+  assert(!sessionStorage.getItem('jm-student-view') && !d.querySelector('#jm-student-view-banner'),'Logout clears preview');
+  assert(w.errors.length===0,'No uncaught browser errors: '+w.errors.join(', '));
+ }
+ for(const [role,id] of [['student','fixture-student'],['teacher','another-teacher'],['guest','guest-fixture']]) {
+  const {w,d}=await mount(role,id);
+  assert(!d.querySelector('[data-action="student-view"]'),'No entry for '+role+' '+id);
+  w.JacobStudentView.set(true);assert(!w.JacobStudentView.active(),'Non-Jacob cannot enable preview');
+ }
+ const first=await mount();first.d.querySelector('[data-action="student-view"]').click();await wait();
+ first.w.testApp.state.user.results.push({topic:'addition',correct:true,timestamp:'2026-11-09T00:00:00Z'});first.w.JacobStudentView.save();
+ const restored=await mount('teacher',JACOB,390,false);
+ assert(restored.w.JacobStudentView.active() && restored.d.querySelector('.student-home-layout'),'Navigation/reload restores student mode');
+ assert(restored.w.testApp.state.user.results.length===1,'Own progression restored on reload');
+ assert(restored.w.schoolWrites===0,'Reload in preview does not save school state');
+ output.textContent+='ALL CHECKS PASSED\n';output.className='pass';
+ } catch(error){output.textContent+='FAIL '+error.stack;output.className='fail';}
+})();
+</script></html>
