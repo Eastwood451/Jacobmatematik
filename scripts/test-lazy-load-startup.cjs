@@ -27,6 +27,7 @@ const allowed = new Set([
   'supabase-backend.js',
   'module-loader.js',
   'app.js',
+  '/student-view.js', // Persistent navigation shell, not an exercise module.
 ]);
 for (const src of eagerScripts) {
   assert.ok(allowed.has(src), `unexpected eager script: ${src}`);
