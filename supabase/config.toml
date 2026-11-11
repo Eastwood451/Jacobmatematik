@@ -5,3 +5,9 @@ enable_signup = false
 
 [functions.manage-student]
 verify_jwt = false
+
+# The function checks the caller with auth.getUser() and never reads a
+# target user id from the body. The gateway check is left off so this
+# matches manage-student; the service-role key stays in the function env.
+[functions.delete-own-account]
+verify_jwt = false

@@ -56,9 +56,7 @@ Det er ikke kørt på en telefon. Forventningen ud fra koden:
 
 Google Analytics 4, målings-id `G-G4CQCVHLVR`, ligger i `analytics.js`. Tagget hentes først efter et eksplicit ja på jacobmatematik.dk. Afvisning eller intet valg sender ikke noget. Annoncemåling, personalisering og Google-signaler er slået fra. Hændelser må kun indeholde øvelses-id, øvelsesnavn, antal svar, antal rigtige og varighed. Koden sender ikke elevnavn, e-mail, login eller klasse med. Sideadressen til målingen er en fast sti uden søgestreng.
 
-Det er stadig et problem for en børneapp. Målgruppen er folkeskoleelever og omfatter børn under 13. Et barns tryk på “Accepter statistik” er ikke et gyldigt forældresamtykke. GA4 modtager derefter browser- og enhedsoplysninger og IP som led i forbindelsen. APK'en indeholder ikke reklame-id, men websiden inde i appen kan stadig indlæse tagget.
-
-Forslag, ikke implementeret, og det ændrer ikke besøg i en almindelig browser: Når `document.referrer` begynder med `android-app://dk.jacobmatematik.app`, skal `analytics.js` hverken vise banneret eller hente gtag. Chrome sætter den referrer ved start af en TWA. Almindelige besøg, iOS-genveje og afvis/accept på websitet bliver som i dag. Det bør godkendes af Jacob, før det kodes, fordi det slår måling fra for app-brugerne. Indtil da har den lukkede test samme cookievalg som websitet.
+Det er et problem i en almindelig browser, fordi et barns tryk på “Accepter statistik” ikke er et gyldigt forældresamtykke. I Android-appen er tagget og cookiebanneret slået fra. `analytics.js` gemmer `jm-android-app=1` i `sessionStorage`, når `document.referrer` begynder med `android-app://dk.jacobmatematik.app`, og springer derefter både banner og gtag over, også ved senere sidevisninger i samme session. Et almindeligt browserbesøg uden den referrer og uden flaget er uændret. APK'en er ikke bygget om. Den loader stadig websitet, og ændringen ligger i websitet.
 
 ## Privatlivspolitik
 
@@ -66,7 +64,7 @@ Der findes allerede en side, der kan sættes ind i Play:
 
 https://jacobmatematik.dk/privatliv.html
 
-Den beskriver statistikcookies, lokal sletning af resultater og at kontoen beholdes. Den nævner Supabase kort. Den er ikke en fuld app-privatlivspolitik: der er ingen vej til at få selve kontoen slettet, intet særskilt kontaktpunkt ud over det, der står andre steder, og den beskriver ikke appen.
+Den beskriver statistikcookies, lokal sletning af resultater og sletning af selve kontoen. Den linker til https://jacobmatematik.dk/slet-konto.html. Sletningen virker først, når Edge Function og migrationen er deployet. Den side er stadig ikke en fuld app-privatlivspolitik: der er ikke fundet et særskilt kontaktpunkt ud over det, der står andre steder.
 
 Usikkerheder, som ikke er opfundet her: Der er ikke fundet en postadresse eller en særlig privatlivs-mail i repoet. Kontakt om rettigheder går i dag til GitHub-siden fra `rettigheder.html`. Supabase-projektets land eller region står ikke i repoet. Der står ikke, om lærerkonti er oprettet med en rigtig mail uden for denne klient.
 
@@ -86,31 +84,37 @@ Teksten nedenfor er et udkast til Jacob. Den skal ikke sættes live, før han ha
 >
 > Talesyntese kører på enheden. Der optages ikke mikrofon i koden. Færdige lydfiler afspilles fra sitet.
 >
-> Google Analytics bruges kun, hvis du accepterer statistik på websitet. Se den eksisterende tekst om cookies. Android-appen har ikke sit eget analyse-SDK.
+> Google Analytics bruges kun i en almindelig browser, og kun efter ja til statistik. I Android-appen vises cookiebanneret ikke, og tagget hentes ikke.
 >
 > Supabase-klienten hentes fra jsDelivr. Det CDN ser det almindelige kald efter scriptfilen.
 >
 > Vi sælger ikke oplysningerne. Der er ikke reklamer i appen.
 >
-> Du kan endnu ikke få selve kontoen slettet fra appen eller fra en side på websitet. “Slet data” fjerner kun lokale resultater. En færdig slettevej skal beskrives, før den sættes på.
+> Du kan slette kontoen på https://jacobmatematik.dk/slet-konto.html og under “Slet konto”, når du er logget ind. “Slet data” fjerner kun lokale resultater og beholder kontoen. En lærerkonto med elever slettes ikke. Elevernes konti og resultater bliver.
 >
 > Kontakt i dag: henvendelsen om rettigheder på GitHub-siden, som `rettigheder.html` linker til. En direkte mailadresse er ikke sat ind her, fordi den ikke står i materialet.
 
 ## Kontosletning
 
-Play kræver, at brugere der kan oprette en konto, både kan starte sletning inde i appen og via en webside. Websiden skal kunne bruges uden at installere appen igen. Et link i appen til den side kan være den indre vej. Når en konto slettes, skal de tilhørende data også slettes. At deaktivere kontoen er ikke nok.
+Play-stien er bygget i websitet, som appen viser. Den virker først, når migrationen og Edge Function er deployet. Det er ikke gjort i denne branch, og der er ikke slettet nogen rigtig konto.
 
-Det findes ikke i dag.
+- I appen: knappen “Slet konto” for en logget ind bruger, der ikke er gæst. Dialogen beder om brugernavn og adgangskode.
+- På websitet: https://jacobmatematik.dk/slet-konto.html på dansk og engelsk. Siden kan bruges uden at installere appen. Samme adresse sættes i Play Console som slette-URL, når den er live.
+- “Slet data” under tårnet er uændret. Den sletter lokale resultater og beholder kontoen.
+- Funktionen `delete-own-account` bruger kun den indloggede brugers JWT. Et bruger-id i kaldet ignoreres. Service-role-nøglen ligger kun i funktionens miljø, ikke i websitet eller APK'en.
+- Elev: auth-brugeren slettes. Profil, resultater, highscore-rækker og leaderboard-valg følger med de eksisterende `on delete cascade`. Eleven fjernes fra lærerens `school_state.users`. Klasserne og de andre elever bliver. Læreren kan ikke længere se elevens resultater. En skakkamp, hvor eleven er hvid eller sort, slettes for begge, fordi tabellen allerede har `on delete cascade` på begge spillere.
+- Lærer med mindst én elev: sletning afvises. Elevernes konti og resultater bliver. Migrationen skifter lærer-nøglen fra `on delete cascade` til `on delete restrict`, så databasen også nægter at tage eleverne med, hvis nogen sletter lærerprofilen direkte.
+- Lærer uden elever: lærerprofilen og lærerens klasseliste slettes. Der er ingen elevrækker at røre.
+- Lokalt slettes `jm-local-progress-v1:<bruger-id>` og `jm-local-consent-v1:<bruger-id>`. Sprogvalg og andre enhedsindstillinger uden bruger-id bliver liggende. Usikkerhed: lokale spilnøgler, der ikke er bundet til kontoens id, er ikke alle gennemgået.
 
-- “Slet data” under tårnet, i `app.js`, sletter lokale resultater og Erling-highscore for en selvoprettet elev med lokal lagring. Bekræftelsen siger, at kontoen beholdes. Det samme står på `/privatliv.html`.
-- “Log ud” kalder `signOut`. Det sletter ikke brugeren.
-- Der er ingen side, hvor man kan bede om at få Supabase-kontoen, profilen og eventuelle resultater slettet. `rettigheder.html` har et GitHub-link om rettigheder, ikke en slettevej.
-- Klienten har `selfRegistrationEnabled = true` og spørger derefter serveren med `self_registration_enabled`. Oprettelse kan altså være åben. Et ældre afsnit i `SUPABASE_SETUP.md` siger, at Jacob lukkede selvoprettelse 22. september 2026 af hensyn til GDPR, og at den kun må åbnes efter hans udtrykkelige besked. Flaget i koden er siden sat til genåbnet med lokale resultater. Denne branch ændrer ikke det flag og ikke serveren.
-- Læreren kan stadig oprette elever. De konti er også app-konti, hvis eleven logger ind i appen.
+Deploy, i denne rækkefølge, og kun når Jacob vil have det i produktion:
 
-Sletning er bevidst ikke bygget her. Den skal designes og testes, før den rører Supabase: hvem må slette en læreroprettet elev, hvad der sker med klasselisten og historiske resultater, og at service-role-nøglen aldrig lægges i appen eller i websidens offentlige kode. En halv knap, der lover sletning uden at gennemføre den, er værre end et tydeligt hul.
+```sh
+supabase db query --linked < supabase/migrations/20261111180000_restrict_teacher_delete.sql
+supabase functions deploy delete-own-account --project-ref uxbrnmcbvxgpsvdbzcov
+```
 
-Indtil det findes, kan Data safety-formularen ikke svares med, at brugerne kan få kontoen slettet. Det kan blokere udgivelsen, også af den lukkede test, hvis Play kræver slette-URL'en, når oprettelse er slået til.
+Hvis projektet ikke er linket, kan SQL'en køres i Supabase SQL-editoren for `uxbrnmcbvxgpsvdbzcov`. Funktionen skal have de miljøvariabler, Supabase selv sætter: `SUPABASE_URL`, `SUPABASE_ANON_KEY` og `SUPABASE_SERVICE_ROLE_KEY`. Deploy ikke fra denne branch automatisk.
 
 ## Udkast til Data safety
 
@@ -119,7 +123,7 @@ Svar ærligt. APK'en indsamler ikke selv. Det, websitet gør inde i appen, tæll
 - Indsamles eller deles der brugerdata? Ja.
 - Krypteret under overførsel? Ja. Klienten bruger HTTPS til sitet og til `https://uxbrnmcbvxgpsvdbzcov.supabase.co`. Der er ikke set en klartekst-forbindelse i appen.
 - Sælges data? Nej. Der er ikke fundet salg eller reklamedeling i koden.
-- Kan brugeren bede om sletning af kontoen? Nej. Se ovenfor. Lokale resultater kan slettes på enheden. Det er ikke kontosletning.
+- Kan brugeren bede om sletning af kontoen? Ja, når migrationen og `delete-own-account` er deployet. Stien i appen er “Slet konto”. Webadressen er https://jacobmatematik.dk/slet-konto.html. Indtil deploy siger siden, at sletning ikke er slået til endnu. En lærer med elever kan ikke slette sin konto. Elevernes data bliver.
 - Kontooprettelse: brugernavn og adgangskode, når serveren tillader det. Ikke OAuth. Gæst kræver ikke konto.
 
 Datatyper at oplyse som indsamlet, fordi de forlader enheden:
@@ -129,12 +133,12 @@ Datatyper at oplyse som indsamlet, fordi de forlader enheden:
 - Anden identifikator: den syntetiske loginadresse. Det er ikke en mail, eleven indtaster.
 - Adgangskode: sendes til Supabase Auth for at oprette session. Appen gemmer den ikke selv. Opsætningsnoten siger, at Auth står for hashing. Selve hash-metoden er ikke kontrolleret her.
 - App-aktivitet: øvelsesresultater for elever, hvis lagring er serveren (`results` med `student_id` og `data`). Selvoprettede lokale resultater sendes ikke til serveren og skal ikke oplyses som indsamlet, så længe det stadig passer.
-- App-interaktion og enheds-id efter cookie-ja: sidevisning og de whitelisted øvelseshændelser til Google Analytics. Ikke før ja, og ikke på andre værter end produktionssitet.
+- App-interaktion og enheds-id efter cookie-ja: kun i en almindelig browser. Android-appen indlæser ikke Google Analytics og viser ikke cookiebanneret.
 - Rangliste: navn og score kan vises for andre i ranglistens sammenhæng. Kaldenavn i Erling online vises for de andre i rummet.
 
 Ikke fundet i koden, og derfor ikke noget der skal oplyses som indsamlet: præcis placering, kontakter, fotos, mikrofonoptagelse, helbred, økonomi, sms, kalender, reklame-id fra APK'en.
 
-Tredjeparter: Supabase er backend. Google er modtager, kun efter statistik-ja. jsDelivr leverer Supabase-biblioteket og ser det kald. Deling med en databehandler kan i formularen ofte markeres som tjenesteudbyder og ikke som “sharing” i Plays reklameforstand. GA4 efter samtykke er deling med Google og skal med, indtil app-forslaget ovenfor er lavet.
+Tredjeparter: Supabase er backend. jsDelivr leverer Supabase-biblioteket og ser det kald. Google Analytics er ikke aktiv i Android-appen. I en almindelig browser er Google modtager kun efter statistik-ja.
 
 ## Målgruppe og indhold
 
@@ -166,10 +170,10 @@ Ikke lavet i denne branch, fordi de ikke ligger i AAB'en:
 2. Slå Play App Signing til. Upload den signerede AAB. Upload-nøglen bliver liggende hos dig og må ikke i git.
 3. Kopiér Play-signeringsnøglens SHA-256 ind i `assetlinks.json`, og udgiv først derefter websitet, når Jacob har sagt go. Før det har testerne en browserbjælke.
 4. Udfyld butikslisten, inklusive de grafikfiler der mangler.
-5. Sæt privatlivs-URL til https://jacobmatematik.dk/privatliv.html, og læg slette-URL'en ind først når slettevejen findes. Den nuværende side slår ikke til alene, hvis Play kræver kontosletning.
+5. Sæt privatlivs-URL til https://jacobmatematik.dk/privatliv.html og slette-URL til https://jacobmatematik.dk/slet-konto.html, efter at sitet er merget og slettefunktionen er deployet.
 6. Reklamer: nej. Reklame-id: nej.
-7. Målgruppe: børn er inkluderet. Svar Families-spørgsmålene ud fra denne note, ikke som om analytics allerede er slået fra i appen.
-8. Udfyld IARC og Data safety ud fra udkastet. Sæt kontosletning til nej, indtil funktionen er bygget og testet.
+7. Målgruppe: børn er inkluderet. I appen indlæses Google Analytics ikke.
+8. Udfyld IARC og Data safety ud fra udkastet. Kontosletning kan svares ja, når funktionen er deployet. En lærer med elever kan ikke slette sin egen konto.
 9. Opret et lukket testspor. Tilføj mindst 12 testere. De skal blive i testen i 14 sammenhængende dage, før en ny personlig udviklerkonto kan søge om produktion. Denne branch starter ikke det spor.
 10. Tjek på en rigtig telefon: login, gæst, en øvelse, lyd i FPS, dansk talesyntese, og at bjælken forsvinder først når asset links indeholder den nøgle, den installerede app er signeret med.
 

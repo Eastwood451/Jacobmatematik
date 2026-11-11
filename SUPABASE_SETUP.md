@@ -128,3 +128,15 @@ I lærerportalen ligger eleverne under **Uden klasse** med det almindelige elevk
 eleven til en rigtig klasse uden at ændre konto eller resultater. Listen opdateres
 løbende, når nye selvoprettede brugere kommer til. `list_self_registered.assigned`
 betyder nu, at eleven har en klasse, ikke blot at eleven har en lærerrelation.
+
+## Sletning af egen konto
+
+Ikke deployet. Kør først migrationen, derefter funktionen, og først når det skal i produktion:
+
+```sh
+supabase db query --linked < supabase/migrations/20261111180000_restrict_teacher_delete.sql
+supabase functions deploy delete-own-account --project-ref uxbrnmcbvxgpsvdbzcov
+```
+
+Funktionen sletter kun den bruger, som access-tokenet tilhører. Service-role-nøglen bliver i funktionens miljø. En lærer med elever afvises. Se `android/PLAY.md` for hvad der sker med elevresultater, klasselisten og skak.
+

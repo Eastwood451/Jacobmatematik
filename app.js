@@ -1018,7 +1018,21 @@ multiplicationColumn: {
     window.JacobStudentView?.bind(state.user, () => document.dispatchEvent(new CustomEvent("jm-exit-student-view")));
     const userLabel = isStudentView() ? escapeHtml(state.user.name) : isFractionTester() && jacobFrontend ? "Jacob · Front-end" : state.user.role === "teacher" ? "Lærer" : isGuest() ? "Gæst" : `${escapeHtml(state.user.name)} · Elev`;
     const passwordButton = state.user.role === "student" ? `<button class="btn ghost" data-action="change-password">Skift adgangskode</button>` : "";
-    return `<header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions"><button type="button" class="btn secondary" data-install-app>Installer som app</button><span class="user-pill">${userLabel}</span>${passwordButton}${jacobViewButton()}<button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
+    const deleteAccountButton = usingCentralDatabase && !isGuest() ? `<button class="btn ghost" type="button" data-action="delete-account" data-i18n-key="ui_delete_account">Slet konto</button>` : "";
+    return `<header class="topbar"><div class="brand"><span class="brand-mark">∑</span><span>jacobmatematik</span></div><div class="top-actions"><button type="button" class="btn secondary" data-install-app>Installer som app</button><span class="user-pill">${userLabel}</span>${passwordButton}${deleteAccountButton}${jacobViewButton()}<button class="btn ghost" data-action="logout">Log ud</button></div></header>`;
+  }
+  function openDeleteAccountDialog() {
+    if (!state.user || isGuest() || !usingCentralDatabase) return;
+    document.getElementById("delete-account-dialog")?.remove();
+    const teacher = state.user.role === "teacher";
+    const dialog = document.createElement("dialog");
+    dialog.id = "delete-account-dialog";
+    dialog.setAttribute("aria-labelledby", "delete-account-title");
+    dialog.innerHTML = `<h2 id="delete-account-title" data-i18n-key="ui_delete_account_title">Slet konto</h2><p data-i18n-key="${teacher ? "ui_delete_account_teacher" : "ui_delete_account_student"}">${teacher ? "Har du stadig elever, bliver kontoen ikke slettet. Deres konti og resultater bliver. Har du ingen elever, slettes din lærerprofil og dine klasselister." : "Din konto, dit navn og dine resultater hos læreren slettes. Læreren kan ikke længere se dig. Resultater på denne enhed, som hører til kontoen, slettes også. Andre elevers data røres ikke. En skakkamp du er med i, slettes for begge, fordi kampen ligger på profilerne."}</p><label for="delete-account-username" data-i18n-key="ui_delete_account_username">Dit brugernavn</label><input id="delete-account-username" name="username" autocomplete="username" autocapitalize="none" required><label for="delete-account-password" data-i18n-key="ui_delete_account_password">Din adgangskode</label><input id="delete-account-password" name="password" type="password" autocomplete="current-password" required><p id="delete-account-error" role="alert"></p><div class="student-manager-buttons"><button class="btn danger" type="button" data-action="confirm-delete-account" data-i18n-key="ui_delete_account_confirm">Slet kontoen permanent</button><button class="btn secondary" type="button" data-action="close-delete-account" data-i18n-key="ui_delete_account_cancel">Annuller</button></div><p><a href="/slet-konto.html" data-i18n-key="ui_delete_account_web">Du kan også slette kontoen på slet-konto-siden.</a></p>`;
+    dialog.style.cssText = "max-width:32rem;border:0;border-radius:16px;padding:24px";
+    document.body.append(dialog);
+    if (!dialog.open) dialog.showModal();
+    dialog.querySelector("#delete-account-username")?.focus();
   }
   function stopErlingAudio() {
     if (activeErlingAudio) {
@@ -3844,6 +3858,36 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     if (reportTopicButton) { state.teacherTopicDetail=reportTopicButton.dataset.reportTopic; renderTeacher(); return; }
     if (!actionButton) return;
     const action=actionButton.dataset.action;
+
+    if (action === "delete-account") {
+      openDeleteAccountDialog();
+      return;
+    }
+    if (action === "close-delete-account") {
+      document.getElementById("delete-account-dialog")?.close();
+      document.getElementById("delete-account-dialog")?.remove();
+      return;
+    }
+    if (action === "confirm-delete-account") {
+      const dialog = document.getElementById("delete-account-dialog");
+      const status = dialog?.querySelector("#delete-account-error");
+      const username = dialog?.querySelector("#delete-account-username")?.value || "";
+      const password = dialog?.querySelector("#delete-account-password")?.value || "";
+      const own = String(state.user?.username || "").trim().normalize("NFC").toLowerCase();
+      if (username.trim().normalize("NFC").toLowerCase() !== own) {
+        if (status) status.textContent = window.JacobLang?.get?.() === "en" ? "Type your own username." : "Skriv dit eget brugernavn.";
+        return;
+      }
+      actionButton.disabled = true;
+      try {
+        await backend.deleteOwnAccount(username, password);
+        location.replace("/slet-konto.html?slettet=1");
+      } catch (error) {
+        if (status) status.textContent = error instanceof Error ? error.message : "Kontoen kunne ikke slettes. Prøv igen.";
+        actionButton.disabled = false;
+      }
+      return;
+    }
 
     if (action === "exercise-leaderboard") {
       await openExerciseLeaderboard(actionButton.dataset.leaderboardTopic);

@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Slet din Jacobmatematik-konto og de data, der hører til den. Delete your Jacobmatematik account and the data that belongs to it.">
+  <title>Slet konto · Jacobmatematik</title>
+  <link rel="canonical" href="https://jacobmatematik.dk/slet-konto.html">
+  <script src="analytics.js?v=20261111-android1" defer></script>
+  <style>
+    body { margin: 0; background: #f5f1e8; color: #202b28; font: 17px/1.7 system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; padding: 40px 24px 80px; }
+    h1, h2 { line-height: 1.25; }
+    a { color: #245d49; }
+    form, .done { margin-top: 28px; padding: 20px; background: #fffdf7; border: 1px solid #bec8bd; border-radius: 16px; }
+    label { display: block; font-weight: 700; margin-top: 14px; }
+    label span { display: block; font-weight: 500; }
+    input { width: 100%; box-sizing: border-box; margin-top: 6px; padding: 12px; font: inherit; border: 1px solid #245d49; border-radius: 8px; }
+    button { margin-top: 18px; font: 700 16px/1.2 system-ui, sans-serif; min-height: 48px; padding: 12px 16px; border: 0; border-radius: 8px; background: #8d2f2f; color: #fff; }
+    button:disabled { opacity: .6; }
+    [role="alert"] { color: #8d2f2f; min-height: 1.5em; }
+    .en { color: #3d4a46; }
+  </style>
+</head>
+<body>
+  <main>
+    <a href="/">← Tilbage til Jacobmatematik</a>
+    <h1>Slet din konto</h1>
+    <p>Siden er til den konto, du selv logger ind med. Der slettes ikke andre brugeres konti. Gæster har ingen konto.</p>
+    <p>En elevkonto sletter navn, brugernavn og de resultater, der ligger hos læreren. Eleven fjernes fra lærerens klasseliste. Resultater på denne enhed, som hører til kontoen, slettes også. En skakkamp, eleven er med i, slettes for begge spillere, fordi kampen er gemt på profilerne.</p>
+    <p>En lærerkonto med elever bliver ikke slettet. Elevernes konti og resultater skal blive. En lærerkonto uden elever sletter lærerprofilen og klasselisterne.</p>
+    <h2 class="en" lang="en">Delete your account</h2>
+    <p class="en" lang="en">This page deletes the account you sign in with. It does not delete anyone else's account. Guests do not have an account.</p>
+    <p class="en" lang="en">A pupil account deletes the name, username and results stored for the teacher. The pupil is removed from the teacher's class list. Results on this device that belong to the account are deleted too. A chess game the pupil is in is deleted for both players, because the game is stored on the profiles.</p>
+    <p class="en" lang="en">A teacher account that still has pupils is not deleted. Those pupils' accounts and results stay. A teacher account with no pupils deletes the teacher profile and the class lists.</p>
+    <p class="done" id="done" hidden>
+      <strong>Kontoen er slettet.</strong>
+      <span class="en" lang="en">The account has been deleted.</span>
+    </p>
+    <form id="delete-form">
+      <label>Brugernavn <span class="en" lang="en">Username</span>
+        <input id="username" name="username" autocomplete="username" autocapitalize="none" required>
+      </label>
+      <label>Adgangskode <span class="en" lang="en">Password</span>
+        <input id="password" name="password" type="password" autocomplete="current-password" required>
+      </label>
+      <p id="status" role="alert"></p>
+      <button type="submit">Slet kontoen permanent / Delete the account permanently</button>
+    </form>
+    <p><a href="/privatliv.html">Cookies og privatliv</a></p>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="supabase-config.js?v=66d7f7d7"></script>
+  <script src="supabase-backend.js?v=20261111-delete1"></script>
+  <script>
+    const done = document.getElementById("done");
+    const form = document.getElementById("delete-form");
+    const status = document.getElementById("status");
+    if (new URLSearchParams(location.search).get("slettet") === "1") {
+      done.hidden = false;
+      form.hidden = true;
+    }
+    form.addEventListener("submit", async event => {
+      event.preventDefault();
+      const button = form.querySelector("button");
+      button.disabled = true;
+      status.textContent = "";
+      try {
+        await window.JacobBackend.deleteOwnAccount(form.username.value, form.password.value);
+        location.replace("/slet-konto.html?slettet=1");
+      } catch (error) {
+        status.textContent = error instanceof Error ? error.message : "Kontoen kunne ikke slettes. / The account could not be deleted.";
+        try { await window.JacobBackend.signOut(); } catch { /* No session to close. */ }
+        button.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
