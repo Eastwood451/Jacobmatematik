@@ -1,6 +1,20 @@
 /* Basic consent mode: no Google requests before an explicit opt-in. */
 (() => {
   'use strict';
+  const androidReferrer = 'android-app://dk.jacobmatematik.app';
+  const androidKey = 'jm-android-app';
+  let androidApp = false;
+  try {
+    androidApp = sessionStorage.getItem(androidKey) === '1';
+    if (!androidApp && String(document.referrer || '').startsWith(androidReferrer)) {
+      sessionStorage.setItem(androidKey, '1');
+      androidApp = true;
+    }
+  } catch (_) { androidApp = false; }
+  if (androidApp) {
+    window.jmTrack = () => {};
+    return;
+  }
   if (document.getElementById('jm-cookie-settings')) return;
   const measurementId = 'G-G4CQCVHLVR';
   const storageKey = 'jm-analytics-consent-v1';

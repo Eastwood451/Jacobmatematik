@@ -313,6 +313,52 @@
     return response.data;
   }
 
+  function accountDeletionMessage(code) {
+    const english = window.JacobLang?.get?.() === "en";
+    const text = english ? {
+      username_mismatch:"Type your own username.",
+      teacher_has_students:"Your account still has pupils, so it was not deleted. Their accounts and results stay.",
+      not_deployed:"Account deletion is not switched on yet.",
+      profile_missing:"The account has no profile, so it was not deleted.",
+      wrong_password:"The username or password is wrong.",
+      delete_failed:"The account could not be deleted. Try again.",
+    } : {
+      username_mismatch:"Skriv dit eget brugernavn.",
+      teacher_has_students:"Din konto har stadig elever, så den blev ikke slettet. Deres konti og resultater bliver.",
+      not_deployed:"Sletning af konto er ikke slået til endnu.",
+      profile_missing:"Kontoen har ingen profil, så den blev ikke slettet.",
+      wrong_password:"Brugernavn eller adgangskode er forkert.",
+      delete_failed:"Kontoen kunne ikke slettes. Prøv igen.",
+    };
+    return text[code] || text.delete_failed;
+  }
+
+  async function deleteOwnAccount(username, password) {
+    if (!client) throw new Error(accountDeletionMessage("not_deployed"));
+    const signedIn = await client.auth.signInWithPassword({ email:await emailForUsername(username), password });
+    if (signedIn.error || !signedIn.data?.user?.id) throw new Error(accountDeletionMessage("wrong_password"));
+    const userId = signedIn.data.user.id;
+    const response = await client.functions.invoke("delete-own-account", { body:{ confirmUsername:username } });
+    if (response.error || response.data?.error) {
+      let code = response.data?.error || "";
+      const status = response.error?.context?.status;
+      if (status === 404) code = "not_deployed";
+      if (!code) {
+        try {
+          const body = await response.error.context.clone().json();
+          code = body?.error || "";
+        } catch { /* The function may not be deployed yet. */ }
+      }
+      throw new Error(accountDeletionMessage(code || "delete_failed"));
+    }
+    try {
+      localStorage.removeItem(progressKey(userId));
+      localStorage.removeItem(consentKey(userId));
+    } catch { /* The account is already gone on the server. */ }
+    activeProfile = null;
+    await client.auth.signOut();
+  }
+
   async function changeOwnPassword(username, currentPassword, password) {
     const signedIn = await client.auth.signInWithPassword({ email:await emailForUsername(username), password:currentPassword });
     throwIfError(signedIn);
@@ -344,6 +390,7 @@
     appendResult,
     deleteResults,
     manageStudent,
+    deleteOwnAccount,
     changeOwnPassword,
   };
 })();
