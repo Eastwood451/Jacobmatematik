@@ -5,7 +5,8 @@
       "namespace": "android_app",
       "package_name": "dk.jacobmatematik.app",
       "sha256_cert_fingerprints": [
-        "8B:A0:7C:96:15:8E:CD:DF:C7:BD:A6:F0:A1:EF:5D:33:4D:ED:09:D5:17:0B:57:29:0E:D4:0C:9A:73:81:D4:E6"
+        "8B:A0:7C:96:15:8E:CD:DF:C7:BD:A6:F0:A1:EF:5D:33:4D:ED:09:D5:17:0B:57:29:0E:D4:0C:9A:73:81:D4:E6",
+        "9F:87:16:87:2A:9C:7D:A7:1C:61:A4:E2:15:63:70:24:5C:6D:B9:A6:96:2C:F0:CF:12:91:E4:5A:CE:71:90:B7"
       ]
     }
   }
