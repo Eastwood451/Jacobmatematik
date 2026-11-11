@@ -28,6 +28,7 @@ const allowed = new Set([
   'module-loader.js',
   'app.js',
   '/student-view.js', // Persistent navigation shell, not an exercise module.
+  '/sw-register.js', // Registers the offline fallback. It does not load an exercise.
 ]);
 for (const src of eagerScripts) {
   assert.ok(allowed.has(src), `unexpected eager script: ${src}`);
