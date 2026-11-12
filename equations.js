@@ -10,17 +10,31 @@
     const lang = () => document.documentElement.lang.startsWith('en') ? 'en' : 'da';
     const t = () => copy[lang()];
     const key = () => ['intro','remove','same','alone','same','alone','done'][step];
-    function stop() { serial++; window.speechSynthesis?.cancel(); }
+    const clips = new Map();
+    let playing = null;
+    function clip(language, line) {
+      const id=language+'-'+line;
+      if(!clips.has(id)) {
+        const audio=new Audio('assets/equations/'+id+'.mp3?v=20261112-voice1');
+        audio.preload='auto'; clips.set(id,audio);
+      }
+      return clips.get(id);
+    }
+    function stop() {
+      serial++;
+      if(playing) { playing.pause(); playing.currentTime=0; playing=null; }
+    }
     function speak() {
-      stop(); const token = serial;
-      const fallback = () => {
-        if(disposed || token !== serial || !window.speechSynthesis) return;
-        const utterance = new SpeechSynthesisUtterance(lang() === 'da' ? t()[key()].replace(/X/g, 'eks') : t()[key()]);
-        utterance.lang = lang() === 'da' ? 'da-DK' : 'en-GB'; utterance.rate = .9;
-        utterance.voice = speechSynthesis.getVoices().find(v => v.lang === utterance.lang) || null;
-        speechSynthesis.speak(utterance);
-      };
-      fallback();
+      stop(); if(disposed) return;
+      const token=serial;
+      playing=clip(lang(),key());
+      playing.play().catch(() => {
+        if(disposed || token!==serial) return;
+        // Autoplay may be blocked until a user gesture. Replay stays available;
+        // never substitute a voice selected by the browser's language.
+        const replay=root.querySelector('[data-eq="replay"]');
+        if(replay) replay.textContent=lang()==='da'?'▶ Hør igen':'▶ Listen again';
+      });
     }
     root.innerHTML = `<section class="eq-module" data-i18n-skip><nav><button type="button" data-eq="back"></button><div><button type="button" data-eq="replay"></button><button type="button" data-eq="reset"></button></div></nav><h1></h1><p class="eq-prompt" aria-live="polite"></p><p class="eq-hint"></p><div class="eq-scale"><div class="eq-post"></div><div class="eq-foot"></div><div class="eq-beam"></div><div class="eq-pan eq-left"><svg class="eq-cords" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M0 100 L50 0 L100 100" fill="none" stroke="#d9c9a9" stroke-width="1" vector-effect="non-scaling-stroke"/></svg><div class="eq-load"><div class="eq-x">x</div><div class="eq-boxes"></div></div><div class="eq-tray"></div><span class="eq-arrow" aria-hidden="true">↓</span></div><div class="eq-pan eq-right"><svg class="eq-cords" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M0 100 L50 0 L100 100" fill="none" stroke="#d9c9a9" stroke-width="1" vector-effect="non-scaling-stroke"/></svg><div class="eq-load"><div class="eq-boxes"></div></div><div class="eq-tray"></div><span class="eq-arrow" aria-hidden="true">↓</span></div><div class="eq-pivot"></div></div><div class="eq-equation" aria-live="polite"><span class="eq-expression eq-expression-left"></span><span class="eq-sign"></span><span class="eq-expression eq-expression-right"></span></div><p class="eq-status"></p><div class="eq-controls"><button type="button" data-eq="next"></button></div><div class="eq-progress" aria-hidden="true"></div></section>`;
     const find = s => root.querySelector(s);
@@ -100,8 +114,9 @@
     }
     function languageChanged() { cancelFlight(); render(); speak(); }
     root.addEventListener('click',click); document.addEventListener('jm-langchange',languageChanged);
+    for(const line of ['intro','remove','same','alone','done']) clip(lang(),line);
     render(); speak();
-    return () => { disposed=true;cancelFlight();stop();root.removeEventListener('click',click);document.removeEventListener('jm-langchange',languageChanged); };
+    return () => { disposed=true;cancelFlight();stop();clips.clear();root.removeEventListener('click',click);document.removeEventListener('jm-langchange',languageChanged); };
   }
   window.JacobEquations={mount};
 })();
