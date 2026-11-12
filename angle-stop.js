@@ -112,7 +112,6 @@
       const pool = opts.length ? opts : [inc, Math.min(180 - inc, inc * 2)];
       target = pool[Math.floor(Math.random() * pool.length)];
       baseDeg = round >= 1 ? Math.floor(Math.random() * 360) : 0;
-      hideLive = round >= 2; // from round 3 (0-indexed 2): by feel
       current = 0;
       lastResult = null;
       phase = "ready";
@@ -214,6 +213,9 @@
           <div>Bedste: <strong>${best}</strong></div>
         </div>
         <p class="ag-round" style="text-align:center">${roundLabel}</p>
+        <div class="ang-actions">
+          <button type="button" class="ang-btn ang-quiet" data-ag="toggle-degrees" aria-pressed="${!hideLive}">Vis grader: ${hideLive ? "Fra" : "Til"}</button>
+        </div>
         ${body}`;
     }
 
@@ -289,6 +291,12 @@
       const btn = e.target.closest("button");
       if (!btn || !root.contains(btn)) return;
       const act = btn.dataset.ag;
+      if (act === "toggle-degrees" && phase !== "done") {
+        hideLive = !hideLive;
+        render();
+        stage.querySelector('[data-ag="toggle-degrees"]')?.focus();
+        return;
+      }
       if (act === "exit") {
         cancelAnimationFrame(raf);
         running = false;
