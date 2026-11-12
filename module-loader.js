@@ -149,7 +149,7 @@
     },
     "angle-stop": {
       css: ["angles.css?v=20261105-angles2", "angle-games.css?v=20261105-angles2"],
-      js: ["angles-core.js?v=20261105-angles2", "angle-stop.js?v=20261112-degree-toggle1"],
+      js: ["angles-core.js?v=20261105-angles2", "angle-stop.js?v=20261112-degree-toggle2"],
       ready: () => !!window.JacobAngleStop && !!window.JacobAnglesCore,
     },
     "fraction-runner": {
