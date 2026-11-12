@@ -58,7 +58,7 @@
   }
 
   const MODULES = {
-    equations: { css: ["equations.css?v=20261112-1"], js: ["equations.js?v=20261112-1"], ready: () => !!window.JacobEquations },
+    equations: { css: ["equations.css?v=20261112-slide2"], js: ["equations.js?v=20261112-slide2"], ready: () => !!window.JacobEquations },
     clock: {
       css: ["clock.css?v=20261019-clock-tip-dashed1"],
       js: ["clock-core.js?v=20261019-clock-tip-dashed1", "clock-course.js?v=20261019-clock-tip-dashed1", "clock.js?v=20261019-clock-tip-dashed1"],
