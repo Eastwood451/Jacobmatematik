@@ -14,9 +14,7 @@ Upload-nøglens SHA-256:
 
 ## Digital Asset Links
 
-`/.well-known/assetlinks.json` indeholder kun upload-nøglen. Filen ligger ikke på det live site, før denne branch er merget.
-
-Play App Signing signerer den APK, testerne installerer, med en anden nøgle. SHA-256 for den nøgle vises først i Play Console efter upload. Den skal tilføjes i samme `sha256_cert_fingerprints`-liste. Kopiér alle fingeraftryk, som siden viser, også hvis der er flere nøgler. Uden det rigtige fingeraftryk virker appen, men med browserbjælke.
+`/.well-known/assetlinks.json` indeholder upload-nøglen og Play App Signing-nøglen. Play-nøglens SHA-256 er `9F:87:16:87:2A:9C:7D:A7:1C:61:A4:E2:15:63:70:24:5C:6D:B9:A6:96:2C:F0:CF:12:91:E4:5A:CE:71:90:B7`. Den står i samme `sha256_cert_fingerprints`-liste som upload-nøglen. Hvis Play Console senere viser flere fingeraftryk, skal de også med. Uden det fingeraftryk, der signerede den installerede APK, vises browserbjælken.
 
 `www.jacobmatematik.dk` svarer i dag med en omdirigering til apex. Asset links skal ligge på `https://jacobmatematik.dk/.well-known/assetlinks.json` og returnere HTTP 200 med `Content-Type: application/json` uden omdirigering. Repoet har allerede `.nojekyll`, så mappen kan udgives af GitHub Pages.
 
@@ -168,7 +166,7 @@ Ikke lavet i denne branch, fordi de ikke ligger i AAB'en:
 
 1. Opret appen som gratis app med navnet Jacobmatematik og standardsprog dansk. Udgiv ikke til produktion.
 2. Slå Play App Signing til. Upload den signerede AAB. Upload-nøglen bliver liggende hos dig og må ikke i git.
-3. Kopiér Play-signeringsnøglens SHA-256 ind i `assetlinks.json`, og udgiv først derefter websitet, når Jacob har sagt go. Før det har testerne en browserbjælke.
+3. Play-signeringsnøglens SHA-256 `9F:87:16:87:2A:9C:7D:A7:1C:61:A4:E2:15:63:70:24:5C:6D:B9:A6:96:2C:F0:CF:12:91:E4:5A:CE:71:90:B7` står i `assetlinks.json` ved siden af upload-nøglen. Bjælken skjules, når den fil er live, og den installerede app er signeret med en af nøglerne i listen.
 4. Udfyld butikslisten, inklusive de grafikfiler der mangler.
 5. Sæt privatlivs-URL til https://jacobmatematik.dk/privatliv.html og slette-URL til https://jacobmatematik.dk/slet-konto.html, efter at sitet er merget og slettefunktionen er deployet.
 6. Reklamer: nej. Reklame-id: nej.
