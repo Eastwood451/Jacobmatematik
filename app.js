@@ -1172,15 +1172,26 @@ multiplicationColumn: {
     window.JacobModules?.load("fps-trial-entry").catch(err => console.error(err));
     window.JacobModules?.load("dennis-audio").catch(err => console.error(err));
   }
+  // Presentation marks only. Same stroke language, one fixed box, so a long title cannot wrap the sign.
+  const MATH_TOWER_GLYPHS = {
+    negatives:`<svg viewBox="0 0 24 24" focusable="false"><path class="is-fine" d="M2.1 12.15h4.7"/><path class="is-fine" d="M16.8 5.5v13"/><path class="is-fine" d="M16.8 5.5 10.3 13.2h9.6"/></svg>`,
+    brackets:`<svg viewBox="0 0 24 24" focusable="false"><path d="M10 4.7C6.4 7.5 6.4 16.5 10 19.3"/><path d="M14 4.7c3.6 2.8 3.6 11.8 0 14.6"/></svg>`,
+    division:`<svg viewBox="0 0 24 24" focusable="false"><circle class="is-dot" cx="12" cy="6.15" r="1.55"/><path d="M4.8 12h14.4"/><circle class="is-dot" cx="12" cy="17.85" r="1.55"/></svg>`,
+    times:`<svg viewBox="0 0 24 24" focusable="false"><path d="M6.15 6.15 17.85 17.85M17.85 6.15 6.15 17.85"/></svg>`,
+    minus:`<svg viewBox="0 0 24 24" focusable="false"><path d="M4.8 12h14.4"/></svg>`,
+    friends:`<svg viewBox="0 0 24 24" focusable="false"><path class="is-fine" d="M8.7 8.15 7.15 9.7"/><path class="is-fine" d="M8.7 8.15v8.3"/><ellipse class="is-fine" cx="15.35" cy="12.3" rx="3.35" ry="4.45"/></svg>`,
+    plus:`<svg viewBox="0 0 24 24" focusable="false"><path d="M4.8 12h14.4M12 4.8v14.4"/></svg>`,
+    counting:`<svg viewBox="0 0 24 24" focusable="false"><path class="is-fine" d="M4.55 9.15 3.15 10.5M4.55 9.15v7.15"/><path class="is-fine" d="M7.55 10.55c0-1.85 5.15-2.05 5.15.15 0 2.15-4.85 1.85-5.2 5.15h5.45"/><path class="is-fine" d="M15.15 9.05c0-1.15 4.7-1.25 4.7 1.15 0 1.55-2.55 1.55-2.55 1.7 0 .2 2.75.05 2.75 2.2 0 2.05-4.85 2.05-4.85.75"/></svg>`,
+  };
   const MATH_TOWER_LEVELS = [
-    { label:"Negative tal", symbol:"−4", topics:["negatives"] },
-    { label:"Regnehierarki", symbol:"( )", topics:["pemdas"] },
-    { label:"Division", symbol:":", topics:["divisionLollipops", "divisionDrill"] },
-    { label:"Gange", symbol:"·", topics:["multiplication", "tableDrill"] },
-    { label:"Minus", symbol:"−", topics:["subtractionDrill", "subtractionBorrowing"] },
-    { label:"10’er-venner", symbol:"🍕", topics:["tenFriends"] },
-    { label:"Plus", symbol:"+", topics:["addition"] },
-    { label:"Tælle", symbol:"1 2 3", topics:["numbers"] },
+    { label:"Negative tal", glyph:"negatives", topics:["negatives"] },
+    { label:"Regnehierarki", glyph:"brackets", topics:["pemdas"] },
+    { label:"Division", glyph:"division", topics:["divisionLollipops", "divisionDrill"] },
+    { label:"Gange", glyph:"times", topics:["multiplication", "tableDrill"] },
+    { label:"Minus", glyph:"minus", topics:["subtractionDrill", "subtractionBorrowing"] },
+    { label:"10’er-venner", glyph:"friends", topics:["tenFriends"] },
+    { label:"Plus", glyph:"plus", topics:["addition"] },
+    { label:"Tælle", glyph:"counting", topics:["numbers"] },
   ];
   function mathTowerStage(score) {
     if (score >= 95) return { key:"granite", name:"Granit" };
@@ -1316,7 +1327,7 @@ multiplicationColumn: {
           const description = `${level.label}: ${percentage} %, ${stage.name}. ${level.topics.map(key => TOPICS[key].name).join(" og ")}.`;
           return `<button type="button" class="math-tower-level tower-${stage.key}" style="--floor:${index}" ${topic ? topic==='tenFriends' ? 'data-action="ten-friends"' : `data-topic="${topic}"` : "disabled"} aria-label="${description}${topic ? " Klik for at øve." : " Log ind for at øve."}" title="${description}">
             ${mathTowerFloorArt(stage.key, index, heatmap, numberStones, additionBricks, subtractionStones)}
-            <span class="math-tower-plaque"><span class="math-tower-symbol" aria-hidden="true">${level.symbol}</span><span class="math-tower-name">${level.label}<small>${stage.name}</small></span><span class="math-tower-score">${percentage}<small>%</small></span></span>
+            <span class="math-tower-plaque"><span class="math-tower-symbol" aria-hidden="true">${MATH_TOWER_GLYPHS[level.glyph]}</span><span class="math-tower-name">${level.label}<small>${stage.name}</small></span><span class="math-tower-score">${percentage}<small>%</small></span></span>
           </button>`;
         }).join("")}
       </nav>

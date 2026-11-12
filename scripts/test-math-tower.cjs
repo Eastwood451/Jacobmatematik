@@ -3,6 +3,16 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
+const towerLevels = source.slice(source.indexOf('const MATH_TOWER_LEVELS'), source.indexOf('function mathTowerStage'));
+const towerCss = fs.readFileSync(path.join(__dirname, '../styles.css'), 'utf8');
+assert.equal(towerLevels.includes('🍕'), false, 'floor marks are signs, not an emoji');
+assert.equal(towerLevels.includes('symbol:'), false, 'floor marks are not loose text glyphs');
+for (const glyph of ['negatives', 'brackets', 'division', 'times', 'minus', 'friends', 'plus', 'counting']) {
+  assert.match(towerLevels, new RegExp(`glyph:"${glyph}"`));
+}
+assert.match(source, /MATH_TOWER_GLYPHS\[level\.glyph\]/);
+assert.match(towerCss, /grid-template-columns:28px minmax\(0,1fr\)/);
+assert.doesNotMatch(towerCss, /\.math-tower-level:last-child \.math-tower-symbol \{ font-size:10px/);
 const context = vm.createContext({});
 // Exercise the production helpers without starting authentication or the app.
 const names = ['matrixDrillIsGreen', 'matrixDrillCellStyle', 'tableDrillSessions', 'additionPairStats', 'subtractionDrillPairStats', 'subtractionDrillExactPairStats', 'subtractionDrillLevelProgress', 'subtractionDrillLevelIndex', 'subtractionDrillTroubleFacts', 'syncSubtractionDrillTroubles', 'numberValueStats', 'drillMastery', 'numberMastery', 'mathTowerBestHeatmap', 'mathTowerNumberStones', 'mathTowerAdditionBricks', 'mathTowerSubtractionStones', 'mathTowerFloorArt', 'renderAdditionExerciseHeatmap', 'renderSubtractionDrillHeatmap', 'additionColumnTokenPresentation', 'additionColumnCurrent', 'additionColumnSlot', 'renderColumnAdditionFigure'];
