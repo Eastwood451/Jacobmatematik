@@ -214,7 +214,7 @@
         </div>
         <p class="ag-round" style="text-align:center">${roundLabel}</p>
         <div class="ang-actions">
-          <button type="button" class="ang-btn ang-quiet" data-ag="toggle-degrees" aria-pressed="${!hideLive}">Vis grader: ${hideLive ? "Fra" : "Til"}</button>
+          <button type="button" class="ang-btn ang-teal" data-ag="toggle-degrees" aria-pressed="${!hideLive}">Vis grader: ${hideLive ? "Fra" : "Til"}</button>
         </div>
         ${body}`;
     }
