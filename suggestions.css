@@ -24,6 +24,31 @@
   color: inherit;
 }
 
+/*
+  Cookie settings (analytics.js) is fixed at bottom-left (~bottom:28px).
+  Keep the suggestion control in document flow, but clear that overlay on
+  small screens and put the link on its own centered row so it stays tappable.
+*/
+@media (max-width: 600px) {
+  footer.site-links,
+  footer.lp-footer {
+    padding-bottom: 96px;
+    row-gap: 14px;
+  }
+  footer.site-links .jm-suggest-entry,
+  footer.lp-footer .jm-suggest-entry {
+    flex: 1 1 100%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 14px;
+    text-align: center;
+  }
+}
+
 #jm-suggest-dialog {
   box-sizing: border-box;
   width: min(440px, calc(100% - 32px));

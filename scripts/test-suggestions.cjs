@@ -38,6 +38,8 @@ assert.match(strings, /Do you have a suggestion for jacobmatematik\.dk\?/);
 const css = read('suggestions.css');
 assert.doesNotMatch(css, /position:\s*fixed/);
 assert.match(css, /#jm-suggest-dialog/);
+assert.match(css, /padding-bottom:\s*96px/);
+assert.match(css, /min-height:\s*44px/);
 
 const landings = [
   'en/index.html',
