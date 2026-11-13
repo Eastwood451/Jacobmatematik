@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="da">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Forslag – admin forhåndsvisning</title>
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/suggestions.css">
+  <style>
+    body { margin: 0; background: #f7f2ff; }
+    .preview-wrap { max-width: 960px; margin: 24px auto; padding: 0 16px 48px; }
+  </style>
+</head>
+<body>
+  <div class="preview-wrap page teacher-page">
+    <section id="site-suggestions-panel" class="class-manager suggestions-panel" aria-label="Forslag til siden">
+      <div class="class-manager-title"><div><span class="eyebrow">Feedback</span><h2>Forslag til jacobmatematik.dk</h2></div><button class="btn secondary" type="button">Luk oversigt</button></div>
+      <p>Beskeder fra gæster og indloggede brugere. Brugernavn er “Gæst”, hvis afsenderen ikke var logget ind.</p>
+      <div class="suggestions-toolbar">
+        <button class="btn secondary" type="button">Opdatér</button>
+        <button class="btn secondary" type="button">Eksportér CSV</button>
+      </div>
+      <p role="status">3 forslag</p>
+      <div class="suggestions-table-wrap">
+        <table class="suggestions-table">
+          <thead>
+            <tr>
+              <th scope="col" aria-sort="none"><button type="button">Brugernavn</button></th>
+              <th scope="col" aria-sort="descending"><button type="button">Tidspunkt</button></th>
+              <th scope="col" aria-sort="none"><button type="button">Besked</button></th>
+              <th scope="col">Handling</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Gæst</td>
+              <td><time>13.11.2026 15.40</time></td>
+              <td class="suggestions-message">Kunne I tilføje flere øvelser med negative tal?</td>
+              <td class="suggestions-delete"><button class="btn danger compact" type="button">Slet</button></td>
+            </tr>
+            <tr>
+              <td>emma8</td>
+              <td><time>13.11.2026 14.12</time></td>
+              <td class="suggestions-message">Knappen til at skifte sprog er svær at finde på mobil.</td>
+              <td class="suggestions-delete"><button class="btn danger compact" type="button">Slet</button></td>
+            </tr>
+            <tr>
+              <td>Jacob</td>
+              <td><time>12.11.2026 09.05</time></td>
+              <td class="suggestions-message">Testforslag fra admin – kan slettes.</td>
+              <td class="suggestions-delete"><button class="btn danger compact" type="button">Slet</button></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</body>
+</html>

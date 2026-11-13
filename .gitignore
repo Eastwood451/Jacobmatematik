@@ -1,4 +1,6 @@
 test-results/
+node_modules/
+package-lock.json
 .worktrees/
 android/.gradle/
 android/build/
