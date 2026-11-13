@@ -386,21 +386,38 @@
       if (s.finale !== "victory") return "";
       const line = s.victoryLine || VICTORY_LINES[0];
       return `<div class="sk-overlay sk-victory-overlay" role="dialog" aria-modal="true" aria-labelledby="sk-victory-title">
-        <div class="sk-victory-card">
+        <div class="sk-victory-card sk-victory-boom">
           <p class="sk-eyebrow">Sejr</p>
+          <h2 id="sk-victory-title" class="sk-victory-title">SKAKMAT!</h2>
           <div class="sk-kaptajn-hero" aria-hidden="true">
-            <div class="sk-kaptajn-glow"></div>
-            <img class="sk-kaptajn-pose" src="${KAPTAJN_ART}" alt="" width="220" height="330" decoding="async">
-            <span class="sk-kaptajn-glint"></span>
-            <span class="sk-kaptajn-thumb" aria-hidden="true">
-              <svg viewBox="0 0 64 64" width="56" height="56" focusable="false">
-                <path fill="#ffd24a" stroke="#1d1630" stroke-width="3" d="M26 28V14c0-4 3-7 7-7s7 3 7 7v10"/>
-                <path fill="#ffe9a0" stroke="#1d1630" stroke-width="3" d="M18 28h28l2 6c2 8 1 18-3 22H22c-5-3-8-12-7-20l3-8z"/>
-                <path fill="#1d1630" d="M24 36h4v14h-4zm8 0h4v14h-4zm8 0h4v14h-4z"/>
+            <div class="sk-kaptajn-stage">
+              <div class="sk-kaptajn-glow"></div>
+              <span class="sk-impact-lines"></span>
+              <img class="sk-kaptajn-pose" src="${KAPTAJN_ART}" alt="" width="220" height="330" decoding="async">
+              <span class="sk-kaptajn-shades">
+                <svg viewBox="0 0 100 36" width="88" height="32" focusable="false">
+                  <ellipse cx="28" cy="20" rx="22" ry="12" fill="#1d1630"/>
+                  <ellipse cx="72" cy="20" rx="22" ry="12" fill="#1d1630"/>
+                  <path d="M48 18h4" stroke="#1d1630" stroke-width="5" stroke-linecap="round"/>
+                  <path d="M8 16h8" stroke="#1d1630" stroke-width="4" stroke-linecap="round"/>
+                  <path d="M84 16h8" stroke="#1d1630" stroke-width="4" stroke-linecap="round"/>
+                  <path class="sk-shade-shine" d="M14 16h22" stroke="#fff" stroke-width="3.5" stroke-linecap="round"/>
+                  <path class="sk-shade-shine" d="M58 16h18" stroke="#fff8" stroke-width="2.5" stroke-linecap="round"/>
+                </svg>
+              </span>
+              <span class="sk-kaptajn-glint"></span>
+            </div>
+            <span class="sk-kaptajn-thumb">
+              <span class="sk-thumb-burst"></span>
+              <svg viewBox="0 0 96 96" width="120" height="120" focusable="false">
+                <path fill="#ffd24a" stroke="#1d1630" stroke-width="4.5" stroke-linejoin="round" d="M40 42V16c0-8 6-13 13-13s13 5 13 13v18"/>
+                <path fill="#ffe9a0" stroke="#1d1630" stroke-width="4.5" stroke-linejoin="round" d="M20 42h52l5 9c5 13 2 30-7 36H28c-9-5-13-20-11-32l3-13z"/>
+                <path fill="#1d1630" d="M33 54h8v24h-8zm15 0h8v24h-8zm15 0h8v24h-8z"/>
+                <circle class="sk-thumb-spark" cx="80" cy="26" r="6" fill="#fff" stroke="#1d1630" stroke-width="2"/>
+                <circle class="sk-thumb-spark" cx="88" cy="42" r="4" fill="#ffd24a" stroke="#1d1630" stroke-width="2"/>
               </svg>
             </span>
           </div>
-          <h2 id="sk-victory-title">SKAKMAT!</h2>
           <p class="sk-victory-line">„${esc(line)}”</p>
           <p class="sk-victory-sub">Kaptajn Kvadratrod giver dig et kæmpe thumbs up.</p>
           <div class="sk-victory-actions">

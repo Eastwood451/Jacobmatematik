@@ -98,10 +98,23 @@ const MATE_MOVES = [
       assert.equal(await page.locator('.sk-kaptajn-pose').getAttribute('src'), 'assets/figurer/kaptajn-kvadratrod.webp');
       await page.waitForFunction(() => {
         const img = document.querySelector('.sk-kaptajn-pose');
-        return img && img.complete && img.naturalWidth > 0 && Number(getComputedStyle(img).opacity) > 0.9;
+        const title = document.querySelector('#sk-victory-title');
+        const thumb = document.querySelector('.sk-kaptajn-thumb');
+        if (!img || !title || !thumb) return false;
+        if (!(img.complete && img.naturalWidth > 0 && Number(getComputedStyle(img).opacity) > 0.9)) return false;
+        const tr = title.getBoundingClientRect();
+        const stage = document.querySelector('.sk-kaptajn-stage');
+        const sr = stage.getBoundingClientRect();
+        // Title must sit clearly above the clipped artwork stage (room for rotate).
+        return (sr.top - tr.bottom) >= 10 && tr.width > 120 && Number(getComputedStyle(title).opacity) > 0.9
+          && Number(getComputedStyle(title).zIndex) >= 10
+          && thumb.getBoundingClientRect().width >= 100;
       });
       assert.equal(await page.locator('[data-act="replay"]').isVisible(), true);
-      await page.waitForTimeout(200);
+      assert.equal(await page.locator('.sk-kaptajn-shades').count(), 1);
+      assert.equal(await page.locator('.sk-impact-lines').count(), 1);
+      await page.waitForFunction(() => Number(getComputedStyle(document.querySelector('.sk-victory-line')).opacity) > 0.9);
+      await page.waitForTimeout(250);
       await page.screenshot({ path: `test-results/skak/victory-${width}.png`, fullPage: true });
       await page.locator('.sk-victory-card').screenshot({ path: `test-results/skak/victory-card-${width}.png` });
 
