@@ -104,6 +104,34 @@ assert.deepEqual(S.gameStatus(mate), { over: true, result: "0-1", winner: "b", r
 assert.equal(S.gameStatus("7k/5Q2/6K1/8/8/8/8/8 b - - 0 1").reason, "pat");
 assert.equal(S.gameStatus("7k/8/6K1/8/8/8/8/8 w - - 0 1").reason, "for lidt materiale");
 assert.equal(S.gameStatus(S.START_FEN).over, false);
+assert.equal(S.kingSquare(S.START_FEN, "w"), "e1");
+assert.equal(S.kingSquare(mate, "w"), "e1");
+assert.equal(S.fenAtPly([], 0), S.START_FEN);
+assert.equal(S.fenAtPly([{ by: "w", san: "e4", from: "e2", to: "e4" }], 1), S.applyMove(S.START_FEN, "e2", "e4").fen);
+{
+  // Fool's mate replay: 1. f3 e5 2. g4 Qh4#
+  const moves = [
+    { by: "w", san: "f3", from: "f2", to: "f3" },
+    { by: "b", san: "e5", from: "e7", to: "e5" },
+    { by: "w", san: "g4", from: "g2", to: "g4" },
+    { by: "b", san: "Qh4#", from: "d8", to: "h4" },
+  ];
+  assert.equal(S.fenAtPly(moves, 0), S.START_FEN);
+  assert.equal(S.fenAtPly(moves, 4), mate);
+  assert.equal(S.gameStatus(S.fenAtPly(moves, 4)).reason, "skakmat");
+  const dropMoves = [
+    { by: "w", san: "e4", from: "e2", to: "e4" },
+    { by: "b", san: "e5", from: "e7", to: "e5" },
+    { by: "w", san: "Nf3", from: "g1", to: "f3" },
+    { by: "b", san: "Nc6", from: "b8", to: "c6" },
+    { by: "w", drop: "n", square: "e2", san: "+S@e2" },
+  ];
+  const after4 = S.fenAtPly(dropMoves, 4);
+  assert.deepEqual(S.dropSquares(after4, "w", "n").sort(), ["e2", "g1"]);
+  const afterDrop = S.fenAtPly(dropMoves, 5);
+  assert.equal(new Chess(afterDrop).get("e2").type, "n");
+  assert.equal(S.turnOf(afterDrop), "b");
+}
 
 // ---------- computer ----------
 const mateIn1 = "6k1/5ppp/8/8/8/8/5PPP/R5K1 w - - 0 1";
