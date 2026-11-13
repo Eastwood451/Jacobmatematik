@@ -1,0 +1,45 @@
+name: Site suggestions
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'suggestions.js'
+      - 'suggestions.css'
+      - 'supabase-backend.js'
+      - 'app.js'
+      - 'i18n-strings.js'
+      - 'index.html'
+      - 'supabase/migrations/20261113153000_site_suggestions.sql'
+      - 'scripts/test-suggestions.cjs'
+      - 'scripts/test-lazy-load-startup.cjs'
+      - '.github/workflows/suggestions.yml'
+  pull_request:
+    paths:
+      - 'suggestions.js'
+      - 'suggestions.css'
+      - 'supabase-backend.js'
+      - 'app.js'
+      - 'i18n-strings.js'
+      - 'index.html'
+      - 'supabase/migrations/20261113153000_site_suggestions.sql'
+      - 'scripts/test-suggestions.cjs'
+      - 'scripts/test-lazy-load-startup.cjs'
+      - '.github/workflows/suggestions.yml'
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and feature checks
+        run: |
+          node --check suggestions.js
+          node --check supabase-backend.js
+          node --check app.js
+          node scripts/test-lazy-load-startup.cjs
+          node scripts/test-suggestions.cjs

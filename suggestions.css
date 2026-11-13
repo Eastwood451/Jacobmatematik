@@ -1,0 +1,173 @@
+/* Suggestion button lives in the site footer flow — never a fixed overlay on exercise controls. */
+.jm-suggest-entry {
+  display: inline;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.jm-suggest-entry:hover,
+.jm-suggest-entry:focus-visible {
+  color: #291448;
+}
+.jm-suggest-entry:focus-visible {
+  outline: 3px solid #ffd077;
+  outline-offset: 3px;
+}
+
+.lp-footer .jm-suggest-entry {
+  color: inherit;
+}
+
+#jm-suggest-dialog {
+  box-sizing: border-box;
+  width: min(440px, calc(100% - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: 24px;
+  border: 2px solid #bd8fdf;
+  border-radius: 20px;
+  background: #291448;
+  color: #fff5df;
+  box-shadow: 0 18px 80px #0008;
+  font: 1rem/1.55 system-ui, sans-serif;
+}
+#jm-suggest-dialog::backdrop {
+  background: #10071dc9;
+}
+#jm-suggest-dialog h2 {
+  font-size: 1.35rem;
+  line-height: 1.2;
+  color: #ffd077;
+  margin: 0 0 12px;
+}
+#jm-suggest-dialog p {
+  margin: 0 0 14px;
+}
+#jm-suggest-dialog label {
+  display: block;
+  font-weight: 700;
+  margin: 0 0 6px;
+}
+#jm-suggest-dialog textarea {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 8.5rem;
+  resize: vertical;
+  border: 2px solid #bd8fdf;
+  border-radius: 12px;
+  padding: 12px 14px;
+  font: inherit;
+  color: #291448;
+  background: #fffaf0;
+}
+#jm-suggest-dialog textarea:focus-visible {
+  outline: 3px solid #ffd077;
+  outline-offset: 2px;
+}
+#jm-suggest-dialog .jm-suggest-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+#jm-suggest-dialog .jm-suggest-actions .btn {
+  min-height: 44px;
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 20px;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+#jm-suggest-dialog .jm-suggest-actions .btn.primary {
+  background: #ffd077;
+  color: #291448;
+}
+#jm-suggest-dialog .jm-suggest-actions .btn.secondary {
+  background: transparent;
+  color: #fff5df;
+  border: 2px solid #bd8fdf;
+}
+#jm-suggest-dialog .jm-suggest-actions .btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+#jm-suggest-dialog .jm-suggest-status {
+  min-height: 1.4em;
+  margin: 10px 0 0;
+}
+#jm-suggest-dialog .jm-suggest-status[data-tone="error"] {
+  color: #ffb4a8;
+}
+#jm-suggest-dialog .jm-suggest-status[data-tone="ok"] {
+  color: #b7f5c8;
+}
+#jm-suggest-dialog .jm-suggest-honeypot {
+  position: absolute;
+  left: -10000px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.suggestions-panel .suggestions-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  margin: 12px 0;
+}
+.suggestions-panel .suggestions-table-wrap {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.suggestions-panel table.suggestions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font: 500 0.92rem/1.4 system-ui, sans-serif;
+}
+.suggestions-panel table.suggestions-table th,
+.suggestions-panel table.suggestions-table td {
+  text-align: left;
+  vertical-align: top;
+  padding: 10px 12px;
+  border-bottom: 1px solid #d8cfe6;
+}
+.suggestions-panel table.suggestions-table th {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.suggestions-panel table.suggestions-table th[aria-sort="ascending"]::after {
+  content: " ▲";
+  font-size: 0.75em;
+}
+.suggestions-panel table.suggestions-table th[aria-sort="descending"]::after {
+  content: " ▼";
+  font-size: 0.75em;
+}
+.suggestions-panel .suggestions-message {
+  max-width: 36rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.suggestions-panel .suggestions-delete {
+  white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+  #jm-suggest-dialog {
+    width: calc(100% - 20px);
+    padding: 18px;
+    border-radius: 16px;
+  }
+  #jm-suggest-dialog h2 {
+    font-size: 1.2rem;
+  }
+}

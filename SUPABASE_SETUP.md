@@ -5,10 +5,12 @@
 ## Kildekode
 
 - Databaseskema og RLS-politikker: `supabase/schema.sql`
+- Migrationer: `supabase/migrations/`
 - Elevadministration: `supabase/functions/manage-student/index.ts`
 - Supabase CLI-konfiguration: `supabase/config.toml`
 - Browserklient: `supabase-backend.js`
 - Offentlig projektkonfiguration: `supabase-config.js`
+- Site-forslag (afventer Go før prod-migration): `docs/site-suggestions.md` + `supabase/migrations/20261113153000_site_suggestions.sql`
 
 Databaseskema og Edge Function skal ændres i GitHub først. Deploy derefter samme version til Supabase, så drift og repository ikke afviger.
 

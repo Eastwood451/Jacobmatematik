@@ -1389,6 +1389,13 @@
     "install_frag_add_home_android": { da: "Føj til startskærm", en: "Add to Home screen" },
     "install_frag_tap": { da: "Tryk ", en: "Tap " },
     "install_frag_install": { da: "Installer", en: "Install" },
-    "install_chrome_fallback": { da: "Hvis valget mangler, så åbn jacobmatematik.dk i Chrome eller Safari. På computer kan installation også findes i adresselinjen.", en: "If the option is missing, open jacobmatematik.dk in Chrome or Safari. On a computer, the install icon can also be found in the address bar." }
+    "install_chrome_fallback": { da: "Hvis valget mangler, så åbn jacobmatematik.dk i Chrome eller Safari. På computer kan installation også findes i adresselinjen.", en: "If the option is missing, open jacobmatematik.dk in Chrome or Safari. On a computer, the install icon can also be found in the address bar." },
+    "suggest_button": { da: "Har du et forslag til jacobmatematik.dk?", en: "Do you have a suggestion for jacobmatematik.dk?" },
+    "suggest_title": { da: "Send et forslag til Jacob", en: "Send a suggestion to Jacob" },
+    "suggest_lead": { da: "Skriv din idé eller feedback. Er du logget ind, gemmes dit brugernavn sammen med beskeden. Ellers står der Gæst.", en: "Write your idea or feedback. If you are signed in, your username is stored with the message. Otherwise it shows as Guest." },
+    "suggest_label": { da: "Din besked", en: "Your message" },
+    "suggest_placeholder": { da: "Skriv dit forslag her…", en: "Write your suggestion here…" },
+    "suggest_send": { da: "Send forslag", en: "Send suggestion" },
+    "suggest_close": { da: "Luk", en: "Close" }
   };
 })(typeof globalThis !== "undefined" ? globalThis : window);

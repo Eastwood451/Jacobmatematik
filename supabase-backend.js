@@ -366,6 +366,27 @@
     throwIfError(response);
   }
 
+  async function submitSiteSuggestion(message) {
+    if (!client) throw new Error("Supabase er ikke konfigureret.");
+    const response = await client.rpc("submit_site_suggestion", { p_message:String(message || "") });
+    throwIfError(response);
+    return response.data;
+  }
+
+  async function listSiteSuggestions() {
+    if (!client) throw new Error("Supabase er ikke konfigureret.");
+    const response = await client.rpc("list_site_suggestions");
+    throwIfError(response);
+    return Array.isArray(response.data) ? response.data : [];
+  }
+
+  async function deleteSiteSuggestion(id) {
+    if (!client) throw new Error("Supabase er ikke konfigureret.");
+    const response = await client.rpc("delete_site_suggestion", { p_id:id });
+    throwIfError(response);
+    return response.data === true;
+  }
+
   window.JacobBackend = {
     configured,
     usesLocalResults, isOwnLocalProgressKey, hasLocalConsent, grantLocalConsent, readLocalProgress, clearLocalProgress,
@@ -392,6 +413,9 @@
     manageStudent,
     deleteOwnAccount,
     changeOwnPassword,
+    submitSiteSuggestion,
+    listSiteSuggestions,
+    deleteSiteSuggestion,
   };
 })();
 

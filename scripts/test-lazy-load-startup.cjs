@@ -22,6 +22,7 @@ const allowed = new Set([
   'i18n.js',
   'analytics.js',
   'install-app.js',
+  'suggestions.js', // Site-wide feedback button/modal; not an exercise module.
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',
   'supabase-config.js',
   'supabase-backend.js',
@@ -59,7 +60,7 @@ for (const name of lazyCss) {
 }
 
 // Shell CSS still eager
-for (const name of ['styles.css', 'login-cinematic.css', 'cinematic-theme.css', 'local-results.css', 'install-app.css']) {
+for (const name of ['styles.css', 'login-cinematic.css', 'cinematic-theme.css', 'local-results.css', 'install-app.css', 'suggestions.css']) {
   assert.match(index, new RegExp(`href=["']${name.replace('.', '\\.')}`));
 }
 

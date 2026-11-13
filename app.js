@@ -900,6 +900,7 @@ multiplicationColumn: {
   let remoteSaveQueue = Promise.resolve();
   let signupBusy = false;
   const registrations = { open:false, rows:[], search:"", offset:0, more:false, loading:false, error:"", notice:"", request:0 };
+  const siteSuggestions = { open:false, rows:[], loading:false, error:"", notice:"", request:0, sortKey:"created_at", sortDir:"desc" };
   const practiceLeaderboard = { rows:[], status:null, loading:false, promptOpen:false, request:0 };
   let matrixDrillTimerId = null;
   let teacherLiveTimerId = null;
@@ -3488,6 +3489,92 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     </section>`;
   }
 
+  function sortedSiteSuggestions() {
+    const key = siteSuggestions.sortKey;
+    const dir = siteSuggestions.sortDir === "asc" ? 1 : -1;
+    return [...siteSuggestions.rows].sort((a, b) => {
+      const left = key === "created_at" ? new Date(a.created_at).getTime() : String(a[key] || "").toLocaleLowerCase("da");
+      const right = key === "created_at" ? new Date(b.created_at).getTime() : String(b[key] || "").toLocaleLowerCase("da");
+      if (left < right) return -1 * dir;
+      if (left > right) return 1 * dir;
+      return 0;
+    });
+  }
+
+  function renderSiteSuggestions() {
+    if (!state.user?.canManageRegistrations) return "";
+    const disabled = siteSuggestions.loading ? "disabled" : "";
+    const sortAttr = key => siteSuggestions.sortKey === key ? `aria-sort="${siteSuggestions.sortDir === "asc" ? "ascending" : "descending"}"` : 'aria-sort="none"';
+    const rows = sortedSiteSuggestions().map(row => {
+      const when = new Intl.DateTimeFormat("da-DK", { dateStyle:"short", timeStyle:"short" }).format(new Date(row.created_at));
+      return `<tr>
+        <td>${escapeHtml(row.display_name || "Gæst")}</td>
+        <td><time datetime="${escapeHtml(row.created_at)}">${escapeHtml(when)}</time></td>
+        <td class="suggestions-message">${escapeHtml(row.message || "")}</td>
+        <td class="suggestions-delete"><button class="btn danger compact" type="button" data-action="delete-site-suggestion" data-suggestion-id="${escapeHtml(row.id)}" ${disabled}>Slet</button></td>
+      </tr>`;
+    }).join("");
+    return `<section id="site-suggestions-panel" class="class-manager suggestions-panel" aria-label="Forslag til siden">
+      <div class="class-manager-title"><div><span class="eyebrow">Feedback</span><h2>Forslag til jacobmatematik.dk</h2></div><button class="btn secondary" type="button" data-action="toggle-site-suggestions" aria-expanded="${siteSuggestions.open}" ${disabled}>${siteSuggestions.open ? "Luk oversigt" : "Åbn oversigt"}</button></div>
+      ${siteSuggestions.open ? `<p>Beskeder fra gæster og indloggede brugere. Brugernavn er “Gæst”, hvis afsenderen ikke var logget ind.</p>
+        <div class="suggestions-toolbar">
+          <button class="btn secondary" type="button" data-action="refresh-site-suggestions" ${disabled}>Opdatér</button>
+          <button class="btn secondary" type="button" data-action="export-site-suggestions" ${!siteSuggestions.rows.length || siteSuggestions.loading ? "disabled" : ""}>Eksportér CSV</button>
+        </div>
+        <p role="status">${siteSuggestions.loading ? "Henter forslag…" : escapeHtml(siteSuggestions.notice)}</p>
+        <p class="error" role="alert">${escapeHtml(siteSuggestions.error)}</p>
+        ${rows ? `<div class="suggestions-table-wrap"><table class="suggestions-table"><thead><tr>
+          <th scope="col" ${sortAttr("display_name")}><button type="button" data-action="sort-site-suggestions" data-sort-key="display_name">Brugernavn</button></th>
+          <th scope="col" ${sortAttr("created_at")}><button type="button" data-action="sort-site-suggestions" data-sort-key="created_at">Tidspunkt</button></th>
+          <th scope="col" ${sortAttr("message")}><button type="button" data-action="sort-site-suggestions" data-sort-key="message">Besked</button></th>
+          <th scope="col">Handling</th>
+        </tr></thead><tbody>${rows}</tbody></table></div>` : (!siteSuggestions.loading && !siteSuggestions.error ? '<p class="empty">Ingen forslag endnu.</p>' : "")}` : ""}
+    </section>`;
+  }
+
+  async function refreshSiteSuggestions() {
+    if (!state.user?.canManageRegistrations || siteSuggestions.loading) return;
+    const request = ++siteSuggestions.request;
+    siteSuggestions.loading = true; siteSuggestions.error = "";
+    renderTeacher();
+    try {
+      const rows = await backend.listSiteSuggestions();
+      if (request !== siteSuggestions.request || state.user?.role !== "teacher") return;
+      siteSuggestions.rows = rows;
+      siteSuggestions.notice = rows.length ? `${rows.length} forslag` : "Ingen forslag endnu.";
+    } catch {
+      if (request !== siteSuggestions.request) return;
+      siteSuggestions.error = "Forslagene kunne ikke hentes. Tryk på Opdatér for at prøve igen.";
+    } finally {
+      if (request === siteSuggestions.request) {
+        siteSuggestions.loading = false;
+        if (state.user?.role === "teacher" && state.view === "teacher") renderTeacher();
+      }
+    }
+  }
+
+  function exportSiteSuggestionsCsv() {
+    if (!siteSuggestions.rows.length) return;
+    const escapeCsv = value => `"${String(value ?? "").replace(/"/g, '""')}"`;
+    const lines = [["Brugernavn", "Tidspunkt", "Besked"].map(escapeCsv).join(";")];
+    sortedSiteSuggestions().forEach(row => {
+      lines.push([
+        row.display_name || "Gæst",
+        new Intl.DateTimeFormat("da-DK", { dateStyle:"short", timeStyle:"short" }).format(new Date(row.created_at)),
+        row.message || "",
+      ].map(escapeCsv).join(";"));
+    });
+    const blob = new Blob(["\uFEFF" + lines.join("\n")], { type:"text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `jacobmatematik-forslag-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.append(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  }
+
   async function refreshRegistrations() {
     if (!state.user?.canManageRegistrations || registrations.loading) return;
     const request = ++registrations.request;
@@ -3603,6 +3690,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
         ${state.studentFormOpen ? `<form id="student-form" class="student-form"><div class="field"><label for="student-name">Elevens navn</label><input id="student-name" name="studentName" maxlength="60" autocomplete="off" placeholder="fx Emma" required></div><div class="field"><label for="student-username">Brugernavn</label><input id="student-username" name="studentUsername" maxlength="40" autocomplete="off" autocapitalize="none" placeholder="fx emma8" required></div><div class="field"><label for="student-password">Adgangskode</label><input id="student-password" name="studentPassword" type="password" maxlength="60" autocomplete="new-password" placeholder="Vælg adgangskode" required></div><button class="btn" type="submit">Opret elev</button><p id="student-error" class="student-error" role="alert"></p></form>` : ""}
       </section>
       ${renderRegistrations()}
+      ${renderSiteSuggestions()}
       <section class="class-kpis">
         <article><span>Elever</span><strong>${students.length}</strong><small>aktive profiler</small></article>
         <article><span>Besvarelser</span><strong>${allResults.length}</strong><small>registreret i alt</small></article>
@@ -3821,7 +3909,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       return;
     }
     const subtractionKeyButton=event.target.closest("[data-subtraction-key]"), borrowTenButton=event.target.closest("[data-borrow-ten]"), lollipopKeyButton=event.target.closest("[data-lollipop-key]"), pullDigitButton=event.target.closest("[data-pull-digit]"), additionKeyButton=event.target.closest("[data-addition-key]"), additionTokenButton=event.target.closest("[data-addition-token]"), additionDropButton=event.target.closest("[data-addition-drop]"), multiplicationSourceButton=event.target.closest("[data-multiply-source]"), multiplicationTargetButton=event.target.closest("[data-multiply-target]"), keyButton=event.target.closest("[data-key]"), luigiButton=event.target.closest("[data-luigi-surprise]"), luigiAudioButton=event.target.closest("[data-luigi-audio]"), erlingButton=event.target.closest("[data-erling-audio]"), kaptajnButton=event.target.closest("[data-kaptajn-audio]"), letterChoiceButton=event.target.closest("[data-letter-answer]"), letterContinueButton=event.target.closest("[data-letter-continue]"), letterAudioButton=event.target.closest("[data-letter-audio]"), drillModeButton=event.target.closest("[data-drill-mode]"), subtractionModeButton=event.target.closest("[data-subtraction-mode]"), topicButton=event.target.closest("[data-topic]"), actionButton=event.target.closest("[data-action]"), studentButton=event.target.closest("[data-student]"), classButton=event.target.closest("[data-class]"), tableAllButton=event.target.closest("[data-table-all]"), numberAllButton=event.target.closest("[data-number-all]"), letterAllButton=event.target.closest("[data-letter-all]"), addendAllButton=event.target.closest("[data-addend-all]"), reportTopicButton=event.target.closest("[data-report-topic]");
-    if (isStudentView() && (studentButton || classButton || tableAllButton || numberAllButton || letterAllButton || addendAllButton || reportTopicButton || ["open-registration-profile", "toggle-registrations", "refresh-registrations", "previous-registrations", "next-registrations", "close-topic-detail", "toggle-class-rename-form", "delete-class", "reset-topic-progress", "toggle-student-form", "remove-student", "reset-demo"].includes(actionButton?.dataset.action))) return;
+    if (isStudentView() && (studentButton || classButton || tableAllButton || numberAllButton || letterAllButton || addendAllButton || reportTopicButton || ["open-registration-profile", "toggle-registrations", "refresh-registrations", "previous-registrations", "next-registrations", "toggle-site-suggestions", "refresh-site-suggestions", "export-site-suggestions", "sort-site-suggestions", "delete-site-suggestion", "close-topic-detail", "toggle-class-rename-form", "delete-class", "reset-topic-progress", "toggle-student-form", "remove-student", "reset-demo"].includes(actionButton?.dataset.action))) return;
     if (subtractionKeyButton) { await handleBorrowingSubtractionKey(subtractionKeyButton.dataset.subtractionKey); return; }
     if (borrowTenButton && event.detail === 0) { completeBorrowingSubtractionBorrow(); return; }
     if (lollipopKeyButton) { handleDivisionLollipopKey(lollipopKeyButton.dataset.lollipopKey); return; }
@@ -4104,7 +4192,57 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       if (registrations.open) await refreshRegistrations(); else renderTeacher();
       return;
     }
-    if (action === "logout") { registrations.request++; Object.assign(registrations, { open:false, rows:[], search:"", offset:0, more:false, loading:false, error:"", notice:"" }); }
+    if (["toggle-site-suggestions", "refresh-site-suggestions", "export-site-suggestions", "sort-site-suggestions", "delete-site-suggestion"].includes(action)) {
+      if (!state.user?.canManageRegistrations) return;
+      if (action === "toggle-site-suggestions") {
+        if (siteSuggestions.loading) return;
+        siteSuggestions.open = !siteSuggestions.open;
+        siteSuggestions.notice = "";
+        if (siteSuggestions.open) await refreshSiteSuggestions(); else renderTeacher();
+        return;
+      }
+      if (action === "refresh-site-suggestions") {
+        if (siteSuggestions.loading) return;
+        await refreshSiteSuggestions();
+        return;
+      }
+      if (action === "export-site-suggestions") {
+        exportSiteSuggestionsCsv();
+        return;
+      }
+      if (action === "sort-site-suggestions") {
+        const key = actionButton.dataset.sortKey;
+        if (!["display_name", "created_at", "message"].includes(key)) return;
+        if (siteSuggestions.sortKey === key) siteSuggestions.sortDir = siteSuggestions.sortDir === "asc" ? "desc" : "asc";
+        else { siteSuggestions.sortKey = key; siteSuggestions.sortDir = key === "created_at" ? "desc" : "asc"; }
+        renderTeacher();
+        return;
+      }
+      if (action === "delete-site-suggestion") {
+        if (siteSuggestions.loading) return;
+        const id = actionButton.dataset.suggestionId;
+        if (!id || !confirm("Slet dette forslag permanent?")) return;
+        siteSuggestions.loading = true; siteSuggestions.error = "";
+        renderTeacher();
+        try {
+          await backend.deleteSiteSuggestion(id);
+          siteSuggestions.rows = siteSuggestions.rows.filter(row => row.id !== id);
+          siteSuggestions.notice = "Forslaget er slettet.";
+        } catch {
+          siteSuggestions.error = "Forslaget kunne ikke slettes. Prøv igen.";
+        } finally {
+          siteSuggestions.loading = false;
+          if (state.user?.role === "teacher" && state.view === "teacher") renderTeacher();
+        }
+        return;
+      }
+    }
+    if (action === "logout") {
+      registrations.request++;
+      Object.assign(registrations, { open:false, rows:[], search:"", offset:0, more:false, loading:false, error:"", notice:"" });
+      siteSuggestions.request++;
+      Object.assign(siteSuggestions, { open:false, rows:[], loading:false, error:"", notice:"", sortKey:"created_at", sortDir:"desc" });
+    }
     if (action==="logout") { closeExerciseLeaderboard(); closePracticeLeaderboardPrompt(); practiceLeaderboard.request++; Object.assign(practiceLeaderboard,{rows:[],status:null,loading:false,promptOpen:false}); clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); clearColumnAdditionDrag(); clearColumnMultiplicationDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); stopTeacherLiveUpdates(); window.JacobStudentView?.set(false); if (usingCentralDatabase && !isGuest()) await backend.signOut(); Object.assign(state,{user:null,view:"login",task:null,matrixDrill:null,subtractionDrillTroubles:null,sessionAnswers:[],sessionCorrect:0}); renderLogin(); }
     if (action==="change-password" && state.user.role==="student") { state.view="change-password"; renderStudentPassword(); }
     if (action==="home") { clearDivisionLollipopDrag(); clearBorrowingSubtractionDrag(); clearColumnAdditionDrag(); clearColumnMultiplicationDrag(); if (state.matrixDrill && !state.matrixDrill.finalizedAt) await finalizeMatrixDrillSession("abandoned"); stopMatrixDrillTimer(); state.matrixDrill=null; state.subtractionDrillTroubles=null; state.task=null; state.view="student"; renderStudentHome(); }
