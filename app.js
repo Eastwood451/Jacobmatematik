@@ -571,6 +571,7 @@ multiplicationColumn: {
     return canLearnClock() ? `<button type="button" class="topic-card clock-home-card" data-action="clock"><span class="clock-card-art" aria-hidden="true"><svg viewBox="0 0 160 104" role="img"><path d="M80 12A40 40 0 0 0 80 92" fill="#dce9ff" stroke="#4267a9" stroke-width="2"/><path d="M80 12A40 40 0 0 1 80 92" fill="#ffe2df" stroke="#c9524a" stroke-width="2"/><circle cx="80" cy="52" r="40" fill="none" stroke="#51476a" stroke-width="2.5"/><path d="M80 52L80 20" stroke="#51476a" stroke-width="4" stroke-linecap="round"/><path d="M80 52L101 68" stroke="#51476a" stroke-width="6" stroke-linecap="round"/><circle cx="80" cy="52" r="4" fill="#51476a"/><text x="38" y="56" text-anchor="middle" font-size="9" font-weight="800" fill="#365b9b">MINUTTER</text><text x="38" y="67" text-anchor="middle" font-size="12" font-weight="900" fill="#365b9b">I</text><text x="122" y="56" text-anchor="middle" font-size="9" font-weight="800" fill="#b84640">MINUTTER</text><text x="122" y="67" text-anchor="middle" font-size="10" font-weight="900" fill="#b84640">OVER</text></svg></span><span class="clock-card-copy"><strong>Lær klokken</strong><small>Hvad er klokken? Øv minutter i, over, halv og kvart.</small></span></button>` : "";
   }
   function moduleApiReady(name) {
+    if (name === "incoming") return !!window.JacobIncoming && !!window.JacobIncomingCore && !!window.THREE;
     if (name === "equations") return !!window.JacobEquations;
     if (name === "clock") return !!window.JacobClock;
     if (name === "marley") return !!window.MarleyMath;
@@ -856,6 +857,25 @@ multiplicationColumn: {
     }
     disposeMarley = window.MarleyMath.mount(document.getElementById("marley-root"), {onExit() { disposeMarley?.(); disposeMarley=null; returnFromModule(); }});
   }
+  // Incoming beta uses the same two Jacob profile IDs as the original Vinkler/Skak beta.
+  const canPlayIncoming = () => !isStudentView() && Boolean(state.user?.id && ANGLES_PROFILE_IDS.has(state.user.id) && ["teacher", "student"].includes(state.user.role));
+  function incomingCard() {
+    return canPlayIncoming() ? `<button type="button" class="topic-card incoming-card" data-action="incoming"><span class="topic-icon">Σ 360°</span><strong>Incoming! Et spil om vinkler!</strong><small>Affyr klogskab! Beskyt Kaptajn Kvadratrod mod flyvende dummerter.</small></button>` : "";
+  }
+  let disposeIncoming = null;
+  function leaveIncoming() { disposeIncoming?.(); disposeIncoming = null; }
+  async function renderIncoming() {
+    leaveIncoming();
+    if (!canPlayIncoming()) { state.view=homeView(); render(); return; }
+    const learner=state.user;
+    app.innerHTML=`${header()}<div id="incoming-root"><p class="seo-loading" data-module-loading>Indlæser Incoming...</p></div>`;
+    try {
+      if (!(await ensureModule("incoming", "incoming")) || !canPlayIncoming() || state.user !== learner) return;
+      disposeIncoming=window.JacobIncoming.mount(document.getElementById("incoming-root"), {
+        onExit() { leaveIncoming(); returnFromModule(); }
+      });
+    } catch(error) { console.error(error); app.innerHTML=moduleLoadError("Incoming kunne ikke indlæses. Prøv igen."); }
+  }
   let disposeEquations = null;
   function leaveEquations() { disposeEquations?.(); disposeEquations = null; }
   async function renderEquations() {
@@ -872,7 +892,7 @@ multiplicationColumn: {
   const canUseSandbox = () => isFractionTester();
   function renderSandbox() { syncTrackedExercise();
     if (!canUseSandbox()) { state.view=homeView(); render(); return; }
-    app.innerHTML = `${header()}<div class="page sandbox-page"><section class="sandbox-head"><div><span class="eyebrow">Udvikling</span><h1>Sandbox</h1><p>Her prøver du moduler, før de udgives til eleverne.</p></div><button type="button" class="btn secondary" data-action="home">← Tilbage</button></section><section class="sandbox-grid" aria-label="Moduler under udvikling"><button type="button" class="sandbox-card" data-action="equations"><span class="sandbox-icon" aria-hidden="true">⚖</span><span class="sandbox-tag">Under udvikling</span><strong>Ligninger</strong><span>Find x med en vægt i ligevægt.</span></button>${isFractionTester() ? `<button type="button" class="sandbox-card" data-action="marley"><span class="sandbox-icon" aria-hidden="true">🐶</span><span class="sandbox-tag">Under udvikling</span><strong>Marleys butik</strong><span>Regn, tjen mønter, og klæd Marley på.</span></button>` : ""}${canPlaySkak() ? `<button type="button" class="sandbox-card" data-action="skak"><span class="sandbox-icon" aria-hidden="true">♞</span><span class="sandbox-tag">Beta</span><strong>Skak</strong><span>Spil mod computeren eller test online med en kampkode.</span></button>` : ""}${canLearnAngles() ? `<button type="button" class="sandbox-card" data-action="angles"><span class="sandbox-icon" aria-hidden="true">∠</span><span class="sandbox-tag">Beta</span><strong>Vinkler</strong><span>Lektion og hub for alle vinkelspil.</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="battleship"><span class="sandbox-icon" aria-hidden="true">🚢</span><span class="sandbox-tag">Spil</span><strong>Vinkel-slagskibe</strong><span>Tryk hurtigt på den rigtige vinkel og sænk skibe.</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="dennis"><span class="sandbox-icon" aria-hidden="true">🐧</span><span class="sandbox-tag">Spil</span><strong>Dennis med bind for øjnene</strong><span>Drej og gå – find fisken på kortet.</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="ninja"><span class="sandbox-icon" aria-hidden="true">🥷</span><span class="sandbox-tag">Spil</span><strong>Villy Vinkelninja</strong><span>Fruit Ninja-snit: swipe den rigtige vinkel.</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="words"><span class="sandbox-icon" aria-hidden="true">📝</span><span class="sandbox-tag">Spil</span><strong>Vinkel-ord</strong><span>Spids, ret, stump eller lige?</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="stop"><span class="sandbox-icon" aria-hidden="true">🎯</span><span class="sandbox-tag">Spil</span><strong>Ram vinklen</strong><span>Stop den åbnende vinkel tættest på målet.</span></button>` : ""}${isFractionTester() ? `<a class="sandbox-card" href="marley-3d-preview.html"><span class="sandbox-icon" aria-hidden="true">🐾</span><span class="sandbox-tag">Grafikprøve</span><strong>Marley i 3D</strong><span>Separat prøve af modellen og bevægelserne.</span></a>` : ""}</section></div>`;
+    app.innerHTML = `${header()}<div class="page sandbox-page"><section class="sandbox-head"><div><span class="eyebrow">Udvikling</span><h1>Sandbox</h1><p>Her prøver du moduler, før de udgives til eleverne.</p></div><button type="button" class="btn secondary" data-action="home">← Tilbage</button></section><section class="sandbox-grid" aria-label="Moduler under udvikling"><button type="button" class="sandbox-card" data-action="incoming"><span class="sandbox-icon" aria-hidden="true">Σ</span><span class="sandbox-tag">Nyt 3D-spil</span><strong>Incoming! Et spil om vinkler!</strong><span>Affyr klogskab, og beskyt Kaptajn Kvadratrod med vinkler fra 0° til 360°.</span></button><button type="button" class="sandbox-card" data-action="equations"><span class="sandbox-icon" aria-hidden="true">⚖</span><span class="sandbox-tag">Under udvikling</span><strong>Ligninger</strong><span>Find x med en vægt i ligevægt.</span></button>${isFractionTester() ? `<button type="button" class="sandbox-card" data-action="marley"><span class="sandbox-icon" aria-hidden="true">🐶</span><span class="sandbox-tag">Under udvikling</span><strong>Marleys butik</strong><span>Regn, tjen mønter, og klæd Marley på.</span></button>` : ""}${canPlaySkak() ? `<button type="button" class="sandbox-card" data-action="skak"><span class="sandbox-icon" aria-hidden="true">♞</span><span class="sandbox-tag">Beta</span><strong>Skak</strong><span>Spil mod computeren eller test online med en kampkode.</span></button>` : ""}${canLearnAngles() ? `<button type="button" class="sandbox-card" data-action="angles"><span class="sandbox-icon" aria-hidden="true">∠</span><span class="sandbox-tag">Beta</span><strong>Vinkler</strong><span>Lektion og hub for alle vinkelspil.</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="battleship"><span class="sandbox-icon" aria-hidden="true">🚢</span><span class="sandbox-tag">Spil</span><strong>Vinkel-slagskibe</strong><span>Tryk hurtigt på den rigtige vinkel og sænk skibe.</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="dennis"><span class="sandbox-icon" aria-hidden="true">🐧</span><span class="sandbox-tag">Spil</span><strong>Dennis med bind for øjnene</strong><span>Drej og gå – find fisken på kortet.</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="ninja"><span class="sandbox-icon" aria-hidden="true">🥷</span><span class="sandbox-tag">Spil</span><strong>Villy Vinkelninja</strong><span>Fruit Ninja-snit: swipe den rigtige vinkel.</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="words"><span class="sandbox-icon" aria-hidden="true">📝</span><span class="sandbox-tag">Spil</span><strong>Vinkel-ord</strong><span>Spids, ret, stump eller lige?</span></button><button type="button" class="sandbox-card" data-action="angles" data-angles-start="stop"><span class="sandbox-icon" aria-hidden="true">🎯</span><span class="sandbox-tag">Spil</span><strong>Ram vinklen</strong><span>Stop den åbnende vinkel tættest på målet.</span></button>` : ""}${isFractionTester() ? `<a class="sandbox-card" href="marley-3d-preview.html"><span class="sandbox-icon" aria-hidden="true">🐾</span><span class="sandbox-tag">Grafikprøve</span><strong>Marley i 3D</strong><span>Separat prøve af modellen og bevægelserne.</span></a>` : ""}</section></div>`;
   }
   function jacobViewButton() {
     if (isStudentView()) return "";
@@ -1472,7 +1492,7 @@ multiplicationColumn: {
     const fractionCard = fractionPilotCard();
     const towerTopics = new Set(levels.flat());
     const otherTopics = availableTopics.filter(key => !towerTopics.has(key));
-    const extraCards = otherTopics.map(card).join("") + skakCard() + anglesCard() + runnerCard() + (isGuest() ? "" : `<button type="button" class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`);
+    const extraCards = otherTopics.map(card).join("") + skakCard() + anglesCard() + incomingCard() + runnerCard() + (isGuest() ? "" : `<button type="button" class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`);
     return `<section class="topic-tower" aria-label="Byg din matematik nedefra">
       <p class="topic-tower-intro"><span aria-hidden="true">↑</span> Byg videre på det, du kan. Start med Tallene nederst.</p>
       ${fractionCard ? `<div class="topic-tower-row">${fractionCard}</div>` : ""}
@@ -1484,7 +1504,7 @@ multiplicationColumn: {
     </section>${extraCards ? `<h2 class="section-label">Andre genveje</h2><section class="topic-tower-extras" aria-label="Andre genveje">${extraCards}</section>` : ""}`;
   }
   // Deep link from the static landing pages, e.g. /?start=tableDrill. Whitelisted; used once, after login or guest start.
-  const DEEP_LINK_STARTS = { tableDrill:'[data-topic="tableDrill"]', multiplication:'[data-topic="multiplication"]', pemdas:'[data-topic="pemdas"]', addition:'[data-topic="addition"]', fractions:'[data-action="learn-fractions"]', angles:'[data-action="angles"]', runner:'[data-action="fraction-runner"]' };
+  const DEEP_LINK_STARTS = { tableDrill:'[data-topic="tableDrill"]', multiplication:'[data-topic="multiplication"]', pemdas:'[data-topic="pemdas"]', addition:'[data-topic="addition"]', fractions:'[data-action="learn-fractions"]', angles:'[data-action="angles"]', incoming:'[data-action="incoming"]', runner:'[data-action="fraction-runner"]' };
   let pendingDeepLink = (() => { try { const key = new URLSearchParams(location.search).get("start"); return Object.hasOwn(DEEP_LINK_STARTS, key) ? key : null; } catch (_) { return null; } })();
   function consumeDeepLink() {
     if (!pendingDeepLink || !state.user || state.view === "teacher") return;
@@ -3711,7 +3731,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     app.innerHTML = `${header()}<div class="page"><section class="class-manager local-consent-card"><h1>Gem dine resultater på denne enhed</h1><p>Din bruger er selvoprettet. Dine resultater gemmes kun i denne browser, så du kan fortsætte næste gang. De sendes ikke til læreren eller vores server og følger ikke med til andre enheder.</p><p>Du kan slette resultaterne med “Slet data” under tårnet. De forsvinder også, hvis browserens webstedsdata slettes.</p><form id="local-consent-form"><label class="local-consent"><input type="checkbox" name="localConsent" required><span>Jeg giver samtykke til lokal lagring af mine resultater på denne enhed.</span></label><p id="local-consent-error" role="alert"></p><button class="btn" type="submit">Gem på denne enhed og fortsæt</button><button class="btn secondary" type="button" data-action="logout">Log ud</button></form></section></div>`;
   }
   // GA4 exercise events (analytics.js, consent-gated). Never sends names, emails or profile IDs.
-  const TRACKED_VIEWS = { clock:"Lær klokken", "marley-addition":"Godbidder til Marley", "plus-penalhus":"Plus-penalhus", "ten-friends":"Luigis 10’er-venner", skak:"Skak", angles:"Vinkler", "fraction-runner":"Brøk-løb", "learn-fractions":"Brøker", foodtruck:"Foodtruck", sandbox:"Sandkasse" };
+  const TRACKED_VIEWS = { incoming:"Incoming! Et spil om vinkler!", clock:"Lær klokken", "marley-addition":"Godbidder til Marley", "plus-penalhus":"Plus-penalhus", "ten-friends":"Luigis 10’er-venner", skak:"Skak", angles:"Vinkler", "fraction-runner":"Brøk-løb", "learn-fractions":"Brøker", foodtruck:"Foodtruck", sandbox:"Sandkasse" };
   let trackedExercise = null;
   const snakeId = key => String(key).replace(/[^A-Za-z0-9]+/g, "_").replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
   function currentTrackedExercise() {
@@ -3742,7 +3762,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       window.jmTrack?.("exercise_start", { exercise_id:next.exercise_id, exercise_name:next.exercise_name });
     } catch (_) { trackedExercise = null; }
   }
-  function render() { syncTrackedExercise(); if (state.view !== "equations") leaveEquations(); if (state.view !== "clock") leaveClock(); if (isLocalStudent() && !backend.hasLocalConsent()) { renderLocalConsent(); return; } if (state.view !== "marley-addition") leaveMarleyAddition(); if (state.view !== "plus-penalhus") leavePlusPenalhus(); if (state.view !== "ten-friends") leaveTenFriends(); if (state.view !== "learn-fractions") leaveFractionLesson(); if (state.view !== "skak") leaveSkak(); if (state.view !== "angles") leaveAngles(); if (state.view !== "fraction-runner") leaveRunner(); if (!state.user) renderLogin(); else if (state.view==="equations") renderEquations(); else if (state.view==="clock") renderClock(); else if (state.view==="sandbox") renderSandbox(); else if (state.view==="marley-addition") renderMarleyAddition(); else if (state.view==="plus-penalhus") renderPlusPenalhus(); else if (state.view==="ten-friends") renderTenFriends(); else if (state.view==="skak") renderSkak(); else if (state.view==="angles") renderAngles(); else if (state.view==="fraction-runner") renderRunner(); else if (state.view==="learn-fractions") renderFractionLesson(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="marley") renderMarley(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
+  function render() { syncTrackedExercise(); if (state.view !== "incoming") leaveIncoming(); if (state.view !== "equations") leaveEquations(); if (state.view !== "clock") leaveClock(); if (isLocalStudent() && !backend.hasLocalConsent()) { renderLocalConsent(); return; } if (state.view !== "marley-addition") leaveMarleyAddition(); if (state.view !== "plus-penalhus") leavePlusPenalhus(); if (state.view !== "ten-friends") leaveTenFriends(); if (state.view !== "learn-fractions") leaveFractionLesson(); if (state.view !== "skak") leaveSkak(); if (state.view !== "angles") leaveAngles(); if (state.view !== "fraction-runner") leaveRunner(); if (!state.user) renderLogin(); else if (state.view==="incoming") renderIncoming(); else if (state.view==="equations") renderEquations(); else if (state.view==="clock") renderClock(); else if (state.view==="sandbox") renderSandbox(); else if (state.view==="marley-addition") renderMarleyAddition(); else if (state.view==="plus-penalhus") renderPlusPenalhus(); else if (state.view==="ten-friends") renderTenFriends(); else if (state.view==="skak") renderSkak(); else if (state.view==="angles") renderAngles(); else if (state.view==="fraction-runner") renderRunner(); else if (state.view==="learn-fractions") renderFractionLesson(); else if (state.view==="foodtruck") renderFoodtruck(); else if (state.view==="marley") renderMarley(); else if (state.view==="teacher") renderTeacher(); else if (state.view==="exercise") newTask(); else if (state.view==="change-password") renderStudentPassword(); else renderStudentHome(); }
 
   document.addEventListener("submit", async (event) => {
     event.preventDefault();
@@ -4045,6 +4065,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     }
 
     if (action === "sandbox") {
+      leaveIncoming();
       event.preventDefault();
       if (!canUseSandbox() || switchingJacobView) return;
       switchingJacobView=true;
@@ -4063,14 +4084,15 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       return;
     }
     if (action === "marley") {
+      leaveIncoming();
       if (!isFractionTester()) return;
       leaveMarleyAddition(); leavePlusPenalhus(); leaveTenFriends(); leaveSkak(); leaveAngles(); leaveRunner(); leaveFractionLesson(); leaveFoodtruck(); stopTeacherLiveUpdates();
       moduleReturnView=state.view === "sandbox" ? "sandbox" : null;
       state.view="marley"; renderMarley(); window.scrollTo(0,0); return;
     }
-    if (["equations", "clock", "ten-friends", "marley-addition", "plus-penalhus", "skak", "angles", "fraction-runner"].includes(action)) {
+    if (["incoming", "equations", "clock", "ten-friends", "marley-addition", "plus-penalhus", "skak", "angles", "fraction-runner"].includes(action)) {
       event.preventDefault();
-      const allowed=action === "equations" ? isFractionTester : action === "clock" ? canLearnClock : action === "marley-addition" ? canPlayMarleyAddition : action === "plus-penalhus" ? canPlayPlusPenalhus : action === "skak" ? canPlaySkak : action === "angles" ? canLearnAngles : action === "fraction-runner" ? canPlayRunner : canPlayTenFriends;
+      const allowed=action === "incoming" ? canPlayIncoming : action === "equations" ? isFractionTester : action === "clock" ? canLearnClock : action === "marley-addition" ? canPlayMarleyAddition : action === "plus-penalhus" ? canPlayPlusPenalhus : action === "skak" ? canPlaySkak : action === "angles" ? canLearnAngles : action === "fraction-runner" ? canPlayRunner : canPlayTenFriends;
       const anglesStart=action === "angles" ? (actionButton.dataset.anglesStart || null) : null;
       // Re-open angles from sandbox with another start target even if already on the angles view.
       if (!allowed() || switchingJacobView) return;
@@ -4090,7 +4112,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       } finally { switchingJacobView=false; }
       return;
     }
-    if (["logout", "home", "change-password", "foodtruck", "learn-fractions", "toggle-jacob-view", "student-view", "exit-student-view"].includes(action)) { leaveMarleyAddition(); leavePlusPenalhus(); leaveTenFriends(); leaveSkak(); leaveAngles(); leaveRunner(); }
+    if (["logout", "home", "change-password", "foodtruck", "learn-fractions", "toggle-jacob-view", "student-view", "exit-student-view"].includes(action)) { leaveIncoming(); leaveMarleyAddition(); leavePlusPenalhus(); leaveTenFriends(); leaveSkak(); leaveAngles(); leaveRunner(); }
     if (["student-view", "exit-student-view", "toggle-jacob-view", "learn-fractions"].includes(action)) {
       event.preventDefault();
       const allowed=() => action === "learn-fractions" ? canLearnFractions() : ["student-view", "exit-student-view"].includes(action) ? isJacobProfile() : isFractionTester();
@@ -4455,6 +4477,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
   });
   window.addEventListener("pagehide", () => {
     endTrackedExercise();
+    leaveIncoming();
     leaveClock();
     leaveSkak(); leaveAngles(); leaveRunner(); disposeMarley?.(); disposeMarley=null;
     leaveMarleyAddition();
