@@ -10,9 +10,22 @@
   const PIECE_ART = "assets/figurer/skak/";
   const DROP_LETTER = { p: "B", n: "S", b: "L", r: "T", q: "D" };
   const PRAISE = ["Flot regnet!", "Sådan! Trækket er dit.", "Godt gået!", "Rigtigt! Vælg en brik.", "Skarpt regnet!"];
+  const VICTORY_LINES = [
+    "SKAKMAT! Det er sådan man knækker nødder!",
+    "Kongen er toast — og du er stjernen!",
+    "Åh ja! Matematik-mat, baby!",
+    "Ingen chance! Kaptajn Kvadratrod er stolt!",
+    "Boom! Du har knækket koden — og kongen!",
+  ];
+  const KAPTAJN_ART = "assets/figurer/kaptajn-kvadratrod.webp";
+  const MATE_FLASH_MS = 2400;
   const esc = value => String(value ?? "").replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
   const pick = list => list[Math.floor(Math.random() * list.length)];
   const colorName = c => (c === "w" ? "Hvid" : "Sort");
+  const prefersReducedMotion = () => {
+    try { return window.matchMedia("(prefers-reduced-motion: reduce)").matches; }
+    catch (_) { return false; }
+  };
 
   function pieceHtml(color, type) {
     return `<span class="sk-piece sk-character ${color} sk-character-${type}" aria-hidden="true">
@@ -42,17 +55,75 @@
       phase: "idle", problem: null, selected: null, targets: [], buyType: null, drops: [],
       lockUntil: 0, feedback: "", feedbackKind: "", obbe: "Klar til skak? Regn et stykke for at købe dit træk!",
       status: Core.gameStatus(Core.START_FEN), online: { game: null, error: "", busy: false, joinCode: "" },
+      // finale: null | "mate-flash" | "victory" | "replay"
+      finale: null, victoryLine: "", replayPly: 0,
     };
 
     // ---------- fælles spil-flow ----------
     function newLocalGame() {
       Object.assign(s, { screen: "game", mode: "cpu", fen: Core.START_FEN, myColor: "w", meta: Core.newMeta(), moves: [], lastMove: null,
-        status: Core.gameStatus(Core.START_FEN), feedback: "", obbe: "Du er hvid og starter. Regn stykket for at købe dit første træk!" });
+        status: Core.gameStatus(Core.START_FEN), feedback: "", obbe: "Du er hvid og starter. Regn stykket for at købe dit første træk!",
+        finale: null, victoryLine: "", replayPly: 0 });
       startMyTurn();
+    }
+    function iWonStatus(st = s.status) {
+      if (!st?.over || !st.result || st.result === "1/2-1/2") return false;
+      const winner = st.winner || (st.result === "1-0" ? "w" : st.result === "0-1" ? "b" : null);
+      return winner === s.myColor;
+    }
+    function enterGameOver(statusOverride = null) {
+      if (statusOverride) s.status = statusOverride;
+      else if (!s.status?.over) s.status = Core.gameStatus(s.fen);
+      s.phase = "over";
+      s.selected = null; s.targets = []; s.drops = []; s.problem = null; s.buyType = null;
+      const st = s.status;
+      if (st.reason === "skakmat") {
+        s.finale = "mate-flash";
+        s.obbe = iWonStatus(st) ? "SKAKMAT! Sejt klaret!" : "Av — skakmat. Kig på brættet, og prøv igen!";
+        render();
+        const delay = prefersReducedMotion() ? 400 : (iWonStatus(st) ? MATE_FLASH_MS : 1800);
+        later(() => {
+          if (disposed || s.phase !== "over" || s.finale !== "mate-flash") return;
+          if (iWonStatus(st)) {
+            s.finale = "victory";
+            s.victoryLine = pick(VICTORY_LINES);
+          } else {
+            s.finale = null;
+          }
+          render();
+        }, delay);
+        return;
+      }
+      s.finale = null;
+      render();
+    }
+    function startReplay() {
+      if (s.phase !== "over" || !s.moves.length) return;
+      s.finale = "replay";
+      s.replayPly = s.moves.length;
+      s.obbe = "Gå frem og tilbage i dine træk — find det afgørende hug!";
+      render();
+    }
+    function setReplayPly(ply) {
+      if (s.finale !== "replay") return;
+      s.replayPly = Math.max(0, Math.min(s.moves.length, ply));
+      render();
+    }
+    function displayFen() {
+      if (s.finale === "replay") return Core.fenAtPly(s.moves, s.replayPly);
+      return s.fen;
+    }
+    function displayLastMove() {
+      if (s.finale === "replay") {
+        if (s.replayPly <= 0) return null;
+        const m = s.moves[s.replayPly - 1];
+        return m ? (m.drop ? { to: m.square } : { from: m.from, to: m.to }) : null;
+      }
+      return s.lastMove;
     }
     function startMyTurn() {
       s.status = Core.gameStatus(s.fen);
-      if (s.status.over) { s.phase = "over"; render(); return; }
+      if (s.status.over) { enterGameOver(); return; }
       if (Core.turnOf(s.fen) !== s.myColor) { s.phase = "wait"; render(); return; }
       Object.assign(s, { phase: "solve", problem: Core.makeProblem(s.mathLevel), selected: null, targets: [], buyType: null, drops: [] });
       if (s.status.check) s.obbe = "Pas på, du står i skak! Regn hurtigt og red kongen.";
@@ -134,11 +205,16 @@
       s.lastMove = record.drop ? { to: record.square } : { from: record.from, to: record.to };
       Object.assign(s, { selected: null, targets: [], drops: [], buyType: null, problem: null });
       s.status = Core.gameStatus(fen);
-      if (s.status.over) s.phase = "over"; else s.phase = "wait";
       if (bought) s.obbe = "Ny brik på brættet! Nu er det modstanderens tur.";
+      if (s.status.over) {
+        enterGameOver();
+        if (s.mode === "online") sendOnlineMove(record);
+        return;
+      }
+      s.phase = "wait";
       if (s.mode === "cpu") {
         render();
-        if (!s.status.over) later(computerTurn, 450);
+        later(computerTurn, 450);
       } else {
         sendOnlineMove(record);
       }
@@ -207,7 +283,19 @@
       s.fen = game.fen; s.meta = normalizeMeta(game.meta); s.moves = Array.isArray(game.moves) ? game.moves : [];
       const last = s.moves[s.moves.length - 1];
       s.lastMove = last ? (last.drop ? { to: last.square } : { from: last.from, to: last.to }) : null;
-      if (game.status === "finished") { s.phase = "over"; s.status = Core.gameStatus(s.fen); stopPolling(); render(); return; }
+      if (game.status === "finished") {
+        stopPolling();
+        const st = Core.gameStatus(s.fen);
+        if (game.result) {
+          const winner = game.result === "1-0" ? "w" : game.result === "0-1" ? "b" : null;
+          s.status = { over: true, result: game.result, winner, reason: game.result_reason || st.reason || "slut" };
+        } else {
+          s.status = st;
+        }
+        if (s.phase !== "over") enterGameOver();
+        else render();
+        return;
+      }
       if (Core.turnOf(s.fen) === s.myColor) {
         const midTurn = ["move", "buy-solve", "place"].includes(s.phase) || (s.phase === "solve" && s.problem) || Date.now() < s.lockUntil;
         if (!midTurn || force) {
@@ -256,8 +344,8 @@
     }
     async function resign() {
       if (s.mode === "cpu") {
-        s.status = { over: true, result: s.myColor === "w" ? "0-1" : "1-0", winner: s.myColor === "w" ? "b" : "w", reason: "opgivet" };
-        s.phase = "over"; render(); return;
+        enterGameOver({ over: true, result: s.myColor === "w" ? "0-1" : "1-0", winner: s.myColor === "w" ? "b" : "w", reason: "opgivet" });
+        return;
       }
       if (!s.online.game) return;
       try { const row = await rpc("resign_chess_game", { p_game: s.online.game.id }); applyRemote(row, true); }
@@ -266,26 +354,87 @@
 
     // ---------- tegning ----------
     function boardHtml() {
-      const board = Core.boardOf(s.fen);
+      const fen = displayFen();
+      const board = Core.boardOf(fen);
       const flip = s.myColor === "b";
-      const checkKing = Core.inCheck(s.fen) ? Core.turnOf(s.fen) : null;
+      const st = Core.gameStatus(fen);
+      const mateFlash = s.finale === "mate-flash" || (s.finale === "replay" && st.reason === "skakmat");
+      const checkKing = st.reason === "skakmat" ? Core.turnOf(fen) : (Core.inCheck(fen) ? Core.turnOf(fen) : null);
+      const last = displayLastMove();
       const cells = [];
       for (let i = 0; i < 8; i++) for (let j = 0; j < 8; j++) {
         const r = flip ? 7 - i : i, f = flip ? 7 - j : j;
         const sq = String.fromCharCode(97 + f) + (8 - r);
         const piece = board[r][f];
         const cls = ["sk-sq", (r + f) % 2 ? "dark" : "light"];
-        if (s.selected === sq) cls.push("selected");
-        if (s.targets.includes(sq)) cls.push(piece ? "capture" : "target");
-        if (s.phase === "place" && s.drops.includes(sq)) cls.push("drop");
-        if (s.lastMove && (s.lastMove.from === sq || s.lastMove.to === sq)) cls.push("last");
-        if (piece && piece.type === "k" && piece.color === checkKing) cls.push("check");
+        if (s.finale !== "replay" && s.selected === sq) cls.push("selected");
+        if (s.finale !== "replay" && s.targets.includes(sq)) cls.push(piece ? "capture" : "target");
+        if (s.finale !== "replay" && s.phase === "place" && s.drops.includes(sq)) cls.push("drop");
+        if (last && (last.from === sq || last.to === sq)) cls.push("last");
+        if (piece && piece.type === "k" && piece.color === checkKing) cls.push(mateFlash || st.reason === "skakmat" ? "skakmat" : "check");
         const label = piece ? `${sq}: ${colorName(piece.color).toLowerCase()} ${Core.PIECE_NAMES[piece.type]} · ${CHARACTERS[piece.color][piece.type]}` : sq;
         const coord = (j === 0 ? `<i class="sk-rank">${8 - r}</i>` : "") + (i === 7 ? `<i class="sk-file">${String.fromCharCode(97 + f)}</i>` : "");
         cells.push(`<button type="button" class="${cls.join(" ")}" data-sq="${sq}" aria-label="${esc(label)}" title="${esc(label)}">${piece ? pieceHtml(piece.color, piece.type) : ""}${coord}</button>`);
       }
-      const locked = !["move", "place"].includes(s.phase);
-      return `<div class="sk-board${locked ? " locked" : ""}" role="grid" aria-label="Skakbræt">${cells.join("")}</div>`;
+      const locked = s.finale === "replay" || s.finale === "mate-flash" || !["move", "place"].includes(s.phase);
+      const mateBanner = s.finale === "mate-flash"
+        ? `<div class="sk-mate-banner" role="status" aria-live="assertive"><span class="sk-mate-burst" aria-hidden="true"></span><strong>SKAKMAT!</strong></div>`
+        : "";
+      return `<div class="sk-board-stage${s.finale === "mate-flash" ? " is-mate" : ""}">${mateBanner}<div class="sk-board${locked ? " locked" : ""}" role="grid" aria-label="Skakbræt">${cells.join("")}</div></div>`;
+    }
+    function victoryHtml() {
+      if (s.finale !== "victory") return "";
+      const line = s.victoryLine || VICTORY_LINES[0];
+      return `<div class="sk-overlay sk-victory-overlay" role="dialog" aria-modal="true" aria-labelledby="sk-victory-title">
+        <div class="sk-victory-card">
+          <p class="sk-eyebrow">Sejr</p>
+          <div class="sk-kaptajn-hero" aria-hidden="true">
+            <div class="sk-kaptajn-glow"></div>
+            <img class="sk-kaptajn-pose" src="${KAPTAJN_ART}" alt="" width="220" height="330" decoding="async">
+            <span class="sk-kaptajn-glint"></span>
+            <span class="sk-kaptajn-thumb" aria-hidden="true">
+              <svg viewBox="0 0 64 64" width="56" height="56" focusable="false">
+                <path fill="#ffd24a" stroke="#1d1630" stroke-width="3" d="M26 28V14c0-4 3-7 7-7s7 3 7 7v10"/>
+                <path fill="#ffe9a0" stroke="#1d1630" stroke-width="3" d="M18 28h28l2 6c2 8 1 18-3 22H22c-5-3-8-12-7-20l3-8z"/>
+                <path fill="#1d1630" d="M24 36h4v14h-4zm8 0h4v14h-4zm8 0h4v14h-4z"/>
+              </svg>
+            </span>
+          </div>
+          <h2 id="sk-victory-title">SKAKMAT!</h2>
+          <p class="sk-victory-line">„${esc(line)}”</p>
+          <p class="sk-victory-sub">Kaptajn Kvadratrod giver dig et kæmpe thumbs up.</p>
+          <div class="sk-victory-actions">
+            <button type="button" class="btn full" data-act="replay">Se dine træk igen</button>
+            <button type="button" class="btn secondary" data-act="${s.mode === "cpu" ? "start-cpu" : "menu"}">${s.mode === "cpu" ? "Ny kamp" : "Til menu"}</button>
+          </div>
+        </div>
+      </div>`;
+    }
+    function replayBarHtml() {
+      if (s.finale !== "replay") return "";
+      const total = s.moves.length;
+      const ply = s.replayPly;
+      const move = ply > 0 ? s.moves[ply - 1] : null;
+      const fullNo = ply === 0 ? 0 : Math.ceil(ply / 2);
+      const side = !move ? "" : (move.by === "w" ? " · Hvid" : " · Sort");
+      const san = move?.san ? ` · ${esc(move.san)}` : "";
+      const label = ply === 0
+        ? "Startstilling"
+        : `Træk ${fullNo}${side}${san} · halvtræk ${ply}/${total}`;
+      return `<section class="sk-replay" aria-label="Gense dine træk">
+        <h3>Se dine træk igen</h3>
+        <p class="sk-replay-pos" aria-live="polite">${label}</p>
+        <div class="sk-replay-controls">
+          <button type="button" class="sk-replay-btn" data-act="replay-first" ${ply <= 0 ? "disabled" : ""} aria-label="Første stilling" title="Første">⏮</button>
+          <button type="button" class="sk-replay-btn" data-act="replay-prev" ${ply <= 0 ? "disabled" : ""} aria-label="Forrige træk" title="Tilbage">◀</button>
+          <button type="button" class="sk-replay-btn" data-act="replay-next" ${ply >= total ? "disabled" : ""} aria-label="Næste træk" title="Frem">▶</button>
+          <button type="button" class="sk-replay-btn" data-act="replay-last" ${ply >= total ? "disabled" : ""} aria-label="Sidste stilling" title="Sidste">⏭</button>
+        </div>
+        <div class="sk-replay-actions">
+          <button type="button" class="btn secondary" data-act="replay-victory">Tilbage til sejren</button>
+          <button type="button" class="btn" data-act="${s.mode === "cpu" ? "start-cpu" : "menu"}">${s.mode === "cpu" ? "Ny kamp" : "Til menu"}</button>
+        </div>
+      </section>`;
     }
     function problemHtml() {
       if (!s.problem) return "";
@@ -380,22 +529,31 @@
       const g = s.online.game;
       const title = s.mode === "cpu" ? `Mod computeren · ${Core.AI_LEVELS[s.aiLevel].label}` : `Mod ${esc(opponentName())}${g ? ` · kode ${esc(g.code)}` : ""}`;
       const myTurnPanel = ["solve", "buy-solve"].includes(s.phase) ? problemHtml() : "";
-      root.innerHTML = `<div class="sk-game sk-play">
+      const showShop = s.phase !== "over" && s.finale !== "replay";
+      const overActions = s.phase === "over" && s.finale !== "victory" && s.finale !== "mate-flash"
+        ? `<button type="button" data-act="replay"${s.moves.length ? "" : " disabled"}>Se dine træk igen</button>
+           <button type="button" data-act="${s.mode === "cpu" ? "start-cpu" : "menu"}">${s.mode === "cpu" ? "Ny kamp" : "Til menu"}</button>`
+        : "";
+      root.innerHTML = `<div class="sk-game sk-play${s.finale === "mate-flash" ? " sk-mate-mode" : ""}${s.finale === "victory" ? " sk-victory-mode" : ""}">
         <nav class="sk-nav"><button type="button" data-act="${s.mode === "cpu" ? "menu" : "leave-online"}">← Menu</button><span class="sk-title">${title}</span>
-          ${s.phase === "over" ? `<button type="button" data-act="${s.mode === "cpu" ? "start-cpu" : "menu"}">${s.mode === "cpu" ? "Ny kamp" : "Til menu"}</button>` : `<button type="button" data-act="resign">Giv op</button>`}</nav>
+          ${s.phase === "over" ? overActions : `<button type="button" data-act="resign">Giv op</button>`}</nav>
         <div class="sk-layout">
-          <div class="sk-board-wrap">${boardHtml()}<p class="sk-status${s.phase === "over" ? " over" : ""}" role="status">${statusLine()}</p></div>
+          <div class="sk-board-wrap">${boardHtml()}<p class="sk-status${s.phase === "over" ? " over" : ""}${s.finale === "mate-flash" ? " mate" : ""}" role="status">${s.finale === "mate-flash" ? "SKAKMAT!" : statusLine()}</p></div>
           <aside class="sk-side">
             <div class="sk-obbe"><img src="assets/figurer/obbe-ovdig.png" alt="Øbbe" width="78" height="78"><p>${esc(s.obbe)}</p></div>
             ${myTurnPanel}
             ${s.feedback ? `<p class="sk-feedback ${s.feedbackKind}" role="alert">${esc(s.feedback)}</p>` : ""}
             ${s.phase === "place" ? `<button type="button" class="btn secondary full" data-act="cancel-buy">Fortryd (brikken går tabt)</button>` : ""}
-            ${s.phase !== "over" ? shopHtml() : ""}
+            ${replayBarHtml()}
+            ${showShop ? shopHtml() : ""}
             <section class="sk-log"><h3>Træk <small>du er ${colorName(s.myColor).toLowerCase()}</small></h3>${movesHtml()}</section>
           </aside>
-        </div></div>`;
+        </div>
+        ${victoryHtml()}
+      </div>`;
       const input = root.querySelector('input[name="answer"]');
       if (input && !input.disabled) input.focus({ preventScroll: true });
+      else if (s.finale === "victory") root.querySelector("[data-act=\"replay\"]")?.focus({ preventScroll: true });
     }
     function render() {
       if (disposed) return;
@@ -418,14 +576,29 @@
       if (!act) return;
       if (act === "exit") { onExit?.(); return; }
       if (act === "start-cpu") { timers.forEach(clearTimeout); timers.clear(); newLocalGame(); return; }
-      if (act === "menu") { timers.forEach(clearTimeout); timers.clear(); stopPolling(); s.screen = "menu"; s.mode = "cpu"; s.online.game = null; render(); return; }
+      if (act === "menu") { timers.forEach(clearTimeout); timers.clear(); stopPolling(); s.screen = "menu"; s.mode = "cpu"; s.online.game = null; s.finale = null; render(); return; }
       if (act === "cancel-buy") { cancelBuy(); return; }
       if (act === "resign") { if (window.confirm("Vil du give op?")) resign(); return; }
+      if (act === "replay") { startReplay(); return; }
+      if (act === "replay-first") { setReplayPly(0); return; }
+      if (act === "replay-prev") { setReplayPly(s.replayPly - 1); return; }
+      if (act === "replay-next") { setReplayPly(s.replayPly + 1); return; }
+      if (act === "replay-last") { setReplayPly(s.moves.length); return; }
+      if (act === "replay-victory") {
+        if (iWonStatus() && s.status.reason === "skakmat") {
+          s.finale = "victory";
+          if (!s.victoryLine) s.victoryLine = pick(VICTORY_LINES);
+        } else {
+          s.finale = null;
+        }
+        render();
+        return;
+      }
       if (act === "create-online") { createOnline(); return; }
       if (act === "cancel-online" || act === "leave-online") {
         const g = s.online.game;
         if (act === "cancel-online" && g && g.status === "waiting") rpc("resign_chess_game", { p_game: g.id }).catch(() => {});
-        stopPolling(); s.online.game = null; s.screen = "menu"; s.mode = "cpu"; render(); return;
+        stopPolling(); s.online.game = null; s.screen = "menu"; s.mode = "cpu"; s.finale = null; render(); return;
       }
     }
     function onSubmit(event) {
@@ -456,6 +629,8 @@
       root.removeEventListener("error", onAssetError, true);
     };
     api.state = s; // til tests/screenshots
+    api.render = render;
+    api.enterGameOver = enterGameOver;
     return api;
   }
 

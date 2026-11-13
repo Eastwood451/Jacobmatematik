@@ -156,6 +156,27 @@
   function turnOf(fen) { return String(fen).split(" ")[1] === "b" ? "b" : "w"; }
   function inCheck(fen) { return newChess(fen).inCheck(); }
   function boardOf(fen) { return newChess(fen).board(); }
+  function kingSquare(fen, color) {
+    const board = boardOf(fen);
+    for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) {
+      const piece = board[r][f];
+      if (piece && piece.type === "k" && piece.color === color) return FILES[f] + (8 - r);
+    }
+    return null;
+  }
+  /** Genopbyg FEN efter de første `ply` halvtræk (inkl. købte brikker). Til replay. */
+  function fenAtPly(moves, ply, startFen = START_FEN) {
+    let fen = startFen;
+    const list = Array.isArray(moves) ? moves : [];
+    const n = Math.max(0, Math.min(Number(ply) || 0, list.length));
+    for (let i = 0; i < n; i++) {
+      const m = list[i];
+      if (!m) continue;
+      if (m.drop && m.square) fen = applyDrop(fen, m.by, m.drop, m.square).fen;
+      else fen = applyMove(fen, m.from, m.to, m.promotion || "q").fen;
+    }
+    return fen;
+  }
 
   function gameStatus(fen) {
     const chess = newChess(fen);
@@ -229,7 +250,7 @@
   return Object.freeze({
     START_FEN, RULES, MOVE_LEVELS, AI_LEVELS, SHOP, PIECE_NAMES, shopItem,
     makeProblem, checkAnswer, newPlayerMeta, newMeta, buyStatus, recordTurn,
-    dropSquares, applyDrop, applyMove, legalTargets, turnOf, inCheck, boardOf, gameStatus,
+    dropSquares, applyDrop, applyMove, legalTargets, turnOf, inCheck, boardOf, kingSquare, fenAtPly, gameStatus,
     evaluateFen: fen => evaluate(newChess(fen)), chooseComputerMove,
   });
 });
