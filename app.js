@@ -1305,24 +1305,54 @@ multiplicationColumn: {
     const gradient = `<defs><linearGradient id="math-tower-hole-${index}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#202d4f"/><stop offset=".52" stop-color="#37355f"/><stop offset="1" stop-color="#212b49"/></linearGradient></defs>`;
     return `<svg class="math-tower-floor-art" viewBox="0 0 300 124" preserveAspectRatio="none" aria-hidden="true" focusable="false">${gradient}${art}</svg>`;
   }
+  // The Quest (beta): kun Jacobs profiler – samme to id'er som Vinkler-betaen. Andre elever, lærere og gæster ser intet.
+  const QUEST_PROFILE_IDS = new Set(["c8b8e1c4-3264-40e9-a43d-0eb6214a0183", "3af639de-b0e0-496a-a5b7-b732e49d1fa7"]);
+  const canSeeQuest = user => Boolean(user?.id && QUEST_PROFILE_IDS.has(user.id) && user.role !== "guest");
+  function questFloors(user, availableTopics) {
+    // Nedefra, samme tal som tårnet viser. Kun Tælle → Gange giver bælter nu (hvidt → blåt); quest.js ignorerer resten.
+    return MATH_TOWER_LEVELS.slice().reverse().map(level => {
+      const p = mathTowerFloorProgress(user, level);
+      const units = p.heatmap ? { built:p.heatmap.bricks, total:TABLE_DRILL_VALUES.length ** 2, kind:"bricks" }
+        : p.numberStones ? { built:p.numberStones.built, total:p.numberStones.stones.length, kind:"stones" }
+        : p.additionBricks ? { built:p.additionBricks.built, total:100, kind:"bricks" }
+        : p.subtractionStones ? { built:p.subtractionStones.built, total:p.subtractionStones.stones.length, kind:"stones" }
+        : null;
+      const topic = level.topics.find(key => availableTopics.includes(key));
+      return { label:level.label, score:p.score, units, practice:topic ? (topic === "tenFriends" ? { action:"ten-friends" } : { topic }) : null };
+    });
+  }
+  function mountQuest(availableTopics) {
+    const slot = document.getElementById("quest-root");
+    const user = state.user;
+    if (!slot || !canSeeQuest(user)) return;
+    window.JacobModules?.load("quest")
+      .then(() => { if (state.user === user && slot.isConnected) window.JacobQuest?.mount(slot, { userId:user.id, floors:questFloors(user, availableTopics) }); })
+      .catch(error => console.error(error));
+  }
+  // One floor's progress. Shared by the tower and The Quest (belts follow the same numbers).
+  function mathTowerFloorProgress(user, level) {
+    const heatmap = level.topics.includes("tableDrill")
+      ? mathTowerBestHeatmap(user)
+      : level.topics.includes("divisionDrill")
+      ? mathTowerBestDivisionHeatmap(user)
+      : null;
+    const numberStones = level.topics.includes("numbers") ? mathTowerNumberStones(user) : null;
+    const additionBricks = level.topics.includes("addition") ? mathTowerAdditionBricks(user) : null;
+    const subtractionStones = level.topics.includes("subtractionDrill") ? mathTowerSubtractionStones(user) : null;
+    const score = heatmap ? heatmap.bricks / (TABLE_DRILL_VALUES.length ** 2) * 100 : numberStones ? numberStones.built / numberStones.stones.length * 100 : additionBricks ? additionBricks.built : subtractionStones ? subtractionStones.built / subtractionStones.stones.length * 100 : mathTowerScore(user, level.topics);
+    const stage = heatmap ? { key:"heatmap", name:`${heatmap.bricks}/81 mursten` } : numberStones ? { key:"number-stones", name:`${numberStones.built}/11 granit` } : additionBricks ? { key:"addition-bricks", name:`${additionBricks.built}/100 mursten` } : subtractionStones ? { key:"subtraction-stones", name:`${subtractionStones.built}/${subtractionStones.stones.length} granit` } : mathTowerStage(score);
+    return { heatmap, numberStones, additionBricks, subtractionStones, score, stage };
+  }
   function renderMathTower(availableTopics) {
     return `<aside class="math-tower" aria-labelledby="math-tower-title">
+      ${canSeeQuest(state.user) ? `<section id="quest-root" class="quest-slot" data-i18n-skip aria-label="The Quest"></section>` : ""}
       <span class="eyebrow">Byg din viden</span>
       <h2 id="math-tower-title">Matematiktårnet</h2>
       <p>Stærke grundfærdigheder.<br>Et stærkere tårn.</p>
       <nav class="math-tower-building" aria-label="Matematiktårnets etager – Tælle er fundamentet">
         <div class="math-tower-crown" aria-hidden="true"><svg viewBox="0 0 300 48"><path d="M12 46V9H53V26H89V9H127V26H166V9H205V26H242V9H288V46Z" fill="#79858b" stroke="#343a40" stroke-width="3"/><path d="M19 40H278" stroke="#bac1c1" stroke-width="3"/></svg></div>
         ${MATH_TOWER_LEVELS.map((level, index) => {
-          const heatmap = level.topics.includes("tableDrill")
-            ? mathTowerBestHeatmap(state.user)
-            : level.topics.includes("divisionDrill")
-            ? mathTowerBestDivisionHeatmap(state.user)
-            : null;
-          const numberStones = level.topics.includes("numbers") ? mathTowerNumberStones(state.user) : null;
-          const additionBricks = level.topics.includes("addition") ? mathTowerAdditionBricks(state.user) : null;
-          const subtractionStones = level.topics.includes("subtractionDrill") ? mathTowerSubtractionStones(state.user) : null;
-          const score = heatmap ? heatmap.bricks / (TABLE_DRILL_VALUES.length ** 2) * 100 : numberStones ? numberStones.built / numberStones.stones.length * 100 : additionBricks ? additionBricks.built : subtractionStones ? subtractionStones.built / subtractionStones.stones.length * 100 : mathTowerScore(state.user, level.topics);
-          const stage = heatmap ? { key:"heatmap", name:`${heatmap.bricks}/81 mursten` } : numberStones ? { key:"number-stones", name:`${numberStones.built}/11 granit` } : additionBricks ? { key:"addition-bricks", name:`${additionBricks.built}/100 mursten` } : subtractionStones ? { key:"subtraction-stones", name:`${subtractionStones.built}/${subtractionStones.stones.length} granit` } : mathTowerStage(score);
+          const { heatmap, numberStones, additionBricks, subtractionStones, score, stage } = mathTowerFloorProgress(state.user, level);
           const topic = level.topics.find(key => availableTopics.includes(key));
           const percentage = Math.floor(score + 1e-9);
           const description = `${level.label}: ${percentage} %, ${stage.name}. ${level.topics.map(key => TOPICS[key].name).join(" og ")}.`;
@@ -1504,6 +1534,7 @@ multiplicationColumn: {
     const total = practiceResults(state.user).length;
     const guestCopy = isGuest() ? `<p class="guest-session-note">Din træning er midlertidig og slettes, når du forlader siden.</p>` : "";
     app.innerHTML = `${header()}<div class="page student-home-layout">${renderMathTower(availableTopics)}<div class="student-home-content"><section class="hero-line"><div><span class="eyebrow">Din træning</span><h1>Hej ${escapeHtml(state.user.name)}!</h1><p data-i18n-key="home_prompt">Hvad vil du øve i dag?</p>${guestCopy}</div><div class="streak"><span>I alt løst</span><strong>${total} opgaver</strong></div></section>${renderPracticeLeaderboardCard()}${homeGameLinks()}<h2 class="section-label">Vælg et område</h2>${renderTopicTower(availableTopics)}<h2 class="section-label">Dine seneste tal</h2><section class="recent-strip">${stats.map(s => `<article class="mini-stat"><span>${TOPICS[s.topic].name}</span><strong>${s.count ? Math.round(s.accuracy*100)+" %" : "Ny"}</strong><small>${s.count ? s.avgTime.toFixed(1)+" sek. i snit" : "Klar til første opgave"}</small></article>`).join("")}</section></div></div>`;
+    mountQuest(availableTopics);
     if (usingCentralDatabase && !isGuest()) void refreshPracticeLeaderboard({ prompt:true });
   }
   function renderStudentPassword() { syncTrackedExercise();
