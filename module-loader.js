@@ -58,6 +58,11 @@
   }
 
   const MODULES = {
+    incoming: {
+      css: ["incoming.css?v=20261113-1"],
+      js: ["assets/vendor/three-r158.min.js", "incoming-core.js?v=20261113-1", "incoming-renderer.js?v=20261113-1", "incoming.js?v=20261113-1"],
+      ready: () => !!window.JacobIncoming && !!window.JacobIncomingCore && !!window.THREE,
+    },
     equations: { css: ["equations.css?v=20261112-result1"], js: ["equations.js?v=20261112-result1"], ready: () => !!window.JacobEquations },
     clock: {
       css: ["clock.css?v=20261019-clock-tip-dashed1"],

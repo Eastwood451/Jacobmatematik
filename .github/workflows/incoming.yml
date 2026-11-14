@@ -1,0 +1,29 @@
+name: Incoming angle game
+on:
+  pull_request:
+    paths: ['incoming*', 'app.js', 'module-loader.js', 'index.html', 'assets/incoming/**', 'scripts/test-incoming-*', '.github/workflows/incoming.yml']
+  push:
+    branches: ['codex/incoming-*']
+    paths: ['incoming*', 'app.js', 'module-loader.js', 'index.html', 'assets/incoming/**', 'scripts/test-incoming-*', '.github/workflows/incoming.yml']
+permissions:
+  contents: read
+jobs:
+  game-and-access:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Syntax and behavior
+        run: |
+          node --check incoming.js
+          node --check incoming-core.js
+          node --check incoming-renderer.js
+          node --check module-loader.js
+          node --check app.js
+          node scripts/test-incoming-core.cjs
+          node scripts/test-incoming-gating.cjs
+          node scripts/test-lazy-load-startup.cjs
+          node scripts/test-student-view.cjs
