@@ -9,26 +9,31 @@ const loader = fs.readFileSync(path.join(root, 'module-loader.js'), 'utf8');
 const css = fs.readFileSync(path.join(root, 'quest.css'), 'utf8');
 const questSrc = fs.readFileSync(path.join(root, 'quest.js'), 'utf8');
 
-// 1) Otte bælter = otte tårnetager nedefra.
+// 1) Otte bælter i striben – men kun hvidt → blåt kan opnås nu.
 assert.deepEqual(Q.BELTS.map(b => b.key), ['white', 'yellow', 'orange', 'green', 'blue', 'purple', 'brown', 'black']);
-assert.deepEqual(Q.BELTS.map(b => b.floor), ['Tælle', 'Plus', '10’er-venner', 'Minus', 'Gange', 'Division', 'Regnehierarki', 'Negative tal']);
+assert.equal(Q.ATTAINABLE, 5, 'blåt er loftet');
+assert.deepEqual(Q.BELTS.slice(0, 5).map(b => b.floor), ['Tælle', 'Plus', '10’er-venner', 'Minus', 'Gange']);
 const towerLabels = [...app.slice(app.indexOf('const MATH_TOWER_LEVELS'), app.indexOf('function mathTowerStage')).matchAll(/label:"([^"]+)"/g)].map(m => m[1]).reverse();
-assert.deepEqual(Q.BELTS.map(b => b.floor), towerLabels, 'bælterne følger tårnets etager nedefra');
+assert.deepEqual(Q.BELTS.slice(0, 5).map(b => b.floor), towerLabels.slice(0, 5), 'opnåelige bælter følger tårnets nederste fem etager');
+assert.ok(Q.BELTS.slice(5).every(b => b.locked && b.floor === null), 'lilla, brunt og sort er låst og knyttet til ingen etage');
 assert.equal(Q.THRESHOLD, 60, 'bælte ved Bindingsværk');
 assert.match(app, /if \(score >= 60\) return \{ key:"timber", name:"Bindingsværk" \}/);
-// 8 forskellige replikker, dansk + engelsk.
 assert.equal(new Set(Q.BELTS.map(b => b.line.da)).size, 8);
 assert.equal(new Set(Q.BELTS.map(b => b.line.en)).size, 8);
 assert.ok(Q.BELTS.every(b => b.reply.da && b.reply.en && b.en.endsWith('belt')));
 assert.match(Q.BELTS[0].line.da, /tommelfinger-tælling er hermed pensioneret/);
-// Ingen lånte filmnavne/-citater.
+assert.match(Q.BELTS[4].reply.da, /kommer flere prøver/, 'blå-replikken antyder mere');
+assert.match(questSrc, /Sort bælte: Du kan alt, hvad 9\. klasses afgangsprøve kræver/);
+assert.match(questSrc, /Black belt: you master everything the Danish 9th-grade final exam requires/);
+assert.match(questSrc, /Kommer, når flere emner er bygget/);
+assert.match(questSrc, /Du har det højeste bælte lige nu\. Flere prøver er på vej\./);
 assert.doesNotMatch(questSrc + css, /kill ?bill|yoda|skywalker|star wars|jedi|tarantino|hattori/i);
 
 // 2) Beregning.
 const floor = (score, units = null) => ({ score, units });
 const empty = Array.from({ length: 8 }, () => floor(0));
 let q = Q.computeQuest(empty, 0);
-assert.equal(q.earnedNow, 0); assert.equal(q.held, 0); assert.equal(q.current, -1); assert.equal(q.next, 0);
+assert.equal(q.earnedNow, 0); assert.equal(q.held, 0); assert.equal(q.current, -1); assert.equal(q.next, 0); assert.equal(q.top, false);
 const counting = (built) => floor(built / 11 * 100, { built, total: 11, kind: 'stones' });
 q = Q.computeQuest([counting(2), ...empty.slice(1)], 0);
 assert.deepEqual([q.missing.kind, q.missing.n, q.missing.needed], ['stones', 5, 7], '7 af 11 sten = 60 %');
@@ -36,21 +41,22 @@ assert.equal(Q.missingText(q, 'da'), '5 sten mere i Tælle');
 assert.equal(Q.missingText(q, 'en'), '5 more stones in Counting');
 q = Q.computeQuest([counting(7), floor(48, { built: 48, total: 100, kind: 'bricks' }), ...empty.slice(2)], 0);
 assert.equal(q.earnedNow, 1, 'Tælle på 7/11 giver hvidt bælte');
-assert.equal(q.next, 1);
 assert.equal(Q.missingText(q, 'da'), '12 mursten mere i Plus');
 q = Q.computeQuest([counting(11), floor(60, { built: 60, total: 100, kind: 'bricks' }), floor(59.6), ...empty.slice(3)], 0);
 assert.equal(q.earnedNow, 2);
-assert.deepEqual([q.missing.kind, q.missing.n], ['pct', 1]);
 assert.equal(Q.missingText(q, 'da'), '1 procentpoint mere i 10’er-venner (nu 59 %)');
-// Rækkefølge: en høj etage uden de nederste giver intet bælte.
 q = Q.computeQuest([floor(10), floor(100), floor(100), floor(100), floor(100), floor(100), floor(100), floor(100)], 0);
-assert.equal(q.earnedNow, 0);
-// Heatmap: 49/81 mursten = 60 %.
+assert.equal(q.earnedNow, 0, 'rækkefølge nedefra');
 q = Q.computeQuest([floor(100), floor(100), floor(100), floor(100), floor(48 / 81 * 100, { built: 48, total: 81, kind: 'bricks' }), ...empty.slice(5)], 0);
-assert.equal(q.next, 4); assert.equal(q.missing.n, 1);
-// Alle otte.
-q = Q.computeQuest(Array.from({ length: 8 }, () => floor(95)), 0);
-assert.equal(q.held, 8); assert.equal(q.next, -1); assert.equal(q.missing, null);
+assert.equal(q.next, 4); assert.equal(q.missing.n, 1, '49/81 til blåt');
+// Blåt er loft: 100 % på alle etager giver ikke lilla, brunt eller sort.
+q = Q.computeQuest(Array.from({ length: 8 }, () => floor(100)), 0);
+assert.equal(q.earnedNow, 5); assert.equal(q.held, 5); assert.equal(q.current, 4); assert.equal(q.next, -1); assert.equal(q.missing, null); assert.equal(q.top, true);
+q = Q.computeQuest(Array.from({ length: 8 }, () => floor(100)), 8);
+assert.equal(q.held, 5, 'et gammelt gemt tal over blåt giver ikke låste bælter');
+// Division/Regnehierarki/Negative tal giver intet bælte, selv ved 100 %.
+q = Q.computeQuest([floor(100), floor(100), floor(100), floor(100), floor(0), floor(100), floor(100), floor(100)], 0);
+assert.equal(q.held, 4); assert.equal(q.next, 4);
 // Et bælte, man har fået, beholder man.
 q = Q.computeQuest([counting(11), floor(10), ...empty.slice(2)], 3);
 assert.equal(q.earnedNow, 1); assert.equal(q.held, 3); assert.equal(q.next, 3);
@@ -68,11 +74,19 @@ assert.equal(Q.pendingCeremony(s, 'u1', 2), -1, 'faldende score giver ingen ny c
 assert.equal(Q.readSeen(s, 'u1'), 3, 'bæltet beholdes');
 assert.equal(Q.pendingCeremony(s, 'u2', 1), 0, 'nøglet på bruger-id');
 s = memory();
-assert.equal(Q.pendingCeremony(s, 'u3', 5), 4, 'første visning med eksisterende bælter: kun det højeste');
+assert.equal(Q.pendingCeremony(s, 'u3', 5), 4, 'første visning med eksisterende bælter: kun det højeste (blåt)');
 assert.equal(Q.readSeen(s, 'u3'), 5);
 assert.equal(Q.pendingCeremony(s, 'u3', 5), -1);
+assert.equal(Q.pendingCeremony(s, 'u3', 8), -1, 'ingen ceremoni over blåt');
+s = memory();
+assert.equal(Q.pendingCeremony(s, 'u5', 8), 4, 'selv 8 etager giver højst blå-ceremonien');
+s.setItem(Q.STORAGE_PREFIX + 'u6', '8');
+assert.equal(Q.readSeen(s, 'u6'), 5);
 const broken = { getItem() { throw new Error('blocked'); }, setItem() { throw new Error('blocked'); } };
 assert.equal(Q.pendingCeremony(broken, 'u4', 1), 0, 'blokeret localStorage må ikke crashe');
+
+// Låste ceremonier kan ikke udløses (ingen DOM nødvendig: afvises før dokumentet bruges).
+for (const i of [5, 6, 7, 99]) assert.equal(Q.showCeremony(i), null, `ceremoni ${i} er utilgængelig`);
 
 // 4) Bælte-SVG.
 assert.match(Q.beltSvg(Q.BELTS[1]), /#ffd23f/);

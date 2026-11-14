@@ -6,6 +6,9 @@
   "use strict";
 
   var THRESHOLD = 60;
+  // Siden er ikke færdigbygget: kun hvidt → blåt kan opnås nu (Tælle, Plus, 10’er-venner, Minus, Gange).
+  // Lilla og brunt kommer, når flere emner er bygget. Sort = alt, hvad 9. klasses afgangsprøve kræver.
+  var ATTAINABLE = 5;
   var STORAGE_PREFIX = "jm-quest-seen-v1:";
   var KAPTAJN = { img: "assets/figurer/skak/w-k.webp", da: "Kaptajn Kvadratrod", en: "Captain Square Root" };
 
@@ -40,20 +43,21 @@
       buddy: { img: "assets/brok-loeb/gunnar.webp", da: "Gunnar Giderik", en: "Gunnar the Slacker" },
       line: { da: "Gangetabellerne bøjer sig for dig. Hvor andre ser 7 × 8, ser du 56 – og en lille, stille sejr.",
               en: "The times tables bow before you. Where others see 7 × 8, you see 56 – and a small, quiet victory." },
-      reply: { da: "Jeg gider ik' klappe … øh. Okay. Én gang.", en: "I can't be bothered to clap … uh. Fine. Once." } },
-    { key: "purple", floor: "Division", floorEn: "Division", color: "#8b4fd8", edge: "#5a2a9c", ink: "#1e0640",
+      reply: { da: "Jeg gider ik' klappe … øh. Okay. Én gang. Men rygtet siger, at der kommer flere prøver. Suk.", en: "I can't be bothered to clap … uh. Fine. Once. But rumour has it more trials are coming. Sigh." } },
+    { key: "purple", floor: null, floorEn: null, locked: true, color: "#8b4fd8", edge: "#5a2a9c", ink: "#1e0640",
       da: "Lilla bælte", en: "Purple belt", daOf: "det lilla bælte", enOf: "the purple belt",
+      // Fremtidig (låst): replik gemt til senere, kan ikke udløses nu.
       buddy: { img: "assets/figurer/divisions-dennis.webp", da: "Divisions-Dennis", en: "Division Dennis" },
       line: { da: "Du deler retfærdigt, hurtigt og uden at efterlade krummer. Kagekrigene er forbi. Du har bragt fred.",
               en: "You share fairly, quickly and without leaving crumbs. The cake wars are over. You have brought peace." },
       reply: { da: "Rest nul. Respekt.", en: "Remainder zero. Respect." } },
-    { key: "brown", floor: "Regnehierarki", floorEn: "Order of operations", color: "#8a5a2b", edge: "#5b3814", ink: "#fff1df",
+    { key: "brown", floor: null, floorEn: null, locked: true, color: "#8a5a2b", edge: "#5b3814", ink: "#fff1df",
       da: "Brunt bælte", en: "Brown belt", daOf: "det brune bælte", enOf: "the brown belt",
       buddy: { img: "assets/brok-loeb/dummo.webp", da: "Kejser Dummo", en: "Emperor Dummy" },
       line: { da: "Parentes først, så gange, så plus. Du kender den hellige rækkefølge. Kaos er hermed aflyst.",
               en: "Brackets first, then times, then plus. You know the sacred order. Chaos is hereby cancelled." },
       reply: { da: "Jeg forstår ingenting, men jeg klapper alligevel!", en: "I understand nothing, but I am clapping anyway!" } },
-    { key: "black", floor: "Negative tal", floorEn: "Negative numbers", color: "#15151b", edge: "#000000", ink: "#ffd75a",
+    { key: "black", floor: null, floorEn: null, locked: true, color: "#15151b", edge: "#000000", ink: "#ffd75a",
       da: "Sort bælte", en: "Black belt", daOf: "det sorte bælte", enOf: "the black belt",
       buddy: null,
       line: { da: "Du er gået under nul og kommet tilbage med et smil. Du så minus fire grader i øjnene og sagde: ›Pfft.‹ Det sorte bælte er dit.",
@@ -73,6 +77,10 @@
     firstTrial: { da: "Din første prøve", en: "Your first trial" },
     nextTrial: { da: "Næste prøve", en: "Next trial" },
     train: { da: "Træn til {belt} →", en: "Train for the {belt} →" },
+    topNow: { da: "Du har det højeste bælte lige nu. Flere prøver er på vej.", en: "You have the highest belt for now. More trials are on the way." },
+    comingSoon: { da: "Kommer, når flere emner er bygget", en: "Coming when more topics are built" },
+    blackDesc: { da: "Sort bælte: Du kan alt, hvad 9. klasses afgangsprøve kræver", en: "Black belt: you master everything the Danish 9th-grade final exam requires" },
+    lockedSoon: { da: "{belt} – låst. Kommer, når flere emner er bygget", en: "{belt} – locked. Coming when more topics are built" },
     allDone: { da: "Alle otte bælter er dine. Du er en ægte mester i jacobmatematik-universet.", en: "All eight belts are yours. A true master of the jacobmatematik universe." },
     stripe: { da: "Dine bælter", en: "Your belts" },
     replay: { da: "Se ceremonien for {belt} igen", en: "Watch the {belt} ceremony again" },
@@ -84,8 +92,8 @@
     blackTease: { da: "Rygtet siger, at der findes en prøve efter det sorte bælte …", en: "Rumour has it there is a trial beyond the black belt …" },
     close: { da: "Luk ceremonien", en: "Close the ceremony" },
     howTitle: { da: "Sådan får du et bælte", en: "How to earn a belt" },
-    how: { da: "Hver etage i Matematiktårnet er et bælte – nedefra: Tælle er hvidt, Negative tal er sort. Når etagen når Bindingsværk (60 %), får du bæltet. Bælterne tages i rækkefølge, og et bælte, du har fået, beholder du.",
-           en: "Each floor of the Maths Tower is a belt – bottom up: Counting is white, Negative numbers is black. When the floor reaches Timber frame (60%), the belt is yours. Belts come in order, and once earned you keep it." },
+    how: { da: "Lige nu kan du tage fem bælter: Tælle giver hvidt, Plus gult, 10’er-venner orange, Minus grønt og Gange blåt. Når etagen i Matematiktårnet når Bindingsværk (60 %), får du bæltet. Bælterne tages i rækkefølge, og et bælte, du har fået, beholder du. Lilla og brunt kommer, når flere emner er bygget. Sort bælte får du, når du kan alt, hvad 9. klasses afgangsprøve kræver.",
+           en: "Right now you can earn five belts: Counting gives white, Addition yellow, Friends of 10 orange, Subtraction green and Multiplication blue. When the floor in the Maths Tower reaches Timber frame (60%), the belt is yours. Belts come in order, and once earned you keep it. Purple and brown come when more topics are built. The black belt is for mastering everything the Danish 9th-grade final exam requires." },
     unitBricks: { da: "mursten", en: "bricks" },
     unitStones: { da: "sten", en: "stones" },
     missingUnits: { da: "{n} {unit} mere i {floor}", en: "{n} more {unit} in {floor}" },
@@ -114,10 +122,10 @@
   function computeQuest(floors, seenCount) {
     floors = floors || [];
     var earnedNow = 0;
-    while (earnedNow < BELTS.length && floorReached(floors[earnedNow])) earnedNow++;
-    var seen = Math.max(0, Math.min(BELTS.length, Number(seenCount) || 0));
+    while (earnedNow < ATTAINABLE && floorReached(floors[earnedNow])) earnedNow++;
+    var seen = Math.max(0, Math.min(ATTAINABLE, Number(seenCount) || 0));
     var held = Math.max(earnedNow, seen); // Et bælte, man har fået, beholder man.
-    var next = held < BELTS.length ? held : -1;
+    var next = held < ATTAINABLE ? held : -1;
     var missing = null;
     if (next >= 0) {
       var f = floors[next] || { score: 0, units: null };
@@ -130,7 +138,7 @@
       }
       missing.progress = Math.max(0, Math.min(1, score / THRESHOLD));
     }
-    return { earnedNow: earnedNow, held: held, current: held - 1, next: next, missing: missing };
+    return { earnedNow: earnedNow, held: held, current: held - 1, next: next, missing: missing, top: held >= ATTAINABLE };
   }
 
   // Ceremonien vises én gang pr. bælte pr. bruger. Ingen kaskade: kun det højeste nye bælte vises.
@@ -140,7 +148,7 @@
       var raw = storage && storage.getItem(storageKey(userId));
       if (raw == null) return null;
       var n = parseInt(raw, 10);
-      return isNaN(n) ? null : Math.max(0, Math.min(BELTS.length, n));
+      return isNaN(n) ? null : Math.max(0, Math.min(ATTAINABLE, n));
     } catch (e) { return null; }
   }
   function writeSeen(storage, userId, count) {
@@ -148,6 +156,7 @@
   }
   // Returnerer bælteindeks (0–7) der skal fejres nu, eller -1. Markerer altid som set.
   function pendingCeremony(storage, userId, earnedNow) {
+    earnedNow = Math.max(0, Math.min(ATTAINABLE, Number(earnedNow) || 0));
     var seen = readSeen(storage, userId);
     var already = seen == null ? 0 : seen;
     if (earnedNow > already) {
@@ -181,6 +190,7 @@
       "</svg>";
   }
 
+  var LOCK = '<svg class="quest-lock" viewBox="0 0 16 16" aria-hidden="true" focusable="false"><path d="M5 7V5a3 3 0 0 1 6 0v2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="3" y="7" width="10" height="7.5" rx="1.6" fill="currentColor"/></svg>';
   // ---------- Kortet over tårnet ----------
   function missingText(q, l) {
     var m = q.missing; if (!m) return "";
@@ -198,8 +208,11 @@
     var practiceAttr = practice ? (practice.action ? ' data-action="' + esc(practice.action) + '"' : ' data-topic="' + esc(practice.topic) + '"') : "";
     var stripe = BELTS.map(function (b, i) {
       var have = i < q.held;
-      var label = have ? tx("replay", { belt: beltName(b, l).toLowerCase() }, l) : tx("locked", { belt: beltName(b, l), floor: floorName(b, l) }, l);
-      return '<button type="button" class="quest-stripe-belt' + (have ? " is-earned" : "") + (i === q.next ? " is-next" : "") + '" style="--belt:' + b.color + ';--edge:' + b.edge + '" data-quest-replay="' + i + '"' + (have ? "" : " disabled") + ' aria-label="' + esc(label) + '" title="' + esc(label) + '"><span></span></button>';
+      var label = have ? tx("replay", { belt: beltName(b, l).toLowerCase() }, l)
+        : b.key === "black" ? tx("blackDesc", null, l)
+        : b.locked ? tx("lockedSoon", { belt: beltName(b, l) }, l)
+        : tx("locked", { belt: beltName(b, l), floor: floorName(b, l) }, l);
+      return '<button type="button" class="quest-stripe-belt' + (have ? " is-earned" : "") + (b.locked ? " is-locked" : "") + (i === q.next ? " is-next" : "") + '" style="--belt:' + b.color + ';--edge:' + b.edge + '" data-quest-replay="' + i + '"' + (have ? "" : " disabled") + ' aria-label="' + esc(label) + '" title="' + esc(label) + '"><span></span>' + (b.locked ? LOCK : "") + '</button>';
     }).join("");
     var nextBlock = nxt
       ? '<div class="quest-next"><span class="quest-label">' + esc(q.held ? tx("nextTrial", null, l) : tx("firstTrial", null, l)) + '</span>' +
@@ -208,12 +221,13 @@
         '<p class="quest-missing">' + esc(missingText(q, l)) + '</p>' +
         (practiceAttr ? '<button type="button" class="quest-train"' + practiceAttr + '>' + esc(tx("train", { belt: beltName(nxt, l).toLowerCase() }, l)) + '</button>' : "") +
         "</div>"
-      : '<p class="quest-done">' + esc(tx("allDone", null, l)) + "</p>";
+      : '<p class="quest-done">' + esc(tx("topNow", null, l)) + "</p>";
     el.innerHTML = '<div class="quest-card" data-belt="' + (cur ? cur.key : "none") + '">' +
       '<div class="quest-head"><span class="quest-kicker">' + esc(tx("tagline", null, l)) + '</span><h2 class="quest-title">' + esc(tx("title", null, l)) + "</h2></div>" +
       '<div class="quest-current"><div class="quest-belt-wrap">' + beltSvg(cur) + '</div><div><span class="quest-label">' + esc(tx("yourBelt", null, l)) + '</span><strong class="quest-belt-name">' + esc(cur ? beltName(cur, l) : tx("noBelt", null, l)) + "</strong></div></div>" +
       nextBlock +
       '<div class="quest-stripe" role="group" aria-label="' + esc(tx("stripe", null, l)) + '">' + stripe + "</div>" +
+      '<ul class="quest-locked-note"><li><span aria-hidden="true">' + LOCK + '</span>' + esc(beltName(BELTS[5], l)) + " / " + esc(beltName(BELTS[6], l).toLowerCase()) + ": " + esc(tx("comingSoon", null, l)) + '</li><li><span aria-hidden="true">' + LOCK + "</span>" + esc(tx("blackDesc", null, l)) + "</li></ul>" +
       '<details class="quest-how"><summary>' + esc(tx("howTitle", null, l)) + "</summary><p>" + esc(tx("how", null, l)) + "</p></details>" +
       "</div>";
   }
@@ -225,7 +239,7 @@
   function showCeremony(index, options) {
     options = options || {};
     closeCeremony();
-    var belt = BELTS[index]; if (!belt) return null;
+    var belt = BELTS[index]; if (!belt || belt.locked || index >= ATTAINABLE) return null; // Lilla, brunt og sort kan ikke udløses nu.
     var l = lang();
     var doc = root.document;
     var lastFocus = doc.activeElement;
@@ -317,7 +331,7 @@
   }
 
   var api = {
-    BELTS: BELTS, THRESHOLD: THRESHOLD, STORAGE_PREFIX: STORAGE_PREFIX,
+    BELTS: BELTS, THRESHOLD: THRESHOLD, ATTAINABLE: ATTAINABLE, STORAGE_PREFIX: STORAGE_PREFIX,
     computeQuest: computeQuest, pendingCeremony: pendingCeremony, readSeen: readSeen, writeSeen: writeSeen,
     beltSvg: beltSvg, missingText: missingText, mount: mount, showCeremony: showCeremony, closeCeremony: closeCeremony,
   };

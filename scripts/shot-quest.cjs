@@ -72,7 +72,7 @@ async function stub(page, base, { id = JACOB, seen = null, lang = 'da' } = {}) {
     await page.locator('#quest-root').scrollIntoViewIfNeeded();
     await page.evaluate(() => window.scrollTo(0, 0));
     let file = path.join(outDir, 'dashboard-desktop.png'); await page.screenshot({ path: file }); shots.push(path.basename(file));
-    file = path.join(outDir, 'quest-card-closeup.png'); await page.locator('.quest-card').screenshot({ path: file }); shots.push(path.basename(file));
+    file = path.join(outDir, 'quest-card-white.png'); await page.locator('.quest-card').screenshot({ path: file }); shots.push(path.basename(file));
     // Reload: ingen ceremoni igen.
     await page.reload({ waitUntil: 'domcontentloaded' });
     await ctx.close();
@@ -95,6 +95,29 @@ async function stub(page, base, { id = JACOB, seen = null, lang = 'da' } = {}) {
     if (await page.$('#quest-root, .quest-card, .quest-ceremony')) throw new Error('quest visible for non-gated user');
     await ctx.close();
 
+    // Kort med syntetiske etager (samme mount-API): grønt bælte og højeste bælte (blåt).
+    ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    page = await ctx.newPage();
+    await stub(page, base, { seen: 1 });
+    await page.waitForSelector('.quest-card');
+    const remount = (held, partial) => page.evaluate(({ held, partial }) => {
+      const mem = new Map([['jm-quest-seen-v1:x', String(held)]]);
+      const storage = { getItem: k => mem.has(k) ? mem.get(k) : null, setItem: (k, v) => mem.set(k, v) };
+      const floors = Array.from({ length: 8 }, (_, i) => i < held ? { score: 100, units: null } : i === held ? partial : { score: 0, units: null });
+      floors[4].practice = { topic: 'tableDrill' };
+      const old = document.getElementById('quest-root'); const slot = old.cloneNode(false); old.replaceWith(slot);
+      window.JacobQuest.mount(slot, { userId: 'x', floors, storage, noCeremony: true });
+    }, { held, partial });
+    await remount(4, { score: 31 / 81 * 100, units: { built: 31, total: 81, kind: 'bricks' }, practice: { topic: 'tableDrill' } });
+    file = path.join(outDir, 'quest-card-closeup.png'); await page.locator('.quest-card').screenshot({ path: file }); shots.push(path.basename(file));
+    await remount(8, { score: 100, units: null });
+    file = path.join(outDir, 'quest-card-blue.png'); await page.locator('.quest-card').screenshot({ path: file }); shots.push(path.basename(file));
+    if (await page.evaluate(() => window.JacobQuest.showCeremony(7)) !== null) throw new Error('black ceremony must be unavailable');
+    await page.evaluate(() => window.JacobQuest.showCeremony(4));
+    await page.waitForTimeout(6300);
+    file = path.join(outDir, 'ceremony-blue-desktop.png'); await page.screenshot({ path: file }); shots.push(path.basename(file));
+    await ctx.close();
+
     // Mobil 390.
     ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
     page = await ctx.newPage();
@@ -107,9 +130,9 @@ async function stub(page, base, { id = JACOB, seen = null, lang = 'da' } = {}) {
     await page.evaluate(() => window.JacobQuest.showCeremony(2));
     await page.waitForTimeout(6300);
     file = path.join(outDir, 'ceremony-orange-mobile-390.png'); await page.screenshot({ path: file }); shots.push(path.basename(file));
-    await page.evaluate(() => window.JacobQuest.showCeremony(7));
+    await page.evaluate(() => window.JacobQuest.showCeremony(3));
     await page.waitForTimeout(6300);
-    file = path.join(outDir, 'ceremony-black-mobile-390.png'); await page.screenshot({ path: file }); shots.push(path.basename(file));
+    file = path.join(outDir, 'ceremony-green-mobile-390.png'); await page.screenshot({ path: file }); shots.push(path.basename(file));
     await ctx.close();
 
     // Desktop: sort bælte + engelsk + reduced motion.
@@ -117,9 +140,9 @@ async function stub(page, base, { id = JACOB, seen = null, lang = 'da' } = {}) {
     page = await ctx.newPage();
     await stub(page, base, { seen: 1, lang: 'en' });
     await page.waitForSelector('.quest-card');
-    await page.evaluate(() => window.JacobQuest.showCeremony(7));
+    await page.evaluate(() => window.JacobQuest.showCeremony(4));
     await page.waitForTimeout(400);
-    file = path.join(outDir, 'ceremony-black-en-reduced-motion.png'); await page.screenshot({ path: file }); shots.push(path.basename(file));
+    file = path.join(outDir, 'ceremony-blue-en-reduced-motion.png'); await page.screenshot({ path: file }); shots.push(path.basename(file));
     await page.keyboard.press('Escape');
     file = path.join(outDir, 'quest-card-en.png'); await page.locator('.quest-card').screenshot({ path: file }); shots.push(path.basename(file));
     await ctx.close();

@@ -1309,7 +1309,7 @@ multiplicationColumn: {
   const QUEST_PROFILE_IDS = new Set(["c8b8e1c4-3264-40e9-a43d-0eb6214a0183", "3af639de-b0e0-496a-a5b7-b732e49d1fa7"]);
   const canSeeQuest = user => Boolean(user?.id && QUEST_PROFILE_IDS.has(user.id) && user.role !== "guest");
   function questFloors(user, availableTopics) {
-    // Nedefra: Tælle (hvidt) … Negative tal (sort). Samme tal som tårnet viser.
+    // Nedefra, samme tal som tårnet viser. Kun Tælle → Gange giver bælter nu (hvidt → blåt); quest.js ignorerer resten.
     return MATH_TOWER_LEVELS.slice().reverse().map(level => {
       const p = mathTowerFloorProgress(user, level);
       const units = p.heatmap ? { built:p.heatmap.bricks, total:TABLE_DRILL_VALUES.length ** 2, kind:"bricks" }

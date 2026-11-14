@@ -33,6 +33,12 @@
 .quest-stripe-belt.is-earned span { background:var(--belt); border:1.5px solid var(--edge); }
 .quest-stripe-belt.is-next { border-color:#ffd75a; animation:quest-next-pulse 1.6s ease-in-out infinite; }
 @keyframes quest-next-pulse { 50% { box-shadow:0 0 10px 1px rgba(255,215,90,.7); } }
+.quest-stripe-belt.is-locked { border-color:rgba(255,255,255,.18); background:repeating-linear-gradient(135deg, transparent 0 4px, rgba(255,255,255,.06) 4px 8px); }
+.quest-stripe-belt.is-locked span { display:none; }
+.quest-stripe-belt .quest-lock { position:absolute; left:50%; top:50%; width:11px; height:11px; transform:translate(-50%,-50%); color:#c8c0e8; }
+.quest-locked-note { position:relative; list-style:none; margin:8px 0 0; padding:0; font-size:11px; line-height:1.35; color:#c8c0e8; }
+.quest-locked-note li { display:flex; gap:6px; align-items:flex-start; margin-top:3px; }
+.quest-locked-note .quest-lock { width:11px; height:11px; flex:none; margin-top:1px; color:#ffd75a; }
 .quest-how { position:relative; margin-top:10px; font-size:12px; color:#d9d2f2; }
 .quest-how summary { cursor:pointer; font-weight:800; color:#ffd75a; }
 .quest-how p { margin:6px 0 0; line-height:1.4; }
