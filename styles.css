@@ -1772,3 +1772,36 @@ body.site-authenticated:has(.student-home-layout){
 .clock-card-copy small{line-height:1.35}
 .skak-card .topic-icon{font-size:1.45rem}
 @media(max-width:520px){.clock-home-card{grid-template-columns:96px 1fr;gap:8px}.clock-card-art{max-width:110px}}
+
+/* Student shortcut cards ("genveje"): exercise screenshot + what you do + what you get better at.
+   Selectors are specific enough to win over the older per-card art layouts (protected module CSS is untouched). */
+.topic-card.genvej-card{display:block;padding:0!important;min-height:0!important;overflow:hidden;text-align:left;container-type:inline-size;position:relative}
+.topic-card.genvej-card.ma-addition-card,.topic-card.genvej-card.pp-penalhus-card,.topic-card.genvej-card.numbers-banner,.topic-card.genvej-card.clock-home-card{padding:0!important;min-height:0!important;display:block}
+.genvej-inner{display:flex;flex-direction:column;height:100%}
+.genvej-shot{display:block;position:relative;aspect-ratio:16/10;overflow:hidden;background:#f4efe6;border-bottom:1px solid rgba(60,52,90,.12)}
+.genvej-shot img{display:block;width:100%;height:100%;object-fit:cover;object-position:center top;transition:transform .25s ease}
+.topic-card.genvej-card:hover .genvej-shot img{transform:scale(1.03)}
+.genvej-copy{display:block;padding:14px 18px 17px;min-width:0}
+.topic-card.genvej-card .topic-icon{display:inline-block;margin:0 0 9px;padding:3px 11px;border-radius:999px;background:rgba(255,255,255,.75);border:1px solid rgba(60,52,90,.16);font:800 17px/1.25 Georgia,serif;letter-spacing:0}
+.topic-card.genvej-card strong{display:block;font-size:17px;line-height:1.25}
+.topic-card.genvej-card small.genvej-what{display:block;margin-top:6px;font-size:13.5px;line-height:1.45}
+.topic-card.genvej-card small.genvej-gain{display:flex;gap:7px;align-items:flex-start;margin-top:9px;font-size:13.5px;line-height:1.4;font-weight:700;color:#21613f}
+.genvej-gain::before{content:"✓";content:"✓" / "";flex:none;display:inline-grid;place-items:center;width:19px;height:19px;margin-top:-1px;border-radius:50%;background:#2f8a57;color:#fff;font-size:12px;font-weight:900}
+.topic-card.genvej-card.mixed small.genvej-gain{color:#d8ffe6}
+.topic-card.genvej-card.mixed .topic-icon{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.3)}
+.topic-card.genvej-card.mixed .genvej-shot{background:#efe9ff}
+@container (min-width:540px){
+  .genvej-inner{display:grid;grid-template-columns:minmax(0,45%) minmax(0,1fr);align-items:center}
+  .genvej-shot{border-bottom:0;border-right:1px solid rgba(60,52,90,.12);height:100%;aspect-ratio:auto;min-height:190px}
+  .genvej-copy{padding:18px 24px}
+  .topic-card.genvej-card strong{font-size:19px}
+  .topic-card.genvej-card small.genvej-what,.topic-card.genvej-card small.genvej-gain{font-size:14.5px}
+}
+@media (max-width:560px){
+  .topic-tower-row.topic-tower-pair{grid-template-columns:minmax(0,1fr)}
+  .genvej-copy{padding:12px 14px 14px}
+  .topic-card.genvej-card strong{font-size:16px}
+  .topic-card.genvej-card small.genvej-what,.topic-card.genvej-card small.genvej-gain{font-size:13px}
+  .topic-card.genvej-card .topic-icon{font-size:15px}
+}
+@media (prefers-reduced-motion:reduce){.genvej-shot img{transition:none}.topic-card.genvej-card:hover .genvej-shot img{transform:none}}

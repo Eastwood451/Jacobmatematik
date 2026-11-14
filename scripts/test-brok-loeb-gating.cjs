@@ -31,7 +31,7 @@ assert.equal(closedCan({ id: "c8b8e1c4-3264-40e9-a43d-0eb6214a0183", role: "teac
 assert.equal(closedCan({ id: "3af639de-b0e0-496a-a5b7-b732e49d1fa7", role: "student" }), true, "flaget kan lukke til Jacob igen");
 assert.equal(closedCan({ id: "ordinary-student", role: "student" }), false, "lukket flag skjuler andre elever");
 assert.equal(closedCan({ id: "guest-1", role: "guest" }), false, "lukket flag følger den gamle profil-gate");
-assert.match(app, /return canPlayRunner\(\) \? `<button[^`]*data-action="fraction-runner"/, "kortet er gated");
+assert.match(app, /return canPlayRunner\(\) \? genvejCard\(\{[^}]*data-action="fraction-runner"/, "kortet er gated");
 assert.match(app, /if \(!canPlayRunner\(\)\) \{ state\.view=/, "renderRunner er gated");
 assert.match(app, /action === "fraction-runner" \? canPlayRunner/, "action er gated");
 assert.match(app, /runner:'\[data-action="fraction-runner"\]'/, "?start=runner bruger samme action som kortet");

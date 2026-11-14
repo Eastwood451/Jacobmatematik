@@ -27,6 +27,39 @@
     negatives: { name: "Negative tal", icon: "−4 + 7", description: "Plus, minus og gange" },
     distributive: { name: "Distributiv lov", icon: "3(4 + 5)", description: "Gang ind i parentesen" },
   };
+  // Student shortcut cards ("genveje"): a screenshot of the exercise, what you do, and what you get better at.
+  // Images: assets/genveje/<file>.webp (600×375), rebuilt with scripts/build-genveje-shots.cjs. English via i18n-strings.js.
+  const GENVEJE_VERSION = "20261114-genveje1";
+  const GENVEJE = {
+    fractions: { file:"learn-fractions", alt:"Skærmbillede: et brøkstykke og valget mellem plus, minus, gange og division", what:"Se et brøkstykke, find regnearten, og vælg den regel, der passer.", gain:"Du ved, hvordan man regner plus, minus, gange og division med brøker." },
+    distributive: { file:"distributive", alt:"Skærmbillede: et gangestykke med en parentes og hjælpen, der ganger ind", what:"Gang tallet foran ind på hvert led i parentesen.", gain:"Du kan gange ind i en parentes – det skal du bruge i algebra senere." },
+    basics: { file:"basics", alt:"Skærmbillede: et regnestykke med 0", what:"Regn stykker med 0 og 1 – og opdag, når et stykke ikke kan regnes.", gain:"Du falder ikke i de klassiske fælder med 0 og 1." },
+    negatives: { file:"negatives", alt:"Skærmbillede: et plusstykke med et negativt tal og hjælpen »Tænk på en tallinje«", what:"Plus, minus og gange med tal under nul – tænk på tallinjen.", gain:"Du kan regne sikkert med minustal." },
+    pemdas: { file:"pemdas", alt:"Skærmbillede: et stykke med både plus og gange og hjælpen »Gang før plus«", what:"Regn stykker med flere regnearter i den rigtige rækkefølge.", gain:"Du ved, at gange og division kommer før plus og minus." },
+    divisionDrill: { file:"divisionDrill", alt:"Skærmbillede: divisionstabellen fra 1 til 9 med grønne, løste felter og et divisionsspørgsmål", what:"Udfyld hele divisionstabellen: Hvilket tal mangler i 9 · ? = 63?", gain:"Du bliver hurtig til hele 1–9-tabellen baglæns." },
+    divisionLollipops: { file:"divisionLollipops", alt:"Skærmbillede: divisionsslikkepinden med det første trin i en division", what:"Del store tal på slikkepinden: ét ciffer ad gangen, træk ned, og del igen.", gain:"Du kan dele tocifrede tal trin for trin – uden lommeregner." },
+    multiplicationColumn: { file:"multiplicationColumn", alt:"Skærmbillede: opstillingen 31 × 56 med cifferbrikker og det første delprodukt", what:"Gang tocifrede tal med delprodukter og mente i en opstilling.", gain:"Du kan gange store tal på papir – og forstår, hvorfor det virker." },
+    tableDrill: { file:"tableDrill", alt:"Skærmbillede: gangetabellen fra 1 til 9, hvor de løste felter er grønne", what:"Fyld hele gangetabellen ud på tid – ét felt ad gangen.", gain:"Du kan hele 1–9-tabellen udenad og hurtigt." },
+    multiplication: { file:"multiplication", alt:"Skærmbillede: et gangestykke fra den lille tabel", what:"Svar på gangestykker fra 0 × 0 til 10 × 10.", gain:"Du husker den lille tabel uden at tælle på fingrene." },
+    subtractionDrill: { file:"subtractionDrill", alt:"Skærmbillede: et minusstykke med etcifrede tal på niveau 1 af 3", what:"Træk et etcifret tal fra – først små tal, så tocifrede.", gain:"Du bliver hurtig til minus i hovedet, også hen over tieren." },
+    subtractionBorrowing: { file:"subtractionBorrowing", alt:"Skærmbillede: opstillingen 81 − 37 og spørgsmålet »Hvad er 1 minus 7?«", what:"Stil minusstykket op, lån en tier, og regn enere og tiere hver for sig.", gain:"Du kan trække store tal fra hinanden – også når du skal låne." },
+    tenFriends: { file:"ten-friends", alt:"Skærmbillede: Luigis pizzeria med et stykke, der skal give 10, og tallene, man kan vælge imellem", what:"Find de to pizzabude, der tilsammen bærer præcis 10 slices.", gain:"Du kan alle par, der giver 10 – genvejen til hurtig plus og minus." },
+    addition: { file:"addition", alt:"Skærmbillede: et plusstykke med etcifrede tal", what:"Svar hurtigt på plusstykker med etcifrede tal.", gain:"Du kan alle de små plusstykker udenad." },
+    additionColumn: { file:"additionColumn", alt:"Skærmbillede: et plusstykke stillet op med enere og tiere", what:"Stil plusstykket op, og læg enere og tiere sammen – med mente.", gain:"Du kan lægge store tal sammen sikkert på papir." },
+    marleyAddition: { file:"marley-addition", alt:"Skærmbillede: Marley og et plusstykke med kødben og hapser", what:"Træk kødben og hapser i skålen, tæl dem, og giv Marley svaret.", gain:"Du forstår, hvad plus betyder: to bunker bliver til én." },
+    plusPenalhus: { file:"plus-penalhus", alt:"Skærmbillede: Øbbe og Luigi ved hver sin side af et plusstykke", what:"Klik på Øbbe og Luigi, tæl de ting, de kaster, og læg dem sammen.", gain:"Du kan tælle og lægge to små tal sammen." },
+    numbers: { file:"numbers", alt:"Skærmbillede: figurer eller fingre, der skal tælles", what:"Tæl figurer og fingre, og skriv, hvor mange der er – fra 0 til 10.", gain:"Du kan tælle sikkert og kender tallene fra 0 til 10." },
+    clock: { file:"clock", alt:"Skærmbillede: et ur med timeviseren og Luigi, der forklarer", what:"Aflæs viserne, og øv minutter i, over, halv og kvart.", gain:"Du kan selv se, hvad klokken er, på et rigtigt ur." },
+    letters: { file:"letters", alt:"Skærmbillede: et stort bogstav ved siden af et dyr, der starter med lyden", what:"Se et bogstav, hør lyden, og find billedet, der starter med den.", gain:"Du kender bogstaverne og deres lyde – første skridt til at læse." },
+    skak: { file:"skak", alt:"Skærmbillede: skakbrættet og et regnestykke, der skal løses før trækket", what:"Spil skak – men regn et stykke, før du må flytte en brik.", gain:"Du øver hovedregning og lærer at tænke et træk frem." },
+    angles: { file:"angles", alt:"Skærmbillede: en vinkel, der åbner sig, med et mål i grader og en STOP-knap", what:"Drej, mål og navngiv vinkler i små spil.", gain:"Du kan se, om en vinkel er spids, ret eller stump – og cirka hvor stor den er." },
+    runner: { file:"fraction-runner", alt:"Skærmbillede: Øbbe løber ned ad vejen mod en forhindring", what:"Løb med Øbbe, og svar på en brøkregel, når en forhindring spærrer vejen.", gain:"Du husker brøkreglerne – også når det går stærkt." },
+    mixed: { file:"mixed", alt:"Fire skærmbilleder: regnehierarki, gangetabel, minusopstilling og fingertælling", what:"Systemet blander opgaver fra alle områder og giver dig mest af det, du har brug for.", gain:"Du holder alt det, du har lært, frisk." },
+  };
+  const genvejCard = ({ key, cls = "", attr, icon, name }) => {
+    const g = GENVEJE[key];
+    return `<button type="button" class="topic-card genvej-card${cls ? ` ${cls}` : ""}" ${attr}><span class="genvej-inner"><span class="genvej-shot"><img src="assets/genveje/${g.file}.webp?v=${GENVEJE_VERSION}" width="600" height="375" alt="${g.alt}" loading="lazy" decoding="async"></span><span class="genvej-copy"><span class="topic-icon">${icon}</span><strong>${name}</strong><small class="genvej-what">${g.what}</small><small class="genvej-gain">${g.gain}</small></span></span></button>`;
+  };
 
   const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
   const pick = (items) => items[rand(0, items.length - 1)];
@@ -568,7 +601,7 @@ multiplicationColumn: {
     });
   }
   function clockCard() {
-    return canLearnClock() ? `<button type="button" class="topic-card clock-home-card" data-action="clock"><span class="clock-card-art" aria-hidden="true"><svg viewBox="0 0 160 104" role="img"><path d="M80 12A40 40 0 0 0 80 92" fill="#dce9ff" stroke="#4267a9" stroke-width="2"/><path d="M80 12A40 40 0 0 1 80 92" fill="#ffe2df" stroke="#c9524a" stroke-width="2"/><circle cx="80" cy="52" r="40" fill="none" stroke="#51476a" stroke-width="2.5"/><path d="M80 52L80 20" stroke="#51476a" stroke-width="4" stroke-linecap="round"/><path d="M80 52L101 68" stroke="#51476a" stroke-width="6" stroke-linecap="round"/><circle cx="80" cy="52" r="4" fill="#51476a"/><text x="38" y="56" text-anchor="middle" font-size="9" font-weight="800" fill="#365b9b">MINUTTER</text><text x="38" y="67" text-anchor="middle" font-size="12" font-weight="900" fill="#365b9b">I</text><text x="122" y="56" text-anchor="middle" font-size="9" font-weight="800" fill="#b84640">MINUTTER</text><text x="122" y="67" text-anchor="middle" font-size="10" font-weight="900" fill="#b84640">OVER</text></svg></span><span class="clock-card-copy"><strong>Lær klokken</strong><small>Hvad er klokken? Øv minutter i, over, halv og kvart.</small></span></button>` : "";
+    return canLearnClock() ? genvejCard({ key:"clock", cls:"clock-home-card", attr:'data-action="clock"', icon:"◷", name:"Lær klokken" }) : "";
   }
   function moduleApiReady(name) {
     if (name === "equations") return !!window.JacobEquations;
@@ -695,13 +728,13 @@ multiplicationColumn: {
     });
   }
   function tenFriendsCard() {
-    return canPlayTenFriends() ? `<button type="button" class="topic-card pf-friends-card" data-action="ten-friends"><span class="topic-icon">6 + 4 = 10</span><strong>Luigis 10’er-venner</strong><small>Find pizzamakkerne, og bær pizzaen sammen.</small></button>` : "";
+    return canPlayTenFriends() ? genvejCard({ key:"tenFriends", cls:"pf-friends-card", attr:'data-action="ten-friends"', icon:"6 + 4 = 10", name:"Luigis 10’er-venner" }) : "";
   }
   function marleyAdditionCard() {
-    return canPlayMarleyAddition() ? `<button type="button" class="topic-card ma-addition-card" data-action="marley-addition"><span class="topic-icon">2 + 8</span><strong>Godbidder til Marley</strong><small>Træk kødben og hapser. Tæl dem, og gør Marley glad!</small><img src="assets/figurer/marley-alive.webp" alt="" width="125" height="125" loading="lazy"></button>` : "";
+    return canPlayMarleyAddition() ? genvejCard({ key:"marleyAddition", cls:"ma-addition-card", attr:'data-action="marley-addition"', icon:"2 + 8", name:"Godbidder til Marley" }) : "";
   }
   function plusPenalhusCard() {
-    return canPlayPlusPenalhus() ? `<button type="button" class="topic-card pp-penalhus-card" data-action="plus-penalhus"><span class="topic-icon">5 + 4</span><strong>Plus-penalhus</strong><small>Klik på Øbbe og Luigi. Tæl tingene, og plus!</small><span class="pp-card-art" aria-hidden="true"><img src="assets/figurer/obbe-ovdig.png" alt="" width="110" height="110" loading="lazy"><img src="assets/figurer/luigi-laekkermat-cutout.webp" alt="" width="110" height="130" loading="lazy"></span></button>` : "";
+    return canPlayPlusPenalhus() ? genvejCard({ key:"plusPenalhus", cls:"pp-penalhus-card", attr:'data-action="plus-penalhus"', icon:"5 + 4", name:"Plus-penalhus" }) : "";
   }
   // Skak er udgivet til alle brugerroller. Gæster kan spille lokalt mod computeren; online kræver fortsat login.
   const canPlaySkak = () => gameModuleEnabled(state.user);
@@ -725,7 +758,7 @@ multiplicationColumn: {
     });
   }
   function skakCard() {
-    return canPlaySkak() ? `<button type="button" class="topic-card skak-card" data-action="skak"><span class="topic-icon">♞ 7 × 8</span><strong>Skak</strong><small>Regn for at købe dit træk. Sværere stykker giver ekstra brikker.</small></button>` : "";
+    return canPlaySkak() ? genvejCard({ key:"skak", cls:"skak-card", attr:'data-action="skak"', icon:"♞ 7 × 8", name:"Skak" }) : "";
   }
   // Vinkler: samme gating som skak/klokken (student/teacher/guest). Ligger under Andre genveje.
   // Beta: Vinkler er kun synlig for Jacobs profiler (som Skak i #50). Andre elever, lærere, gæster og ikke-loggede ser intet; ?start=angles falder tilbage til normal start.
@@ -768,7 +801,7 @@ multiplicationColumn: {
     });
   }
   function anglesCard() {
-    return canLearnAngles() ? `<button type="button" class="topic-card angles-card" data-action="angles"><span class="topic-icon">∠ 90°</span><strong>Vinkler</strong><small>Lær vinkler, slagskibe, Dennis, Villy-ninja og vinkel-ord.</small></button>` : "";
+    return canLearnAngles() ? genvejCard({ key:"angles", cls:"angles-card", attr:'data-action="angles"', icon:"∠ 90°", name:"Vinkler" }) : "";
   }
   // Brøk-løb (Subway Surfers-agtigt brøkløb med Øbbe). RUNNER_PUBLIC åbner det for alle, der kan spille de andre spil (elev, lærer og gæst). Sæt flaget til false for at lukke det til Jacobs profiler igen. ?start=runner klikker [data-action=fraction-runner] (banneret står først, kortet har samme action).
   const RUNNER_PROFILE_IDS = new Set(["c8b8e1c4-3264-40e9-a43d-0eb6214a0183", "3af639de-b0e0-496a-a5b7-b732e49d1fa7"]);
@@ -811,7 +844,7 @@ multiplicationColumn: {
     });
   }
   function runnerCard() {
-    return canPlayRunner() ? `<button type="button" class="topic-card runner-card" data-action="fraction-runner"><span class="topic-icon">🏃 ½</span><strong>Brøk-løb</strong><small>Løb med Øbbe – svar på brøkregler, når Erling, Dummo, Gunnar og Else spærrer vejen.</small></button>` : "";
+    return canPlayRunner() ? genvejCard({ key:"runner", cls:"runner-card", attr:'data-action="fraction-runner"', icon:"🏃 ½", name:"Brøk-løb" }) : "";
   }
   const appendCurrentPracticeResult = async result => {
     if (isGuest()) return null; // Guest sessions are memory-only and must never reach Supabase.
@@ -882,7 +915,7 @@ multiplicationColumn: {
     return `${studentButton}${sandboxLink}<button type="button" class="jacob-view-switch" data-action="toggle-jacob-view" role="switch" aria-checked="${jacobFrontend}" aria-label="Front-end" title="Skift mellem front-end og back-end"><span class="jacob-view-option ${jacobFrontend ? "active" : ""}">Front-end</span><span class="jacob-view-option ${!jacobFrontend ? "active" : ""}">Back-end</span></button>`;
   }
   function fractionPilotCard() {
-    return canLearnFractions() ? `<button type="button" class="topic-card fraction-pilot-card" data-action="learn-fractions"><span class="topic-icon">½ : ¾</span><strong>Lær brøkregning</strong><small>Find regnearten, og vælg den rigtige regneregel.</small></button>` : "";
+    return canLearnFractions() ? genvejCard({ key:"fractions", cls:"fraction-pilot-card", attr:'data-action="learn-fractions"', icon:"½ : ¾", name:"Lær brøkregning" }) : "";
   }
 
   const GUEST_TOPICS = new Set(Object.keys(TOPICS));
@@ -1466,13 +1499,14 @@ multiplicationColumn: {
       if (key === "tenFriends") return tenFriendsCard();
       if (key === "marleyAddition") return marleyAdditionCard();
       if (key === "plusPenalhus") return plusPenalhusCard();
-      if (key === "numbers") return `<button type="button" class="topic-card numbers-banner" data-topic="numbers"><span class="numbers-banner-copy"><span class="topic-icon">${topic.icon}</span><strong>${topic.name}</strong><small>${topic.description}</small></span><span class="numbers-banner-art" aria-hidden="true"><img src="assets/figurer/tallene-talvenner.webp" width="2172" height="724" alt="" loading="lazy" decoding="async"></span></button>`;
+      if (key === "numbers") return genvejCard({ key, cls:"numbers-banner", attr:'data-topic="numbers"', icon:topic.icon, name:topic.name });
+      if (GENVEJE[key]) return genvejCard({ key, attr:`data-topic="${key}"`, icon:topic.icon, name:topic.name });
       return `<button type="button" class="topic-card" data-topic="${key}"><span class="topic-icon">${topic.icon}</span><strong>${topic.name}</strong><small>${topic.description}</small></button>`;
     };
     const fractionCard = fractionPilotCard();
     const towerTopics = new Set(levels.flat());
     const otherTopics = availableTopics.filter(key => !towerTopics.has(key));
-    const extraCards = otherTopics.map(card).join("") + skakCard() + anglesCard() + runnerCard() + (isGuest() ? "" : `<button type="button" class="topic-card mixed" data-topic="mixed"><span class="topic-icon">∞</span><strong>Blandet træning</strong><small>Systemet vælger smart for dig</small></button>`);
+    const extraCards = otherTopics.map(card).join("") + skakCard() + anglesCard() + runnerCard() + (isGuest() ? "" : genvejCard({ key:"mixed", cls:"mixed", attr:'data-topic="mixed"', icon:"∞", name:"Blandet træning" }));
     return `<section class="topic-tower" aria-label="Byg din matematik nedefra">
       <p class="topic-tower-intro"><span aria-hidden="true">↑</span> Byg videre på det, du kan. Start med Tallene nederst.</p>
       ${fractionCard ? `<div class="topic-tower-row">${fractionCard}</div>` : ""}
