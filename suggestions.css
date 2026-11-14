@@ -243,8 +243,9 @@
 }
 .jm-suggest-mailbox-icon .jm-postkasse-letter {
   transform-box: fill-box;
-  transform-origin: 50% 100%;
-  transition: transform 0.28s ease;
+  transform-origin: 50% 50%;
+  transform: rotate(-14deg);
+  transition: transform 0.32s ease;
 }
 .jm-suggest-mailbox-text {
   flex: 1 1 auto;
@@ -257,7 +258,7 @@
 }
 .jm-suggest-mailbox:hover .jm-postkasse-letter,
 .jm-suggest-mailbox:focus-visible .jm-postkasse-letter {
-  transform: translateY(-5px) rotate(-8deg);
+  transform: translateY(4px) rotate(-8deg);
 }
 .jm-suggest-mailbox:focus-visible {
   outline: 3px solid #ffd077;
@@ -269,7 +270,7 @@
   .jm-suggest-mailbox:hover .jm-postkasse-letter,
   .jm-suggest-mailbox:focus-visible .jm-postkasse-letter {
     transition: none;
-    transform: none;
+    transform: rotate(-14deg);
   }
 }
 
