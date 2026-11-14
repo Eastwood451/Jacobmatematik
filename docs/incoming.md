@@ -58,4 +58,4 @@ Core checks cover cardinal and arbitrary angles, 0/360 equivalence, invalid inpu
 
 Manual browser QA covers a 360° rightward hit, score, pause, language switching without resetting score/input, sandbox return, both profile entry points, hidden cards for other profiles, and a 390-pixel mobile iframe. The test browser disables WebGL, so these browser checks use the CPU fallback; the hardware WebGL rendering path still needs a device smoke test. All eight shipped MP3s decode successfully with FFmpeg.
 
-This change is prepared as a draft pull request only; it is not merged or deployed.
+Publication scope: Incoming is available through Jacob’s sandbox and the shortcuts on his two allowlisted profiles. Other profiles and “Se som elev” remain excluded.
