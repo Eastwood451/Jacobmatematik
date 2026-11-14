@@ -1,6 +1,6 @@
 # Incoming! Et spil om vinkler!
 
-Incoming is a profile-gated beta game. Kaptajn Kvadratrod stands in the centre of a 3D arena. Dummerter, Erlinger, papers marked “DUMPET”, spitballs and remoulade sandwiches fly towards him. Enter an angle from 0 to 360, then click **Affyr klogskab!** or press Enter to fire a mathematical symbol.
+Incoming is a profile-gated beta game. Kaptajn Kvadratrod stands in the centre of a 3D arena. Dummerter, Erlinger, papers marked “DUMPET”, spitballs and remoulade sandwiches fly towards him. Enter an angle from 0 to 360, then click **Fyr!** or press Enter to fire a mathematical symbol.
 
 | Angle | Screen direction |
 | --- | --- |

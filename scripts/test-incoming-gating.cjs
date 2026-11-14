@@ -21,7 +21,7 @@ function user(id,role){t.state.user=id?{id,role,name:'Test',results:[],assignedL
  await t.renderIncoming();assert.equal(mounts,1);t.leaveIncoming();assert.equal(disposes,1);
  const loading=t.renderIncoming();user('ordinary-student','student');await loading;assert.equal(mounts,1,'changing identity during module loading must prevent mounting');
  user('c8b8e1c4-3264-40e9-a43d-0eb6214a0183','teacher');const entering=t.renderIncoming();preview=true;await entering;assert.equal(mounts,1,'student preview activated while loading must prevent mounting');
- assert.equal(fs.readFileSync('incoming.js','utf8').includes("fire:'Affyr klogskab!'"),true);
+ assert.equal(fs.readFileSync('incoming.js','utf8').includes("fire:'Fyr!'"),true);
  for(let i=1;i<=8;i++)assert.ok(fs.statSync(`assets/incoming/audio/captain-${i}.mp3`).size>1000,`Danish one-liner ${i} exists`);
  console.log('PASS Incoming gating: both Jacob profiles, all other roles blocked, student preview hidden, identity rechecked after loading, teardown and eight audio files.');
 })().catch(e=>{console.error(e);process.exitCode=1;});
