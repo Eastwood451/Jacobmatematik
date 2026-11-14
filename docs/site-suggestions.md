@@ -12,6 +12,7 @@ Koden ligger i repoet. **Migrationen er ikke kørt i produktion.** Jacob skal gi
 |---|---|
 | DB + RLS/RPC | `supabase/migrations/20261113153000_site_suggestions.sql` |
 | Knap + modal | `suggestions.js`, `suggestions.css` (indlæst fra `index.html` og SEO-landinger) |
+| Postkasse-kort | Samme filer: tydeligt kort ved «I alt løst» på elevhjemmet og i lærerportalens dashboard-hoved. Klik åbner den eksisterende modal. Footer-linket er en ekstra indgang med samme ordlyd. |
 | API-hjælpere | `supabase-backend.js` (`submitSiteSuggestion`, `listSiteSuggestions`, `deleteSiteSuggestion`) |
 | Admin-tabel | `app.js` (panel i lærerportalen, kun når `canManageRegistrations`) |
 | DA/EN-tekster | `i18n-strings.js` + engelsk hardcodet i `suggestions.js` til `/en/`-landinger |
