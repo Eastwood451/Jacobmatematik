@@ -2,8 +2,8 @@
 (() => {
   'use strict';
   const copy = {
-    da: { title:'Ligninger', intro:'Ligninger er en vægt i ligevægt!', remove:'Prøv at fjerne en vægt', same:'Du skal gøre det samme på begge sider.', alone:'X skal stå for sig selv.', done:'Nu står X for sig selv. X er lig med fire!', start:'Prøv selv', back:'← Tilbage til sandbox', replay:'Hør igen', reset:'Prøv igen', left:'Fjern en kasse til venstre', right:'Fjern en kasse til højre', balanced:'I ligevægt', unbalanced:'Ikke i ligevægt', finish:'Vis resultatet', hint:'Fjern den sidste lille kasse til venstre.', rightHint:'Fjern også én kasse til højre.' },
-    en: { title:'Equations', intro:'An equation is a balanced scale!', remove:'Try removing a weight', same:'You must do the same on both sides.', alone:'X must stand on its own.', done:'Now X is on its own. X equals four!', start:'Try it', back:'← Back to sandbox', replay:'Listen again', reset:'Try again', left:'Remove a box on the left', right:'Remove a box on the right', balanced:'Balanced', unbalanced:'Not balanced', finish:'Show the result', hint:'Remove the last small box on the left.', rightHint:'Remove one box on the right too.' }
+    da: { title:'Ligninger', intro:'Ligninger er en vægt i ligevægt!', remove:'Prøv at fjerne en vægt', same:'Du skal gøre det samme på begge sider.', alone:'X skal stå for sig selv.', done:'Nu står X for sig selv. X er lig med fire!', start:'Prøv selv', back:'← Tilbage til sandbox', replay:'Hør igen', reset:'Prøv igen', left:'Fjern en kasse til venstre', right:'Fjern en kasse til højre', balanced:'I ligevægt', unbalanced:'Ikke i ligevægt', finish:'Vis udregning', hint:'Fjern den sidste lille kasse til venstre.', rightHint:'Fjern også én kasse til højre.' },
+    en: { title:'Equations', intro:'An equation is a balanced scale!', remove:'Try removing a weight', same:'You must do the same on both sides.', alone:'X must stand on its own.', done:'Now X is on its own. X equals four!', start:'Try it', back:'← Back to sandbox', replay:'Listen again', reset:'Try again', left:'Remove a box on the left', right:'Remove a box on the right', balanced:'Balanced', unbalanced:'Not balanced', finish:'Show calculation', hint:'Remove the last small box on the left.', rightHint:'Remove one box on the right too.' }
   };
   function mount(root, {onExit} = {}) {
     let step = 0, disposed = false, serial = 0, flight = null, result = null;
@@ -90,23 +90,26 @@
         ],{duration:250,easing:'ease-out'})));
         if(!active()) return;
         phase('fading');
-        const cancelled=find('.eq-addition-group'),width=cancelled.getBoundingClientRect().width;
-        const fading=[animate(cancelled,[
-          {opacity:1,width:width+'px',offset:0},
-          {opacity:.2,width:width+'px',offset:.75},
-          {opacity:0,width:'0px',offset:1}
-        ],{duration:2000,easing:'linear'})];
-        // Close the spaces smoothly as +0 disappears; x and 4 settle at the centre.
-        for(const {subtraction} of terms) {
-          const width=subtraction.getBoundingClientRect().width;
-          subtraction.style.minWidth='0'; subtraction.style.overflow='hidden';
-          fading.push(animate(subtraction,[
-            {width:width+'px',offset:0},
-            {width:width+'px',offset:.75},
-            {width:'0px',offset:1}
-          ],{duration:2000,easing:'linear'}));
+        const cancelled=find('.eq-addition-group');
+        // Keep the equation's spacing stable throughout the full two-second fade.
+        await animate(cancelled,[{opacity:1},{opacity:0}],{duration:2000,easing:'linear'});
+        if(!active()) return;
+        const starts=[find('.eq-x-term'),terms[1].value].map(el=>el.getBoundingClientRect());
+        phase('centering');
+        const equation=find('.eq-equation');
+        equation.classList.add('eq-compact');
+        for(const [index,side] of ['left','right'].entries()) {
+          find('.eq-expression-'+side).innerHTML=`<span class="eq-final-term">${index===0?'x':'4'}</span>`;
         }
-        await Promise.all(fading); finish();
+        await Promise.all(['left','right'].map((side,index)=>{
+          const term=find('.eq-expression-'+side+' .eq-final-term');
+          const end=term.getBoundingClientRect();
+          return animate(term,[
+            {transform:`translate(${starts[index].left-end.left}px, ${starts[index].top-end.top}px)`},
+            {transform:'translate(0, 0)'}
+          ],{duration:900,easing:'cubic-bezier(.4,0,.2,1)'});
+        }));
+        finish();
       } catch(error) {
         // Reset, language changes and unmount cancel this run without stale updates.
         if(active()) finish();
@@ -150,6 +153,7 @@
       const balanced=leftRemoved===rightRemoved;
       find('.eq-module').dataset.resultPhase=step===6?'done':'idle';
       find('.eq-equation').setAttribute('aria-busy','false');
+      find('.eq-equation').classList.toggle('eq-compact',step===6);
       find('h1').textContent=c.title; find('.eq-prompt').textContent=c[key()];
       find('.eq-hint').textContent=step===3?c.hint:step===2||step===4?c.rightHint:'';
       for(const action of ['back','replay','reset']) find(`[data-eq="${action}"]`).textContent=c[action];
@@ -163,7 +167,7 @@
       for (const [side, removed] of [['left',leftRemoved],['right',rightRemoved]]) {
         const shown = flight?.side === side ? flight.previous : removed;
         const base=side==='left'?'<span class="eq-x-term">x</span><span class="eq-addition-group"><span class="eq-addition-op"> + </span><span class="eq-start-value">2</span></span>':'<span class="eq-start-value">6</span>';
-        find('.eq-expression-'+side).innerHTML=step===6 ? (side==='left'?'x':'4') :
+        find('.eq-expression-'+side).innerHTML=step===6 ? `<span class="eq-final-term">${side==='left'?'x':'4'}</span>` :
           `${base}<span class="eq-subtraction ${shown ? '' : 'eq-empty'}">${shown ? ' − '+shown : ''}</span>`;
       }
       const sign=find('.eq-sign'); sign.textContent=balanced?'=':'≠'; sign.classList.toggle('eq-red',!balanced);

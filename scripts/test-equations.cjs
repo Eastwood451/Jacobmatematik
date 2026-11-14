@@ -66,5 +66,46 @@ console.log('PASS: guided removals, invalid/repeated clicks, balance, final x=4,
  assert.equal(w.document.querySelectorAll('.eq-flying-box').length,0);
  click('next');click('left');end();await Promise.resolve();
  assert.equal(w.document.querySelectorAll('.eq-flying-box').length,0);
+ const flush=async()=>{for(let i=0;i<8;i++) await Promise.resolve();};
+ const finishBatch=async(batch)=>{batch.forEach(a=>a.resolve());await flush();};
+ const mountResult=async()=>{
+   const cleanup=w.JacobEquations.mount(root);
+   click('next');
+   for(const side of ['left','right','left','right']) {click(side);await finishBatch([animations.at(-1)]);}
+   return cleanup;
+ };
+ const finishLesson=await mountResult();
+ let at=animations.length; click('next');
+ assert.equal(q('.eq-module').dataset.resultPhase,'sliding');
+ assert(q('[data-eq="next"]').disabled);
+ click('next');assert.equal(animations.length,at+2);
+ let batch=animations.slice(at);at=animations.length;await finishBatch(batch);
+ assert.equal(q('.eq-start-value').textContent,'0');
+ assert.equal(q('.eq-expression-right .eq-start-value').textContent,'4');
+ assert.equal(q('.eq-module').dataset.resultPhase,'morphing');
+ batch=animations.slice(at);at=animations.length;await finishBatch(batch);
+ assert.equal(q('.eq-module').dataset.resultPhase,'fading');
+ const fade=animations.at(-1);assert.equal(fade.options.duration,2000);
+ assert.equal(fade.frames[0].opacity,1);assert.equal(fade.frames.at(-1).opacity,0);
+ assert(!q('.eq-equation').classList.contains('eq-compact'));
+ at=animations.length;await finishBatch([fade]);
+ assert.equal(q('.eq-module').dataset.resultPhase,'centering');
+ assert(q('.eq-equation').classList.contains('eq-compact'));
+ assert.equal(root.querySelectorAll('.eq-final-term').length,2);
+ assert.equal(q('.eq-addition-group'),null);
+ batch=animations.slice(at);assert.equal(batch.length,2);
+ assert(batch.every(a=>a.options.duration===900));await finishBatch(batch);
+ check('x','4','=',0,4);assert.equal(q('.eq-module').dataset.resultPhase,'done');
+ assert.equal(q('.eq-equation').getAttribute('aria-busy'),'false');
+ assert.match(spoken.at(-1),/done\.mp3/);
+ click('reset');assert(!q('.eq-equation').classList.contains('eq-compact'));finishLesson();
+ // Reset while zero fades must cancel the continuation, including final narration.
+ const cancelLesson=await mountResult();at=animations.length;click('next');
+ batch=animations.slice(at);at=animations.length;await finishBatch(batch);
+ batch=animations.slice(at);await finishBatch(batch);
+ assert.equal(q('.eq-module').dataset.resultPhase,'fading');
+ click('reset');await flush();check('x + 2','6','=',2,6);
+ assert.equal(q('.eq-module').dataset.resultPhase,'idle');cancelLesson();
+ console.log('PASS: result morph, exact 2000ms zero fade, subsequent centering, repeat-click lock and reset cancellation.');
  console.log('PASS: box flight, landing update, -1 to -2, click lock, reset and disposal during animation.');
 })().catch(e=>{console.error(e);process.exitCode=1});
