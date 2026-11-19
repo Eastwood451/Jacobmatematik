@@ -112,7 +112,7 @@
     };
   }
 
-  // ---------- Atomangreb (power-up, kun mod computeren) ----------
+  // ---------- Atomangreb / "Nuclear strike!" (valgfri regel; online valideres den af submit_chess_strike) ----------
   // 3 rigtige stykker i træk (gange, division, brøk) låser ét angreb op. Et angreb bruger hele turen.
   // Mindst STRIKE.cooldownTurns almindelige egne træk før første angreb og mellem to angreb.
   const STRIKE = Object.freeze({ cooldownTurns: 3, problems: 3, wrongAnswerWaitMs: 1200 });

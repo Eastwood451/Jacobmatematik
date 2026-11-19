@@ -41,13 +41,15 @@
       fen: Core.START_FEN, myColor: "w", meta: Core.newMeta(), moves: [], lastMove: null,
       phase: "idle", problem: null, selected: null, targets: [], buyType: null, drops: [],
       damage: {}, nukeStep: 0, strikeTargets: [],
+      // "☑ Nuclear strike!" vælges når kampen startes. Mod computeren: til (som før). Online: fra som standard.
+      cpuNuke: true, onlineNuke: false, gameNuke: true,
       lockUntil: 0, feedback: "", feedbackKind: "", obbe: "Klar til skak? Regn et stykke for at købe dit træk!",
       status: Core.gameStatus(Core.START_FEN), online: { game: null, error: "", busy: false, joinCode: "" },
     };
 
     // ---------- fælles spil-flow ----------
     function newLocalGame() {
-      Object.assign(s, { screen: "game", mode: "cpu", fen: Core.START_FEN, myColor: "w", meta: Core.newMeta(), moves: [], lastMove: null, damage: {}, nukeStep: 0, strikeTargets: [],
+      Object.assign(s, { screen: "game", mode: "cpu", fen: Core.START_FEN, myColor: "w", meta: Core.newMeta(), moves: [], lastMove: null, damage: {}, nukeStep: 0, strikeTargets: [], gameNuke: Boolean(s.cpuNuke),
         status: Core.gameStatus(Core.START_FEN), feedback: "", obbe: "Du er hvid og starter. Regn stykket for at købe dit første træk!" });
       startMyTurn();
     }
@@ -59,7 +61,8 @@
       if (s.status.check) s.obbe = "Pas på, du står i skak! Regn hurtigt og red kongen.";
       render();
     }
-    const strikesEnabled = () => s.mode === "cpu"; // online: ikke synkroniseret endnu (se PR)
+    // Mod computeren: valgt i menuen. Online: reglen gemmes på kampen (chess_games.nuke), så begge ser det samme.
+    const strikesEnabled = () => (s.mode === "cpu" ? Boolean(s.gameNuke) : Boolean(s.online.game?.nuke));
     function myStrikeStatus() { return Core.strikeStatus(s.meta[s.myColor], { inCheck: Core.inCheck(s.fen) }); }
     function myBuyStatus() { return Core.buyStatus(s.meta[s.myColor], { inCheck: Core.inCheck(s.fen) }); }
 
@@ -153,7 +156,8 @@
       s.phase = s.status.over ? "over" : "wait";
       render();
       const ms = window.SkakAnim?.playStrike?.(boardEl(), firsts, { square: sq, killed: result.killed, type: result.type, hp: result.hp, max: result.max }) || 0;
-      if (!s.status.over) later(computerTurn, 450 + Math.min(ms, 1600));
+      if (s.mode === "cpu") { if (!s.status.over) later(computerTurn, 450 + Math.min(ms, 1600)); }
+      else sendOnlineStrike(sq);
     }
     function cancelBuy() {
       if (!["buy-solve", "place"].includes(s.phase) || Date.now() < s.lockUntil) return;
@@ -254,7 +258,8 @@
       if (!canOnline || s.online.busy) return;
       s.online.busy = true; s.online.error = ""; render();
       try {
-        const game = await rpc("create_chess_game");
+        // Kun p_nuke ved "til", så "fra" også virker mod en database uden migrationen.
+        const game = await rpc("create_chess_game", s.onlineNuke ? { p_nuke: true } : {});
         s.online.game = game; s.myColor = "w"; s.mode = "online"; s.screen = "lobby";
         startPolling();
       } catch (error) { console.error(error); s.online.error = friendlyError(error); }
@@ -286,8 +291,12 @@
       let firsts = null, info = null, dropSq = null;
       // Animer kun nyt træk fra modstanderen (ikke eget echo). Kræver eksisterende bræt-DOM (FLIP).
       const boardBefore = boardEl();
+      let strikeFx = null;
       if (boardBefore && nextMoves.length > prevMovesLen && last && game.fen !== prevFen && last.by && last.by !== s.myColor) {
-        if (last.drop && last.square) {
+        if (last.strike) {
+          strikeFx = { square: last.strike, killed: Boolean(last.killed), type: last.type, hp: Number(last.hp) || 0, max: Number(last.max) || Core.maxHp(last.type), fromTop: true };
+          firsts = window.SkakAnim?.captureFirsts(boardBefore, { from: last.strike, to: last.strike, capturedSq: last.strike, captured: last.type }) || null;
+        } else if (last.drop && last.square) {
           dropSq = last.square;
         } else if (last.from && last.to) {
           try {
@@ -297,26 +306,36 @@
         }
       }
       s.fen = game.fen; s.meta = normalizeMeta(game.meta); s.moves = nextMoves;
-      s.lastMove = last ? (last.drop ? { to: last.square } : { from: last.from, to: last.to }) : null;
+      s.damage = game.nuke && game.damage && typeof game.damage === "object" ? { ...game.damage } : {};
+      s.lastMove = last ? (last.strike ? { to: last.strike } : last.drop ? { to: last.square } : { from: last.from, to: last.to }) : null;
+      const fx = () => {
+        if (strikeFx) { window.SkakAnim?.playStrike?.(boardEl(), firsts, strikeFx); return; }
+        runMoveFx(firsts, info, dropSq);
+      };
       if (game.status === "finished") {
         s.phase = "over"; s.status = Core.gameStatus(s.fen); stopPolling();
         render();
-        runMoveFx(firsts, info, dropSq);
+        fx();
         return;
       }
       if (Core.turnOf(s.fen) === s.myColor) {
-        const midTurn = ["move", "buy-solve", "place"].includes(s.phase) || (s.phase === "solve" && s.problem) || Date.now() < s.lockUntil;
+        const midTurn = ["move", "buy-solve", "place", "nuke-solve", "nuke-target"].includes(s.phase) || (s.phase === "solve" && s.problem) || Date.now() < s.lockUntil;
         if (!midTurn || force) {
-          s.obbe = last ? `${opponentName()} har flyttet (${last.san || ""}). Din tur!` : "Du starter. Regn for at købe dit første træk!";
+          if (last?.strike && last.by !== s.myColor) {
+            const name = Core.PIECE_NAMES[last.type] || "brik";
+            s.obbe = last.killed ? `☢️ ${opponentName()} bombede din ${name} på ${last.strike}! Din tur.` : `☢️ ${opponentName()} ramte din ${name} på ${last.strike} (${last.hp}/${last.max} liv). Din tur!`;
+          } else {
+            s.obbe = last ? `${opponentName()} har flyttet (${last.san || ""}). Din tur!` : "Du starter. Regn for at købe dit første træk!";
+          }
           startMyTurn();
-          runMoveFx(firsts, info, dropSq);
+          fx();
           return;
         }
       } else {
         s.phase = "wait";
       }
       render();
-      runMoveFx(firsts, info, dropSq);
+      fx();
     }
     function opponentName() {
       const g = s.online.game;
@@ -343,11 +362,36 @@
           p_game: game.id, p_version: game.version, p_fen: s.fen, p_move: record, p_meta: s.meta,
           p_status: status.over ? "finished" : "active", p_result: status.over ? status.result : null, p_reason: status.over ? status.reason : null,
         });
-        s.online.game = row;
-        if (row.status === "finished") stopPolling();
+        adoptOwnRow(row);
       } catch (error) {
         console.error(error);
         s.obbe = "Trækket kunne ikke sendes. Jeg henter kampen igen.";
+        const { data } = await client.from("chess_games").select("*").eq("id", game.id).maybeSingle();
+        if (data) applyRemote(data, true);
+      }
+    }
+    // Serveren er autoritativ for skade, meta og (ved angreb) stillingen.
+    function adoptOwnRow(row) {
+      if (!row) return;
+      s.online.game = row;
+      s.meta = normalizeMeta(row.meta);
+      if (row.nuke) s.damage = row.damage && typeof row.damage === "object" ? { ...row.damage } : {};
+      if (row.fen && row.fen !== s.fen) { s.fen = row.fen; s.status = Core.gameStatus(s.fen); render(); }
+      if (row.status === "finished") stopPolling();
+    }
+    async function sendOnlineStrike(square) {
+      const game = s.online.game;
+      const status = s.status;
+      try {
+        const row = await rpc("submit_chess_strike", {
+          p_game: game.id, p_version: game.version, p_square: square,
+          p_status: status.over ? "finished" : "active", p_result: status.over ? status.result : null, p_reason: status.over ? status.reason : null,
+        });
+        adoptOwnRow(row);
+      } catch (error) {
+        console.error(error);
+        s.obbe = /cooling|Invalid target|would give check|in check|is off/i.test(String(error?.message || ""))
+          ? "Serveren afviste atomangrebet. Jeg henter kampen igen." : "Angrebet kunne ikke sendes. Jeg henter kampen igen.";
         const { data } = await client.from("chess_games").select("*").eq("id", game.id).maybeSingle();
         if (data) applyRemote(data, true);
       }
@@ -488,9 +532,11 @@
         <section class="sk-panel"><h2>Regne-niveau for træk</h2><div class="sk-chips">${lvl}</div></section>
         <div class="sk-modes">
           <section class="sk-panel sk-mode"><h2>🤖 Mod computeren</h2><p>Virker også uden internet.</p><div class="sk-chips small">${ai}</div>
+            ${nukeRuleHtml("cpu")}
             <button type="button" class="btn full" data-act="start-cpu">Start kamp</button></section>
           <section class="sk-panel sk-mode"><h2>🧑‍🤝‍🧑 Mod en anden bruger</h2>
             ${canOnline ? `<p>Lav en kode og giv den til din modstander, eller skriv en kode du har fået.</p>
+              ${nukeRuleHtml("online")}
               <button type="button" class="btn full" data-act="create-online" ${s.online.busy ? "disabled" : ""}>Lav en kampkode</button>
               <form class="sk-join" data-form="join" autocomplete="off"><input name="code" maxlength="5" placeholder="KODE" aria-label="Kampkode" value="${esc(s.online.joinCode)}"><button class="btn secondary" type="submit" ${s.online.busy ? "disabled" : ""}>Deltag</button></form>
               <p class="sk-error" role="alert">${esc(s.online.error)}</p>`
@@ -504,14 +550,23 @@
           <li>Et køb bruger hele din tur. Brikken sættes på et tomt felt på dine to bagerste rækker (bønder kun på 2./7. række) og må ikke give skak.</li>
           <li>Forkert svar: ${Core.RULES.wrongAnswerWaitMs / 1000} sekunders pause og et nyt stykke.</li>
           <li>Bønder, der når sidste række, bliver automatisk til en dronning.</li>
-          <li>☢️ Atomangreb (mod computeren): regn 3 stykker i træk (gange, division og brøk), og ram en fjendtlig brik. Liv: bonde 1, springer 2, løber 2, tårn 3, dronning 5. Kongen kan ikke rammes. Angrebet bruger hele turen, og der skal gå ${Core.STRIKE.cooldownTurns} almindelige træk mellem to angreb.</li></ul></details>
+          <li>☢️ Nuclear strike! (atomangreb, kan slås til/fra når kampen startes – online vælger den, der laver koden): regn 3 stykker i træk (gange, division og brøk), og ram en fjendtlig brik. Liv: bonde 1, springer 2, løber 2, tårn 3, dronning 5. Kongen kan ikke rammes. Angrebet bruger hele turen, og der skal gå ${Core.STRIKE.cooldownTurns} almindelige træk mellem to angreb.</li></ul></details>
       </div>`;
+    }
+    // "☑ Nuclear strike!" – vælges når kampen startes.
+    function nukeRuleHtml(kind) {
+      const on = kind === "cpu" ? s.cpuNuke : s.onlineNuke;
+      const hint = kind === "cpu" ? "Atomangreb mod computerens brikker." : "Gælder for begge spillere i kampen. Din modstander kan se det.";
+      return `<label class="sk-rule-toggle"><input type="checkbox" data-rule="${kind}-nuke" ${on ? "checked" : ""}><span><strong>Nuclear strike!</strong><small>${esc(hint)}</small></span></label>`;
+    }
+    function ruleBadgeHtml(on) {
+      return `<p class="sk-rule-badge ${on ? "on" : "off"}" data-rule-badge="${on ? "on" : "off"}">☢️ Nuclear strike! <b>${on ? "slået til" : "slået fra"}</b></p>`;
     }
     function renderLobby() {
       const g = s.online.game;
       root.innerHTML = `<div class="sk-game sk-lobby"><nav class="sk-nav"><button type="button" data-act="leave-online">← Tilbage</button></nav>
         <section class="sk-panel sk-code-panel"><span class="sk-eyebrow">Giv koden til din modstander</span><div class="sk-code">${esc(g?.code || "…")}</div>
-        <p>Din modstander åbner Skak, vælger "Mod en anden bruger" og skriver koden. Du spiller hvid.</p><p class="sk-wait">Venter på modstander…</p>
+        <p>Din modstander åbner Skak, vælger "Mod en anden bruger" og skriver koden. Du spiller hvid.</p>${ruleBadgeHtml(Boolean(g?.nuke))}<p class="sk-wait">Venter på modstander…</p>
         <button type="button" class="btn secondary" data-act="cancel-online">Aflys</button></section></div>`;
     }
     function renderGame() {
@@ -524,6 +579,7 @@
         <div class="sk-layout">
           <div class="sk-board-wrap">${boardHtml()}<p class="sk-status${s.phase === "over" ? " over" : ""}" role="status">${statusLine()}</p></div>
           <aside class="sk-side">
+            ${ruleBadgeHtml(strikesEnabled())}
             <div class="sk-obbe"><img src="assets/figurer/obbe-ovdig.png" alt="Øbbe" width="78" height="78"><p>${esc(s.obbe)}</p></div>
             ${myTurnPanel}
             ${s.feedback ? `<p class="sk-feedback ${s.feedbackKind}" role="alert">${esc(s.feedback)}</p>` : ""}
@@ -570,6 +626,12 @@
         stopPolling(); s.online.game = null; s.screen = "menu"; s.mode = "cpu"; render(); return;
       }
     }
+    function onChange(event) {
+      const rule = event.target.closest?.("[data-rule]");
+      if (!rule) return;
+      if (rule.dataset.rule === "cpu-nuke") s.cpuNuke = rule.checked;
+      if (rule.dataset.rule === "online-nuke") s.onlineNuke = rule.checked;
+    }
     function onSubmit(event) {
       const form = event.target.closest("[data-form]");
       if (!form) return;
@@ -587,6 +649,7 @@
     }
     root.addEventListener("click", onClick);
     root.addEventListener("submit", onSubmit);
+    root.addEventListener("change", onChange);
     root.addEventListener("error", onAssetError, true);
     render();
 
@@ -595,6 +658,7 @@
       timers.forEach(clearTimeout); timers.clear(); stopPolling();
       root.removeEventListener("click", onClick);
       root.removeEventListener("submit", onSubmit);
+      root.removeEventListener("change", onChange);
       root.removeEventListener("error", onAssetError, true);
     };
     api.state = s; // til tests/screenshots
