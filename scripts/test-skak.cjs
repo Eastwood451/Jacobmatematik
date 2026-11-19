@@ -52,7 +52,7 @@ for (let i = 0; i < 3; i++) me = S.recordTurn(me);
 assert.equal(S.buyStatus(me).ok, true);
 assert.equal(S.buyStatus(me, { inCheck: true }).ok, false, "ingen køb i skak");
 me = S.recordTurn(me, { bought: true });
-assert.deepEqual(me, { turns: 4, buys: 1, lastBuyTurn: 3 });
+assert.deepEqual(me, { turns: 4, buys: 1, lastBuyTurn: 3, strikes: 0, lastStrikeTurn: null });
 assert.equal(S.buyStatus(me).ok, false, "cooldown efter køb");
 for (let i = 0; i < 2; i++) { me = S.recordTurn(me); assert.equal(S.buyStatus(me).ok, false); }
 me = S.recordTurn(me);

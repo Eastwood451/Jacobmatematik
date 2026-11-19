@@ -510,6 +510,105 @@
     return () => { clearTimeout(timer); st.layer.remove(); };
   }
 
+  /* ---------- Atomangreb: missil + svampesky (+ døds-effekt hvis brikken dør) ---------- */
+  const STRIKE_FLY_MS = 450;
+  const STRIKE_TOTAL_MS = 1400;
+  function playStrike(board, firsts, { square, killed = false, type = "p" } = {}) {
+    if (!board || prefersReducedMotion()) return 0;
+    let f = firsts;
+    if (!f?.victimRect) {
+      const btn = sqBtn(board, square);
+      const piece = pieceIn(board, square);
+      const el = piece || btn;
+      if (!el) return 0;
+      f = { map: {}, victimHtml: piece ? piece.outerHTML : null, victimRect: el.getBoundingClientRect(), capturedSq: square, capturedType: type, to: square, from: square };
+    }
+    const st = fxStage(board, f);
+    const { layer, cx, cy, unit } = st;
+    layer.dataset.strike = killed ? "kill" : "hit";
+    // Offeret står stille, til missilet rammer
+    const hold = killed ? makeGhost(st, f) : null;
+
+    // Affyres fra spillerens side (nederst på brættet) i en bue op mod målet
+    const boardH = board.getBoundingClientRect().height || unit * 8;
+    const sx = cx < unit * 4 ? cx + unit * 2.5 : cx - unit * 2.5;
+    const sy = Math.max(cy + unit * 2.5, boardH - unit * 0.3);
+    const mx = (sx + cx) / 2, my = Math.min(sy, cy) - unit * 1.6;
+    const angA = (Math.atan2(my - sy, mx - sx) * 180) / Math.PI + 90;
+    const ang = (Math.atan2(cy - my, cx - mx) * 180) / Math.PI + 90;
+    const missile = document.createElement("span");
+    missile.className = "sk-fx-missile";
+    missile.innerHTML = "<b></b><u></u>";
+    missile.style.left = `${cx}px`;
+    missile.style.top = `${cy}px`;
+    layer.appendChild(missile);
+    anim(missile, [
+      { transform: `translate(${sx - cx}px,${sy - cy}px) rotate(${angA}deg) scale(.8)`, opacity: 1 },
+      { transform: `translate(${mx - cx}px,${my - cy}px) rotate(${(angA + ang) / 2}deg) scale(1.1)`, opacity: 1, offset: 0.5 },
+      { transform: `translate(0,0) rotate(${ang}deg) scale(1)`, opacity: 1, offset: 0.97 },
+      { transform: `translate(0,0) rotate(${ang}deg) scale(.2)`, opacity: 0 },
+    ], { duration: STRIKE_FLY_MS, easing: "cubic-bezier(.55,0,1,.6)" });
+    // Røgspor
+    for (let i = 0; i < 8; i++) {
+      const t = i / 8, u = 1 - t;
+      const px = u * u * sx + 2 * u * t * (2 * mx - (sx + cx) / 2) + t * t * cx;
+      const py = u * u * sy + 2 * u * t * (2 * my - (sy + cy) / 2) + t * t * cy;
+      const p = particle(st, "sk-fx-smoke", { x: px, y: py, w: unit * 0.22, bg: "#d8d2cc" });
+      anim(p, [
+        { transform: "translate(-50%,-50%) scale(.3)", opacity: 0 },
+        { transform: "translate(-50%,-50%) scale(1)", opacity: 0.6, offset: 0.2 },
+        { transform: "translate(-50%,-70%) scale(1.6)", opacity: 0 },
+      ], { duration: 600, delay: t * STRIKE_FLY_MS });
+    }
+    tone("sine", 1400, 420, STRIKE_FLY_MS / 1000, 0.05);
+
+    const flash = document.createElement("span");
+    flash.className = "sk-fx-flash";
+    flash.style.background = "#fff3c0";
+    layer.appendChild(flash);
+    anim(flash, [{ opacity: 0 }, { opacity: 0.9, offset: 0.1 }, { opacity: 0 }], { duration: 380, delay: STRIKE_FLY_MS });
+
+    const shock = particle(st, "sk-fx-shock", { w: unit * 0.6 });
+    anim(shock, [
+      { transform: "translate(-50%,-50%) scale(.3)", opacity: 1 },
+      { transform: "translate(-50%,-50%) scale(4)", opacity: 0 },
+    ], { duration: 520, delay: STRIKE_FLY_MS, easing: "ease-out" });
+
+    const cloud = document.createElement("span");
+    cloud.className = "sk-fx-mushroom";
+    cloud.innerHTML = '<span class="base"></span><span class="stem"></span><span class="ring"></span><span class="cap"></span>';
+    const cw = unit * 2, ch = unit * 2.3;
+    Object.assign(cloud.style, { width: `${cw}px`, height: `${ch}px`, left: `${cx - cw / 2}px`, top: `${cy + unit * 0.45 - ch}px` });
+    layer.appendChild(cloud);
+    anim(cloud, [
+      { transform: "scale(.15,.1)", opacity: 0, easing: "cubic-bezier(.2,.8,.3,1)" },
+      { transform: "scale(.85,.75)", opacity: 1, offset: 0.15, easing: "ease-out" },
+      { transform: "scale(1,1)", opacity: 1, offset: 0.65, easing: "ease-in" },
+      { transform: "scale(1.08,1.04) translateY(-6%)", opacity: 0 },
+    ], { duration: 950, delay: STRIKE_FLY_MS });
+    noise(0.7, 0.2, 400, STRIKE_FLY_MS / 1000);
+    tone("sine", 90, 30, 0.6, 0.16, STRIKE_FLY_MS / 1000);
+
+    let deathCleanup = () => {};
+    const impact = setTimeout(() => {
+      if (!layer.isConnected) return;
+      hold?.remove();
+      if (killed) {
+        deathCleanup = spawnDeath(board, f, type);
+      } else {
+        const piece = pieceIn(board, square);
+        piece && anim(piece, [
+          { transform: "translate(0,0)" }, { transform: "translate(-4px,1px) rotate(-6deg)" },
+          { transform: "translate(4px,-1px) rotate(6deg)" }, { transform: "translate(0,0)" },
+        ], { duration: 300, iterations: 2, fill: "none" });
+        sqBtn(board, square)?.querySelector(".sk-hp")?.classList.add("sk-hp-hit");
+      }
+    }, STRIKE_FLY_MS);
+    const timer = setTimeout(() => layer.remove(), STRIKE_TOTAL_MS + 100);
+    playStrike._cleanup = () => { clearTimeout(impact); clearTimeout(timer); layer.remove(); deathCleanup(); };
+    return STRIKE_TOTAL_MS;
+  }
+
   /** Demo/test: lad brikken på `square` dø med effekten for `type` (ændrer ikke spillet). */
   function playDeath(board, square, type) {
     if (!board || prefersReducedMotion()) return () => {};
@@ -615,6 +714,7 @@
     playFlip,
     playDropPop,
     playDeath,
+    playStrike,
     deathKind,
     DEATHS: DEATH_KINDS,
     timingFor,
