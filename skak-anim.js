@@ -513,7 +513,8 @@
   /* ---------- Atomangreb: missil + svampesky (+ døds-effekt hvis brikken dør) ---------- */
   const STRIKE_FLY_MS = 450;
   const STRIKE_TOTAL_MS = 1400;
-  function playStrike(board, firsts, { square, killed = false, type = "p" } = {}) {
+  // fromTop: modstanderens angreb (online) kommer fra modstanderens side af brættet.
+  function playStrike(board, firsts, { square, killed = false, type = "p", fromTop = false } = {}) {
     if (!board || prefersReducedMotion()) return 0;
     let f = firsts;
     if (!f?.victimRect) {
@@ -532,8 +533,8 @@
     // Affyres fra spillerens side (nederst på brættet) i en bue op mod målet
     const boardH = board.getBoundingClientRect().height || unit * 8;
     const sx = cx < unit * 4 ? cx + unit * 2.5 : cx - unit * 2.5;
-    const sy = Math.max(cy + unit * 2.5, boardH - unit * 0.3);
-    const mx = (sx + cx) / 2, my = Math.min(sy, cy) - unit * 1.6;
+    const sy = fromTop ? Math.min(cy - unit * 2.5, unit * 0.3) : Math.max(cy + unit * 2.5, boardH - unit * 0.3);
+    const mx = (sx + cx) / 2, my = fromTop ? (sy + cy) / 2 - unit * 0.8 : Math.min(sy, cy) - unit * 1.6;
     const angA = (Math.atan2(my - sy, mx - sx) * 180) / Math.PI + 90;
     const ang = (Math.atan2(cy - my, cx - mx) * 180) / Math.PI + 90;
     const missile = document.createElement("span");

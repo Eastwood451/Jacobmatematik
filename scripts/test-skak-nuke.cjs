@@ -202,17 +202,38 @@ const origin = 'https://skak-nuke-test.invalid';
     await kp.evaluate(() => testGame());
     await kp.close();
 
-    // Online: ingen atomknap og ingen HP-bjælker (ikke synkroniseret endnu)
+    // Online uden reglen (chess_games.nuke = false): ingen atomknap og ingen HP-bjælker, badge "slået fra"
     const op = await open(1100, 820);
-    await op.evaluate(() => { testGame.state.mode = 'online'; testGame.state.phase = 'wait'; });
+    await op.evaluate(() => { testGame.state.mode = 'online'; testGame.state.online.game = { id: 'x', code: 'ABCDE', nuke: false, version: 1 }; testGame.state.phase = 'wait'; });
     await op.evaluate(() => { testGame.state.problem = { text: '1 + 1', answer: 2, kind: 'let' }; testGame.state.phase = 'solve'; });
     await answer(op, 2);
     assert.equal(await op.locator('.sk-nuke').count(), 0);
     assert.equal(await op.locator('.sk-hp').count(), 0);
+    assert.equal(await op.locator('[data-rule-badge="off"]').count(), 1);
     await op.close();
 
+    // "☑ Nuclear strike!" i menuen: til som standard mod computeren; slået fra → klassisk skak
+    const cp = await open(1100, 820);
+    await cp.locator('[data-act="menu"]').click();
+    const cpuBox = cp.locator('[data-rule="cpu-nuke"]');
+    assert.equal(await cpuBox.isChecked(), true, 'mod computeren: til som standard');
+    assert.match(await cp.locator('label.sk-rule-toggle').first().textContent(), /Nuclear strike!/);
+    await cp.locator('label.sk-rule-toggle').first().click();
+    assert.equal(await cpuBox.isChecked(), false);
+    await cp.locator('[data-act="start-cpu"]').click();
+    assert.equal(await cp.locator('.sk-nuke').count(), 0, 'regel fra: intet atomangreb');
+    assert.equal(await cp.locator('.sk-hp').count(), 0, 'regel fra: ingen HP-bjælker');
+    assert.equal(await cp.locator('[data-rule-badge="off"]').count(), 1);
+    await cp.locator('[data-act="menu"]').click();
+    assert.equal(await cp.locator('[data-rule="cpu-nuke"]').isChecked(), false, 'valget huskes i menuen');
+    await cp.locator('[data-rule="cpu-nuke"]').check();
+    await cp.locator('[data-act="start-cpu"]').click();
+    assert.equal(await cp.locator('.sk-nuke').count(), 1);
+    assert.equal(await cp.locator('[data-rule-badge="on"]').count(), 1);
+    await cp.close();
+
     assert.deepEqual(errors, []);
-    console.log('PASS: nuke browser — HP bars, cooldown label, 3-problem unlock with retry, king untargetable, hit/kill, CPU continues, online hidden');
+    console.log('PASS: nuke browser — HP bars, cooldown label, 3-problem unlock with retry, king untargetable, hit/kill, CPU continues, online rule off hidden, menu checkbox on/off');
   } finally {
     await browser.close();
   }
