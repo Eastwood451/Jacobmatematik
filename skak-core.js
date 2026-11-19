@@ -83,7 +83,7 @@
     return Number(value) === problem.answer;
   }
 
-  const newPlayerMeta = () => ({ turns: 0, buys: 0, lastBuyTurn: null });
+  const newPlayerMeta = () => ({ turns: 0, buys: 0, lastBuyTurn: null, strikes: 0, lastStrikeTurn: null });
   const newMeta = () => ({ w: newPlayerMeta(), b: newPlayerMeta() });
 
   function buyStatus(player, { inCheck = false } = {}) {
@@ -101,9 +101,127 @@
     return { ok: true, turnsLeft: 0, reason: "" };
   }
 
-  function recordTurn(player, { bought = false } = {}) {
+  function recordTurn(player, { bought = false, struck = false } = {}) {
     const p = { ...newPlayerMeta(), ...(player || {}) };
-    return { turns: p.turns + 1, buys: p.buys + (bought ? 1 : 0), lastBuyTurn: bought ? p.turns : p.lastBuyTurn };
+    return {
+      turns: p.turns + 1,
+      buys: p.buys + (bought ? 1 : 0),
+      lastBuyTurn: bought ? p.turns : p.lastBuyTurn,
+      strikes: p.strikes + (struck ? 1 : 0),
+      lastStrikeTurn: struck ? p.turns : p.lastStrikeTurn,
+    };
+  }
+
+  // ---------- Atomangreb (power-up, kun mod computeren) ----------
+  // 3 rigtige stykker i træk (gange, division, brøk) låser ét angreb op. Et angreb bruger hele turen.
+  // Mindst STRIKE.cooldownTurns almindelige egne træk før første angreb og mellem to angreb.
+  const STRIKE = Object.freeze({ cooldownTurns: 3, problems: 3, wrongAnswerWaitMs: 1200 });
+  const PIECE_HP = Object.freeze({ p: 1, n: 2, b: 2, r: 3, q: 5 });
+  const maxHp = type => PIECE_HP[type] || 0; // kongen har ingen HP og kan ikke rammes
+
+  function strikeStatus(player, { inCheck = false } = {}) {
+    const p = { ...newPlayerMeta(), ...(player || {}) };
+    const since = p.lastStrikeTurn == null ? p.turns : p.turns - p.lastStrikeTurn - 1;
+    if (since < STRIKE.cooldownTurns) {
+      const n = STRIKE.cooldownTurns - since;
+      return { ok: false, turnsLeft: n, reason: `Klar om ${n} træk` };
+    }
+    if (inCheck) return { ok: false, turnsLeft: 0, reason: "Du står i skak. Red kongen først." };
+    return { ok: true, turnsLeft: 0, reason: "Klar!" };
+  }
+
+  // step 0 = gange, 1 = division, 2 = brøk (heltalssvar, så samme svarfelt kan bruges)
+  function makeStrikeProblem(step, rng = Math.random) {
+    if (step === 0) {
+      const a = randInt(rng, 3, 9), b = randInt(rng, 3, 9);
+      return { text: `${a} × ${b}`, answer: a * b, kind: "nuke-mul" };
+    }
+    if (step === 1) {
+      const b = randInt(rng, 2, 9), q = randInt(rng, 2, 10);
+      return { text: `${b * q} : ${b}`, answer: q, kind: "nuke-div" };
+    }
+    if (step === 2) {
+      const d = pick(rng, [2, 3, 4, 5, 10]);
+      const n = pick(rng, Array.from({ length: d - 1 }, (_, i) => i + 1).filter(x => { let a = x, b = d; while (b) [a, b] = [b, a % b]; return a === 1; }));
+      const whole = d * randInt(rng, 2, 10);
+      return { text: `${n}/${d} af ${whole}`, answer: (whole / d) * n, kind: "nuke-frac" };
+    }
+    throw new Error("Ukendt angrebsstykke: " + step);
+  }
+
+  const squareOf = (r, f) => FILES[f] + (8 - r);
+  function pieceAt(fen, square) {
+    try { return newChess(fen).get(square) || null; } catch (_) { return null; }
+  }
+  function hpOf(fen, damage, square) {
+    const piece = pieceAt(fen, square);
+    if (!piece || !maxHp(piece.type)) return null;
+    const max = maxHp(piece.type);
+    const dmg = Math.max(0, Number(damage?.[square]) || 0);
+    return { type: piece.type, color: piece.color, max, hp: Math.max(0, max - dmg) };
+  }
+  function removeRaw(fen, color, square) {
+    const chess = newChess(fen);
+    chess.remove(square);
+    const tokens = chess.fen().split(" ");
+    tokens[1] = color === "w" ? "b" : "w";
+    tokens[3] = "-";
+    tokens[4] = "0";
+    if (color === "b") tokens[5] = String(Number(tokens[5]) + 1);
+    return tokens.join(" ");
+  }
+  function passRaw(fen, color) {
+    const tokens = String(fen).split(" ");
+    tokens[1] = color === "w" ? "b" : "w";
+    tokens[3] = "-";
+    tokens[4] = String(Number(tokens[4] || 0) + 1);
+    if (color === "b") tokens[5] = String(Number(tokens[5]) + 1);
+    return tokens.join(" ");
+  }
+  // Fjendtlige brikker (aldrig kongen), der må rammes. Et dræbende angreb må ikke give modstanderen skak
+  // (samme regel som købte brikker), så et angreb aldrig kan give skak eller skakmat.
+  function strikeTargets(fen, color, damage = {}) {
+    const chess = newChess(fen);
+    if (chess.turn() !== color || chess.inCheck() || chess.isGameOver()) return [];
+    const out = [];
+    const board = chess.board();
+    for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) {
+      const piece = board[r][f];
+      if (!piece || piece.color === color || !maxHp(piece.type)) continue;
+      const square = squareOf(r, f);
+      const info = hpOf(fen, damage, square);
+      const lethal = info.hp <= 1;
+      const next = lethal ? removeRaw(fen, color, square) : passRaw(fen, color);
+      try { if (newChess(next).inCheck()) continue; } catch (_) { continue; }
+      out.push(square);
+    }
+    return out;
+  }
+  function applyStrike(fen, color, square, damage = {}) {
+    if (!strikeTargets(fen, color, damage).includes(square)) throw new Error("Den brik kan ikke rammes.");
+    const info = hpOf(fen, damage, square);
+    const hp = info.hp - 1;
+    const next = { ...damage };
+    let newFen;
+    if (hp <= 0) { delete next[square]; newFen = removeRaw(fen, color, square); }
+    else { next[square] = info.max - hp; newFen = passRaw(fen, color); }
+    return { fen: newFen, damage: next, square, type: info.type, killed: hp <= 0, hp: Math.max(0, hp), max: info.max };
+  }
+  // Flyt skade med brikken ved et almindeligt træk (info fra applyMove). Forfremmede brikker er friske.
+  function moveDamage(damage, info) {
+    const next = { ...(damage || {}) };
+    if (!info) return next;
+    if (info.capturedSq) delete next[info.capturedSq];
+    const d = next[info.from];
+    delete next[info.from];
+    delete next[info.to];
+    if (d && !info.promotion) next[info.to] = d;
+    if (info.rookFrom && info.rookTo) {
+      const rd = next[info.rookFrom];
+      delete next[info.rookFrom];
+      if (rd) next[info.rookTo] = rd;
+    }
+    return next;
   }
 
   const FILES = "abcdefgh";
@@ -257,6 +375,7 @@
   return Object.freeze({
     START_FEN, RULES, MOVE_LEVELS, AI_LEVELS, SHOP, PIECE_NAMES, shopItem,
     makeProblem, checkAnswer, newPlayerMeta, newMeta, buyStatus, recordTurn,
+    STRIKE, PIECE_HP, maxHp, strikeStatus, makeStrikeProblem, hpOf, strikeTargets, applyStrike, moveDamage,
     dropSquares, applyDrop, applyMove, legalTargets, turnOf, inCheck, boardOf, gameStatus,
     evaluateFen: fen => evaluate(newChess(fen)), chooseComputerMove,
   });

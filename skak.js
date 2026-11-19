@@ -40,13 +40,14 @@
       screen: "menu", mode: "cpu", aiLevel: 2, mathLevel: "let",
       fen: Core.START_FEN, myColor: "w", meta: Core.newMeta(), moves: [], lastMove: null,
       phase: "idle", problem: null, selected: null, targets: [], buyType: null, drops: [],
+      damage: {}, nukeStep: 0, strikeTargets: [],
       lockUntil: 0, feedback: "", feedbackKind: "", obbe: "Klar til skak? Regn et stykke for at købe dit træk!",
       status: Core.gameStatus(Core.START_FEN), online: { game: null, error: "", busy: false, joinCode: "" },
     };
 
     // ---------- fælles spil-flow ----------
     function newLocalGame() {
-      Object.assign(s, { screen: "game", mode: "cpu", fen: Core.START_FEN, myColor: "w", meta: Core.newMeta(), moves: [], lastMove: null,
+      Object.assign(s, { screen: "game", mode: "cpu", fen: Core.START_FEN, myColor: "w", meta: Core.newMeta(), moves: [], lastMove: null, damage: {}, nukeStep: 0, strikeTargets: [],
         status: Core.gameStatus(Core.START_FEN), feedback: "", obbe: "Du er hvid og starter. Regn stykket for at købe dit første træk!" });
       startMyTurn();
     }
@@ -58,6 +59,8 @@
       if (s.status.check) s.obbe = "Pas på, du står i skak! Regn hurtigt og red kongen.";
       render();
     }
+    const strikesEnabled = () => s.mode === "cpu"; // online: ikke synkroniseret endnu (se PR)
+    function myStrikeStatus() { return Core.strikeStatus(s.meta[s.myColor], { inCheck: Core.inCheck(s.fen) }); }
     function myBuyStatus() { return Core.buyStatus(s.meta[s.myColor], { inCheck: Core.inCheck(s.fen) }); }
 
     function submitAnswer(raw) {
@@ -81,6 +84,26 @@
             Object.assign(s, { phase: "solve", buyType: null, problem: Core.makeProblem(s.mathLevel) });
           });
         }
+      } else if (s.phase === "nuke-solve") {
+        if (correct) {
+          s.nukeStep += 1;
+          s.feedback = "";
+          if (s.nukeStep >= Core.STRIKE.problems) {
+            s.strikeTargets = Core.strikeTargets(s.fen, s.myColor, s.damage);
+            Object.assign(s, { phase: "nuke-target", problem: null,
+              obbe: "☢️ Atomangreb klar! Tryk på en fjendtlig brik (kongen kan ikke rammes)." });
+          } else {
+            s.problem = Core.makeStrikeProblem(s.nukeStep);
+            s.obbe = `Rigtigt! ${s.nukeStep}/${Core.STRIKE.problems} – regn videre.`;
+          }
+        } else {
+          // Kort besked og prøv samme stykke igen
+          const wait = Core.STRIKE.wrongAnswerWaitMs;
+          s.lockUntil = Date.now() + wait;
+          s.feedbackKind = "wrong";
+          s.feedback = "Ikke helt – prøv igen!";
+          later(() => { s.lockUntil = 0; s.feedback = ""; render(); }, wait);
+        }
       }
       render();
     }
@@ -101,6 +124,37 @@
         obbe: `En ${item.name.toLowerCase()} koster et ${item.difficulty.toLowerCase()} regnestykke. Køb tager hele din tur.` });
       render();
     }
+    function startNuke() {
+      if (!strikesEnabled() || !["solve", "move"].includes(s.phase) || Date.now() < s.lockUntil) return;
+      if (!myStrikeStatus().ok || !Core.strikeTargets(s.fen, s.myColor, s.damage).length) return;
+      Object.assign(s, { phase: "nuke-solve", nukeStep: 0, problem: Core.makeStrikeProblem(0), selected: null, targets: [], buyType: null, drops: [], feedback: "",
+        obbe: "Regn 3 stykker i træk (gange, division og brøk) for at låse et atomangreb op. Angrebet tager hele din tur." });
+      render();
+    }
+    function cancelNuke() {
+      if (!["nuke-solve", "nuke-target"].includes(s.phase) || Date.now() < s.lockUntil) return;
+      Object.assign(s, { phase: "solve", nukeStep: 0, strikeTargets: [], problem: Core.makeProblem(s.mathLevel), obbe: "Okay, intet angreb. Regn for at købe et træk." });
+      render();
+    }
+    function fireStrike(sq) {
+      let result;
+      try { result = Core.applyStrike(s.fen, s.myColor, sq, s.damage); } catch (_) { return; }
+      const board = boardEl();
+      const firsts = board && window.SkakAnim?.captureFirsts(board, { from: sq, to: sq, capturedSq: sq, captured: result.type }) || null;
+      s.damage = result.damage;
+      s.meta = { ...s.meta, [s.myColor]: Core.recordTurn(s.meta[s.myColor], { struck: true }) };
+      s.fen = result.fen;
+      s.moves = [...s.moves, { by: s.myColor, strike: sq, san: `☢${result.killed ? "×" : ""}${sq}` }];
+      s.lastMove = { to: sq };
+      Object.assign(s, { selected: null, targets: [], drops: [], buyType: null, problem: null, nukeStep: 0, strikeTargets: [] });
+      const name = { p: "Bonden", n: "Springeren", b: "Løberen", r: "Tårnet", q: "Dronningen" }[result.type];
+      s.obbe = result.killed ? `BOOM! ${name} er udslettet!` : `Fuldtræffer! ${name} har ${result.hp}/${result.max} liv tilbage.`;
+      s.status = Core.gameStatus(s.fen);
+      s.phase = s.status.over ? "over" : "wait";
+      render();
+      const ms = window.SkakAnim?.playStrike?.(boardEl(), firsts, { square: sq, killed: result.killed, type: result.type, hp: result.hp, max: result.max }) || 0;
+      if (!s.status.over) later(computerTurn, 450 + Math.min(ms, 1600));
+    }
     function cancelBuy() {
       if (!["buy-solve", "place"].includes(s.phase) || Date.now() < s.lockUntil) return;
       Object.assign(s, { phase: "solve", buyType: null, drops: [], problem: Core.makeProblem(s.mathLevel), obbe: "Okay, ingen ekstra brik. Regn for at købe et træk." });
@@ -116,6 +170,8 @@
         render();
       } else if (s.phase === "place" && s.drops.includes(sq)) {
         placePiece(sq);
+      } else if (s.phase === "nuke-target" && s.strikeTargets.includes(sq)) {
+        fireStrike(sq);
       }
     }
     function boardEl() { return root.querySelector(".sk-board"); }
@@ -130,12 +186,14 @@
     function makeMove(from, to) {
       let result;
       try { result = Core.applyMove(s.fen, from, to, "q"); } catch (_) { s.selected = null; s.targets = []; render(); return; }
+      s.damage = Core.moveDamage(s.damage, result);
       const firsts = window.SkakAnim?.captureFirsts(boardEl(), result) || null;
       finishMyTurn(result.fen, { by: s.myColor, san: result.san, from, to, promotion: result.promotion || null }, false, { firsts, info: result });
     }
     function placePiece(sq) {
       let result;
       try { result = Core.applyDrop(s.fen, s.myColor, s.buyType, sq); } catch (_) { return; }
+      if (s.damage[sq]) { s.damage = { ...s.damage }; delete s.damage[sq]; }
       finishMyTurn(result.fen, { by: s.myColor, drop: s.buyType, square: sq, san: `+${DROP_LETTER[s.buyType]}@${sq}` }, true, { dropSq: sq });
     }
     function finishMyTurn(fen, record, bought, fx = {}) {
@@ -162,6 +220,7 @@
       if (!move) { startMyTurn(); return; }
       const result = Core.applyMove(s.fen, move.from, move.to, move.promotion || "q");
       const firsts = window.SkakAnim?.captureFirsts(boardEl(), result) || null;
+      s.damage = Core.moveDamage(s.damage, result);
       const color = Core.turnOf(s.fen);
       s.meta = { ...s.meta, [color]: Core.recordTurn(s.meta[color]) };
       s.fen = result.fen; s.moves = [...s.moves, { by: color, san: result.san, from: result.from, to: result.to, promotion: result.promotion || null }];
@@ -317,17 +376,54 @@
         if (s.selected === sq) cls.push("selected");
         if (s.targets.includes(sq)) cls.push(piece ? "capture" : "target");
         if (s.phase === "place" && s.drops.includes(sq)) cls.push("drop");
+        if (s.phase === "nuke-target" && s.strikeTargets.includes(sq)) cls.push("nuke-target");
         if (s.lastMove && (s.lastMove.from === sq || s.lastMove.to === sq)) cls.push("last");
         if (piece && piece.type === "k" && piece.color === checkKing) cls.push("check");
         const label = piece ? `${sq}: ${colorName(piece.color).toLowerCase()} ${Core.PIECE_NAMES[piece.type]} · ${CHARACTERS[piece.color][piece.type]}` : sq;
         const coord = (j === 0 ? `<i class="sk-rank">${8 - r}</i>` : "") + (i === 7 ? `<i class="sk-file">${String.fromCharCode(97 + f)}</i>` : "");
-        cells.push(`<button type="button" class="${cls.join(" ")}" data-sq="${sq}" aria-label="${esc(label)}" title="${esc(label)}">${piece ? pieceHtml(piece.color, piece.type) : ""}${coord}</button>`);
+        const hp = piece && strikesEnabled() ? Core.hpOf(s.fen, s.damage, sq) : null;
+        const hpLabel = hp ? ` · ${hp.hp}/${hp.max} liv` : "";
+        cells.push(`<button type="button" class="${cls.join(" ")}" data-sq="${sq}" aria-label="${esc(label + hpLabel)}" title="${esc(label + hpLabel)}">${piece ? pieceHtml(piece.color, piece.type) : ""}${hp ? hpBarHtml(hp) : ""}${coord}</button>`);
       }
-      const locked = !["move", "place"].includes(s.phase);
+      const locked = !["move", "place", "nuke-target"].includes(s.phase);
       return `<div class="sk-board${locked ? " locked" : ""}" role="grid" aria-label="Skakbræt">${cells.join("")}</div>`;
+    }
+    function hpBarHtml(hp) {
+      const frac = hp.hp / hp.max;
+      const level = frac > 0.6 ? "high" : frac > 0.3 ? "mid" : "low";
+      const segs = Array.from({ length: hp.max }, (_, i) => `<i class="${i < hp.hp ? "on" : ""}"></i>`).join("");
+      return `<span class="sk-hp sk-hp-${level} ${hp.color}" data-hp="${hp.hp}" data-max="${hp.max}" aria-hidden="true">${segs}</span>`;
+    }
+    function nukeHtml() {
+      if (!strikesEnabled() || s.phase === "over") return "";
+      const st = myStrikeStatus();
+      const meta = s.meta[s.myColor] || {};
+      const active = ["solve", "move"].includes(s.phase) && Date.now() >= s.lockUntil;
+      const hasTarget = Core.strikeTargets(s.fen, s.myColor, s.damage).length > 0;
+      const disabled = !active || !st.ok || !hasTarget;
+      const pct = Math.round(((Core.STRIKE.cooldownTurns - st.turnsLeft) / Core.STRIKE.cooldownTurns) * 100);
+      const label = st.ok ? (hasTarget ? "Klar!" : "Ingen mål lige nu") : st.reason;
+      return `<section class="sk-nuke${st.ok ? " ready" : ""}" aria-label="Atomangreb">
+        <h3>☢️ Atomangreb <small>${meta.strikes || 0} brugt</small></h3>
+        <div class="sk-nuke-cool" role="status"><span class="sk-nuke-meter"><i style="width:${st.ok ? 100 : pct}%"></i></span><b class="sk-nuke-label">${esc(label)}</b></div>
+        <button type="button" class="btn full sk-nuke-btn" data-act="nuke" ${disabled ? "disabled" : ""}>Lås op: regn 3 stykker</button>
+        <p class="sk-shop-note">Liv: bonde 1, springer 2, løber 2, tårn 3, dronning 5. Kongen kan ikke rammes. Angrebet tager hele din tur, og der skal gå ${Core.STRIKE.cooldownTurns} almindelige træk mellem to angreb.</p></section>`;
     }
     function problemHtml() {
       if (!s.problem) return "";
+      if (s.phase === "nuke-solve") {
+        const lock = Date.now() < s.lockUntil;
+        const names = ["Gange", "Division", "Brøk"];
+        const dots = names.map((n, i) => `<span class="${i < s.nukeStep ? "done" : i === s.nukeStep ? "now" : ""}">${n}</span>`).join("");
+        return `<form class="sk-problem nuke" data-form="answer" autocomplete="off">
+          <span class="sk-problem-label">☢️ Atomangreb · stykke ${s.nukeStep + 1}/${Core.STRIKE.problems}</span>
+          <div class="sk-nuke-steps">${dots}</div>
+          <div class="sk-problem-row"><strong class="sk-problem-text">${esc(s.problem.text)} =</strong>
+          <input name="answer" inputmode="numeric" pattern="-?[0-9]*" aria-label="Dit svar" ${lock ? "disabled" : ""} required>
+          <button class="btn" type="submit" ${lock ? "disabled" : ""}>Svar</button></div>
+          <button type="button" class="sk-link" data-act="cancel-nuke">Fortryd angreb</button>
+        </form>`;
+      }
       const lock = Date.now() < s.lockUntil;
       const buying = s.phase === "buy-solve";
       const item = buying ? Core.shopItem(s.buyType) : null;
@@ -371,11 +467,13 @@
       if (s.phase === "move") return s.selected ? "Tryk på et felt med en prik." : "Træk købt! Tryk på en af dine brikker.";
       if (s.phase === "buy-solve") return "Regn det svære stykke for at købe brikken.";
       if (s.phase === "place") return "Tryk på et grønt felt for at sætte brikken ind.";
+      if (s.phase === "nuke-solve") return "Regn 3 stykker i træk for at låse atomangrebet op.";
+      if (s.phase === "nuke-target") return "☢️ Vælg en fjendtlig brik med rødt sigte.";
       return "";
     }
     function movesHtml() {
       if (!s.moves.length) return `<p class="sk-moves empty">Ingen træk endnu.</p>`;
-      const cell = m => m ? `<span class="${m.drop ? "drop" : ""}">${esc(m.san || "?")}</span>` : "<span></span>";
+      const cell = m => m ? `<span class="${m.drop ? "drop" : m.strike ? "strike" : ""}">${esc(m.san || "?")}</span>` : "<span></span>";
       const rows = [];
       for (let i = 0; i < s.moves.length; i += 2) rows.push(`<li><b>${i / 2 + 1}.</b>${cell(s.moves[i])}${cell(s.moves[i + 1])}</li>`);
       return `<ol class="sk-moves">${rows.slice(-8).join("")}</ol>`;
@@ -405,7 +503,8 @@
           <li>Butikken åbner efter ${Core.RULES.firstBuyAfterTurns} træk. Derefter højst ét køb pr. ${Core.RULES.cooldownTurns} træk og ${Core.RULES.maxBuys} køb i alt.</li>
           <li>Et køb bruger hele din tur. Brikken sættes på et tomt felt på dine to bagerste rækker (bønder kun på 2./7. række) og må ikke give skak.</li>
           <li>Forkert svar: ${Core.RULES.wrongAnswerWaitMs / 1000} sekunders pause og et nyt stykke.</li>
-          <li>Bønder, der når sidste række, bliver automatisk til en dronning.</li></ul></details>
+          <li>Bønder, der når sidste række, bliver automatisk til en dronning.</li>
+          <li>☢️ Atomangreb (mod computeren): regn 3 stykker i træk (gange, division og brøk), og ram en fjendtlig brik. Liv: bonde 1, springer 2, løber 2, tårn 3, dronning 5. Kongen kan ikke rammes. Angrebet bruger hele turen, og der skal gå ${Core.STRIKE.cooldownTurns} almindelige træk mellem to angreb.</li></ul></details>
       </div>`;
     }
     function renderLobby() {
@@ -418,7 +517,7 @@
     function renderGame() {
       const g = s.online.game;
       const title = s.mode === "cpu" ? `Mod computeren · ${Core.AI_LEVELS[s.aiLevel].label}` : `Mod ${esc(opponentName())}${g ? ` · kode ${esc(g.code)}` : ""}`;
-      const myTurnPanel = ["solve", "buy-solve"].includes(s.phase) ? problemHtml() : "";
+      const myTurnPanel = ["solve", "buy-solve", "nuke-solve"].includes(s.phase) ? problemHtml() : "";
       root.innerHTML = `<div class="sk-game sk-play">
         <nav class="sk-nav"><button type="button" data-act="${s.mode === "cpu" ? "menu" : "leave-online"}">← Menu</button><span class="sk-title">${title}</span>
           ${s.phase === "over" ? `<button type="button" data-act="${s.mode === "cpu" ? "start-cpu" : "menu"}">${s.mode === "cpu" ? "Ny kamp" : "Til menu"}</button>` : `<button type="button" data-act="resign">Giv op</button>`}</nav>
@@ -429,6 +528,8 @@
             ${myTurnPanel}
             ${s.feedback ? `<p class="sk-feedback ${s.feedbackKind}" role="alert">${esc(s.feedback)}</p>` : ""}
             ${s.phase === "place" ? `<button type="button" class="btn secondary full" data-act="cancel-buy">Fortryd (brikken går tabt)</button>` : ""}
+            ${s.phase === "nuke-target" ? `<button type="button" class="btn secondary full" data-act="cancel-nuke">Fortryd angreb</button>` : ""}
+            ${nukeHtml()}
             ${s.phase !== "over" ? shopHtml() : ""}
             <section class="sk-log"><h3>Træk <small>du er ${colorName(s.myColor).toLowerCase()}</small></h3>${movesHtml()}</section>
           </aside>
@@ -459,6 +560,8 @@
       if (act === "start-cpu") { timers.forEach(clearTimeout); timers.clear(); newLocalGame(); return; }
       if (act === "menu") { timers.forEach(clearTimeout); timers.clear(); stopPolling(); s.screen = "menu"; s.mode = "cpu"; s.online.game = null; render(); return; }
       if (act === "cancel-buy") { cancelBuy(); return; }
+      if (act === "nuke") { startNuke(); return; }
+      if (act === "cancel-nuke") { cancelNuke(); return; }
       if (act === "resign") { if (window.confirm("Vil du give op?")) resign(); return; }
       if (act === "create-online") { createOnline(); return; }
       if (act === "cancel-online" || act === "leave-online") {
