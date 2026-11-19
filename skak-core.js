@@ -148,7 +148,35 @@
   function applyMove(fen, from, to, promotion = "q") {
     const chess = newChess(fen);
     const move = chess.move({ from, to, promotion }); // kaster ved ulovligt træk
-    return { fen: chess.fen(), san: move.san, from: move.from, to: move.to, captured: move.captured || null, promotion: move.promotion || null };
+    const flags = String(move.flags || "");
+    let rookFrom = null, rookTo = null, capturedSq = null;
+    if (flags.includes("k")) {
+      rookFrom = move.color === "w" ? "h1" : "h8";
+      rookTo = move.color === "w" ? "f1" : "f8";
+    } else if (flags.includes("q")) {
+      rookFrom = move.color === "w" ? "a1" : "a8";
+      rookTo = move.color === "w" ? "d1" : "d8";
+    }
+    if (flags.includes("e")) {
+      // En passant: den slåede bonde står på to-filen og from-rækken
+      capturedSq = move.to[0] + move.from[1];
+    } else if (move.captured) {
+      capturedSq = move.to;
+    }
+    return {
+      fen: chess.fen(),
+      san: move.san,
+      from: move.from,
+      to: move.to,
+      captured: move.captured || null,
+      promotion: move.promotion || null,
+      flags,
+      color: move.color,
+      piece: move.piece,
+      rookFrom,
+      rookTo,
+      capturedSq,
+    };
   }
   function legalTargets(fen, from) {
     try { return newChess(fen).moves({ square: from, verbose: true }).map(m => m.to); } catch (_) { return []; }

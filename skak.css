@@ -146,3 +146,51 @@
   .sk-play .sk-shop,.sk-play .sk-log{padding:8px 10px}
   .sk-play .sk-shop-item .sk-character{height:40px}
 }
+
+/* --- Træk- og slag-animationer (WAAPI + CSS; rent visuelt) --- */
+.sk-board-wrap{position:relative}
+.sk-fx-layer{position:absolute;inset:0;pointer-events:none;z-index:8;overflow:visible}
+.sk-piece.sk-flying,.sk-piece.sk-victory,.sk-piece.sk-drop-pop{z-index:6;position:relative;will-change:transform;filter:drop-shadow(0 10px 10px #1a102866)}
+.sk-sq.sk-anim-flash{box-shadow:inset 0 0 0 100px #ffe56688}
+.sk-sq.last{box-shadow:inset 0 0 0 100px #f5d76e77;transition:box-shadow .25s ease}
+.sk-victim-ghost{position:absolute;pointer-events:none;z-index:7;transform-origin:center bottom}
+.sk-victim-ghost .sk-piece{width:100%;height:100%}
+.sk-slime-blob{position:absolute;border-radius:60% 40% 55% 45%;transform:translate(-50%,-50%) scale(.2);opacity:0;pointer-events:none;box-shadow:inset -2px -2px 0 #ffffff55;animation:sk-slime-burst .7s cubic-bezier(.2,.8,.2,1) forwards}
+.sk-slime-drip{position:absolute;width:7px;height:16px;border-radius:40% 40% 60% 60%;transform:translate(-50%,0) scaleY(.2);opacity:0;pointer-events:none;animation:sk-slime-drip .85s ease-in forwards}
+.sk-slime-stain{position:absolute;width:42px;height:18px;border-radius:50%;background:radial-gradient(ellipse at center,#8cdb28cc 0%,#50a51e88 45%,transparent 72%);transform:translate(-50%,-50%) scale(.4);opacity:0;pointer-events:none;animation:sk-slime-stain 1.1s ease-out forwards}
+@keyframes sk-slime-burst{
+  0%{transform:translate(-50%,-50%) scale(.15);opacity:0}
+  25%{opacity:1}
+  100%{transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1);opacity:0}
+}
+@keyframes sk-slime-drip{
+  0%{transform:translate(-50%,0) scaleY(.2);opacity:0}
+  20%{opacity:1}
+  100%{transform:translate(-50%,28px) scaleY(1.4);opacity:0}
+}
+@keyframes sk-slime-stain{
+  0%{transform:translate(-50%,-50%) scale(.3);opacity:0}
+  30%{opacity:.95;transform:translate(-50%,-50%) scale(1)}
+  100%{opacity:0;transform:translate(-50%,-50%) scale(1.15)}
+}
+@media (prefers-reduced-motion:reduce){
+  .sk-slime-blob,.sk-slime-drip,.sk-slime-stain,.sk-victim-ghost{animation:none!important;opacity:0!important}
+  .sk-piece.sk-flying,.sk-piece.sk-victory,.sk-piece.sk-drop-pop{filter:none}
+}
+
+/* --- Døds-effekter pr. brik (rent visuelt) --- */
+.sk-fx-p{position:absolute;pointer-events:none;transform:translate(-50%,-50%);border-radius:50%;opacity:0;will-change:transform,opacity}
+.sk-fx-star{border-radius:0;clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);filter:drop-shadow(0 0 3px #fff)}
+.sk-fx-star4{clip-path:polygon(50% 0,62% 38%,100% 50%,62% 62%,50% 100%,38% 62%,0 50%,38% 38%)}
+.sk-fx-stone{border-radius:2px;box-shadow:inset -2px -2px 0 #0003}
+.sk-fx-smoke,.sk-fx-dust{filter:blur(2px)}
+.sk-fx-spark{border-radius:2px;box-shadow:0 0 6px #fff6a8}
+.sk-fx-flash{position:absolute;inset:0;background:#eaf7ff;opacity:0;pointer-events:none;border-radius:12px;mix-blend-mode:screen}
+.sk-fx-bolt{position:absolute;inset:0;overflow:visible;pointer-events:none;opacity:0;filter:drop-shadow(0 0 6px #9fe0ff) drop-shadow(0 0 14px #5fb8ff)}
+.sk-fx-fireball{background:radial-gradient(circle at 40% 40%,#fffbe0 0 12%,#ffd23a 28%,#ff7a00 52%,#d92a00 68%,transparent 72%);box-shadow:0 0 18px 6px #ff7a0099}
+.sk-fx-ember{filter:blur(1px)}
+.sk-fx-blast{background:radial-gradient(circle,#fff6c0 0 15%,#ffb020 35%,#ff4d00 55%,#ff4d0000 70%)}
+.sk-fx-glow{background:radial-gradient(circle,#ffffffee 0 15%,#ffe56acc 35%,#ff7ad955 55%,transparent 70%)}
+.sk-fx-hole{background:radial-gradient(circle,#000 0 34%,#12021f 42%,#4b1b8f 52%,#a46bff 58%,#a46bff00 70%),conic-gradient(from 0deg,#7b3fe4,#2a0a4a,#c6a8ff,#2a0a4a,#7b3fe4);background-blend-mode:normal;box-shadow:0 0 22px 6px #7b3fe488;-webkit-mask:radial-gradient(circle,#000 62%,transparent 71%);mask:radial-gradient(circle,#000 62%,transparent 71%)}
+.sk-fx-debris{box-shadow:0 0 4px #fff}
+@media (prefers-reduced-motion: reduce){.sk-fx-layer{display:none}}
