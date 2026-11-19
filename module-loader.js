@@ -122,9 +122,9 @@
       ready: () => true,
     },
     skak: {
-      css: ["skak.css?v=20261105-skak-anim1"],
+      css: ["skak.css?v=20261119-skak-death1"],
       // chess.js (BSD-2) → ren spillogik → animationer → UI
-      js: ["skak-chess-lib.js?v=20261009-skak1", "skak-core.js?v=20261105-skak-anim1", "skak-anim.js?v=20261105-skak-anim1", "skak.js?v=20261105-skak-anim1"],
+      js: ["skak-chess-lib.js?v=20261009-skak1", "skak-core.js?v=20261105-skak-anim1", "skak-anim.js?v=20261119-skak-death1", "skak.js?v=20261105-skak-anim1"],
       ready: () => !!window.JacobSkak && !!window.SkakCore && !!window.SkakAnim,
     },
     angles: {
