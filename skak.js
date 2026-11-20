@@ -40,19 +40,25 @@
       screen: "menu", mode: "cpu", aiLevel: 2, mathLevel: "let",
       fen: Core.START_FEN, myColor: "w", meta: Core.newMeta(), moves: [], lastMove: null,
       phase: "idle", problem: null, selected: null, targets: [], buyType: null, drops: [],
-      damage: {}, nukeStep: 0, strikeTargets: [],
+      damage: {}, nukeStep: 0, strikeTargets: [], matedSq: null,
       lockUntil: 0, feedback: "", feedbackKind: "", obbe: "Klar til skak? Regn et stykke for at købe dit træk!",
       status: Core.gameStatus(Core.START_FEN), online: { game: null, error: "", busy: false, joinCode: "" },
     };
 
     // ---------- fælles spil-flow ----------
     function newLocalGame() {
-      Object.assign(s, { screen: "game", mode: "cpu", fen: Core.START_FEN, myColor: "w", meta: Core.newMeta(), moves: [], lastMove: null, damage: {}, nukeStep: 0, strikeTargets: [],
+      Object.assign(s, { screen: "game", mode: "cpu", fen: Core.START_FEN, myColor: "w", meta: Core.newMeta(), moves: [], lastMove: null, damage: {}, nukeStep: 0, strikeTargets: [], matedSq: null,
         status: Core.gameStatus(Core.START_FEN), feedback: "", obbe: "Du er hvid og starter. Regn stykket for at købe dit første træk!" });
       startMyTurn();
     }
     function startMyTurn() {
       s.status = Core.gameStatus(s.fen);
+      if (s.status.over && s.status.reason === "skakmat") {
+        beginMateFx();
+        render();
+        finishMateFx(Promise.resolve());
+        return;
+      }
       if (s.status.over) { s.phase = "over"; render(); return; }
       if (Core.turnOf(s.fen) !== s.myColor) { s.phase = "wait"; render(); return; }
       Object.assign(s, { phase: "solve", problem: Core.makeProblem(s.mathLevel), selected: null, targets: [], buyType: null, drops: [] });
@@ -183,6 +189,25 @@
       if (firsts && info) return Anim.playFlip(board, firsts, info);
       return Promise.resolve();
     }
+    // Skakmat: hvirvel på den matte konge, FØR "Du vandt/tabte"-teksten. Begge farver, CPU og online.
+    function beginMateFx() {
+      s.phase = "mate-fx";
+      s.matedSq = Core.kingSquare(s.fen, Core.turnOf(s.fen));
+      s.obbe = "Skakmat! Kongen trækkes ned i en sort hvirvel…";
+    }
+    function finishMateFx(moveFx) {
+      const sq = s.matedSq;
+      return Promise.resolve(moveFx).catch(() => {}).then(() => {
+        if (disposed || s.status?.reason !== "skakmat") return;
+        const board = boardEl();
+        if (!window.SkakAnim?.playMateVortex || !board || !sq) return;
+        return window.SkakAnim.playMateVortex(board, sq);
+      }).catch(() => {}).then(() => {
+        if (disposed) return;
+        s.phase = "over";
+        render();
+      });
+    }
     function makeMove(from, to) {
       let result;
       try { result = Core.applyMove(s.fen, from, to, "q"); } catch (_) { s.selected = null; s.targets = []; render(); return; }
@@ -202,17 +227,22 @@
       s.lastMove = record.drop ? { to: record.square } : { from: record.from, to: record.to };
       Object.assign(s, { selected: null, targets: [], drops: [], buyType: null, problem: null });
       s.status = Core.gameStatus(fen);
-      if (s.status.over) s.phase = "over"; else s.phase = "wait";
+      const mated = s.status.reason === "skakmat";
+      if (mated) beginMateFx();
+      else if (s.status.over) s.phase = "over";
+      else s.phase = "wait";
       if (bought) s.obbe = "Ny brik på brættet! Nu er det modstanderens tur.";
       const animMs = bought ? 280 : (window.SkakAnim?.timingFor(fx.info) || 0);
       if (s.mode === "cpu") {
         render();
-        runMoveFx(fx.firsts, fx.info, fx.dropSq);
-        if (!s.status.over) later(computerTurn, 450 + Math.min(animMs, 900));
+        const moveFx = runMoveFx(fx.firsts, fx.info, fx.dropSq);
+        if (mated) finishMateFx(moveFx);
+        else if (!s.status.over) later(computerTurn, 450 + Math.min(animMs, 900));
       } else {
         render();
-        runMoveFx(fx.firsts, fx.info, fx.dropSq);
+        const moveFx = runMoveFx(fx.firsts, fx.info, fx.dropSq);
         sendOnlineMove(record);
+        if (mated) finishMateFx(moveFx);
       }
     }
     function computerTurn() {
@@ -227,6 +257,13 @@
       s.lastMove = { from: result.from, to: result.to };
       if (result.captured) s.obbe = `Av, computeren slog din ${Core.PIECE_NAMES[result.captured]}. Regn videre!`;
       else s.obbe = "Computeren har flyttet. Din tur!";
+      s.status = Core.gameStatus(s.fen);
+      if (s.status.reason === "skakmat") {
+        beginMateFx();
+        render();
+        finishMateFx(runMoveFx(firsts, result, null));
+        return;
+      }
       startMyTurn();
       runMoveFx(firsts, result, null);
     }
@@ -276,6 +313,15 @@
     function applyRemote(game, force = false) {
       const prev = s.online.game;
       if (!force && prev && prev.version === game.version) return;
+      // Midt i lokal hvirvel: opdatér data, men lad være med at rendere (det ville slette animationen).
+      if (s.phase === "mate-fx") {
+        s.online.game = game;
+        s.fen = game.fen || s.fen;
+        s.meta = normalizeMeta(game.meta);
+        if (Array.isArray(game.moves)) s.moves = game.moves;
+        if (game.status === "finished") stopPolling();
+        return;
+      }
       const prevFen = s.fen;
       const prevMovesLen = Array.isArray(s.moves) ? s.moves.length : 0;
       s.online.game = game;
@@ -299,9 +345,16 @@
       s.fen = game.fen; s.meta = normalizeMeta(game.meta); s.moves = nextMoves;
       s.lastMove = last ? (last.drop ? { to: last.square } : { from: last.from, to: last.to }) : null;
       if (game.status === "finished") {
-        s.phase = "over"; s.status = Core.gameStatus(s.fen); stopPolling();
-        render();
-        runMoveFx(firsts, info, dropSq);
+        s.status = Core.gameStatus(s.fen); stopPolling();
+        if (s.status.reason === "skakmat") {
+          beginMateFx();
+          render();
+          finishMateFx(runMoveFx(firsts, info, dropSq));
+        } else {
+          s.phase = "over";
+          render();
+          runMoveFx(firsts, info, dropSq);
+        }
         return;
       }
       if (Core.turnOf(s.fen) === s.myColor) {
@@ -378,12 +431,13 @@
         if (s.phase === "place" && s.drops.includes(sq)) cls.push("drop");
         if (s.phase === "nuke-target" && s.strikeTargets.includes(sq)) cls.push("nuke-target");
         if (s.lastMove && (s.lastMove.from === sq || s.lastMove.to === sq)) cls.push("last");
-        if (piece && piece.type === "k" && piece.color === checkKing) cls.push("check");
+        if (piece && piece.type === "k" && piece.color === checkKing && s.matedSq !== sq) cls.push("check");
         const label = piece ? `${sq}: ${colorName(piece.color).toLowerCase()} ${Core.PIECE_NAMES[piece.type]} · ${CHARACTERS[piece.color][piece.type]}` : sq;
         const coord = (j === 0 ? `<i class="sk-rank">${8 - r}</i>` : "") + (i === 7 ? `<i class="sk-file">${String.fromCharCode(97 + f)}</i>` : "");
         const hp = piece && strikesEnabled() ? Core.hpOf(s.fen, s.damage, sq) : null;
         const hpLabel = hp ? ` · ${hp.hp}/${hp.max} liv` : "";
-        cells.push(`<button type="button" class="${cls.join(" ")}" data-sq="${sq}" aria-label="${esc(label + hpLabel)}" title="${esc(label + hpLabel)}">${piece ? pieceHtml(piece.color, piece.type) : ""}${hp ? hpBarHtml(hp) : ""}${coord}</button>`);
+        const hideKing = s.phase === "over" && s.matedSq === sq;
+        cells.push(`<button type="button" class="${cls.join(" ")}" data-sq="${sq}" aria-label="${esc(label + hpLabel)}" title="${esc(label + hpLabel)}">${piece && !hideKing ? pieceHtml(piece.color, piece.type) : ""}${hp && !hideKing ? hpBarHtml(hp) : ""}${coord}</button>`);
       }
       const locked = !["move", "place", "nuke-target"].includes(s.phase);
       return `<div class="sk-board${locked ? " locked" : ""}" role="grid" aria-label="Skakbræt">${cells.join("")}</div>`;
@@ -395,7 +449,7 @@
       return `<span class="sk-hp sk-hp-${level} ${hp.color}" data-hp="${hp.hp}" data-max="${hp.max}" aria-hidden="true">${segs}</span>`;
     }
     function nukeHtml() {
-      if (!strikesEnabled() || s.phase === "over") return "";
+      if (!strikesEnabled() || s.phase === "over" || s.phase === "mate-fx") return "";
       const st = myStrikeStatus();
       const meta = s.meta[s.myColor] || {};
       const active = ["solve", "move"].includes(s.phase) && Date.now() >= s.lockUntil;
@@ -452,6 +506,7 @@
         <div class="sk-shop-grid">${items}</div><p class="sk-shop-note">${note}</p></section>`;
     }
     function statusLine() {
+      if (s.phase === "mate-fx") return "Skakmat!";
       if (s.phase === "over") {
         const st = s.status.over ? s.status : Core.gameStatus(s.fen);
         const g = s.online.game;
@@ -520,7 +575,7 @@
       const myTurnPanel = ["solve", "buy-solve", "nuke-solve"].includes(s.phase) ? problemHtml() : "";
       root.innerHTML = `<div class="sk-game sk-play">
         <nav class="sk-nav"><button type="button" data-act="${s.mode === "cpu" ? "menu" : "leave-online"}">← Menu</button><span class="sk-title">${title}</span>
-          ${s.phase === "over" ? `<button type="button" data-act="${s.mode === "cpu" ? "start-cpu" : "menu"}">${s.mode === "cpu" ? "Ny kamp" : "Til menu"}</button>` : `<button type="button" data-act="resign">Giv op</button>`}</nav>
+          ${s.phase === "over" ? `<button type="button" data-act="${s.mode === "cpu" ? "start-cpu" : "menu"}">${s.mode === "cpu" ? "Ny kamp" : "Til menu"}</button>` : s.phase === "mate-fx" ? "" : `<button type="button" data-act="resign">Giv op</button>`}</nav>
         <div class="sk-layout">
           <div class="sk-board-wrap">${boardHtml()}<p class="sk-status${s.phase === "over" ? " over" : ""}" role="status">${statusLine()}</p></div>
           <aside class="sk-side">
@@ -530,7 +585,7 @@
             ${s.phase === "place" ? `<button type="button" class="btn secondary full" data-act="cancel-buy">Fortryd (brikken går tabt)</button>` : ""}
             ${s.phase === "nuke-target" ? `<button type="button" class="btn secondary full" data-act="cancel-nuke">Fortryd angreb</button>` : ""}
             ${nukeHtml()}
-            ${s.phase !== "over" ? shopHtml() : ""}
+            ${s.phase !== "over" && s.phase !== "mate-fx" ? shopHtml() : ""}
             <section class="sk-log"><h3>Træk <small>du er ${colorName(s.myColor).toLowerCase()}</small></h3>${movesHtml()}</section>
           </aside>
         </div></div>`;
