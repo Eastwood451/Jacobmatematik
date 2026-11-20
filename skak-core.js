@@ -302,6 +302,16 @@
   function turnOf(fen) { return String(fen).split(" ")[1] === "b" ? "b" : "w"; }
   function inCheck(fen) { return newChess(fen).inCheck(); }
   function boardOf(fen) { return newChess(fen).board(); }
+  function kingSquare(fen, color) {
+    try {
+      const board = boardOf(fen);
+      for (let r = 0; r < 8; r++) for (let f = 0; f < 8; f++) {
+        const piece = board[r][f];
+        if (piece && piece.type === "k" && piece.color === color) return String.fromCharCode(97 + f) + (8 - r);
+      }
+    } catch (_) { /* ugyldig FEN */ }
+    return null;
+  }
 
   function gameStatus(fen) {
     const chess = newChess(fen);
@@ -376,7 +386,7 @@
     START_FEN, RULES, MOVE_LEVELS, AI_LEVELS, SHOP, PIECE_NAMES, shopItem,
     makeProblem, checkAnswer, newPlayerMeta, newMeta, buyStatus, recordTurn,
     STRIKE, PIECE_HP, maxHp, strikeStatus, makeStrikeProblem, hpOf, strikeTargets, applyStrike, moveDamage,
-    dropSquares, applyDrop, applyMove, legalTargets, turnOf, inCheck, boardOf, gameStatus,
+    dropSquares, applyDrop, applyMove, legalTargets, turnOf, inCheck, boardOf, kingSquare, gameStatus,
     evaluateFen: fen => evaluate(newChess(fen)), chooseComputerMove,
   });
 });

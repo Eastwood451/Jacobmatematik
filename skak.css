@@ -151,6 +151,8 @@
 .sk-board-wrap{position:relative}
 .sk-fx-layer{position:absolute;inset:0;pointer-events:none;z-index:8;overflow:visible}
 .sk-piece.sk-flying,.sk-piece.sk-victory,.sk-piece.sk-drop-pop{z-index:6;position:relative;will-change:transform;filter:drop-shadow(0 10px 10px #1a102866)}
+.sk-piece.sk-sucked{z-index:9;position:relative;will-change:transform,filter,opacity;pointer-events:none;transform-origin:50% 70%}
+.sk-piece.sk-vanished{visibility:hidden;opacity:0}
 .sk-sq.sk-anim-flash{box-shadow:inset 0 0 0 100px #ffe56688}
 .sk-sq.last{box-shadow:inset 0 0 0 100px #f5d76e77;transition:box-shadow .25s ease}
 .sk-victim-ghost{position:absolute;pointer-events:none;z-index:7;transform-origin:center bottom}
@@ -192,6 +194,9 @@
 .sk-fx-blast{background:radial-gradient(circle,#fff6c0 0 15%,#ffb020 35%,#ff4d00 55%,#ff4d0000 70%)}
 .sk-fx-glow{background:radial-gradient(circle,#ffffffee 0 15%,#ffe56acc 35%,#ff7ad955 55%,transparent 70%)}
 .sk-fx-hole{background:radial-gradient(circle,#000 0 34%,#12021f 42%,#4b1b8f 52%,#a46bff 58%,#a46bff00 70%),conic-gradient(from 0deg,#7b3fe4,#2a0a4a,#c6a8ff,#2a0a4a,#7b3fe4);background-blend-mode:normal;box-shadow:0 0 22px 6px #7b3fe488;-webkit-mask:radial-gradient(circle,#000 62%,transparent 71%);mask:radial-gradient(circle,#000 62%,transparent 71%)}
+.sk-fx-vortex{background:radial-gradient(circle at 50% 50%,#000 0 16%,#12021f 26%,transparent 62%),conic-gradient(from 0deg,#000 0deg,#2a0a4a 40deg,#6b3cff 70deg,#000 110deg,#1a0830 160deg,#a46bff 200deg,#000 250deg,#3a1060 300deg,#000 360deg);box-shadow:0 0 28px 8px #1a0828cc,0 0 10px 2px #7b3fe488,inset 0 0 18px #000}
+.sk-fx-vortex-core{background:radial-gradient(circle,#000 0 70%,#12021f 85%,transparent 100%);box-shadow:0 0 16px 4px #000}
+.sk-fx-vortex-well{background:radial-gradient(ellipse,#000d 0 50%,#1a082888 70%,transparent 100%);filter:blur(1px);border-radius:50%}
 .sk-fx-debris{box-shadow:0 0 4px #fff}
 @media (prefers-reduced-motion: reduce){.sk-fx-layer{display:none}}
 
