@@ -39,22 +39,34 @@
     };
   }
 
-  const MAILBOX_SVG = `<svg class="jm-postkasse" viewBox="0 0 64 72" xmlns="http://www.w3.org/2000/svg" focusable="false">
+  let mailboxSvgSeq = 0;
+
+  function mailboxSvg() {
+    const clipId = `jm-postkasse-slot-${++mailboxSvgSeq}`;
+    return `<svg class="jm-postkasse" viewBox="0 0 64 72" xmlns="http://www.w3.org/2000/svg" focusable="false">
+      <defs>
+        <clipPath id="${clipId}">
+          <rect x="0" y="0" width="64" height="36.5"/>
+        </clipPath>
+      </defs>
       <ellipse cx="32" cy="68.5" rx="18" ry="2.6" fill="#5a3a1a" opacity=".16"/>
-      <g class="jm-postkasse-letter">
-        <rect x="21" y="5" width="22" height="18" rx="1.8" fill="#fff8e8" stroke="#c9b896" stroke-width="1.2"/>
-        <path d="M22 7.2 32 16.5 42 7.2" fill="none" stroke="#d4a017" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        <circle cx="38.5" cy="12.5" r="1.3" fill="#c8102e"/>
-      </g>
       <path d="M8 25.5 V17.5 C8 12.2 12.8 10 18 10 h28 c5.2 0 10 2.2 10 7.5 v8 Z" fill="#9f1218"/>
       <path d="M8 25.5 h48 v3.2 c0 1.4-1 2.3-2.2 2.3 H10.2 C9 31 8 30.1 8 28.7 Z" fill="#7a0d12"/>
       <rect x="10" y="24" width="44" height="40" rx="6" fill="#d61f26"/>
       <rect x="13.5" y="28" width="7" height="30" rx="3.5" fill="#fff" opacity=".16"/>
       <rect x="17.5" y="33" width="29" height="6.5" rx="2.2" fill="#6d0c12"/>
-      <rect x="16.5" y="32" width="31" height="2.2" rx="1.1" fill="#f2d27a"/>
       <circle cx="32" cy="50.5" r="7.2" fill="#f2d27a"/>
       <path d="M27.6 50.2 c0-2.6 1.8-4.4 4.4-4.4 1.5 0 2.6.6 3.3 1.5 l-1.6 1.2 c-.4-.5-1-.8-1.7-.8-1.4 0-2.3 1.1-2.3 2.5 s.9 2.5 2.3 2.5 c.7 0 1.3-.3 1.7-.8 l1.6 1.2 c-.7.9-1.8 1.5-3.3 1.5-2.6 0-4.4-1.8-4.4-4.4 Z" fill="#9f1218"/>
+      <g clip-path="url(#${clipId})">
+        <g class="jm-postkasse-letter">
+          <rect x="21" y="24" width="22" height="18" rx="1.8" fill="#fff8e8" stroke="#c9b896" stroke-width="1.2"/>
+          <path d="M22 26.2 32 35.5 42 26.2" fill="none" stroke="#d4a017" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <circle cx="38.5" cy="31.5" r="1.3" fill="#c8102e"/>
+        </g>
+      </g>
+      <rect x="16.5" y="32" width="31" height="2.2" rx="1.1" fill="#f2d27a"/>
     </svg>`;
+  }
 
   function mountButton() {
     if (document.querySelector(".jm-suggest-entry")) return;
@@ -90,7 +102,7 @@
     const icon = document.createElement("span");
     icon.className = "jm-suggest-mailbox-icon";
     icon.setAttribute("aria-hidden", "true");
-    icon.innerHTML = MAILBOX_SVG;
+    icon.innerHTML = mailboxSvg();
     const text = document.createElement("span");
     text.className = "jm-suggest-mailbox-text";
     text.setAttribute("data-i18n-key", "suggest_button");

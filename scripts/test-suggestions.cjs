@@ -17,8 +17,8 @@ assert.match(migration, /grant execute on function public\.submit_site_suggestio
 assert.doesNotMatch(migration, /service_role/);
 
 const index = read('index.html');
-assert.match(index, /suggestions\.css\?v=20261114-postkasse1/);
-assert.match(index, /suggestions\.js\?v=20261114-postkasse1/);
+assert.match(index, /suggestions\.css\?v=20261114-postkasse2/);
+assert.match(index, /suggestions\.js\?v=20261114-postkasse2/);
 
 const backend = read('supabase-backend.js');
 assert.match(backend, /submitSiteSuggestion/);
@@ -54,6 +54,15 @@ assert.match(js, /Forbedringsforslag - skriv til jacobmatematik\.dk/);
 assert.match(js, /Suggestions - write to jacobmatematik\.dk/);
 assert.match(js, /data-jm-suggest-mailbox/);
 assert.match(js, /jm-postkasse-letter/);
+assert.match(js, /clipPath/);
+assert.match(js, /jm-postkasse-slot-/);
+const bodyAt = js.indexOf('x="10" y="24" width="44" height="40"');
+const letterAt = js.indexOf('class="jm-postkasse-letter"');
+const lipAt = js.indexOf('x="16.5" y="32" width="31" height="2.2"');
+assert.ok(bodyAt >= 0 && letterAt > bodyAt, 'letter must be painted in front of the mailbox body');
+assert.ok(lipAt > letterAt, 'slot lip must sit on top of the letter so it appears to enter the slot');
+assert.match(css, /translateY\(4px\)/);
+assert.doesNotMatch(css, /translateY\(-/);
 assert.match(js, /MutationObserver/);
 assert.match(js, /JacobSuggestions = \{ open: openDialog, mount: mountButton, mountMailbox: mountMailboxCards \}/);
 assert.doesNotMatch(js, /Har du et forslag til jacobmatematik\.dk\?/);
@@ -67,8 +76,8 @@ const landings = [
 ];
 for (const file of landings) {
   const html = read(file);
-  assert.match(html, /suggestions\.js\?v=20261114-postkasse1/, `missing cache-busted suggestions.js on ${file}`);
-  assert.match(html, /suggestions\.css\?v=20261114-postkasse1/, `missing cache-busted suggestions.css on ${file}`);
+  assert.match(html, /suggestions\.js\?v=20261114-postkasse2/, `missing cache-busted suggestions.js on ${file}`);
+  assert.match(html, /suggestions\.css\?v=20261114-postkasse2/, `missing cache-busted suggestions.css on ${file}`);
 }
 
 function makeEl(tag) {
