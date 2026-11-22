@@ -1,0 +1,74 @@
+/* Admin-only Analytics card in the teacher portal header. Same cream card language as the mailbox. */
+.jm-analytics-card {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  box-sizing: border-box;
+  max-width: 260px;
+  min-height: 72px;
+  margin: 0;
+  padding: 12px 16px;
+  border: 1px solid #e7d6b7;
+  border-radius: 16px;
+  background: linear-gradient(145deg, #fffaf1, #fff3dc);
+  box-shadow: 0 9px 24px rgba(113, 80, 34, 0.08);
+  color: #4e357d;
+  font: 700 13.5px/1.25 system-ui, sans-serif;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+.site-authenticated .jm-analytics-card {
+  border-color: #ead9c0;
+  background: linear-gradient(145deg, #fffdf8, #fff5e7);
+  box-shadow: 0 7px 20px rgba(100, 67, 35, 0.06);
+  color: #3d2b65;
+}
+.jm-analytics-icon {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: block;
+}
+.jm-analytics-icon-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.jm-analytics-text {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.jm-analytics-card:hover,
+.jm-analytics-card:focus-visible {
+  border-color: #d8ad4f;
+  box-shadow: 0 12px 28px rgba(105, 69, 28, 0.11);
+}
+.jm-analytics-card:focus-visible {
+  outline: 3px solid #ffd077;
+  outline-offset: 3px;
+}
+
+@media (max-width: 1100px) {
+  .dashboard-head {
+    flex-wrap: wrap;
+  }
+  .dashboard-head .jm-suggest-aside {
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
+  .dashboard-head .jm-analytics-card {
+    flex: 1 1 220px;
+  }
+}
+
+@media (max-width: 560px) {
+  .dashboard-head .jm-analytics-card,
+  .jm-suggest-aside .jm-analytics-card {
+    width: 100%;
+    max-width: none;
+    flex-basis: auto;
+    min-height: 64px;
+    font-size: 14px;
+  }
+}
