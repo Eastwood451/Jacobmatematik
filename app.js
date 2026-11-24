@@ -857,8 +857,9 @@ multiplicationColumn: {
     }
     disposeMarley = window.MarleyMath.mount(document.getElementById("marley-root"), {onExit() { disposeMarley?.(); disposeMarley=null; returnFromModule(); }});
   }
-  // Incoming beta uses the same two Jacob profile IDs as the original Vinkler/Skak beta.
-  const canPlayIncoming = () => !isStudentView() && Boolean(state.user?.id && ANGLES_PROFILE_IDS.has(state.user.id) && ["teacher", "student"].includes(state.user.role));
+  // Incoming! (Kaptajn Kvadratrod). INCOMING_PUBLIC åbner det for alle, der kan spille de andre spil (elev, lærer og gæst), også i «Se som elev». Sæt flaget til false for at lukke det til Jacobs profiler igen. ?start=incoming klikker [data-action=incoming].
+  const INCOMING_PUBLIC = true;
+  const canPlayIncoming = () => INCOMING_PUBLIC ? gameModuleEnabled(state.user) : !isStudentView() && Boolean(state.user?.id && ANGLES_PROFILE_IDS.has(state.user.id) && ["teacher", "student"].includes(state.user.role));
   function incomingCard() {
     return canPlayIncoming() ? `<button type="button" class="topic-card incoming-card" data-action="incoming"><span class="topic-icon">Σ 360°</span><strong>Incoming! Et spil om vinkler!</strong><small>Fyr! Beskyt Kaptajn Kvadratrod mod flyvende dummerter.</small></button>` : "";
   }
