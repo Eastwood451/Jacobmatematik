@@ -58,7 +58,12 @@
   }
 
   const MODULES = {
-    equations: { css: ["equations.css?v=20261112-result1"], js: ["equations.js?v=20261112-result1"], ready: () => !!window.JacobEquations },
+    incoming: {
+      css: ["incoming.css?v=20261113-1"],
+      js: ["assets/vendor/three-r158.min.js", "incoming-core.js?v=20261113-1", "incoming-renderer.js?v=20261113-1", "incoming.js?v=20261113-1"],
+      ready: () => !!window.JacobIncoming && !!window.JacobIncomingCore && !!window.THREE,
+    },
+    equations: { css: ["equations.css?v=20261114-result2"], js: ["equations.js?v=20261114-result2"], ready: () => !!window.JacobEquations },
     clock: {
       css: ["clock.css?v=20261019-clock-tip-dashed1"],
       js: ["clock-core.js?v=20261019-clock-tip-dashed1", "clock-course.js?v=20261019-clock-tip-dashed1", "clock.js?v=20261019-clock-tip-dashed1"],
@@ -117,12 +122,12 @@
       ready: () => true,
     },
     skak: {
-      css: ["skak.css?v=20261010-skak-figurer1"],
-      // chess.js (BSD-2) → ren spillogik → UI
-      js: ["skak-chess-lib.js?v=20261009-skak1", "skak-core.js?v=20261009-skak1", "skak.js?v=20261010-skak-figurer1"],
-      ready: () => !!window.JacobSkak && !!window.SkakCore,
+      css: ["skak.css?v=20261119-skak-nuke1"],
+      // chess.js (BSD-2) → ren spillogik → animationer → UI
+      js: ["skak-chess-lib.js?v=20261009-skak1", "skak-core.js?v=20261119-skak-nuke1", "skak-anim.js?v=20261119-skak-nuke1", "skak.js?v=20261119-skak-nuke1"],
+      ready: () => !!window.JacobSkak && !!window.SkakCore && !!window.SkakAnim,
     },
-    quest: { css: ["quest.css?v=20261114-quest1"], js: ["quest.js?v=20261114-quest1"], ready: () => !!window.JacobQuest },
+    quest: { css: ["quest.css?v=20261124-quest1"], js: ["quest.js?v=20261124-quest1"], ready: () => !!window.JacobQuest },
     angles: {
       css: ["angles.css?v=20261105-angles2", "angle-games.css?v=20261105-angles2"],
       js: ["angles-core.js?v=20261105-angles2", "angles.js?v=20261108-i18n2"],
