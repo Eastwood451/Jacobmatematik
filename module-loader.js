@@ -127,6 +127,7 @@
       js: ["skak-chess-lib.js?v=20261009-skak1", "skak-core.js?v=20261119-skak-nuke1", "skak-anim.js?v=20261119-skak-nuke1", "skak.js?v=20261119-skak-nuke1"],
       ready: () => !!window.JacobSkak && !!window.SkakCore && !!window.SkakAnim,
     },
+    quest: { css: ["quest.css?v=20261124-quest1"], js: ["quest.js?v=20261124-quest1"], ready: () => !!window.JacobQuest },
     angles: {
       css: ["angles.css?v=20261105-angles2", "angle-games.css?v=20261105-angles2"],
       js: ["angles-core.js?v=20261105-angles2", "angles.js?v=20261108-i18n2"],
