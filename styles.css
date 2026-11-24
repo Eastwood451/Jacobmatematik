@@ -1761,7 +1761,10 @@ body.site-authenticated:has(.student-home-layout){
 .home-game-links .skak-banner-hero{right:-8%;bottom:-8px;height:112%;z-index:3}
 .home-game-links .skak-banner-poodle{left:-2%;bottom:-2px;height:64%;z-index:2}
 .home-game-links .skak-banner-penguin{left:2%;top:2px;height:34%;z-index:1}
-@media(max-width:560px){.home-game-links .home-game-banner-copy{width:54%;padding:16px 8px 16px 14px}.home-game-links .home-game-banner-scene{width:46%}.home-game-links .home-game-banner h3{font-size:26px}.home-game-links .home-game-banner p{font-size:13px}.home-game-links .skak-banner-penguin,.home-game-links .skak-banner-poodle{display:none}.home-game-links .skak-banner-hero{right:-4%;bottom:-6px;height:104%}.home-game-links .runner-banner-obstacle{left:2%;height:40%;bottom:32%}}
+.home-game-links .incoming-banner{border:3px solid #7ee0ff;background:linear-gradient(100deg,#12071f 0%,#2a0d4a 52%,#1a1033 100%)}
+.home-game-links .incoming-banner .home-game-banner-scene{background:radial-gradient(circle at 50% 70%,#3d1a72 0%,#14071f 70%)}
+.home-game-links .incoming-banner-captain{right:-6%;bottom:-10px;height:118%;z-index:3}
+@media(max-width:560px){.home-game-links .home-game-banner-copy{width:54%;padding:16px 8px 16px 14px}.home-game-links .home-game-banner-scene{width:46%}.home-game-links .home-game-banner h3{font-size:26px}.home-game-links .home-game-banner p{font-size:13px}.home-game-links .skak-banner-penguin,.home-game-links .skak-banner-poodle{display:none}.home-game-links .skak-banner-hero{right:-4%;bottom:-6px;height:104%}.home-game-links .runner-banner-obstacle{left:2%;height:40%;bottom:32%}.home-game-links .incoming-banner-captain{right:-8%;bottom:-8px;height:112%}}
 
 /* Home cards: published skak + visual clock guide */
 .clock-home-card{display:grid;grid-template-columns:minmax(105px,42%) 1fr;align-items:center;gap:12px;text-align:left}
