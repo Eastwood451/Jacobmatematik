@@ -1,6 +1,6 @@
 # Incoming! Et spil om vinkler!
 
-Incoming is a profile-gated beta game. Kaptajn Kvadratrod stands in the centre of a 3D arena. Dummerter, Erlinger, papers marked “DUMPET”, spitballs and remoulade sandwiches fly towards him. Enter an angle from 0 to 360, then click **Fyr!** or press Enter to fire a mathematical symbol.
+Incoming is a public angle game (the same access as Skak and Brøk-løb when `INCOMING_PUBLIC` is true). Kaptajn Kvadratrod stands in the centre of a 3D arena. Dummerter, Erlinger, papers marked “DUMPET”, spitballs and remoulade sandwiches fly towards him. Enter an angle from 0 to 360, then click **Fyr!** or press Enter to fire a mathematical symbol.
 
 | Angle | Screen direction |
 | --- | --- |
@@ -13,14 +13,15 @@ The camera uses equal horizontal and vertical scale, preserving these directions
 
 ## Visibility and navigation
 
-`canPlayIncoming` uses the existing `ANGLES_PROFILE_IDS` allowlist for Jacob’s teacher and student profiles, with a teacher/student role check. It rejects guests, all other profiles and “Se som elev”. Visibility, click handling and mount-after-loading each check this condition, including an identity check after asynchronous loading.
+`canPlayIncoming` follows `gameModuleEnabled` while `INCOMING_PUBLIC` is true: any logged-in student, teacher or guest can play, including Jacob’s “Se som elev”. Set the flag to `false` to restore the previous `ANGLES_PROFILE_IDS` allowlist (Jacob’s two profiles only, not guests, not “Se som elev”). Visibility, click handling and mount-after-loading each check this condition, including an identity check after asynchronous loading.
 
-- Teacher profile: Sandbox → Incoming, or the Front-end practice shortcuts.
-- Student profile: Andre genveje → Incoming.
-- `?start=incoming` uses the same gated shortcut; it does not grant access to other profiles.
+- Students, teachers and guests: Andre genveje → Incoming! Et spil om vinkler!
+- Jacob’s teacher profile can still open it from Sandbox or the Front-end practice shortcuts.
+- `?start=incoming` uses the same shortcut and does not bypass the gate.
 - Back returns to Sandbox when launched there, otherwise to the current profile’s home screen.
+- Logged-out visitors still see no card; they start as a guest first, like the other games.
 
-The game does not create users or save practice results. Existing Vinkler/Skak availability and backend permissions are unchanged.
+The game does not create users or save practice results. Existing Vinkler/Skak availability and backend permissions are unchanged. The Vinkler lesson (piberenser, Vinkel-ord and Ram vinklen) is already public; Incoming is the 3D Kaptajn Kvadratrod game.
 
 ## Animation and sound
 
@@ -54,8 +55,8 @@ node scripts/test-lazy-load-startup.cjs
 node scripts/test-student-view.cjs
 ```
 
-Core checks cover cardinal and arbitrary angles, 0/360 equivalence, invalid input, misses, nearest-target swept collisions, cooldown, pause, all five enemy types, wave completion and game over. Access checks cover both Jacob profiles, other student/teacher/guest profiles, student preview, identity changes during loading, teardown and all eight MP3s.
+Core checks cover cardinal and arbitrary angles, 0/360 equivalence, invalid input, misses, nearest-target swept collisions, cooldown, pause, all five enemy types, wave completion and game over. Access checks cover the public flag for student, teacher and guest, the closed-flag allowlist, identity changes during loading, teardown and all eight MP3s.
 
 Manual browser QA covers a 360° rightward hit, score, pause, language switching without resetting score/input, sandbox return, both profile entry points, hidden cards for other profiles, and a 390-pixel mobile iframe. The test browser disables WebGL, so these browser checks use the CPU fallback; the hardware WebGL rendering path still needs a device smoke test. All eight shipped MP3s decode successfully with FFmpeg.
 
-Publication scope: Incoming is available through Jacob’s sandbox and the shortcuts on his two allowlisted profiles. Other profiles and “Se som elev” remain excluded.
+Publication scope: with `INCOMING_PUBLIC` set to true, Incoming is available to every student, teacher and guest. The allowlist remains in the code so the game can be closed again without a new gate.
