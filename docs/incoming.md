@@ -15,7 +15,7 @@ The camera uses equal horizontal and vertical scale, preserving these directions
 
 `canPlayIncoming` follows `gameModuleEnabled` while `INCOMING_PUBLIC` is true: any logged-in student, teacher or guest can play, including Jacob’s “Se som elev”. Set the flag to `false` to restore the previous `ANGLES_PROFILE_IDS` allowlist (Jacob’s two profiles only, not guests, not “Se som elev”). Visibility, click handling and mount-after-loading each check this condition, including an identity check after asynchronous loading.
 
-- Students and guests (and teachers on Front-end): Incoming banner on the practice home, plus the card under Andre genveje.
+- Students and teachers on Front-end: Incoming banner at the top of the practice home (same row and size as Skak and Brøk-løb), with radar, Kaptajn Kvadratrod and incoming enemies. Guests still have no banner row, but keep the card under Andre genveje.
 - Teachers on the class dashboard: Prøv elevernes øvelser → Incoming! Et spil om vinkler!
 - Jacob’s teacher profile can still open it from Sandbox.
 - `?start=incoming` switches a teacher from the class dashboard to the practice home, then uses the same shortcut. It does not bypass the gate.
