@@ -1,0 +1,138 @@
+/* The Quest – bæltekort over Matematiktårnet + bælteceremoni. Beta (kun Jacobs profiler). */
+.quest-slot { display:block; margin:0 0 22px; text-align:left; }
+.quest-slot:empty { display:none; }
+.quest-card { position:relative; overflow:hidden; border-radius:18px; padding:16px 16px 12px; color:#f4efe2;
+  background:radial-gradient(120% 80% at 50% -10%, #3b2f6b 0%, #1b1838 55%, #100e22 100%);
+  border:2px solid #d4a017; box-shadow:0 0 0 3px #1b1838, 0 14px 30px rgba(20,16,50,.35); }
+.quest-card::before { content:""; position:absolute; inset:0; pointer-events:none; opacity:.18;
+  background:repeating-linear-gradient(90deg, transparent 0 38px, rgba(255,214,90,.5) 38px 39px); }
+.quest-head { position:relative; text-align:center; margin-bottom:10px; }
+.quest-kicker { display:block; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:#ffd75a; font-weight:800; }
+.math-tower .quest-card h2.quest-title { margin:2px 0 0; font:900 30px/1 Impact, "Arial Black", "Helvetica Neue", sans-serif; letter-spacing:.06em; text-transform:uppercase;
+  color:#fff7dc; text-shadow:0 2px 0 #b3261e, 0 4px 0 #5c0f0b, 0 0 18px rgba(255,190,60,.55); }
+.quest-current { position:relative; display:grid; grid-template-columns:92px 1fr; align-items:center; gap:10px; padding:8px 10px; border-radius:12px; background:rgba(255,255,255,.06); }
+.quest-belt-wrap { display:grid; place-items:center; }
+.quest-belt-svg { width:92px; height:auto; filter:drop-shadow(0 3px 4px rgba(0,0,0,.45)); }
+.quest-label { display:block; font-size:10px; letter-spacing:.12em; text-transform:uppercase; color:#c8c0e8; font-weight:800; }
+.quest-belt-name { display:block; font-size:18px; line-height:1.15; color:#fff; font-weight:900; }
+.quest-next { position:relative; margin-top:10px; }
+.quest-next strong { display:flex; align-items:center; gap:7px; font-size:15px; color:#fff; margin:2px 0 6px; }
+.quest-dot { width:14px; height:14px; border-radius:4px; background:var(--belt); border:2px solid var(--edge); flex:none; }
+.quest-progress { height:10px; border-radius:99px; background:rgba(255,255,255,.12); overflow:hidden; border:1px solid rgba(255,255,255,.18); }
+.quest-progress span { display:block; height:100%; border-radius:99px; background:linear-gradient(90deg, #d4a017, var(--belt)); min-width:4px; }
+.quest-missing { margin:6px 0 8px; font-size:13px; color:#ffe9a8; font-weight:700; }
+.quest-train { width:100%; border:0; border-radius:10px; padding:9px 10px; font-weight:900; font-size:14px; cursor:pointer; color:#2a1600;
+  background:linear-gradient(180deg, #ffe07a, #f0a81e); box-shadow:0 3px 0 #9a5d00; }
+.quest-train:hover { filter:brightness(1.06); }
+.quest-train:focus-visible, .quest-stripe-belt:focus-visible { outline:3px solid #fff; outline-offset:2px; }
+.quest-done { position:relative; margin:10px 0 4px; font-weight:800; color:#ffe9a8; }
+.quest-stripe { position:relative; display:grid; grid-template-columns:repeat(8, 1fr); gap:4px; margin-top:12px; }
+.quest-stripe-belt { height:18px; padding:0; border-radius:4px; border:2px dashed rgba(255,255,255,.28); background:transparent; cursor:default; position:relative; }
+.quest-stripe-belt span { position:absolute; left:50%; top:-3px; width:8px; height:20px; margin-left:-4px; border-radius:2px; background:transparent; }
+.quest-stripe-belt.is-earned { border:2px solid var(--edge); background:var(--belt); cursor:pointer; box-shadow:0 2px 0 rgba(0,0,0,.4); }
+.quest-stripe-belt.is-earned span { background:var(--belt); border:1.5px solid var(--edge); }
+.quest-stripe-belt.is-next { border-color:#ffd75a; animation:quest-next-pulse 1.6s ease-in-out infinite; }
+@keyframes quest-next-pulse { 50% { box-shadow:0 0 10px 1px rgba(255,215,90,.7); } }
+.quest-stripe-belt.is-locked { border-color:rgba(255,255,255,.18); background:repeating-linear-gradient(135deg, transparent 0 4px, rgba(255,255,255,.06) 4px 8px); }
+.quest-stripe-belt.is-locked span { display:none; }
+.quest-stripe-belt .quest-lock { position:absolute; left:50%; top:50%; width:11px; height:11px; transform:translate(-50%,-50%); color:#c8c0e8; }
+.quest-locked-note { position:relative; list-style:none; margin:8px 0 0; padding:0; font-size:11px; line-height:1.35; color:#c8c0e8; }
+.quest-locked-note li { display:flex; gap:6px; align-items:flex-start; margin-top:3px; }
+.quest-locked-note .quest-lock { width:11px; height:11px; flex:none; margin-top:1px; color:#ffd75a; }
+.quest-how { position:relative; margin-top:10px; font-size:12px; color:#d9d2f2; }
+.quest-how summary { cursor:pointer; font-weight:800; color:#ffd75a; }
+.quest-how p { margin:6px 0 0; line-height:1.4; }
+
+/* ---------- Ceremonien ---------- */
+html.quest-ceremony-open { overflow:hidden; }
+html.quest-ceremony-open #jm-cookie-settings { visibility:hidden; }
+.quest-ceremony { position:fixed; inset:0; z-index:2147483600; display:grid; place-items:center; overflow:auto; color:#fff; font-family:inherit; }
+.qc-backdrop { position:fixed; inset:0; background:radial-gradient(70% 60% at 50% 35%, #2a1e10 0%, #0b0806 60%, #000 100%); opacity:0; transition:opacity .5s ease; }
+.quest-ceremony.is-on .qc-backdrop { opacity:.97; }
+.qc-spot { position:fixed; left:50%; top:-10vh; width:min(720px, 120vw); height:95vh; transform:translateX(-50%); pointer-events:none; opacity:0;
+  background:radial-gradient(50% 18% at 50% 92%, rgba(255,236,170,.45), transparent 70%), linear-gradient(180deg, rgba(255,240,190,.32), rgba(255,240,190,.06) 80%, transparent);
+  clip-path:polygon(44% 0, 56% 0, 88% 100%, 12% 100%); filter:blur(2px); }
+.quest-ceremony.is-on .qc-spot { animation:qc-spot-on .9s .25s ease-out forwards; }
+@keyframes qc-spot-on { 0% { opacity:0; } 30% { opacity:.9; } 45% { opacity:.3; } 60% { opacity:1; } 100% { opacity:.85; } }
+.qc-dust { position:fixed; inset:0; pointer-events:none; }
+.qc-dust i { position:absolute; left:calc(22% + var(--d) * 4%); bottom:-10px; width:4px; height:4px; border-radius:50%; background:#ffd75a; opacity:0; box-shadow:0 0 6px #ffd75a; }
+.quest-ceremony.is-on .qc-dust i { animation:qc-dust 5s calc(1.6s + var(--d) * .23s) ease-in infinite; }
+@keyframes qc-dust { 0% { transform:translateY(0); opacity:0; } 20% { opacity:.9; } 100% { transform:translateY(-85vh) translateX(calc((var(--d) - 7) * 6px)); opacity:0; } }
+
+.qc-stage { position:relative; width:min(640px, calc(100vw - 24px)); padding:28px 18px 24px; text-align:center; }
+.qc-kicker { margin:0; font-size:12px; letter-spacing:.32em; text-transform:uppercase; color:#ffd75a; font-weight:900; opacity:0; }
+.quest-ceremony h2.qc-title { margin:6px 0 2px; font:900 clamp(40px, 11vw, 78px)/0.95 Impact, "Arial Black", "Helvetica Neue", sans-serif; text-transform:uppercase; letter-spacing:.04em;
+  color:var(--belt); -webkit-text-stroke:2px #fff3c4; paint-order:stroke fill;
+  text-shadow:0 4px 0 var(--edge), 0 8px 0 #000, 0 0 40px rgba(255,200,80,.6); opacity:0; }
+.quest-belt-white h2.qc-title { color:#fff; -webkit-text-stroke:2px #c9a227; }
+.quest-belt-black h2.qc-title { color:#15151b; -webkit-text-stroke:2px #ffd75a; text-shadow:0 4px 0 #6b5000, 0 0 46px rgba(255,215,90,.8); }
+.qc-floor { margin:4px 0 0; font-size:13px; font-weight:800; color:#b9f5c6; opacity:0; }
+.qc-scene { position:relative; height:clamp(270px, 48vh, 380px); margin:6px auto 0; width:min(520px, 100%); }
+.qc-captain { position:absolute; left:50%; bottom:0; height:76%; transform:translate(-62%, 40px); opacity:0; filter:drop-shadow(0 10px 18px rgba(0,0,0,.8)); }
+.qc-buddy { position:absolute; right:4%; bottom:0; height:50%; transform:translateX(60px); opacity:0; filter:drop-shadow(0 8px 14px rgba(0,0,0,.8)); }
+.qc-crew { position:absolute; inset:auto 0 0 0; height:38%; display:flex; justify-content:space-between; align-items:flex-end; }
+.qc-crew img { height:100%; max-width:15%; object-fit:contain; opacity:0; transform:translateY(30px); filter:brightness(.8) drop-shadow(0 6px 10px rgba(0,0,0,.8)); }
+.qc-belt { position:absolute; left:50%; top:0; width:min(230px, 56%); transform:translate(-50%, -160%) rotate(-14deg); opacity:0; z-index:2; }
+.qc-belt-svg { width:100%; height:auto; filter:drop-shadow(0 0 18px rgba(255,220,120,.85)) drop-shadow(0 6px 6px rgba(0,0,0,.6)); }
+.qc-flash { position:absolute; left:50%; top:40%; width:10px; height:10px; border-radius:50%; transform:translate(-50%,-50%) scale(0); background:radial-gradient(circle, #fff 0%, rgba(255,230,140,.9) 30%, rgba(255,200,60,0) 70%); }
+.qc-speech { position:relative; margin:10px auto 0; max-width:560px; padding:14px 16px; border-radius:14px; background:rgba(255,250,235,.96); color:#22180a; text-align:left;
+  box-shadow:0 0 0 3px #d4a017, 0 12px 26px rgba(0,0,0,.6); opacity:0; transform:translateY(16px); }
+.qc-speech::before { content:""; position:absolute; left:38%; top:-12px; border:12px solid transparent; border-top:0; border-bottom-color:#d4a017; }
+.qc-who { display:block; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:#8a5a00; font-weight:900; }
+.qc-line { margin:4px 0 6px; font:800 clamp(16px, 2.6vw, 20px)/1.32 Georgia, "Times New Roman", serif; }
+.qc-reply { margin:0; font-size:14px; color:#4a3a20; }
+.qc-tease { margin:8px 0 0; font-size:12px; font-style:italic; color:#6b5a3a; }
+.qc-ready { margin-top:16px; border:0; border-radius:12px; padding:13px 22px; font-weight:900; font-size:17px; cursor:pointer; color:#2a1600;
+  background:linear-gradient(180deg, #ffe07a, #f0a81e); box-shadow:0 4px 0 #9a5d00, 0 0 24px rgba(255,200,60,.5); opacity:0; }
+.qc-ready:focus-visible, .qc-x:focus-visible { outline:3px solid #fff; outline-offset:3px; }
+.qc-x { position:fixed; top:12px; right:14px; width:40px; height:40px; border-radius:50%; border:2px solid rgba(255,255,255,.4); background:rgba(0,0,0,.4); color:#fff; font-size:24px; line-height:1; cursor:pointer; }
+
+/* Sekvens: mørke → spot → titel slår ned → figurer → bælte svæver ned → glimt → replik → knap */
+.quest-ceremony.is-on .qc-kicker { animation:qc-fade .5s .7s ease-out forwards; }
+.quest-ceremony.is-on .qc-title { animation:qc-slam .55s 1s cubic-bezier(.2,1.6,.4,1) forwards; }
+.quest-ceremony.is-on .qc-floor { animation:qc-fade .4s 1.5s ease-out forwards; }
+.quest-ceremony.is-on .qc-captain { animation:qc-rise .7s 1.3s cubic-bezier(.2,1.2,.4,1) forwards; }
+.quest-ceremony.is-on .qc-buddy { animation:qc-slide .6s 1.7s cubic-bezier(.2,1.2,.4,1) forwards; }
+.quest-ceremony.is-on .qc-crew img { animation:qc-crew .5s calc(1.7s + var(--i) * .12s) ease-out forwards; }
+.quest-ceremony.is-on .qc-belt { animation:qc-belt-drop 2.1s 2s cubic-bezier(.35,.1,.3,1) forwards; }
+.quest-ceremony.is-on .qc-flash { animation:qc-flash .9s 3.9s ease-out forwards; }
+.quest-ceremony.is-on .qc-speech { animation:qc-up .5s 4.2s ease-out forwards; }
+.quest-ceremony.is-on .qc-ready { animation:qc-fade .4s 5s ease-out forwards, qc-glow 1.8s 5.4s ease-in-out infinite; }
+@keyframes qc-fade { to { opacity:1; } }
+@keyframes qc-up { to { opacity:1; transform:none; } }
+@keyframes qc-slam { 0% { opacity:0; transform:scale(3.2); filter:blur(6px); } 70% { opacity:1; transform:scale(.94); filter:none; } 100% { opacity:1; transform:scale(1); } }
+@keyframes qc-rise { to { opacity:1; transform:translate(-62%, 0); } }
+@keyframes qc-slide { to { opacity:1; transform:none; } }
+@keyframes qc-crew { to { opacity:1; transform:none; } }
+@keyframes qc-belt-drop {
+  0% { opacity:0; transform:translate(-50%, -160%) rotate(-14deg); }
+  15% { opacity:1; }
+  40% { transform:translate(-50%, -80%) rotate(10deg); }
+  65% { transform:translate(-50%, -25%) rotate(-6deg); }
+  85% { transform:translate(-50%, -4%) rotate(2deg); }
+  100% { opacity:1; transform:translate(-50%, 0) rotate(0deg); }
+}
+@keyframes qc-flash { 0% { transform:translate(-50%,-50%) scale(0); opacity:1; } 60% { opacity:.9; } 100% { transform:translate(-50%,-50%) scale(46); opacity:0; } }
+@keyframes qc-glow { 50% { box-shadow:0 4px 0 #9a5d00, 0 0 40px rgba(255,210,80,.9); } }
+
+@media (max-width:600px) {
+  .qc-stage { padding:44px 12px 18px; }
+  .qc-buddy { right:-2%; height:46%; }
+  .qc-captain { transform:translate(-70%, 40px); }
+  @keyframes qc-rise { to { opacity:1; transform:translate(-70%, 0); } }
+  .qc-belt { width:60%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .quest-stripe-belt.is-next { animation:none; }
+  .quest-ceremony *, .quest-ceremony.is-on * { animation:none !important; transition:none !important; }
+  .qc-backdrop { opacity:.97; }
+  .qc-spot { opacity:.85; }
+  .qc-dust { display:none; }
+  .qc-kicker, .quest-ceremony h2.qc-title, .qc-floor, .qc-ready, .qc-crew img { opacity:1; transform:none; }
+  .qc-captain { opacity:1; transform:translate(-62%, 0); }
+  .qc-buddy { opacity:1; transform:none; }
+  .qc-belt { opacity:1; transform:translate(-50%, 0); }
+  .qc-speech { opacity:1; transform:none; }
+  .qc-flash { display:none; }
+}
+@media (prefers-reduced-motion: reduce) and (max-width:600px) { .qc-captain { transform:translate(-70%, 0); } }
