@@ -9,7 +9,7 @@ Incoming is a public angle game (the same access as Skak and Brøk-løb when `IN
 | 180° | Left |
 | 270° | Down |
 
-The camera uses equal horizontal and vertical scale, preserving these directions on both desktop and mobile. Swept segment collision checks prevent fast shots from passing through enemies. Only the first intercepted enemy scores a hit. Five shields, eight incoming enemies per wave, three difficulty settings, pause/resume, replay and optional aiming/angle guides are included.
+The camera uses equal horizontal and vertical scale, preserving these directions on both desktop and mobile. Swept segment collision checks prevent fast shots from passing through enemies. Only the first intercepted enemy scores a hit. Five shields and eight incoming enemies per wave are included. Wave 1 attacks only from 0°, 90°, 180° and 270°; wave 2 uses 45° steps, wave 3 uses 5° steps, and from wave 4 every whole degree (0–359). 0° and 360° are the same direction. Three difficulty settings change speed and how many enemies appear at once, not the angle steps. Pause/resume, replay and optional aiming/angle guides are included.
 
 ## Visibility and navigation
 
@@ -55,7 +55,7 @@ node scripts/test-lazy-load-startup.cjs
 node scripts/test-student-view.cjs
 ```
 
-Core checks cover cardinal and arbitrary angles, 0/360 equivalence, invalid input, misses, nearest-target swept collisions, cooldown, pause, all five enemy types, wave completion and game over. Access checks cover the public flag for student, teacher and guest, the closed-flag allowlist, identity changes during loading, teardown and all eight MP3s.
+Core checks cover cardinal and arbitrary angles, 0/360 equivalence, the angle step per wave, invalid input, misses, nearest-target swept collisions, cooldown, pause, all five enemy types, wave completion and game over. Access checks cover the public flag for student, teacher and guest, the closed-flag allowlist, identity changes during loading, teardown and all eight MP3s.
 
 Manual browser QA covers a 360° rightward hit, score, pause, language switching without resetting score/input, sandbox return, both profile entry points, hidden cards for other profiles, and a 390-pixel mobile iframe. The test browser disables WebGL, so these browser checks use the CPU fallback; the hardware WebGL rendering path still needs a device smoke test. All eight shipped MP3s decode successfully with FFmpeg.
 
