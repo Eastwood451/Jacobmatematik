@@ -19,19 +19,45 @@
     const t = length ? Math.max(0, Math.min(1, ((x-ax)*dx+(y-ay)*dy)/length)) : 0;
     return Math.hypot(ax + t*dx - x, ay + t*dy - y) <= radius;
   }
-  function createGame({random = Math.random, difficulty = 'directions'} = {}) {
-    const config = {directions:{step:90,speed:.26,delay:6.5,limit:2}, diagonals:{step:45,speed:.32,delay:5.5,limit:3}, expert:{step:5,speed:.40,delay:4.5,limit:4}}[difficulty] || {step:90,speed:.26,delay:6.5,limit:2};
-    const state = {phase:'ready', enemies:[], shots:[], score:0, hits:0, fired:0, lives:5, wave:1, spawned:0, clock:0, nextSpawn:1, cooldown:0, serial:0};
+  function normalizeWave(wave) {
+    const n = Math.floor(Number(wave));
+    return Number.isFinite(n) && n >= 1 ? n : 1;
+  }
+  // Wave 1: 0/90/180/270. Wave 2: 45°. Wave 3: 5°. Wave 4+: every whole degree.
+  function angleStepForWave(wave) {
+    const n = normalizeWave(wave);
+    if (n <= 1) return 90;
+    if (n === 2) return 45;
+    if (n === 3) return 5;
+    return 1;
+  }
+  function spawnAngleForWave(wave, random = Math.random, {lastAngle = null, occupied = [], spawned = 0} = {}) {
+    const n = normalizeWave(wave);
+    const step = angleStepForWave(n);
+    const count = 360 / step;
+    const tutorial = [0, 90, 180, 270];
+    let angle = n === 1 && spawned < 4 ? tutorial[spawned] : Math.floor(random() * count) * step;
+    if (lastAngle != null && angle === lastAngle) angle = (angle + step) % 360;
+    const minSep = step * .8;
+    for (let i = 0; i < count; i++) {
+      if (!occupied.some(other => Math.abs(((other - angle + 540) % 360) - 180) < minSep)) break;
+      angle = (angle + step) % 360;
+    }
+    return angle;
+  }
+  function createGame({random = Math.random, difficulty = 'directions', wave = 1} = {}) {
+    const config = {directions:{speed:.26,delay:6.5,limit:2}, diagonals:{speed:.32,delay:5.5,limit:3}, expert:{speed:.40,delay:4.5,limit:4}}[difficulty] || {speed:.26,delay:6.5,limit:2};
+    const state = {phase:'ready', enemies:[], shots:[], score:0, hits:0, fired:0, lives:5, wave:normalizeWave(wave), spawned:0, clock:0, nextSpawn:1, cooldown:0, serial:0};
     const events = [];
+    let lastAngle = null;
     function emit(type, data={}) { events.push({type,...data}); }
     function spawn() {
-      const tutorial = [0,90,180,270];
-      let angle = difficulty === 'directions' && state.wave === 1 && state.spawned < 4 ? tutorial[state.spawned] : Math.floor(random()*(360/config.step))*config.step;
-      // Keep concurrent enemies on separate rays so one angle has one clear target.
-      for(let n=0;n<360/config.step;n++) {
-        if(!state.enemies.some(e=>Math.abs(((e.angle-angle+540)%360)-180)<config.step*.8)) break;
-        angle=(angle+config.step)%360;
-      }
+      const angle = spawnAngleForWave(state.wave, random, {
+        lastAngle,
+        occupied: state.enemies.map(e => e.angle),
+        spawned: state.spawned
+      });
+      lastAngle = angle;
       const d = direction(angle), id=++state.serial;
       const enemy = {id, angle, x:d.x*7.7, y:d.y*7.7, radius:.55, speed:config.speed+Math.min(.20,(state.wave-1)*.025), kind:['dummert','erling','paper','spitball','sandwich'][(state.spawned+state.wave-1)%5]};
       state.enemies.push(enemy); state.spawned++; emit('spawn',{enemy:{...enemy}});
@@ -83,5 +109,5 @@
     }
     return {state,start,fire,pause,resume,nextWave,update,drainEvents:()=>events.splice(0)};
   }
-  return {parseAngle,direction,angleAt,segmentHit,createGame};
+  return {parseAngle,direction,angleAt,segmentHit,angleStepForWave,spawnAngleForWave,createGame};
 });
