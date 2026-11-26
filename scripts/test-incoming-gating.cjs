@@ -36,6 +36,16 @@ assert.match(app,/if \(!canPlayIncoming\(\)\) \{ state\.view=/,'renderIncoming e
 assert.match(app,/action === "incoming" \? canPlayIncoming/,'action er gated');
 assert.match(app,/incoming:'\[data-action="incoming"\]'/,'?start=incoming bruger samme action som kortet');
 assert.match(app,/anglesCard\(\) \+ incomingCard\(\) \+ runnerCard\(\)/,'kortet ligger ved Vinkler i Andre genveje');
+assert.match(app,/canPlayIncoming\(\) \? `<a class="home-game-banner incoming-banner"[^`]*data-action="incoming"/,'indloggede ser Incoming-banneret på øvelseshjemmet');
+assert.match(app,/<h3>INCOMING!<\/h3>/,'banneret bruger spillets titel');
+assert.match(app,/Kaptajn Kvadratrod præsenterer/,'banneret har kicker');
+assert.match(app,/Spil nu →/,'banneret har CTA Spil nu');
+assert.match(app,/incoming-banner-radar/,'banneret har radar-cirklen');
+assert.match(app,/incoming-banner-sweep/,'banneret har radar-sweep');
+assert.match(fs.readFileSync('styles.css','utf8'),/@media \(prefers-reduced-motion:reduce\)\{\s*\.incoming-banner-sweep,\.incoming-banner-foe\{animation:none/,'reduced motion slår banner-animationen fra');
+assert.match(app,/canPlayIncoming\(\) \? `<button class="btn secondary" type="button" data-action="incoming">Incoming! Et spil om vinkler!<\/button>/,'læreroverblikket har Incoming under Prøv elevernes øvelser');
+assert.match(app,/if \(state\.view === "teacher"\) {\s*jacobFrontend = true;\s*state\.view = "student";\s*render\(\);/,'?start=incoming virker også, når læreren lander på overblikket');
+assert.doesNotMatch(app,/if \(!pendingDeepLink \|\| !state\.user \|\| state\.view === "teacher"\) return/,'deeplink springer ikke længere læreroverblikket over');
 
 const listeners=new Map(),element={innerHTML:'',querySelector(){return null;}};
 const document={body:{classList:{toggle(){},add(){},remove(){}}},getElementById(){return element;},addEventListener(type,fn){listeners.set(type,fn);},querySelector(){return null;},querySelectorAll(){return [];},documentElement:{lang:'da'}};
