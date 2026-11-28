@@ -708,6 +708,101 @@
     return GLIDE_MS + 40;
   }
 
+  /* ---------- Skakmat: kongen suges ned i en sort hvirvel på sit felt ---------- */
+  const MATE_VORTEX_MS = 1400;
+  const MATE_VORTEX_REDUCED_MS = 220;
+
+  function playMateVortex(board, square) {
+    if (!board || !square) return Promise.resolve();
+    const victim = pieceIn(board, square);
+    if (!victim) return Promise.resolve();
+
+    const vanish = () => {
+      victim.classList.add("sk-vanished");
+      victim.classList.remove("sk-sucked");
+      sqBtn(board, square)?.classList.remove("check");
+    };
+
+    if (prefersReducedMotion()) {
+      victim.classList.add("sk-sucked");
+      const a = victim.animate([
+        { transform: "scale(1)", opacity: 1, filter: "none" },
+        { transform: "scale(0.15)", opacity: 0, filter: "brightness(0)" },
+      ], { duration: MATE_VORTEX_REDUCED_MS, easing: "ease-in", fill: "forwards" });
+      return (a && a.finished ? a.finished : new Promise(r => setTimeout(r, MATE_VORTEX_REDUCED_MS)))
+        .catch(() => {})
+        .finally(vanish);
+    }
+
+    const firsts = {
+      map: {},
+      victimHtml: victim.outerHTML,
+      victimRect: victim.getBoundingClientRect(),
+      capturedSq: square,
+      capturedType: "k",
+      to: square,
+      from: square,
+    };
+    const st = fxStage(board, firsts);
+    st.layer.dataset.death = "vortex";
+    const { layer, cy, unit } = st;
+
+    const well = particle(st, "sk-fx-vortex-well", { w: unit * 1.2, h: unit * 0.55 });
+    well.style.top = `${cy + unit * 0.22}px`;
+    anim(well, [
+      { transform: "translate(-50%,-50%) scale(0.2)", opacity: 0 },
+      { transform: "translate(-50%,-50%) scale(1)", opacity: 0.95, offset: 0.18 },
+      { transform: "translate(-50%,-50%) scale(1)", opacity: 0.95, offset: 0.72 },
+      { transform: "translate(-50%,-50%) scale(0.12)", opacity: 0 },
+    ], { duration: MATE_VORTEX_MS, easing: "ease-in-out" });
+
+    const vortex = particle(st, "sk-fx-vortex", { w: unit * 1.35 });
+    anim(vortex, [
+      { transform: "translate(-50%,-50%) scale(0.05) rotate(0deg)", opacity: 0 },
+      { transform: "translate(-50%,-50%) scale(1) rotate(260deg)", opacity: 1, offset: 0.16 },
+      { transform: "translate(-50%,-50%) scale(1.1) rotate(900deg)", opacity: 1, offset: 0.7 },
+      { transform: "translate(-50%,-50%) scale(0) rotate(1260deg)", opacity: 0 },
+    ], { duration: MATE_VORTEX_MS, easing: "cubic-bezier(.2,.7,.2,1)" });
+
+    const core = particle(st, "sk-fx-vortex-core", { w: unit * 0.42 });
+    anim(core, [
+      { transform: "translate(-50%,-50%) scale(0)", opacity: 0 },
+      { transform: "translate(-50%,-50%) scale(1)", opacity: 1, offset: 0.2 },
+      { transform: "translate(-50%,-50%) scale(1.45)", opacity: 1, offset: 0.7 },
+      { transform: "translate(-50%,-50%) scale(0)", opacity: 0 },
+    ], { duration: MATE_VORTEX_MS, easing: "ease-in-out" });
+
+    for (let i = 0; i < 16; i++) {
+      const a0 = (i / 16) * 360 + rand(-12, 12);
+      const r0 = unit * rand(0.85, 1.55);
+      const p = particle(st, "sk-fx-debris", { w: unit * rand(0.05, 0.12), bg: i % 3 ? "#c6a8ff" : "#ffffff" });
+      anim(p, [
+        { transform: `translate(-50%,-50%) rotate(${a0}deg) translateX(${r0}px)`, opacity: 0 },
+        { transform: `translate(-50%,-50%) rotate(${a0 - 200}deg) translateX(${r0 * 0.55}px)`, opacity: 1, offset: 0.4 },
+        { transform: `translate(-50%,-50%) rotate(${a0 - 520}deg) translateX(0px) scale(0.15)`, opacity: 0 },
+      ], { duration: 980, delay: 70 + i * 18, easing: "cubic-bezier(.4,0,.9,.4)" });
+    }
+
+    victim.classList.add("sk-sucked");
+    anim(victim, [
+      { transform: "translate(0,0) scale(1) rotate(0deg)", filter: "none", opacity: 1, offset: 0 },
+      { transform: "translate(6%,-4%) scale(1.06) rotate(-28deg)", filter: "brightness(0.85)", opacity: 1, offset: 0.14 },
+      { transform: "translate(-5%,8%) scale(0.62) rotate(-210deg)", filter: "brightness(0.4) contrast(1.25)", opacity: 0.95, offset: 0.42 },
+      { transform: "translate(2%,12%) scale(0.26) rotate(-500deg)", filter: "brightness(0.12)", opacity: 0.65, offset: 0.7 },
+      { transform: "translate(0,8%) scale(0) rotate(-820deg)", filter: "brightness(0)", opacity: 0, offset: 1 },
+    ], { duration: 1000, delay: 140, easing: "cubic-bezier(.5,0,.85,.35)" });
+
+    try { tone("sine", 420, 36, 0.95, 0.14); tone("triangle", 170, 26, 0.9, 0.1, 0.1); } catch (_) { /* lyd er valgfri */ }
+
+    return new Promise(resolve => {
+      setTimeout(() => {
+        vanish();
+        layer.remove();
+        resolve();
+      }, MATE_VORTEX_MS);
+    });
+  }
+
   window.SkakAnim = Object.freeze({
     prefersReducedMotion,
     captureFirsts,
@@ -715,10 +810,13 @@
     playDropPop,
     playDeath,
     playStrike,
+    playMateVortex,
     deathKind,
     DEATHS: DEATH_KINDS,
     timingFor,
     GLIDE_MS,
     CAPTURE_EXTRA_MS,
+    MATE_VORTEX_MS,
+    MATE_VORTEX_REDUCED_MS,
   });
 })();
