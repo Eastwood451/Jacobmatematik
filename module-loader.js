@@ -59,8 +59,8 @@
 
   const MODULES = {
     incoming: {
-      css: ["incoming.css?v=20261125-incoming-waves1"],
-      js: ["assets/vendor/three-r158.min.js", "incoming-core.js?v=20261125-incoming-waves1", "incoming-renderer.js?v=20261125-incoming-waves1", "incoming.js?v=20261125-incoming-waves1"],
+      css: ["incoming.css?v=20261128-incoming-bubble1"],
+      js: ["assets/vendor/three-r158.min.js", "incoming-core.js?v=20261125-incoming-waves1", "incoming-renderer.js?v=20261125-incoming-waves1", "incoming.js?v=20261128-incoming-bubble1"],
       ready: () => !!window.JacobIncoming && !!window.JacobIncomingCore && !!window.THREE,
     },
     equations: { css: ["equations.css?v=20261114-result2"], js: ["equations.js?v=20261114-result2"], ready: () => !!window.JacobEquations },
