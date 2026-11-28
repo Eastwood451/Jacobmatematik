@@ -163,6 +163,7 @@
   let borrowingSubtractionDeck = [];
   let borrowingSubtractionFirstTask = true;
   let borrowingSubtractionDrag = null;
+  let negativeNumberLine = null;
   let columnAdditionDrag = null;
   let columnMultiplicationDrag = null;
   const makeTask = (topic, expression, answer, hint = "", options = {}) => ({ topic, expression, answer, hint, ...options });
@@ -404,14 +405,13 @@ multiplicationColumn: {
       evaluate: (answer, task) => Number(answer) === task.answer,
     },
     negatives: {
-      generate(level) {
+      generate(level, user, example) {
         const limit = level === 1 ? 6 : level === 2 ? 10 : 15;
         const signs = pick([[1,1],[1,-1],[-1,1],[-1,-1]]);
-        const a = rand(1, limit) * signs[0], b = rand(1, level === 1 ? 6 : limit) * signs[1];
-        const op = level === 1 ? "+" : pick(["+", "−", "×"]);
+        const [a, op, b] = example || [rand(1, limit) * signs[0], pick(level === 1 ? ["+", "−"] : ["+", "−", "×"]), rand(1, limit) * signs[1]];
         const shownB = b < 0 ? `(${b})` : b;
         const hint = op === "×" ? "Se på fortegnene først." : "Tænk på en tallinje.";
-        return makeTask("negatives", `${a} ${op} ${shownB}`, this.calculate(a, op, b), hint);
+        return makeTask("negatives", `${a} ${op} ${shownB}`, this.calculate(a, op, b), hint, { a, op, b });
       },
       calculate: (a, op, b) => op === "+" ? a + b : op === "−" ? a - b : a * b,
       evaluate: (answer, task) => Number(answer) === task.answer,
@@ -1689,6 +1689,7 @@ multiplicationColumn: {
     newTask();
   }
   function newTask() { syncTrackedExercise();
+    closeNegativeNumberLine();
     if (!state.user || state.view !== "exercise") return;
     const topic = state.selectedTopic === "mixed" ? chooseWeightedTopic(state.user) : state.selectedTopic;
     if (topic === "subtractionDrill" && state.subtractionDrillTroubles) {
@@ -1709,7 +1710,8 @@ multiplicationColumn: {
         : makeTask("tableDrill", `${pair.row} × ${pair.column}`, pair.row * pair.column, "", pair);
       state.taskStartedAt=Date.now(); state.answered=false; renderMatrixDrill(); return;
     }
-    state.task = MathModules[topic].generate(getStats(state.user, topic).level, state.user);
+    const example = state.selectedTopic === "negatives" ? [[1, "+", -3], [4, "−", -2], [2, "×", -3]][state.questionNumber - 1] : undefined;
+    state.task = MathModules[topic].generate(getStats(state.user, topic).level, state.user, example);
     state.taskStartedAt = Date.now(); state.answered = false;
     renderExercise();
   }
@@ -2276,6 +2278,21 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     if (task?.topic === "letters") { renderLetterExercise(); return; }
     const cycleStart = Math.floor((state.questionNumber - 1) / 10) * 10;
     const cycleAnswers = state.sessionAnswers.slice(cycleStart, cycleStart + 10);
+    if (task.topic === "negatives") {
+      app.innerHTML = `${header()}<div class="page exercise-page">
+        <div class="exercise-head"><button class="btn secondary" data-action="home">← Vælg emne</button>${exerciseLeaderboardLink(task.topic)}<span class="topic-tag">Negative tal</span></div>
+        <section class="question-card negative-line"></section>
+        <div class="progress-row" aria-label="Svar i denne runde">${Array.from({length:10}, (_, i) => `<i class="progress-dot ${cycleAnswers[i] === true ? "correct" : cycleAnswers[i] === false ? "wrong" : ""}"></i>`).join("")}</div>
+      </div>`;
+      negativeNumberLine = new NegativeNumberLine(app.querySelector(".negative-line"), task, state.questionNumber, async (value, guideDuration) => {
+        const saved = await submitAnswer(String(value), guideDuration);
+        if (saved && state.task === task) {
+          app.querySelectorAll(".progress-dot")[(state.questionNumber - 1) % 10]?.classList.add(value === task.answer ? "correct" : "wrong");
+        }
+        return saved;
+      });
+      return;
+    }
     // Historikken følger den konkrete opgave. Fx vurderes 7 + 2 og 2 + 7 hver for sig.
     const drillAttempts = SPEED_DRILLS.has(task.topic)
       ? practiceResults(state.user).filter(item => item.topic === task.topic && item.problem === task.expression).sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp)).slice(-8)
@@ -2972,12 +2989,18 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     const label = count === 0 ? "En lukket hånd viser nul fingre" : `${count} ${count === 1 ? "finger" : "fingre"}`;
     return `<div class="hand-counting-field" role="img" aria-label="${label}">${hands}</div>`;
   }
-  async function submitAnswer(form) {
+  function closeNegativeNumberLine() {
+    negativeNumberLine?.dispose();
+    negativeNumberLine = null;
+  }
+
+  async function submitAnswer(value, guideDuration = 0) {
     if (state.answered) return;
-    const raw = new FormData(form).get("answer").trim().replace(",", ".");
+    const raw = value.trim().replace(",", ".");
     const isUndefinedAnswer = raw === "Kan ikke beregnes" || raw === "Cannot be calculated";
     if (raw === "" || (!isUndefinedAnswer && !Number.isFinite(Number(raw)))) { document.getElementById("answer-error").textContent = "Vælg eller skriv et svar først."; return; }
-    const measuredTime = Math.max(.1, (Date.now() - state.taskStartedAt) / 1000);
+    const task = state.task, user = state.user;
+    const measuredTime = Math.max(.1, (Date.now() - state.taskStartedAt - guideDuration) / 1000);
     const responseTime = measuredTime;
     const correct = MathModules[state.task.topic].evaluate(raw, state.task);
     state.answered = true; state.sessionAnswers.push(correct); if (correct) state.sessionCorrect++;
@@ -2996,11 +3019,15 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       if (usingCentralDatabase && !isGuest()) result.remoteId = await appendCurrentPracticeResult( result);
       else await save();
     } catch (error) {
-      state.user.results.pop(); state.sessionAnswers.pop(); if (correct) state.sessionCorrect--; state.answered=false;
+      user.results = user.results.filter(item => item !== result);
+      if (state.task !== task || state.view !== "exercise") return false;
+      state.sessionAnswers.pop(); if (correct) state.sessionCorrect--; state.answered=false;
       document.getElementById("answer-error").textContent="Svaret kunne ikke gemmes. Kontrollér forbindelsen og prøv igen.";
       console.error(error);
       return;
     }
+    if (state.task !== task || state.view !== "exercise") return false;
+    if (negativeNumberLine) return true;
     if (MATRIX_DRILL_TOPICS.has(state.task.topic)) {
       const drill=state.matrixDrill;
       const key=matrixDrillPairKey(drill.topic,state.task);
@@ -3028,7 +3055,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
 
     if (key === "enter") {
       if (MATRIX_DRILL_TOPICS.has(state.task.topic) && state.matrixDrill?.confirmationMode === "auto") return;
-      return submitAnswer(form);
+      return submitAnswer(input.value);
     }
     const fixedPrefix=input.dataset.fixedPrefix || "";
     const undefLabel = window.JacobI18n?.t("exercise_undefined_answer") || "Kan ikke beregnes";
@@ -3050,11 +3077,11 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     if (drillPreview) drillPreview.textContent=input.value || "?";
     if (subtractionOnesPreview) subtractionOnesPreview.textContent=fixedPrefix ? input.value.slice(fixedPrefix.length) || "?" : input.value || "?";
     if (state.task.topic === "subtractionDrill" && state.subtractionConfirmationMode === "auto" && /^\d+$/.test(input.value) && (!fixedPrefix || input.value.length > fixedPrefix.length)) {
-      return submitAnswer(form);
+      return submitAnswer(input.value);
     }
     if (MATRIX_DRILL_TOPICS.has(state.task.topic) && state.matrixDrill?.confirmationMode === "auto" && /^\d+$/.test(input.value)) {
       const expected=String(state.task.answer);
-      if (input.value === expected || !expected.startsWith(input.value)) submitAnswer(form);
+      if (input.value === expected || !expected.startsWith(input.value)) submitAnswer(input.value);
     }
   }
   function summaryFor(user) {
@@ -3961,7 +3988,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
       } catch (studentError) { error.textContent="Eleven kunne ikke oprettes. Brugernavnet kan allerede være i brug."; console.error(studentError); }
     } else if (event.target.id === "division-lollipop-form") await submitDivisionLollipop();
     else if (event.target.id === "column-addition-answer-form") await submitColumnAdditionAnswer();
-    else if (event.target.id === "answer-form") await submitAnswer(event.target);
+    else if (event.target.id === "answer-form") await submitAnswer(new FormData(event.target).get("answer"));
   });
   document.addEventListener("click", async (event) => {
     if (event.target.closest("[data-obbe-shout]")) {
@@ -4031,6 +4058,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     if (reportTopicButton) { state.teacherTopicDetail=reportTopicButton.dataset.reportTopic; renderTeacher(); return; }
     if (!actionButton) return;
     const action=actionButton.dataset.action;
+    if (action === "home" || action === "logout" || action === "change-password") closeNegativeNumberLine();
 
     if (action === "delete-account") {
       openDeleteAccountDialog();
@@ -4477,7 +4505,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     const isContinueKey=event.key === "Enter" || event.key === " " || event.key === "Spacebar" || event.code === "Space";
     if (state.view === "exercise" && state.answered && isContinueKey) {
       const continueButton = document.querySelector('[data-action="continue-after-correction"]');
-      if (continueButton) {
+      if (continueButton && !continueButton.hidden) {
         event.preventDefault();
         continueButton.click();
         return;
@@ -4516,6 +4544,7 @@ function finishColumnAdditionDrag(event, cancelled = false) {
     }
   });
   window.addEventListener("pagehide", () => {
+    negativeNumberLine?.pauseAudio();
     endTrackedExercise();
     leaveIncoming();
     leaveClock();
