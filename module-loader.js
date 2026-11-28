@@ -122,9 +122,9 @@
       ready: () => true,
     },
     skak: {
-      css: ["skak.css?v=20261119-skak-nuke1"],
+      css: ["skak.css?v=20261119-skak-nuke-online1"],
       // chess.js (BSD-2) → ren spillogik → animationer → UI
-      js: ["skak-chess-lib.js?v=20261009-skak1", "skak-core.js?v=20261119-skak-nuke1", "skak-anim.js?v=20261119-skak-nuke1", "skak.js?v=20261119-skak-nuke1"],
+      js: ["skak-chess-lib.js?v=20261009-skak1", "skak-core.js?v=20261119-skak-nuke-online1", "skak-anim.js?v=20261119-skak-nuke-online1", "skak.js?v=20261119-skak-nuke-online1"],
       ready: () => !!window.JacobSkak && !!window.SkakCore && !!window.SkakAnim,
     },
     quest: { css: ["quest.css?v=20261124-quest1"], js: ["quest.js?v=20261124-quest1"], ready: () => !!window.JacobQuest },
