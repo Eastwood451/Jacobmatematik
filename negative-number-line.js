@@ -22,6 +22,13 @@ class NegativeNumberLine {
     </div>` : "";
     root.innerHTML = `<div class="nl-question">
       <span class="question-number">Opgave ${questionNumber}</span>
+      <div class="nl-controls" hidden>
+        <div class="nl-clock" role="timer" aria-live="off" aria-label="Tid til næste trin"><span></span></div>
+        <div class="nl-arrows" role="group" aria-label="Forklaringens trin">
+          <button type="button" data-step="-1" aria-label="Forrige trin" title="Forrige trin">←</button>
+          <button type="button" data-step="1" aria-label="Næste trin" title="Næste trin">→</button>
+        </div>
+      </div>
       <div class="expression" aria-label="${task.expression}"><span aria-hidden="true">${number(a)} ${this.product ? op : sign(op, "operation")} ${b < 0 ? `(${sign("−", "operand")}${Math.abs(b)})` : b}</span></div>
     </div>
     <div class="nl-lesson">
@@ -46,6 +53,11 @@ class NegativeNumberLine {
     this.pointer = root.querySelector(".nl-pointer");
     this.scroll = root.querySelector(".nl-scroll");
     this.replay = root.querySelector(".nl-replay");
+    this.controls = root.querySelector(".nl-controls");
+    this.clock = root.querySelector(".nl-clock");
+    this.seconds = this.clock.firstElementChild;
+    this.forward = root.querySelector('[data-step="1"]');
+    this.steps = this.lessonSteps();
     if (this.product) {
       this.resize = new ResizeObserver(() => this.spaceProductLabels());
       this.resize.observe(this.scroll);
@@ -55,6 +67,10 @@ class NegativeNumberLine {
     root.addEventListener("click", event => {
       const tick = event.target.closest(".nl-tick");
       if (tick) this.choose(tick);
+      const arrow = event.target.closest("[data-step]");
+      if (arrow && (this.stage === "guide" || this.stage === "landing")) {
+        this.showStep(this.stepIndex + Number(arrow.dataset.step));
+      }
       if (event.target.closest(".nl-replay") && this.stage === "landing") this.guide();
     });
     this.play("start");
@@ -66,39 +82,19 @@ class NegativeNumberLine {
 
   dispose() {
     this.stage = "closed";
-    clearTimeout(this.timer);
-    clearTimeout(this.vectorTimer);
+    cancelAnimationFrame(this.frame);
     this.resize?.disconnect();
-    this.audio.onended = this.audio.onerror = null;
+    this.audio.onended = null;
     this.pauseAudio();
   }
 
-  // Hvis lyd er blokeret, får eleven stadig tid til at læse hvert trin.
-  play(clip, after) {
-    clearTimeout(this.timer);
-    this.audio.onended = this.audio.onerror = null;
+  play(clip, after = null) {
+    this.audio.onended = null;
     this.pauseAudio();
     this.audio.src = `assets/negative-tal/${clip}.mp3`;
-    let finished = false;
-    const finish = () => {
-      if (finished || this.stage === "closed") return;
-      finished = true;
-      clearTimeout(this.timer);
-      this.audio.onended = this.audio.onerror = null;
-      after?.();
-    };
-    const noAudio = () => {
-      if (!finished && this.stage !== "closed" && after) {
-        clearTimeout(this.timer);
-        this.timer = setTimeout(finish, 2000);
-      }
-    };
-    if (after) {
-      this.timer = setTimeout(finish, 5000);
-      this.audio.onended = finish;
-      this.audio.onerror = noAudio;
-    }
-    this.audio.play().catch(noAudio);
+    this.audio.onended = after;
+    // Tekst, nedtælling og animation følger samme tidsplan, også uden lyd.
+    this.audio.play().catch(() => {});
   }
 
   async choose(tick) {
@@ -129,6 +125,7 @@ class NegativeNumberLine {
       return;
     }
     this.stage = "done";
+    this.controls.hidden = true;
     tick.classList.add("destination");
     this.prompt.textContent = "Flot!";
     this.tip.textContent = `${this.task.expression.replaceAll("-", "−")} = ${String(value).replace("-", "−")}`;
@@ -155,7 +152,7 @@ class NegativeNumberLine {
     ticks.forEach((tick, i) => { tick.disabled = !labelled.has(i); });
   }
 
-  playProductFact(after) {
+  playProductFact() {
     const { a, b } = this.task;
     const copies = Math.abs(b);
     // Tal og sætningsdele er indtalt på dansk, også til enheder uden dansk systemstemme.
@@ -165,108 +162,141 @@ class NegativeNumberLine {
     ];
     const next = () => {
       if (clips.length) this.play(`gange/${clips.shift()}`, next);
-      else after();
+
     };
     next();
   }
 
-  guideProduct(started) {
-    const { a, b } = this.task;
-    const count = Math.abs(b);
-    const number = n => String(n).replace("-", "−");
-    const chain = this.root.querySelector(".nl-vectors");
-    const segments = [...chain.children];
-    const minus = this.root.querySelector('[data-sign="operand"]');
-    const landing = () => {
-      minus?.classList.remove("active");
-      this.stage = "landing";
-      this.guideDuration += Date.now() - started;
-      this.prompt.textContent = "Hvor lander du?";
-      this.tip.textContent = "Vælg tallet ved den sidste lilla pilespids.";
-      this.replay.hidden = false;
-      this.root.querySelector(".origin").focus({ preventScroll:true });
-      this.play("landing");
-    };
-    const turn = () => {
-      if (b > 0) { landing(); return; }
-      minus.classList.add("active");
-      this.prompt.textContent = "Minus vender retningen.";
-      this.tip.textContent = "Hele rækken drejer om 0.";
-      this.play("gange/vending", () => {
-        chain.style.transform = a > 0 ? "rotate(-180deg)" : "rotate(0deg)";
-        this.vectorTimer = setTimeout(landing, 1450);
-      });
-    };
-    const build = () => {
-      minus?.classList.remove("active");
-      this.prompt.textContent = `${number(a)} × ${count} er ${number(a * count)}.`;
-      let visible = 1, spoken = false;
-      const whenReady = () => {
-        if (spoken && visible === count) this.vectorTimer = setTimeout(turn, 650);
-      };
-      const reveal = () => {
-        this.tip.textContent = `${visible} af ${count} ${count === 1 ? "pil" : "pile"} · Spidsen er på ${number(visible * a)}.`;
-        if (visible === count) { whenReady(); return; }
-        this.vectorTimer = setTimeout(() => {
-          segments[visible++].classList.add("visible");
-          reveal();
-        }, 600);
-      };
-      reveal();
-      this.playProductFact(() => { spoken = true; whenReady(); });
-    };
-    chain.hidden = false;
-    chain.style.transition = "none";
-    chain.style.transform = a < 0 ? "rotate(-180deg)" : "rotate(0deg)";
-    segments.forEach((segment, i) => segment.classList.toggle("visible", i === 0));
-    chain.getBoundingClientRect(); // Nulstil også replay til den første vektors retning.
-    chain.style.removeProperty("transition");
-    this.tip.textContent = `Den lilla vektor går fra 0 til ${a > 0 ? "+" : ""}${number(a)}.`;
-    this.prompt.textContent = b < 0 ? "Minus vender retningen." : "Se på den lilla vektor.";
-    minus?.classList.add("active");
-    this.play(b < 0 ? "gange/vending" : "gange/vektor", build);
+  lessonSteps() {
+    const { a, b, op } = this.task;
+    if (this.product) {
+      const copies = Math.abs(b);
+      const initial = a < 0 ? -180 : 0;
+      const steps = [
+        { kind:"vector", angle:initial, duration:2600 },
+        { kind:"build", angle:initial, duration:Math.max(600 * (copies - 1) + 850,
+          a === 2 && copies === 3 ? 2600 : a < 0 ? 8200 : 6200) },
+      ];
+      if (b < 0) steps.push({ kind:"turn", angle:initial, endAngle:a < 0 ? 0 : -180, duration:3850 });
+      return steps;
+    }
+    const firstMinus = op === "−";
+    const steps = [{
+      kind:"sign", sign:"operation", clip:firstMinus ? "minus" : "plus",
+      message:firstMinus ? "Minus betyder, at retningen vender." : "Plus betyder: Gå til højre.",
+      angle:0, endAngle:firstMinus ? -180 : 0, duration:firstMinus ? 4850 : 3900,
+    }];
+    if (b < 0) steps.push({
+      kind:"sign", sign:"operand", clip:firstMinus ? "igen" : "minus",
+      message:firstMinus ? "Endnu et minus vender retningen igen!" : "Minus betyder, at retningen vender.",
+      angle:steps[0].endAngle, endAngle:firstMinus ? 0 : -180, duration:firstMinus ? 4250 : 4850,
+    });
+    return steps;
+  }
+
+  setPose(angle, copies = 1) {
+    const shape = this.product ? this.root.querySelector(".nl-vectors") : this.pointer;
+    shape.style.transition = "none";
+    shape.style.transform = `rotate(${angle}deg)`;
+    if (this.product) {
+      shape.hidden = false;
+      [...shape.children].forEach((segment, i) => segment.classList.toggle("visible", i < copies));
+    } else {
+      this.pointer.parentElement.hidden = false;
+    }
+    shape.getBoundingClientRect();
+    shape.style.removeProperty("transition");
+    return shape;
   }
 
   guide() {
-    const { a, op, b } = this.task;
-    const started = Date.now();
-    this.stage = "guide";
-    this.replay.hidden = true;
-    if (this.product) { this.guideProduct(started); return; }
-    this.root.querySelector(".nl-pivot").hidden = false;
-    this.pointer.style.transition = "none";
-    this.pointer.style.transform = "rotate(0deg)";
     const origin = this.root.querySelector(".origin");
-    this.scroll.scrollLeft += origin.getBoundingClientRect().left + origin.offsetWidth / 2
-      - this.scroll.getBoundingClientRect().left - this.scroll.clientWidth / 2;
-    this.pointer.style.removeProperty("transition");
-    this.tip.textContent = `Du står på ${a}.`;
-    const showSign = (id, message, clip, angle, after) => {
-      this.root.querySelector(".nl-sign.active")?.classList.remove("active");
-      this.root.querySelector(`[data-sign="${id}"]`).classList.add("active");
-      this.prompt.textContent = message;
-      this.play(clip, () => {
-        this.pointer.style.transform = `rotate(${angle}deg)`;
-        this.timer = setTimeout(after, 850);
-      });
-    };
-    const landing = () => {
-      this.root.querySelector(".nl-sign.active")?.classList.remove("active");
-      this.guideDuration += Date.now() - started;
+    if (!this.product) {
+      this.scroll.scrollLeft += origin.getBoundingClientRect().left + origin.offsetWidth / 2
+        - this.scroll.getBoundingClientRect().left - this.scroll.clientWidth / 2;
+    }
+    this.showStep(0);
+  }
+
+  showStep(index) {
+    cancelAnimationFrame(this.frame);
+    if (this.stage === "guide") this.guideDuration += Date.now() - this.stepStarted;
+    this.stepIndex = index;
+    this.root.querySelector(".nl-sign.active")?.classList.remove("active");
+    this.replay.hidden = true;
+    this.controls.hidden = index < 0;
+    this.clock.hidden = index < 0 || index === this.steps.length;
+    this.forward.disabled = index === this.steps.length;
+    const origin = this.root.querySelector(".origin");
+    const { a, b, op } = this.task;
+    const copies = Math.abs(b);
+    if (index < 0) {
+      this.stage = "start";
+      origin.classList.remove("origin");
+      this.root.querySelector(this.product ? ".nl-vectors" : ".nl-pivot").hidden = true;
+      this.prompt.textContent = "Hvor starter du?";
+      this.tip.textContent = this.product ? "Vælg 0, hvor vektoren begynder." : "Vælg starttallet på tallinjen.";
+      origin.focus({ preventScroll:true });
+      this.play("start");
+      return;
+    }
+    if (index === this.steps.length) {
+      const last = this.steps[index - 1];
+      this.setPose(last.endAngle ?? last.angle, copies);
       this.stage = "landing";
       const twice = op === "−" && b < 0;
       this.prompt.textContent = twice ? "Hvor lander du nu?" : "Hvor lander du?";
-      this.tip.textContent = `Gå ${Math.abs(b)} skridt i pilens retning. Vælg tallet.`;
+      this.tip.textContent = this.product ? "Vælg tallet ved den sidste lilla pilespids." : `Gå ${copies} skridt i pilens retning. Vælg tallet.`;
       this.replay.hidden = false;
       origin.focus({ preventScroll:true });
       this.play(twice ? "landing-igen" : "landing");
+      return;
+    }
+
+    this.stage = "guide";
+    this.stepStarted = Date.now();
+    const step = this.steps[index];
+    const shape = this.setPose(step.angle, step.kind === "turn" ? copies : 1);
+    const number = n => String(n).replace("-", "−");
+    if (step.kind === "sign") {
+      this.root.querySelector(`[data-sign="${step.sign}"]`).classList.add("active");
+      this.prompt.textContent = step.message;
+      this.tip.textContent = `Du står på ${a}.`;
+      this.play(step.clip);
+    } else if (step.kind === "build") {
+      this.prompt.textContent = `${number(a)} × ${copies} er ${number(a * copies)}.`;
+      this.playProductFact();
+    } else {
+      this.root.querySelector('[data-sign="operand"]')?.classList.add("active");
+      this.prompt.textContent = b < 0 ? "Minus vender retningen." : "Se på den lilla vektor.";
+      this.tip.textContent = step.kind === "turn" ? "Hele rækken drejer om 0." :
+        `Den lilla vektor går fra 0 til ${a > 0 ? "+" : ""}${number(a)}.`;
+      this.play(b < 0 ? "gange/vending" : "gange/vektor");
+    }
+
+    const began = performance.now();
+    let visible = 0, rotated = false;
+    const tick = () => {
+      const elapsed = performance.now() - began;
+      const remaining = Math.max(0, step.duration - elapsed);
+      this.clock.style.setProperty("--remaining", (100 * remaining / step.duration).toFixed(2) + "%");
+      const label = Math.ceil(remaining / 1000) + " s";
+      if (this.seconds.textContent !== label) this.seconds.textContent = label;
+      if (step.kind === "build") {
+        const next = Math.min(copies, 1 + Math.floor(elapsed / 600));
+        if (next !== visible) {
+          for (let i = visible; i < next; i++) shape.children[i].classList.add("visible");
+          visible = next;
+          this.tip.textContent = `${visible} af ${copies} ${copies === 1 ? "pil" : "pile"} · Spidsen er på ${number(visible * a)}.`;
+        }
+      }
+      if (!rotated && step.endAngle !== undefined && remaining <= (this.product ? 1450 : 850)) {
+        shape.style.transform = `rotate(${step.endAngle}deg)`;
+        rotated = true;
+      }
+      if (remaining > 0) this.frame = requestAnimationFrame(tick);
+      else this.showStep(index + 1);
     };
-    const operand = () => {
-      if (b > 0) { landing(); return; }
-      if (op === "−") showSign("operand", "Endnu et minus vender retningen igen!", "igen", 0, landing);
-      else showSign("operand", "Minus betyder, at retningen vender.", "minus", -180, landing);
-    };
-    if (op === "+") showSign("operation", "Plus betyder: Gå til højre.", "plus", 0, operand);
-    else showSign("operation", "Minus betyder, at retningen vender.", "minus", -180, operand);
+    tick();
   }
 }

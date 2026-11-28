@@ -31,13 +31,32 @@ async function test() {
     const choose = n => page.locator(`[data-value="${n}"]`).click();
     const prompt = name => page.getByRole("heading", { name, exact:true }).waitFor();
     const direction = () => page.locator(".nl-pointer").evaluate(el => getComputedStyle(el).transform);
+    const back = page.getByRole("button", { name:"Forrige trin", exact:true });
+    const forward = page.getByRole("button", { name:"Næste trin", exact:true });
+    const clock = page.locator(".nl-clock");
 
     await openTopic("negatives");
     await choose(0);
     await prompt("Hvor starter du?");
     await choose(1);
     await prompt("Plus betyder: Gå til højre.");
+    assert(await clock.isVisible());
+    await page.waitForFunction(() => parseFloat(document.querySelector(".nl-clock").style.getPropertyValue("--remaining")) < 85);
+    await back.click();
+    await prompt("Hvor starter du?");
+    assert(await clock.isHidden());
+    await choose(1);
+    await forward.click();
     await prompt("Minus betyder, at retningen vender.");
+    await back.click();
+    await prompt("Plus betyder: Gå til højre.");
+    await prompt("Minus betyder, at retningen vender.");
+    await prompt("Hvor lander du?");
+    assert(await clock.isHidden());
+    assert(await forward.isDisabled());
+    await back.click();
+    await prompt("Minus betyder, at retningen vender.");
+    await forward.click();
     await prompt("Hvor lander du?");
     assert.match(await direction(), /^matrix\(-1,/);
     await choose(-1);
@@ -64,6 +83,10 @@ async function test() {
     await prompt("Minus vender retningen.");
     assert.equal(await page.locator(".nl-vector.visible").count(), 1);
     await prompt("2 × 3 er 6.");
+    await forward.click();
+    await prompt("Minus vender retningen.");
+    await back.click();
+    await prompt("2 × 3 er 6.");
     await page.getByText("3 af 3 pile · Spidsen er på 6.").waitFor();
     const chainTip = () => page.locator(".nl-vector:last-child").evaluate(el => {
       const rect = el.getBoundingClientRect();
@@ -89,7 +112,7 @@ async function test() {
     const clips = await page.evaluate(() => window.played);
     for (const clip of ["start", "plus", "minus", "igen", "landing", "landing-igen", "flot"]) assert(clips.includes(clip + ".mp3"), clip);
     assert(clips.includes("eksempel.mp3"));
-    assert.equal(clips.filter(clip => clip === "vending.mp3").length, 2);
+    assert(clips.filter(clip => clip === "vending.mp3").length >= 2);
 
     await page.locator("[data-action=home]").click();
     await openTopic("negatives");
