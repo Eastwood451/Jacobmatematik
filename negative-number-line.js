@@ -10,7 +10,7 @@ class NegativeNumberLine {
     const { a, op, b, answer } = task;
     this.product = op === "×";
     this.originValue = this.product ? 0 : a;
-    const step = this.product && Math.abs(answer) > 12 ? Math.abs(a) : 1;
+    const step = this.product && Math.abs(answer) > 12 ? Math.abs(b) : 1;
     const extent = this.product ? Math.max(3 * step, Math.abs(answer) + step) :
       Math.max(5, Math.ceil((Math.max(Math.abs(a), Math.abs(answer)) + 1) / 5) * 5);
     const first = -extent, count = 2 * extent / step + 1;
@@ -18,7 +18,7 @@ class NegativeNumberLine {
     const sign = (symbol, id) => `<span class="nl-sign ${symbol === "+" ? "plus" : "minus"}" data-sign="${id}">${symbol}</span>`;
     root.classList.toggle("nl-product", this.product);
     const vectors = this.product ? `<div class="nl-vectors" hidden aria-hidden="true" style="width:${100 * Math.abs(answer) / (step * count)}%">
-      ${Array.from({length:Math.abs(b)}, () => '<i class="nl-vector"></i>').join("")}
+      ${Array.from({length:Math.abs(a)}, () => '<i class="nl-vector"></i>').join("")}
     </div>` : "";
     root.innerHTML = `<div class="nl-question">
       <span class="question-number">Opgave ${questionNumber}</span>
@@ -29,11 +29,11 @@ class NegativeNumberLine {
           <button type="button" data-step="1" aria-label="Næste trin" title="Næste trin">→</button>
         </div>
       </div>
-      <div class="expression" aria-label="${task.expression}"><span aria-hidden="true">${number(a)} ${this.product ? op : sign(op, "operation")} ${b < 0 ? `(${sign("−", "operand")}${Math.abs(b)})` : b}</span></div>
+      <div class="expression" aria-label="${task.expression}"><span aria-hidden="true">${this.product && a < 0 ? sign("−", "first") + Math.abs(a) : number(a)} ${this.product ? op : sign(op, "operation")} ${b < 0 ? `(${sign("−", "operand")}${Math.abs(b)})` : b}</span></div>
     </div>
     <div class="nl-lesson">
-      <h2 class="nl-prompt" aria-live="polite">Hvor starter du?</h2>
-      <p class="nl-tip">${this.product ? "Vælg 0, hvor vektoren begynder." : "Vælg starttallet på tallinjen."}</p>
+      <h2 class="nl-prompt" aria-live="polite" tabindex="-1"></h2>
+      <p class="nl-tip"></p>
       <div class="nl-scroll" role="group" aria-label="Tallinje fra ${first} til ${extent}">
         <div class="nl-track" style="--ticks:${count}; --start:${(this.originValue - first) / step + 0.5}">
           <div class="nl-axis" aria-hidden="true"></div>
@@ -71,9 +71,29 @@ class NegativeNumberLine {
       if (arrow && (this.stage === "guide" || this.stage === "landing")) {
         this.showStep(this.stepIndex + Number(arrow.dataset.step));
       }
-      if (event.target.closest(".nl-replay") && this.stage === "landing") this.guide();
+      if (event.target.closest(".nl-replay") && this.stage === "landing") {
+        if (this.product) this.showStep(-1);
+        else this.guide();
+      }
     });
-    this.play("start");
+    this.askStart();
+  }
+
+  askStart() {
+    if (!this.product) {
+      this.prompt.textContent = "Hvor starter du?";
+      this.tip.textContent = "Vælg starttallet på tallinjen.";
+      this.play("start");
+      return;
+    }
+    const { a, b } = this.task;
+    const count = Math.abs(a), length = Math.abs(b);
+    const sayPlus = a > 0 && b < 0;
+    this.tip.classList.add("nl-positive-question");
+    this.prompt.textContent = "Start med de positive tal.";
+    this.tip.textContent = `Hvad er ${count} gange ${sayPlus ? "PLUS " : ""}${length}?`;
+    if (count === 2 && length === 3) this.play(sayPlus ? "gange/positive-eksempel" : "gange/positive-dobbelt");
+    else this.playProductClips(["positive-start", `${count}-gange`, ...(sayPlus ? ["plus"] : []), String(length)]);
   }
 
   pauseAudio() {
@@ -100,11 +120,11 @@ class NegativeNumberLine {
   async choose(tick) {
     const value = Number(tick.dataset.value);
     if (this.stage === "start") {
-      if (value !== this.originValue) {
-        this.tip.textContent = this.product ? "Vektoren begynder på 0. Vælg 0." : `Find det første tal i regnestykket, ${this.task.a}.`;
+      if (value !== (this.product ? Math.abs(this.task.answer) : this.originValue)) {
+        this.tip.textContent = this.product ? `Prøv igen. Tæl ${Math.abs(this.task.a)} hop på ${Math.abs(this.task.b)} fra 0 mod højre.` : `Find det første tal i regnestykket, ${this.task.a}.`;
         return;
       }
-      tick.classList.add("origin");
+      this.root.querySelector(`[data-value="${this.originValue}"]`).classList.add("origin");
       this.guide();
       return;
     }
@@ -144,25 +164,22 @@ class NegativeNumberLine {
     const middle = (ticks.length - 1) / 2;
     const last = ticks.findIndex(tick => Number(tick.dataset.value) === Math.abs(this.task.answer));
     const labelled = new Set([middle, last, 2 * middle - last]);
-    for (let offset = stride; offset <= middle; offset += stride) {
-      if (Math.abs(last - middle - offset) < stride) continue;
-      labelled.add(middle - offset);
-      labelled.add(middle + offset);
-    }
+    const addPair = offset => {
+      if ([...labelled].every(i => Math.abs(i - middle - offset) >= stride)) {
+        labelled.add(middle - offset);
+        labelled.add(middle + offset);
+      }
+    };
+    // På smalle skærme prioriteres tallene, hvor pilene mødes.
+    const hop = (last - middle) / Math.abs(this.task.a);
+    for (let offset = hop; offset < last - middle; offset += hop) addPair(offset);
+    for (let offset = stride; offset <= middle; offset += stride) addPair(offset);
     ticks.forEach((tick, i) => { tick.disabled = !labelled.has(i); });
   }
 
-  playProductFact() {
-    const { a, b } = this.task;
-    const copies = Math.abs(b);
-    // Tal og sætningsdele er indtalt på dansk, også til enheder uden dansk systemstemme.
-    const clips = a === 2 && copies === 3 ? ["eksempel"] : [
-      ...(a < 0 ? ["minus"] : []), `${Math.abs(a)}-gange`, `${copies}-er`,
-      ...(a < 0 ? ["minus"] : []), String(Math.abs(a * b)),
-    ];
+  playProductClips(clips) {
     const next = () => {
       if (clips.length) this.play(`gange/${clips.shift()}`, next);
-
     };
     next();
   }
@@ -170,14 +187,15 @@ class NegativeNumberLine {
   lessonSteps() {
     const { a, b, op } = this.task;
     if (this.product) {
-      const copies = Math.abs(b);
-      const initial = a < 0 ? -180 : 0;
-      const steps = [
-        { kind:"vector", angle:initial, duration:2600 },
-        { kind:"build", angle:initial, duration:Math.max(600 * (copies - 1) + 850,
-          a === 2 && copies === 3 ? 2600 : a < 0 ? 8200 : 6200) },
-      ];
-      if (b < 0) steps.push({ kind:"turn", angle:initial, endAngle:a < 0 ? 0 : -180, duration:3850 });
+      const copies = Math.abs(a);
+      const steps = [{ kind:"build", angle:0, duration:Math.max(600 * (copies - 1) + 850,
+        copies === 2 && Math.abs(b) === 3 ? 2600 : 6200) }];
+      const signs = [...(a < 0 ? ["first"] : []), ...(b < 0 ? ["operand"] : [])];
+      signs.forEach((sign, i) => steps.push({
+        kind:"turn", sign, angle:i === 0 ? 0 : -180, endAngle:i === 0 ? -180 : 0,
+        message:i === 0 ? "Minus vender retningen." : "Endnu et minus vender retningen endnu en gang!",
+        clip:i === 0 ? "gange/vending" : "gange/vend-igen", duration:i === 0 ? 3850 : 4450,
+      }));
       return steps;
     }
     const firstMinus = op === "−";
@@ -229,15 +247,13 @@ class NegativeNumberLine {
     this.forward.disabled = index === this.steps.length;
     const origin = this.root.querySelector(".origin");
     const { a, b, op } = this.task;
-    const copies = Math.abs(b);
+    const copies = this.product ? Math.abs(a) : Math.abs(b);
     if (index < 0) {
       this.stage = "start";
       origin.classList.remove("origin");
       this.root.querySelector(this.product ? ".nl-vectors" : ".nl-pivot").hidden = true;
-      this.prompt.textContent = "Hvor starter du?";
-      this.tip.textContent = this.product ? "Vælg 0, hvor vektoren begynder." : "Vælg starttallet på tallinjen.";
-      origin.focus({ preventScroll:true });
-      this.play("start");
+      this.askStart();
+      this.prompt.focus({ preventScroll:true });
       return;
     }
     if (index === this.steps.length) {
@@ -254,24 +270,19 @@ class NegativeNumberLine {
     }
 
     this.stage = "guide";
+    this.tip.classList.remove("nl-positive-question");
     this.stepStarted = Date.now();
     const step = this.steps[index];
-    const shape = this.setPose(step.angle, step.kind === "turn" ? copies : 1);
-    const number = n => String(n).replace("-", "−");
-    if (step.kind === "sign") {
+    const shape = this.setPose(step.angle, step.kind === "build" ? 0 : copies);
+    if (step.kind === "build") {
+      const length = Math.abs(b), total = copies * length;
+      this.prompt.textContent = `${copies} × ${length} er ${total}.`;
+      this.playProductClips(copies === 2 && length === 3 ? ["eksempel"] : [`${copies}-gange`, `${length}-er`, String(total)]);
+    } else {
       this.root.querySelector(`[data-sign="${step.sign}"]`).classList.add("active");
       this.prompt.textContent = step.message;
-      this.tip.textContent = `Du står på ${a}.`;
+      this.tip.textContent = this.product ? "Hele rækken drejer om 0." : `Du står på ${a}.`;
       this.play(step.clip);
-    } else if (step.kind === "build") {
-      this.prompt.textContent = `${number(a)} × ${copies} er ${number(a * copies)}.`;
-      this.playProductFact();
-    } else {
-      this.root.querySelector('[data-sign="operand"]')?.classList.add("active");
-      this.prompt.textContent = b < 0 ? "Minus vender retningen." : "Se på den lilla vektor.";
-      this.tip.textContent = step.kind === "turn" ? "Hele rækken drejer om 0." :
-        `Den lilla vektor går fra 0 til ${a > 0 ? "+" : ""}${number(a)}.`;
-      this.play(b < 0 ? "gange/vending" : "gange/vektor");
     }
 
     const began = performance.now();
@@ -287,7 +298,7 @@ class NegativeNumberLine {
         if (next !== visible) {
           for (let i = visible; i < next; i++) shape.children[i].classList.add("visible");
           visible = next;
-          this.tip.textContent = `${visible} af ${copies} ${copies === 1 ? "pil" : "pile"} · Spidsen er på ${number(visible * a)}.`;
+          this.tip.textContent = `${visible} af ${copies} ${copies === 1 ? "pil" : "pile"} · Spidsen er på ${visible * Math.abs(b)}.`;
         }
       }
       if (!rotated && step.endAngle !== undefined && remaining <= (this.product ? 1450 : 850)) {

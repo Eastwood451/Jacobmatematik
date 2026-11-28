@@ -79,15 +79,21 @@ async function test() {
     await page.getByRole("button", { name:"6", exact:true }).press("Enter");
     await prompt("Flot!");
     await page.locator(".nl-next").click();
+    await prompt("Start med de positive tal.");
+    await page.getByText("Hvad er 2 gange PLUS 3?", {exact:true}).waitFor();
     await choose(0);
-    await prompt("Minus vender retningen.");
-    assert.equal(await page.locator(".nl-vector.visible").count(), 1);
+    assert(await page.locator(".nl-vectors").isHidden());
+    await choose(6);
     await prompt("2 × 3 er 6.");
+    assert.equal(await page.locator(".nl-vector").count(), 2);
+    await back.click();
+    await page.getByText("Hvad er 2 gange PLUS 3?", {exact:true}).waitFor();
+    await choose(6);
     await forward.click();
     await prompt("Minus vender retningen.");
     await back.click();
     await prompt("2 × 3 er 6.");
-    await page.getByText("3 af 3 pile · Spidsen er på 6.").waitFor();
+    await page.getByText("2 af 2 pile · Spidsen er på 6.").waitFor();
     const chainTip = () => page.locator(".nl-vector:last-child").evaluate(el => {
       const rect = el.getBoundingClientRect();
       const direction = getComputedStyle(el.parentElement).transform;
@@ -98,6 +104,10 @@ async function test() {
       return rect.left + rect.width / 2;
     });
     await prompt("Minus vender retningen.");
+    assert.equal(await page.locator(".nl-sign.active").getAttribute("data-sign"), "operand");
+    const firstTip = await page.locator(".nl-vector").first().evaluate(el => el.getBoundingClientRect().right);
+    assert(await page.locator('[data-value="3"] span').isVisible());
+    assert(Math.abs(firstTip - await tickCenter(3)) < 1);
     assert(Math.abs(await chainTip() - await tickCenter(6)) < 1);
     await page.waitForFunction(() => {
       const matrix = new DOMMatrix(getComputedStyle(document.querySelector(".nl-vectors")).transform);
@@ -107,11 +117,25 @@ async function test() {
     assert(Math.abs(await chainTip() - await tickCenter(-6)) < 1);
     await choose(-6);
     await prompt("Flot!");
+    await page.locator(".nl-next").click();
+    await page.getByText("Hvad er 2 gange 3?", {exact:true}).waitFor();
+    await choose(6);
+    await prompt("2 × 3 er 6.");
+    await prompt("Minus vender retningen.");
+    assert.equal(await page.locator(".nl-sign.active").getAttribute("data-sign"), "first");
+    await prompt("Endnu et minus vender retningen endnu en gang!");
+    assert.equal(await page.locator(".nl-sign.active").getAttribute("data-sign"), "operand");
+    assert(Math.abs(await chainTip() - await tickCenter(-6)) < 1);
+    await prompt("Hvor lander du?");
+    assert(Math.abs(await chainTip() - await tickCenter(6)) < 1);
+    await choose(6);
+    await prompt("Flot!");
     const results = await page.evaluate(() => JSON.parse(localStorage.getItem("jacobmatematik-db-v1")).users[0].results);
-    assert.deepEqual(results.map(r => [r.problem, r.answer, r.correct]), [["1 + (-3)", -1, false], ["4 − (-2)", 6, true], ["2 × (-3)", -6, true]]);
+    assert.deepEqual(results.map(r => [r.problem, r.answer, r.correct]), [["1 + (-3)", -1, false], ["4 − (-2)", 6, true], ["2 × (-3)", -6, true], ["-2 × (-3)", 6, true]]);
     const clips = await page.evaluate(() => window.played);
     for (const clip of ["start", "plus", "minus", "igen", "landing", "landing-igen", "flot"]) assert(clips.includes(clip + ".mp3"), clip);
     assert(clips.includes("eksempel.mp3"));
+    for (const clip of ["positive-eksempel.mp3", "positive-dobbelt.mp3", "vend-igen.mp3"]) assert(clips.includes(clip), clip);
     assert(clips.filter(clip => clip === "vending.mp3").length >= 2);
 
     await page.locator("[data-action=home]").click();
@@ -124,7 +148,7 @@ async function test() {
     await page.keyboard.press("Enter");
     await page.getByText("Opgave 2", { exact:true }).waitFor();
     assert.deepEqual(errors, []);
-    console.log("Passed all three lessons, audio, rotations, vector endpoints, retries, replay, mobile layout and saved results.");
+    console.log("Verified all four lessons, positive-product choices, vector lengths, sign changes, audio, navigation and saved results.");
   } finally {
     await browser.close();
   }

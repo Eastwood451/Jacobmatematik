@@ -1710,7 +1710,7 @@ multiplicationColumn: {
         : makeTask("tableDrill", `${pair.row} × ${pair.column}`, pair.row * pair.column, "", pair);
       state.taskStartedAt=Date.now(); state.answered=false; renderMatrixDrill(); return;
     }
-    const example = state.selectedTopic === "negatives" ? [[1, "+", -3], [4, "−", -2], [2, "×", -3]][state.questionNumber - 1] : undefined;
+    const example = state.selectedTopic === "negatives" ? [[1, "+", -3], [4, "−", -2], [2, "×", -3], [-2, "×", -3]][state.questionNumber - 1] : undefined;
     state.task = MathModules[topic].generate(getStats(state.user, topic).level, state.user, example);
     state.taskStartedAt = Date.now(); state.answered = false;
     renderExercise();
